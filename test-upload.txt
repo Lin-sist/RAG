@@ -1,0 +1,1 @@
+﻿Spring Boot是一个简化Spring应用开发的框架。它提供了自动配置、起步依赖和嵌入式服务器等特性。@Component注解用于将类标记为Spring管理的Bean。@Autowired注解用于自动注入依赖。@RestController注解组合了@Controller和@ResponseBody。

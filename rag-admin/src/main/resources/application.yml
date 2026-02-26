@@ -1,0 +1,129 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: rag-qa-system
+  
+  profiles:
+    active: dev
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/rag_qa?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      pool-name: RagQaHikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
+      database: 0
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.enterprise.rag.**.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+# JWT Configuration
+jwt:
+  secret: your-256-bit-secret-key-for-jwt-token-generation-change-in-production
+  access-token-expiration: 3600000  # 1 hour in milliseconds
+  refresh-token-expiration: 604800000  # 7 days in milliseconds
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.enterprise.rag: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId}] %-5level %logger{36} - %msg%n"
+
+# OpenAPI/Swagger
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+# RAG Configuration
+rag:
+  # ===== 大模型配置（用于生成回答） =====
+  llm:
+    provider: openai  # 改为 openai，因为 NVIDIA NIM 兼容 OpenAI 接口规范
+    timeout: 120      # NVIDIA NIM 可能稍慢，给多一些超时时间
+    max-retries: 3
+    qwen:
+      api-key: ${QWEN_API_KEY:sk-placeholder}
+      model: qwen-turbo
+      temperature: 0.7
+      max-tokens: 2048
+    openai:
+      api-key: ${NVIDIA_API_KEY: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}
+      base-url: https://integrate.api.nvidia.com/v1
+      model: meta/llama3-70b-instruct
+      temperature: 0.7
+      max-tokens: 2048
+
+  # ===== Embedding 配置（用于把文本转成向量） =====
+  embedding:
+    default-provider: openai  # 改为 openai，走 NVIDIA NIM 的 Embedding 模型
+    enable-fallback: false    # 暂时关闭回退，只用 NIM
+    openai:
+      enabled: true
+      api-key: ${NVIDIA_API_KEY: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}
+      base-url: https://integrate.api.nvidia.com/v1
+      model: nvidia/llama-nemotron-embed-vl-1b-v2
+      dimension: 2048
+      timeout-ms: 60000
+    qwen:
+      enabled: false
+      api-key: ${QWEN_API_KEY:sk-placeholder}
+      model: text-embedding-v1
+      dimension: 1536
+    bge:
+      enabled: false
+
+  # ===== 向量数据库配置（Milvus） =====
+  vectorstore:
+    type: milvus  # 可选: milvus / qdrant / elasticsearch
+    milvus:
+      host: localhost
+      port: 19530
+      database: default
+      connect-timeout: 10
+      index-type: IVF_FLAT
+      metric-type: COSINE
+      nlist: 1024
+      nprobe: 16
