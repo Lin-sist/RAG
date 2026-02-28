@@ -8,14 +8,15 @@ export interface AskRequest {
 
 export interface Citation {
     source: string
-    content: string
-    score?: number
+    snippet: string
+    startIndex: number
+    endIndex: number
 }
 
 export interface RetrievedContext {
     content: string
     source: string
-    score: number
+    relevanceScore: number
     metadata: Record<string, unknown>
 }
 

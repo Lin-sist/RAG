@@ -1,19 +1,21 @@
+import type { Citation } from './qa'
+
 export interface QAHistoryDTO {
     id: number
     userId: number
     kbId: number
-    kbName: string
     question: string
     answer: string
-    citations: string
+    citations: Citation[]
+    traceId: string
     latencyMs: number
-    feedback?: QAFeedbackDTO
     createdAt: string
 }
 
 export interface QAFeedbackDTO {
     id: number
-    historyId: number
+    qaId: number
+    userId: number
     rating: number
     comment: string
     createdAt: string

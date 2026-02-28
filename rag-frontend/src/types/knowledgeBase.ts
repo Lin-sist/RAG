@@ -23,6 +23,7 @@ export interface UpdateKBRequest {
 }
 
 export interface KnowledgeBaseStatistics {
+    kbId: number
     documentCount: number
     vectorCount: number
     queryCount: number
