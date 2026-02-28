@@ -1,0 +1,60 @@
+import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios'
+import { ElMessage } from 'element-plus'
+import { getToken } from '@/utils/storage'
+import router from '@/router'
+
+const request: AxiosInstance = axios.create({
+    baseURL: '',
+    timeout: 30000,
+    headers: { 'Content-Type': 'application/json' },
+})
+
+request.interceptors.request.use(
+    (config: InternalAxiosRequestConfig) => {
+        const token = getToken('accessToken')
+        if (token && config.headers) {
+            config.headers.Authorization = `Bearer ${token}`
+        }
+        return config
+    },
+    (error) => Promise.reject(error)
+)
+
+request.interceptors.response.use(
+    (response: AxiosResponse) => {
+        const data = response.data
+        if (data.code !== undefined && data.code !== 200) {
+            ElMessage.error(data.message || '请求失败')
+            return Promise.reject(new Error(data.message || '请求失败'))
+        }
+        return response
+    },
+    (error) => {
+        if (error.response) {
+            const { status, data } = error.response
+            switch (status) {
+                case 401:
+                    ElMessage.error('登录已过期，请重新登录')
+                    localStorage.removeItem('rag_accessToken')
+                    localStorage.removeItem('rag_refreshToken')
+                    router.push('/login')
+                    break
+                case 403:
+                    ElMessage.error('没有权限访问')
+                    break
+                case 404:
+                    ElMessage.error(data?.message || '请求的资源不存在')
+                    break
+                default:
+                    ElMessage.error(data?.message || `请求错误 (${status})`)
+            }
+        } else if (error.request) {
+            ElMessage.error('网络错误，请检查网络连接')
+        } else {
+            ElMessage.error('请求配置错误')
+        }
+        return Promise.reject(error)
+    }
+)
+
+export default request

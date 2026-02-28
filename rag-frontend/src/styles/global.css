@@ -1,0 +1,59 @@
+@import './variables.css';
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    font-size: 14px;
+    color: var(--rag-text-primary);
+    background-color: var(--rag-bg-page);
+    -webkit-font-smoothing: antialiased;
+}
+
+#app {
+    height: 100%;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c0c4cc;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #909399;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-16 {
+    margin-top: 16px;
+}
+
+.mb-16 {
+    margin-bottom: 16px;
+}
+
+.rag-card {
+    background: var(--rag-bg-primary);
+    border-radius: var(--rag-radius-md);
+    box-shadow: var(--rag-shadow-sm);
+    padding: 20px;
+}
