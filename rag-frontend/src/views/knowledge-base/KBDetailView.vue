@@ -44,17 +44,38 @@
       <!-- 统计面板 -->
       <KBStatsPanel :stats="kbStore.statistics" :loading="statsLoading" />
 
-      <!-- 文档管理区域（阶段6实现） -->
+      <!-- 文档管理区域 -->
       <el-card shadow="never" class="info-card">
         <template #header>
           <div class="doc-header">
             <span class="card-section-title">文档管理</span>
-            <el-button type="primary" size="small" disabled>
-              <el-icon><Upload /></el-icon>上传文档（阶段6）
+            <el-button type="primary" size="small" @click="uploadVisible = !uploadVisible">
+              <el-icon><Upload /></el-icon>
+              {{ uploadVisible ? '收起上传' : '上传文档' }}
             </el-button>
           </div>
         </template>
-        <el-empty description="文档管理功能将在阶段 6 实现" :image-size="80" />
+
+        <!-- 上传区域（可折叠） -->
+        <div v-show="uploadVisible" class="upload-section">
+          <DocUploader
+            :kb-id="getKbId()"
+            @uploaded="handleDocUploaded"
+            @all-done="handleAllUploadDone"
+          />
+          <el-divider />
+        </div>
+
+        <!-- 进度面板（有任务时显示） -->
+        <DocProgress :tasks="progressTasks" />
+
+        <!-- 文档列表 -->
+        <DocList
+          :kb-id="getKbId()"
+          :documents="documents"
+          :loading="docsLoading"
+          @refresh="loadDocuments"
+        />
       </el-card>
     </div>
 
@@ -68,14 +89,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Edit, Delete, Upload } from '@element-plus/icons-vue'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
 import { formatDate } from '@/utils/format'
+import { listDocuments } from '@/api/knowledgeBase'
+import { getTaskStatus } from '@/api/task'
 import KBStatsPanel from '@/components/knowledge-base/KBStatsPanel.vue'
 import KBCreateDialog from '@/components/knowledge-base/KBCreateDialog.vue'
+import DocUploader from '@/components/document/DocUploader.vue'
+import DocList from '@/components/document/DocList.vue'
+import DocProgress from '@/components/document/DocProgress.vue'
+import type { DocumentInfo } from '@/types/document'
+import type { DocumentUploadResponse } from '@/types/document'
+import type { TaskStatusResponse } from '@/types/task'
+
+interface ProgressTask {
+  taskId: string
+  fileName: string
+  status: TaskStatusResponse | null
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -83,13 +118,113 @@ const kbStore = useKnowledgeBaseStore()
 
 const editDialogVisible = ref(false)
 const statsLoading = ref(false)
+const uploadVisible = ref(false)
+
+// ========== 文档列表状态 ==========
+const documents = ref<DocumentInfo[]>([])
+const docsLoading = ref(false)
+
+// ========== 进度任务状态 ==========
+const progressTasks = reactive<ProgressTask[]>([])
+const pollingTimers = new Map<string, ReturnType<typeof setInterval>>()
 
 // 获取路由参数中的 id
 function getKbId(): number {
   return Number(route.params.id)
 }
 
-// 加载知识库详情 + 统计
+// ---------- 加载文档列表 ----------
+async function loadDocuments() {
+  const id = getKbId()
+  if (!id || isNaN(id)) return
+  docsLoading.value = true
+  try {
+    const res = await listDocuments(id)
+    documents.value = res.data.data
+  } catch {
+    ElMessage.error('获取文档列表失败')
+  } finally {
+    docsLoading.value = false
+  }
+}
+
+// ---------- 文件上传成功回调 ----------
+function handleDocUploaded(data: DocumentUploadResponse) {
+  // 添加到进度追踪列表
+  const task: ProgressTask = {
+    taskId: data.taskId,
+    fileName: data.fileName,
+    status: null,
+  }
+  progressTasks.push(task)
+  // 开始轮询该任务
+  startTaskPolling(task)
+}
+
+// ---------- 全部上传完成回调 ----------
+function handleAllUploadDone() {
+  // 刷新文档列表以显示新上传的文档（即使它们还在 PROCESSING 中）
+  loadDocuments()
+}
+
+// ---------- 轮询单个任务的进度 ----------
+function startTaskPolling(task: ProgressTask) {
+  // 立即查询一次
+  pollTaskOnce(task)
+
+  const timer = setInterval(() => {
+    pollTaskOnce(task)
+  }, 2000)
+
+  pollingTimers.set(task.taskId, timer)
+}
+
+async function pollTaskOnce(task: ProgressTask) {
+  try {
+    const res = await getTaskStatus(task.taskId)
+    task.status = res.data.data
+    const state = res.data.data.state
+
+    if (state === 'COMPLETED' || state === 'FAILED' || state === 'CANCELLED') {
+      // 终态：停止轮询
+      stopTaskPolling(task.taskId)
+
+      if (state === 'COMPLETED') {
+        ElMessage.success(`「${task.fileName}」处理完成`)
+      } else {
+        ElMessage.error(`「${task.fileName}」处理失败`)
+      }
+
+      // 刷新文档列表和统计
+      loadDocuments()
+      kbStore.fetchStatistics(getKbId())
+      kbStore.fetchById(getKbId()) // 刷新 documentCount
+
+      // 3 秒后从进度列表中移除已完成的任务
+      setTimeout(() => {
+        const idx = progressTasks.findIndex(t => t.taskId === task.taskId)
+        if (idx !== -1) progressTasks.splice(idx, 1)
+      }, 3000)
+    }
+  } catch {
+    // 轮询出错时不立即停止，等下次重试
+  }
+}
+
+function stopTaskPolling(taskId: string) {
+  const timer = pollingTimers.get(taskId)
+  if (timer) {
+    clearInterval(timer)
+    pollingTimers.delete(taskId)
+  }
+}
+
+function stopAllPolling() {
+  pollingTimers.forEach((timer) => clearInterval(timer))
+  pollingTimers.clear()
+}
+
+// ---------- 加载知识库详情 + 统计 ----------
 async function loadDetail() {
   const id = getKbId()
   if (!id || isNaN(id)) {
@@ -102,6 +237,8 @@ async function loadDetail() {
     statsLoading.value = true
     await kbStore.fetchStatistics(id)
     statsLoading.value = false
+    // 同时加载文档列表
+    await loadDocuments()
   } catch {
     router.push('/knowledge-base')
   }
@@ -112,7 +249,16 @@ onMounted(loadDetail)
 
 // 路由参数变化时重新加载
 watch(() => route.params.id, () => {
-  if (route.params.id) loadDetail()
+  if (route.params.id) {
+    stopAllPolling()
+    progressTasks.splice(0)
+    loadDetail()
+  }
+})
+
+// 组件销毁时清理所有轮询
+onUnmounted(() => {
+  stopAllPolling()
 })
 
 // 编辑成功后刷新
@@ -165,5 +311,8 @@ async function confirmDelete() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.upload-section {
+  margin-bottom: 8px;
 }
 </style>
