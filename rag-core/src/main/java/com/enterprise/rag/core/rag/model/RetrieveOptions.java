@@ -17,13 +17,12 @@ public record RetrieveOptions(
         int topK,
         float minScore,
         Map<String, Object> filter,
-        boolean enableRerank
-) {
+        boolean enableRerank) {
     /**
      * 默认检索选项
      */
     public static final int DEFAULT_TOP_K = 5;
-    public static final float DEFAULT_MIN_SCORE = 0.5f;
+    public static final float DEFAULT_MIN_SCORE = 0.3f;
 
     /**
      * 创建基本检索选项

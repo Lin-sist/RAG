@@ -25,8 +25,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -51,34 +53,24 @@ public class QAController {
     @PostMapping("/ask")
     @Operation(summary = "问答", description = "向知识库提问并获取 AI 生成的答案")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "问答成功",
-            content = @Content(schema = @Schema(implementation = QAResponse.class))
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "请求参数错误"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "问答成功", content = @Content(schema = @Schema(implementation = QAResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "请求参数错误"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
     public ResponseEntity<ApiResponse<QAResponse>> ask(
             @Valid @RequestBody AskRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-        
+
         Long userId = extractUserId(userDetails);
-        log.info("问答请求: kbId={}, question={}, userId={}", 
+        log.info("问答请求: kbId={}, question={}, userId={}",
                 request.kbId(), truncate(request.question(), 50), userId);
-        
+
         // 验证知识库存在
         var kb = knowledgeBaseService.getById(request.kbId())
                 .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在: " + request.kbId()));
-        
+
         long startTime = System.currentTimeMillis();
-        
+
         // 构建 QA 请求
         QARequest qaRequest = new QARequest(
                 request.question(),
@@ -86,16 +78,15 @@ public class QAController {
                 request.topK() != null ? request.topK() : QARequest.DEFAULT_TOP_K,
                 request.filter() != null ? request.filter() : Map.of(),
                 request.enableCache() != null ? request.enableCache() : true,
-                false
-        );
-        
+                false);
+
         // 执行问答
         QAResponse response = ragService.ask(qaRequest);
-        
+
         long latencyMs = System.currentTimeMillis() - startTime;
-        log.info("问答完成: kbId={}, latencyMs={}, hasResult={}", 
+        log.info("问答完成: kbId={}, latencyMs={}, hasResult={}",
                 request.kbId(), latencyMs, response.hasResult());
-        
+
         // 保存问答历史
         try {
             qaHistoryService.save(SaveQAHistoryRequest.builder()
@@ -110,7 +101,7 @@ public class QAController {
         } catch (Exception e) {
             log.warn("保存问答历史失败: {}", e.getMessage());
         }
-        
+
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -120,39 +111,58 @@ public class QAController {
     @PostMapping(value = "/ask/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "流式问答", description = "向知识库提问并以流式方式获取 AI 生成的答案")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "流式响应开始"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "请求参数错误"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "流式响应开始"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "请求参数错误"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
-    public Flux<String> askStream(
+    public SseEmitter askStream(
             @Valid @RequestBody AskRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-        
+
         Long userId = extractUserId(userDetails);
-        log.info("流式问答请求: kbId={}, question={}, userId={}", 
+        log.info("流式问答请求: kbId={}, question={}, userId={}",
                 request.kbId(), truncate(request.question(), 50), userId);
-        
+
         // 验证知识库存在
         var kb = knowledgeBaseService.getById(request.kbId())
                 .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在: " + request.kbId()));
-        
+
         // 构建流式 QA 请求
         QARequest qaRequest = QARequest.stream(request.question(), kb.getVectorCollection());
-        
-        // 返回流式响应
-        return ragService.askStream(qaRequest)
+
+        // 使用 SseEmitter 而不是 Flux<String>
+        // 原因：Flux<String> + text/event-stream 会触发 Tomcat 异步分发，
+        // 导致 Spring Security 的 OncePerRequestFilter 在异步线程中丢失安全上下文，
+        // 抛出 AccessDeniedException。SseEmitter 直接写入响应流，完全避免这个问题。
+        SseEmitter emitter = new SseEmitter(120_000L); // 120秒超时
+
+        ragService.askStream(qaRequest)
                 .doOnSubscribe(s -> log.debug("流式问答开始: kbId={}", request.kbId()))
-                .doOnComplete(() -> log.debug("流式问答完成: kbId={}", request.kbId()))
-                .doOnError(e -> log.error("流式问答错误: kbId={}, error={}", request.kbId(), e.getMessage()));
+                .subscribe(
+                        chunk -> {
+                            try {
+                                // SseEmitter.send() 会自动格式化为 "data:chunk\n\n"
+                                emitter.send(chunk, MediaType.TEXT_PLAIN);
+                            } catch (IOException e) {
+                                log.warn("SSE发送失败: {}", e.getMessage());
+                                emitter.completeWithError(e);
+                            }
+                        },
+                        error -> {
+                            log.error("流式问答错误: kbId={}, error={}", request.kbId(), error.getMessage());
+                            emitter.completeWithError(error);
+                        },
+                        () -> {
+                            try {
+                                emitter.send("[DONE]", MediaType.TEXT_PLAIN);
+                                emitter.complete();
+                                log.debug("流式问答完成: kbId={}", request.kbId());
+                            } catch (IOException e) {
+                                emitter.completeWithError(e);
+                            }
+                        });
+
+        return emitter;
     }
 
     /**
@@ -161,29 +171,16 @@ public class QAController {
     @GetMapping("/ask")
     @Operation(summary = "简单问答", description = "使用 GET 方式进行简单问答")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "问答成功",
-            content = @Content(schema = @Schema(implementation = QAResponse.class))
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "请求参数错误"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "问答成功", content = @Content(schema = @Schema(implementation = QAResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "请求参数错误"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
     public ResponseEntity<ApiResponse<QAResponse>> askSimple(
-            @Parameter(description = "知识库 ID", required = true)
-            @RequestParam Long kbId,
-            @Parameter(description = "问题", required = true)
-            @RequestParam String question,
-            @Parameter(description = "返回结果数量")
-            @RequestParam(required = false, defaultValue = "5") Integer topK,
+            @Parameter(description = "知识库 ID", required = true) @RequestParam Long kbId,
+            @Parameter(description = "问题", required = true) @RequestParam String question,
+            @Parameter(description = "返回结果数量") @RequestParam(required = false, defaultValue = "5") Integer topK,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-        
+
         AskRequest request = new AskRequest(kbId, question, topK, null, true);
         return ask(request, userDetails);
     }
@@ -206,7 +203,8 @@ public class QAController {
      * 截断字符串
      */
     private String truncate(String str, int maxLength) {
-        if (str == null) return null;
+        if (str == null)
+            return null;
         return str.length() > maxLength ? str.substring(0, maxLength) + "..." : str;
     }
 
@@ -214,16 +212,14 @@ public class QAController {
      * 问答请求
      */
     public record AskRequest(
-            @NotNull(message = "知识库 ID 不能为空")
-            Long kbId,
-            
-            @NotBlank(message = "问题不能为空")
-            String question,
-            
+            @NotNull(message = "知识库 ID 不能为空") Long kbId,
+
+            @NotBlank(message = "问题不能为空") String question,
+
             Integer topK,
-            
+
             Map<String, Object> filter,
-            
-            Boolean enableCache
-    ) {}
+
+            Boolean enableCache) {
+    }
 }

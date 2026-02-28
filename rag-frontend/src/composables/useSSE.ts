@@ -37,9 +37,13 @@ export function useSSE() {
                 const text = decoder.decode(value, { stream: true })
                 const lines = text.split('\n')
                 for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const chunk = line.slice(6)
-                        if (chunk === '[DONE]') continue
+                    // Spring SseEmitter 输出格式为 "data:chunk"（冒号后无空格）
+                    // 必须只截掉 "data:" 这5个字符，否则 token 自带的前导空格会被误吞
+                    // 导致英文单词之间没有空格（如 "Accordingtothe..."）
+                    if (line.startsWith('data:')) {
+                        const chunk = line.slice(5)
+                        if (chunk === '[DONE]' || chunk.trim() === '[DONE]') continue
+                        if (!chunk) continue
                         data.value += chunk
                         onChunk(chunk)
                     }

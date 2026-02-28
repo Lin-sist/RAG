@@ -18,69 +18,72 @@ public class PromptBuilder {
 
     private static final String SIMPLE_TEMPLATE = """
             Based on the following context, please answer the question.
-            
+            You MUST reply in the SAME language as the user's question.
+
             Context:
             %s
-            
+
             Question: %s
-            
+
             Answer:""";
 
     private static final String STRUCTURED_TEMPLATE = """
             You are a helpful assistant that answers questions based on the provided context.
-            
+
             ## Instructions
             - Answer the question based ONLY on the provided context
             - If the context doesn't contain enough information, say so
             - Cite the source when possible
             - Be concise and accurate
-            
+            - You MUST reply in the SAME language as the user's question (e.g. Chinese question → Chinese answer)
+
             ## Context
             %s
-            
+
             ## Question
             %s
-            
+
             ## Answer""";
 
     private static final String CHAIN_OF_THOUGHT_TEMPLATE = """
             You are a helpful assistant. Please answer the question step by step.
-            
+            You MUST reply in the SAME language as the user's question.
+
             ## Context
             %s
-            
+
             ## Question
             %s
-            
+
             ## Let's think step by step:
             1. First, identify the key information in the context
             2. Then, analyze how it relates to the question
             3. Finally, provide a clear answer
-            
+
             ## Answer""";
 
     private static final String CODE_FOCUSED_TEMPLATE = """
             You are a technical assistant specialized in code and documentation.
-            
+
             ## Context (Code/Documentation)
             %s
-            
+
             ## Question
             %s
-            
+
             ## Instructions
             - Provide accurate technical answers
             - Include code examples when relevant
             - Reference specific parts of the context
-            
-            ## Answer""";
+            - You MUST reply in the SAME language as the user's question
 
+            ## Answer""";
 
     private static final String NO_CONTEXT_TEMPLATE = """
             I don't have enough context to answer your question accurately.
-            
+
             Question: %s
-            
+
             Please provide more specific information or rephrase your question.""";
 
     /**
@@ -131,7 +134,7 @@ public class PromptBuilder {
      */
     private String formatSingleContext(int index, RetrievedContext context) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("[Source %d: %s (Score: %.2f)]%n", 
+        sb.append(String.format("[Source %d: %s (Score: %.2f)]%n",
                 index, context.source(), context.relevanceScore()));
         sb.append(context.content());
         return sb.toString();
@@ -165,7 +168,8 @@ public class PromptBuilder {
      * 截断日志输出
      */
     private String truncateForLog(String text) {
-        if (text == null) return "null";
+        if (text == null)
+            return "null";
         return text.length() > 100 ? text.substring(0, 100) + "..." : text;
     }
 }

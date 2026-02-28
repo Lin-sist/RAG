@@ -24,6 +24,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.DispatcherType;
 import java.util.Arrays;
 import java.util.List;
 
@@ -91,6 +92,9 @@ public class SecurityConfig {
 
                                 // 配置请求授权
                                 .authorizeHttpRequests(auth -> auth
+                                                // SSE 流式问答的异步分发需要放行，否则 Tomcat 异步完成时
+                                                // 会重新触发 Spring Security 过滤链导致 AccessDeniedException
+                                                .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                                                 // 公开接口
                                                 .requestMatchers(
                                                                 "/auth/login",

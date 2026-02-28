@@ -12,6 +12,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,12 +27,21 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
     private final WebClient webClient;
     private final EmbeddingProperties.OpenAI config;
 
+    /**
+     * 批量请求时，每批最多处理的文本数量。
+     * NVIDIA NIM embedding 模型返回 2048 维向量，单个 embedding 的 JSON 约 40KB，
+     * 5 个 chunk 的响应约 200KB，在 WebClient 默认 buffer (256KB) 内安全处理。
+     */
+    private static final int BATCH_CHUNK_SIZE = 5;
+
     public OpenAIEmbeddingProvider(EmbeddingProperties.OpenAI config) {
         this.config = config;
         this.webClient = WebClient.builder()
                 .baseUrl(config.getBaseUrl())
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + config.getApiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                // 增大响应 buffer 上限：默认 256KB 不够容纳大批量 embedding 响应
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
                 .build();
     }
 
@@ -83,6 +93,26 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
             throw new EmbeddingException("Input texts cannot be null or empty", MODEL_NAME, false);
         }
 
+        // 分批处理：避免单次请求返回的 JSON 过大（每个 2048 维 embedding ≈ 40KB）
+        if (texts.size() > BATCH_CHUNK_SIZE) {
+            log.info("Splitting batch of {} texts into sub-batches of {}", texts.size(), BATCH_CHUNK_SIZE);
+            List<float[]> allResults = new ArrayList<>();
+            for (int i = 0; i < texts.size(); i += BATCH_CHUNK_SIZE) {
+                int end = Math.min(i + BATCH_CHUNK_SIZE, texts.size());
+                List<String> subBatch = texts.subList(i, end);
+                log.debug("Processing sub-batch {}-{} of {}", i, end, texts.size());
+                allResults.addAll(getEmbeddingsSingleBatch(subBatch));
+            }
+            return allResults;
+        }
+
+        return getEmbeddingsSingleBatch(texts);
+    }
+
+    /**
+     * 单批次调用 embedding API（不超过 BATCH_CHUNK_SIZE 个文本）
+     */
+    private List<float[]> getEmbeddingsSingleBatch(List<String> texts) {
         try {
             BatchEmbeddingRequest request = new BatchEmbeddingRequest(texts, config.getModel());
 
@@ -110,7 +140,7 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
         } catch (EmbeddingException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error calling OpenAI API for batch", e);
+            log.error("Unexpected error calling OpenAI API for batch (size={})", texts.size(), e);
             throw new EmbeddingException("Failed to get batch embeddings from OpenAI: " + e.getMessage(),
                     e, MODEL_NAME, true);
         }
@@ -172,7 +202,7 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
             @JsonProperty("input_type") String inputType,
             @JsonProperty("encoding_format") String encodingFormat) {
         BatchEmbeddingRequest(List<String> input, String model) {
-            this(input, model, "query", "float");
+            this(input, model, "passage", "float");
         }
     }
 
