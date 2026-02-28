@@ -4,9 +4,15 @@ import { useAuthStore } from '@/stores/auth'
 const routes: RouteRecordRaw[] = [
     {
         path: '/login',
-        name: 'Login',
-        component: () => import('@/views/login/LoginView.vue'),
-        meta: { requiresAuth: false, layout: 'auth' },
+        component: () => import('@/layouts/AuthLayout.vue'),
+        meta: { requiresAuth: false },
+        children: [
+            {
+                path: '',
+                name: 'Login',
+                component: () => import('@/views/login/LoginView.vue'),
+            },
+        ],
     },
     {
         path: '/',
