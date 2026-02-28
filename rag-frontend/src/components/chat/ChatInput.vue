@@ -1,58 +1,61 @@
-<!-- 聊天输入框 — 阶段 7 -->
+<!-- 聊天输入框 — Design V2 (居中悬浮风格) -->
 <template>
-  <div class="chat-input">
-    <!-- topK 设置 -->
-    <div class="input-toolbar">
-      <div class="toolbar-left">
-        <el-tooltip content="检索返回的最相关文档片段数量" placement="top">
-          <div class="topk-control">
-            <span class="topk-label">TopK:</span>
-            <el-input-number
-              v-model="localTopK"
-              :min="1"
-              :max="20"
-              :step="1"
-              size="small"
-              controls-position="right"
-              class="topk-input"
-              @change="emit('update:topK', localTopK)"
-            />
-          </div>
-        </el-tooltip>
+  <div class="chat-input-wrapper">
+    <div class="chat-input-container">
+      <!-- 工具条 -->
+      <div class="input-toolbar">
+        <div class="toolbar-left">
+          <el-tooltip content="检索返回的最相关文档片段数量" placement="top">
+            <div class="topk-control">
+              <span class="topk-label">TopK</span>
+              <el-input-number
+                v-model="localTopK"
+                :min="1"
+                :max="20"
+                :step="1"
+                size="small"
+                controls-position="right"
+                class="topk-input"
+                @change="emit('update:topK', localTopK)"
+              />
+            </div>
+          </el-tooltip>
+        </div>
+        <div class="toolbar-right">
+          <el-switch
+            v-model="useStream"
+            active-text="流式"
+            inactive-text="同步"
+            inline-prompt
+            size="small"
+          />
+        </div>
       </div>
-      <div class="toolbar-right">
-        <el-switch
-          v-model="useStream"
-          active-text="流式"
-          inactive-text="同步"
-          inline-prompt
-          size="small"
-        />
-      </div>
-    </div>
 
-    <!-- 输入区域 -->
-    <div class="input-area">
-      <el-input
-        ref="inputRef"
-        v-model="question"
-        type="textarea"
-        :rows="2"
-        :autosize="{ minRows: 1, maxRows: 4 }"
-        placeholder="输入你的问题... (Enter 发送, Shift+Enter 换行)"
-        resize="none"
-        :disabled="disabled"
-        @keydown="handleKeydown"
-      />
-      <el-button
-        type="primary"
-        :icon="Promotion"
-        :loading="disabled"
-        :disabled="!canSend"
-        circle
-        class="send-btn"
-        @click="handleSend"
-      />
+      <!-- 输入框 -->
+      <div class="input-box">
+        <el-input
+          ref="inputRef"
+          v-model="question"
+          type="textarea"
+          :autosize="{ minRows: 1, maxRows: 6 }"
+          placeholder="输入你的问题... (Enter 发送, Shift+Enter 换行)"
+          resize="none"
+          :disabled="disabled"
+          @keydown="handleKeydown"
+        />
+        <button
+          class="send-btn"
+          :class="{ active: canSend }"
+          :disabled="!canSend"
+          @click="handleSend"
+        >
+          <el-icon :size="18"><Promotion /></el-icon>
+        </button>
+      </div>
+
+      <!-- 免责声明 -->
+      <p class="disclaimer">AI 可能产生不准确内容，请核对引用来源。</p>
     </div>
   </div>
 </template>
@@ -103,50 +106,97 @@ defineExpose({ focus })
 </script>
 
 <style scoped>
-.chat-input {
-  border-top: 1px solid var(--el-border-color-lighter);
-  padding: 12px 16px;
-  background: #fff;
+.chat-input-wrapper {
+  border-top: 1px solid var(--rag-border-light);
+  padding: var(--rag-space-4) var(--rag-space-4) var(--rag-space-2);
+  background: var(--rag-bg-surface);
+}
+
+.chat-input-container {
+  max-width: 768px;
+  margin: 0 auto;
 }
 
 .input-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--rag-space-2);
+  padding: 0 var(--rag-space-1);
 }
 
 .topk-control {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--rag-space-2);
 }
 
 .topk-label {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  font-size: var(--rag-font-small);
+  color: var(--rag-text-secondary);
   white-space: nowrap;
+  font-weight: 500;
 }
 
 .topk-input {
   width: 100px;
 }
 
-.input-area {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
+.input-box {
+  position: relative;
+  border: 1.5px solid var(--rag-border);
+  border-radius: var(--rag-radius-input);
+  background: var(--rag-bg-surface);
+  padding: var(--rag-space-2) var(--rag-space-3);
+  transition: var(--rag-transition);
 }
 
-.input-area :deep(.el-textarea__inner) {
-  border-radius: 12px;
-  padding: 8px 14px;
-  line-height: 1.6;
+.input-box:focus-within {
+  border-color: var(--rag-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.input-box :deep(.el-textarea__inner) {
+  border: none;
+  box-shadow: none !important;
+  padding: var(--rag-space-1) 44px var(--rag-space-1) 0;
+  line-height: var(--rag-line-height);
+  font-size: var(--rag-font-body);
+  background: transparent;
+  resize: none;
 }
 
 .send-btn {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  position: absolute;
+  right: var(--rag-space-2);
+  bottom: var(--rag-space-2);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rag-border);
+  color: var(--rag-text-placeholder);
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--rag-transition);
+}
+
+.send-btn.active {
+  background: var(--rag-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.send-btn.active:hover {
+  background: var(--rag-primary-hover);
+}
+
+.disclaimer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--rag-text-placeholder);
+  margin: var(--rag-space-2) 0 0;
 }
 </style>

@@ -73,27 +73,37 @@
       <div ref="messagesContainer" class="messages-container">
         <!-- 欢迎提示 -->
         <div v-if="chatStore.messages.length === 0" class="welcome-area">
-          <div class="welcome-icon">🤖</div>
-          <h3 class="welcome-title">RAG 智能问答</h3>
-          <p class="welcome-desc">
-            {{ chatStore.currentKbId
-              ? `已连接「${chatStore.currentKbName}」，请输入你的问题`
-              : '👈 请先在左侧选择一个知识库，再开始提问'
-            }}
-          </p>
-          <div v-if="chatStore.currentKbId" class="welcome-examples">
-            <p class="example-label">💡 你可以尝试问：</p>
-            <el-button
+          <div class="welcome-brand">
+            <div class="brand-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <h2 class="welcome-title">
+              {{ chatStore.currentKbId ? '有什么可以帮你的？' : '选择知识库开始对话' }}
+            </h2>
+            <p class="welcome-subtitle" v-if="chatStore.currentKbId">
+              已连接「{{ chatStore.currentKbName }}」
+            </p>
+          </div>
+
+          <div v-if="chatStore.currentKbId" class="example-grid">
+            <div
               v-for="(ex, i) in exampleQuestions"
               :key="i"
-              text
-              type="primary"
-              class="example-btn"
+              class="example-card"
               @click="sendQuestion(ex, true)"
             >
-              {{ ex }}
-            </el-button>
+              <span class="example-emoji">{{ exampleEmojis[i] }}</span>
+              <span class="example-text">{{ ex }}</span>
+            </div>
           </div>
+
+          <p v-if="!chatStore.currentKbId" class="welcome-hint">
+            👈 请先在左侧选择一个知识库，再开始提问
+          </p>
         </div>
 
         <!-- 消息列表 -->
@@ -145,10 +155,12 @@ const chatInputRef = ref<InstanceType<typeof ChatInput>>()
 const kbList = ref<KnowledgeBaseDTO[]>([])
 const kbLoading = ref(false)
 
+const exampleEmojis = ['📖', '✨', '💡', '🔍']
 const exampleQuestions = [
   '这个知识库包含哪些主要内容？',
   '请总结一下最重要的要点',
   '帮我解释一下核心概念',
+  '有哪些实际应用场景？',
 ]
 
 onMounted(async () => {
@@ -288,60 +300,60 @@ watch(() => chatStore.messages.length, () => {
 .chat-view {
   display: flex;
   height: calc(100vh - 100px);
-  background: #fff;
-  border-radius: 8px;
+  background: var(--rag-bg-surface);
+  border-radius: var(--rag-radius-md);
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--rag-shadow-sm);
 }
 
 /* ========== 左侧知识库面板 ========== */
 .kb-panel {
   width: 240px;
-  border-right: 1px solid #ebeef5;
+  border-right: 1px solid var(--rag-border);
   display: flex;
   flex-direction: column;
-  background: #fafbfc;
+  background: var(--rag-bg-page);
   flex-shrink: 0;
 }
 
 .kb-panel-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px;
-  font-size: 14px;
+  gap: var(--rag-space-2);
+  padding: var(--rag-space-4);
+  font-size: var(--rag-font-body);
   font-weight: 600;
-  color: #303133;
-  border-bottom: 1px solid #ebeef5;
+  color: var(--rag-text-primary);
+  border-bottom: 1px solid var(--rag-border);
 }
 
 .kb-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: var(--rag-space-2);
 }
 
 .kb-item {
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: var(--rag-space-3);
+  border-radius: var(--rag-radius-sm);
   cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 4px;
+  transition: var(--rag-transition);
+  margin-bottom: var(--rag-space-1);
 }
 
 .kb-item:hover {
-  background: #ecf5ff;
+  background: var(--rag-bg-hover);
 }
 
 .kb-item.active {
-  background: #409eff;
+  background: var(--rag-primary);
   color: #fff;
 }
 
 .kb-item-name {
   font-size: 13px;
   font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: var(--rag-space-1);
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -351,7 +363,7 @@ watch(() => chatStore.messages.length, () => {
 .kb-item-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--rag-space-2);
   font-size: 11px;
 }
 
@@ -364,13 +376,13 @@ watch(() => chatStore.messages.length, () => {
 }
 
 .doc-count {
-  color: #909399;
+  color: var(--rag-text-secondary);
   font-size: 11px;
 }
 
 .kb-panel-footer {
-  padding: 8px 12px;
-  border-top: 1px solid #ebeef5;
+  padding: var(--rag-space-2) var(--rag-space-3);
+  border-top: 1px solid var(--rag-border);
 }
 
 /* ========== 右侧对话区域 ========== */
@@ -379,36 +391,38 @@ watch(() => chatStore.messages.length, () => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: var(--rag-bg-page);
 }
 
 .chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
-  border-bottom: 1px solid #ebeef5;
+  padding: var(--rag-space-3) var(--rag-space-6);
+  border-bottom: 1px solid var(--rag-border);
   flex-shrink: 0;
+  background: var(--rag-bg-surface);
 }
 
 .chat-header-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: var(--rag-space-2);
+  font-size: var(--rag-font-body);
 }
 
 .chat-kb-name {
   font-weight: 600;
-  color: #303133;
+  color: var(--rag-text-primary);
 }
 
 .chat-hint {
-  color: #c0c4cc;
+  color: var(--rag-text-placeholder);
 }
 
 .streaming-icon {
   animation: spin 1.5s linear infinite;
-  margin-right: 4px;
+  margin-right: var(--rag-space-1);
 }
 
 @keyframes spin {
@@ -430,42 +444,97 @@ watch(() => chatStore.messages.length, () => {
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 40px 20px;
+  padding: var(--rag-space-12) var(--rag-space-6);
   text-align: center;
 }
 
-.welcome-icon {
-  font-size: 56px;
-  margin-bottom: 16px;
+.welcome-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--rag-space-8);
+}
+
+.brand-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--rag-radius-lg);
+  background: var(--rag-gradient);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--rag-space-4);
+  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3);
 }
 
 .welcome-title {
-  font-size: 22px;
+  font-size: var(--rag-font-h1);
   font-weight: 600;
-  color: #303133;
-  margin: 0 0 8px;
+  color: var(--rag-text-primary);
+  margin: 0 0 var(--rag-space-2);
 }
 
-.welcome-desc {
-  font-size: 14px;
-  color: #909399;
+.welcome-subtitle {
+  font-size: var(--rag-font-body);
+  color: var(--rag-text-secondary);
+  margin: 0;
+}
+
+.welcome-hint {
+  font-size: var(--rag-font-body);
+  color: var(--rag-text-placeholder);
   max-width: 400px;
-  line-height: 1.6;
+  line-height: var(--rag-line-height);
 }
 
-.welcome-examples {
-  margin-top: 24px;
+/* 示例卡片网格 */
+.example-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--rag-space-3);
+  max-width: 560px;
+  width: 100%;
 }
 
-.example-label {
+.example-card {
+  display: flex;
+  align-items: center;
+  gap: var(--rag-space-3);
+  padding: var(--rag-space-4);
+  background: var(--rag-bg-surface);
+  border: 1px solid var(--rag-border);
+  border-radius: var(--rag-radius-md);
+  cursor: pointer;
+  transition: var(--rag-transition);
+  text-align: left;
+}
+
+.example-card:hover {
+  border-color: var(--rag-primary-light);
+  box-shadow: var(--rag-shadow-sm);
+  transform: translateY(-1px);
+}
+
+.example-emoji {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.example-text {
   font-size: 13px;
-  color: #909399;
-  margin-bottom: 12px;
+  color: var(--rag-text-regular);
+  line-height: 1.4;
 }
 
-.example-btn {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+  .kb-panel {
+    display: none;
+  }
+
+  .example-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

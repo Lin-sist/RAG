@@ -113,11 +113,12 @@ async function openStats(kb: KnowledgeBaseDTO) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--rag-space-6);
 }
 .page-header h2 {
   margin: 0;
-  font-size: 20px;
-  color: #303133;
+  font-size: var(--rag-font-h2);
+  font-weight: 600;
+  color: var(--rag-text-primary);
 }
 </style>

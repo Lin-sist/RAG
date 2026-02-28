@@ -50,8 +50,8 @@ async function handleLogout() {
   height: 100vh;
 }
 .layout-main {
-  background-color: var(--rag-bg-page, #f0f2f5);
-  padding: 20px;
+  background-color: var(--rag-bg-page);
+  padding: var(--rag-space-6);
   overflow-y: auto;
 }
 

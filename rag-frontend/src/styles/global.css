@@ -9,9 +9,10 @@
 html,
 body {
     height: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
         'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-    font-size: 14px;
+    font-size: var(--rag-font-body);
+    line-height: var(--rag-line-height);
     color: var(--rag-text-primary);
     background-color: var(--rag-bg-page);
     -webkit-font-smoothing: antialiased;
@@ -21,18 +22,23 @@ body {
     height: 100%;
 }
 
+::selection {
+    background: var(--rag-primary);
+    color: #fff;
+}
+
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #c0c4cc;
+    background: var(--rag-text-placeholder);
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #909399;
+    background: var(--rag-text-secondary);
 }
 
 ::-webkit-scrollbar-track {
@@ -44,16 +50,17 @@ body {
 }
 
 .mt-16 {
-    margin-top: 16px;
+    margin-top: var(--rag-space-4);
 }
 
 .mb-16 {
-    margin-bottom: 16px;
+    margin-bottom: var(--rag-space-4);
 }
 
 .rag-card {
-    background: var(--rag-bg-primary);
+    background: var(--rag-bg-surface);
     border-radius: var(--rag-radius-md);
     box-shadow: var(--rag-shadow-sm);
-    padding: 20px;
+    padding: var(--rag-space-6);
+    transition: var(--rag-transition);
 }

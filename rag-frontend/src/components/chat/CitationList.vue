@@ -1,4 +1,4 @@
-<!-- 引用来源展示 — 阶段 7 -->
+<!-- 引用来源展示 — Design V2 -->
 <template>
   <div class="citation-list">
     <div class="citation-header" @click="expanded = !expanded">
@@ -17,7 +17,7 @@
           class="citation-item"
         >
           <div class="cite-source">
-            <el-icon :size="12" color="#909399"><Paperclip /></el-icon>
+            <el-icon :size="12"><Paperclip /></el-icon>
             <span class="source-name">{{ cite.source || '未知来源' }}</span>
           </div>
           <p class="cite-snippet">{{ cite.snippet }}</p>
@@ -41,27 +41,27 @@ const expanded = ref(false)
 
 <style scoped>
 .citation-list {
-  margin-top: 8px;
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
+  margin-top: var(--rag-space-3);
+  border: 1px solid var(--rag-border);
+  border-radius: var(--rag-radius-sm);
   overflow: hidden;
-  background: #fff;
+  background: var(--rag-bg-surface);
 }
 
 .citation-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: var(--rag-space-2);
+  padding: var(--rag-space-2) var(--rag-space-3);
   cursor: pointer;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  transition: background 0.2s;
+  font-size: var(--rag-font-small);
+  color: var(--rag-text-secondary);
+  transition: background 0.2s ease;
   user-select: none;
 }
 
 .citation-header:hover {
-  background: #f5f7fa;
+  background: var(--rag-bg-hover);
 }
 
 .citation-title {
@@ -78,36 +78,41 @@ const expanded = ref(false)
 }
 
 .citation-items {
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--rag-border-light);
 }
 
 .citation-item {
-  padding: 10px 14px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: var(--rag-space-3) var(--rag-space-4);
+  border-bottom: 1px solid var(--rag-border-light);
+  transition: background 0.2s ease;
 }
 
 .citation-item:last-child {
   border-bottom: none;
 }
 
+.citation-item:hover {
+  background: var(--rag-bg-hover);
+}
+
 .cite-source {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: var(--rag-space-1);
+  margin-bottom: var(--rag-space-1);
 }
 
 .source-name {
-  font-size: 12px;
+  font-size: var(--rag-font-small);
   font-weight: 500;
-  color: #606266;
+  color: var(--rag-text-regular);
 }
 
 .cite-snippet {
   margin: 0;
-  font-size: 12px;
-  color: #909399;
-  line-height: 1.6;
+  font-size: var(--rag-font-small);
+  color: var(--rag-text-secondary);
+  line-height: var(--rag-line-height);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;

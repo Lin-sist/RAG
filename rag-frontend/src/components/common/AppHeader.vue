@@ -5,9 +5,9 @@
         <Fold v-if="!collapsed" />
         <Expand v-else />
       </el-icon>
-      <el-breadcrumb separator="/">
-        <el-breadcrumb-item>{{ title }}</el-breadcrumb-item>
-      </el-breadcrumb>
+      <div class="header-title-area">
+        <h3 class="header-title">{{ title }}</h3>
+      </div>
     </div>
     <div class="header-right">
       <el-dropdown trigger="click" @command="handleCommand">
@@ -16,7 +16,7 @@
             {{ username.charAt(0).toUpperCase() }}
           </el-avatar>
           <span class="username">{{ username }}</span>
-          <el-icon><ArrowDown /></el-icon>
+          <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
         </span>
         <template #dropdown>
           <el-dropdown-menu>
@@ -58,53 +58,82 @@ function handleCommand(command: string) {
 
 <style scoped>
 .app-header {
-  background: #fff;
+  background: var(--rag-bg-surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  padding: 0 20px;
+  border-bottom: 1px solid var(--rag-border);
+  padding: 0 var(--rag-space-6);
   height: 60px;
 }
+
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--rag-space-4);
 }
+
 .collapse-btn {
   font-size: 20px;
   cursor: pointer;
-  color: #606266;
-  transition: color 0.2s;
+  color: var(--rag-text-secondary);
+  transition: var(--rag-transition);
+  padding: var(--rag-space-1);
+  border-radius: var(--rag-radius-sm);
 }
+
 .collapse-btn:hover {
-  color: var(--rag-primary, #409eff);
+  color: var(--rag-primary);
+  background: var(--rag-bg-hover);
 }
+
+.header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--rag-text-primary);
+  margin: 0;
+}
+
 .header-right {
   display: flex;
   align-items: center;
+  gap: var(--rag-space-4);
 }
+
 .user-dropdown {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--rag-space-3);
   cursor: pointer;
-  color: #606266;
+  color: var(--rag-text-regular);
   outline: none;
+  padding: var(--rag-space-2) var(--rag-space-3);
+  border-radius: var(--rag-radius-sm);
+  transition: var(--rag-transition);
 }
+
 .user-dropdown:hover {
-  color: var(--rag-primary, #409eff);
+  background: var(--rag-bg-hover);
+  color: var(--rag-primary);
 }
+
 .user-avatar {
-  background-color: var(--rag-primary, #409eff);
+  background: var(--rag-gradient);
   color: #fff;
   font-weight: 600;
 }
+
 .username {
-  font-size: 14px;
+  font-size: var(--rag-font-body);
+  font-weight: 500;
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dropdown-arrow {
+  font-size: 12px;
+  color: var(--rag-text-placeholder);
 }
 </style>
