@@ -34,13 +34,12 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
      */
     private static final int BATCH_CHUNK_SIZE = 5;
 
-    public OpenAIEmbeddingProvider(EmbeddingProperties.OpenAI config) {
+    public OpenAIEmbeddingProvider(EmbeddingProperties.OpenAI config, WebClient.Builder webClientBuilder) {
         this.config = config;
-        this.webClient = WebClient.builder()
+        this.webClient = webClientBuilder.clone()
                 .baseUrl(config.getBaseUrl())
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + config.getApiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                // 增大响应 buffer 上限：默认 256KB 不够容纳大批量 embedding 响应
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
                 .build();
     }

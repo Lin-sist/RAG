@@ -29,11 +29,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
 
-    public AnswerGeneratorImpl(LLMProperties properties, PromptBuilder promptBuilder) {
+    public AnswerGeneratorImpl(LLMProperties properties, PromptBuilder promptBuilder, WebClient.Builder proxyWebClientBuilder) {
         this.properties = properties;
         this.promptBuilder = promptBuilder;
         this.objectMapper = new ObjectMapper();
-        this.webClient = WebClient.builder()
+        this.webClient = proxyWebClientBuilder.clone()
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
                 .build();
     }
