@@ -5,3 +5,5 @@ target/
 *.iml
 *.log
 .DS_Store
+# Docker volume data (runtime generated, do not commit)
+data/
