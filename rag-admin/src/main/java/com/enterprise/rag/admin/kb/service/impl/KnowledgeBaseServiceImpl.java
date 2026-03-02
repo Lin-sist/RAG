@@ -12,6 +12,7 @@ import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KBPermissionService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.common.exception.BusinessException;
+import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private final DocumentService documentService;
     private final KBPermissionService permissionService;
     private final VectorStore vectorStore;
+    private final EmbeddingService embeddingService;
     private final StringRedisTemplate redisTemplate;
 
     private static final String QUERY_COUNT_KEY_PREFIX = "kb:query:count:";
@@ -51,21 +53,22 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         kb.setOwnerId(ownerId);
         kb.setIsPublic(request.getIsPublic() != null ? request.getIsPublic() : false);
         kb.setDocumentCount(0);
-        
+
         // 生成唯一的向量集合名称
         String collectionName = "kb_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         kb.setVectorCollection(collectionName);
-        
+
         knowledgeBaseMapper.insert(kb);
-        
-        // 创建向量集合（使用默认维度1536，OpenAI embedding维度）
+
+        // 创建向量集合（使用当前 Embedding 模型的实际维度）
         try {
-            vectorStore.createCollection(collectionName, 1536);
-            log.info("Created vector collection: {}", collectionName);
+            int dimension = embeddingService.getDimension();
+            vectorStore.createCollection(collectionName, dimension);
+            log.info("Created vector collection: {} with dimension: {}", collectionName, dimension);
         } catch (Exception e) {
             log.warn("Failed to create vector collection {}: {}", collectionName, e.getMessage());
         }
-        
+
         return toDTO(kb);
     }
 
@@ -79,7 +82,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public List<KnowledgeBaseDTO> getByOwnerId(Long userId) {
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBase::getOwnerId, userId)
-               .orderByDesc(KnowledgeBase::getCreatedAt);
+                .orderByDesc(KnowledgeBase::getCreatedAt);
         return knowledgeBaseMapper.selectList(wrapper)
                 .stream()
                 .map(this::toDTO)
@@ -89,30 +92,30 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     @Override
     public List<KnowledgeBaseDTO> getAccessibleByUserId(Long userId) {
         Set<Long> accessibleIds = new HashSet<>();
-        
+
         // 获取用户拥有的知识库
         LambdaQueryWrapper<KnowledgeBase> ownedWrapper = new LambdaQueryWrapper<>();
         ownedWrapper.eq(KnowledgeBase::getOwnerId, userId);
         knowledgeBaseMapper.selectList(ownedWrapper)
                 .forEach(kb -> accessibleIds.add(kb.getId()));
-        
+
         // 获取用户有权限的知识库
         accessibleIds.addAll(permissionService.getAccessibleKnowledgeBaseIds(userId));
-        
+
         // 获取公开的知识库
         LambdaQueryWrapper<KnowledgeBase> publicWrapper = new LambdaQueryWrapper<>();
         publicWrapper.eq(KnowledgeBase::getIsPublic, true);
         knowledgeBaseMapper.selectList(publicWrapper)
                 .forEach(kb -> accessibleIds.add(kb.getId()));
-        
+
         if (accessibleIds.isEmpty()) {
             return new ArrayList<>();
         }
-        
+
         // 查询所有可访问的知识库
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<>();
         wrapper.in(KnowledgeBase::getId, accessibleIds)
-               .orderByDesc(KnowledgeBase::getCreatedAt);
+                .orderByDesc(KnowledgeBase::getCreatedAt);
         return knowledgeBaseMapper.selectList(wrapper)
                 .stream()
                 .map(this::toDTO)
@@ -126,7 +129,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         if (kb == null) {
             throw new BusinessException("KB_001", "知识库不存在");
         }
-        
+
         if (request.getName() != null) {
             kb.setName(request.getName());
         }
@@ -136,7 +139,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         if (request.getIsPublic() != null) {
             kb.setIsPublic(request.getIsPublic());
         }
-        
+
         knowledgeBaseMapper.updateById(kb);
         return toDTO(kb);
     }
@@ -148,13 +151,13 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         if (kb == null) {
             return;
         }
-        
+
         // 删除所有文档（级联删除向量数据）
         documentService.deleteByKnowledgeBaseId(id);
-        
+
         // 删除所有权限记录
         permissionService.deleteByKnowledgeBaseId(id);
-        
+
         // 删除向量集合
         if (kb.getVectorCollection() != null) {
             try {
@@ -164,10 +167,10 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 log.warn("Failed to drop vector collection {}: {}", kb.getVectorCollection(), e.getMessage());
             }
         }
-        
+
         // 删除查询计数
         redisTemplate.delete(QUERY_COUNT_KEY_PREFIX + id);
-        
+
         // 删除知识库记录
         knowledgeBaseMapper.deleteById(id);
     }
@@ -183,21 +186,21 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         if (kb == null) {
             throw new BusinessException("KB_001", "知识库不存在");
         }
-        
+
         // 获取实际文档数量
         int documentCount = documentService.countByKnowledgeBaseId(id);
-        
+
         // 获取向量数量
         long vectorCount = 0;
         if (kb.getVectorCollection() != null) {
             try {
                 vectorCount = vectorStore.count(kb.getVectorCollection());
             } catch (Exception e) {
-                log.warn("Failed to get vector count for collection {}: {}", 
+                log.warn("Failed to get vector count for collection {}: {}",
                         kb.getVectorCollection(), e.getMessage());
             }
         }
-        
+
         // 获取查询次数
         long queryCount = 0;
         String countStr = redisTemplate.opsForValue().get(QUERY_COUNT_KEY_PREFIX + id);
@@ -208,7 +211,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 log.warn("Invalid query count for kb {}: {}", id, countStr);
             }
         }
-        
+
         return KnowledgeBaseStatistics.builder()
                 .kbId(id)
                 .documentCount(documentCount)
@@ -222,7 +225,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public void updateDocumentCount(Long id, int delta) {
         LambdaUpdateWrapper<KnowledgeBase> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(KnowledgeBase::getId, id)
-               .setSql("document_count = document_count + " + delta);
+                .setSql("document_count = document_count + " + delta);
         knowledgeBaseMapper.update(null, wrapper);
     }
 

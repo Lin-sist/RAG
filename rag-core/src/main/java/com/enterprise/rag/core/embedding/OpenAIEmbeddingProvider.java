@@ -1,6 +1,7 @@
 package com.enterprise.rag.core.embedding;
 
 import com.enterprise.rag.core.embedding.config.EmbeddingProperties;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,7 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
 
         try {
             EmbeddingRequest request = new EmbeddingRequest(text, config.getModel());
-            
+
             EmbeddingResponse response = webClient.post()
                     .uri("/embeddings")
                     .bodyValue(request)
@@ -50,9 +51,9 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
                     .bodyToMono(EmbeddingResponse.class)
                     .retryWhen(Retry.backoff(config.getMaxRetries(), Duration.ofMillis(config.getRetryDelayMs()))
                             .filter(this::isRetryableError)
-                            .onRetryExhaustedThrow((spec, signal) -> 
-                                new EmbeddingException("Max retries exceeded for OpenAI API", 
-                                    signal.failure(), MODEL_NAME, false)))
+                            .onRetryExhaustedThrow(
+                                    (spec, signal) -> new EmbeddingException("Max retries exceeded for OpenAI API",
+                                            signal.failure(), MODEL_NAME, false)))
                     .timeout(Duration.ofMillis(config.getTimeoutMs()))
                     .block();
 
@@ -65,13 +66,13 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
 
         } catch (WebClientResponseException e) {
             log.error("OpenAI API error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new EmbeddingException("OpenAI API error: " + e.getMessage(), e, MODEL_NAME, 
+            throw new EmbeddingException("OpenAI API error: " + e.getMessage(), e, MODEL_NAME,
                     isRetryableStatusCode(e.getStatusCode().value()));
         } catch (EmbeddingException e) {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error calling OpenAI API", e);
-            throw new EmbeddingException("Failed to get embedding from OpenAI: " + e.getMessage(), 
+            throw new EmbeddingException("Failed to get embedding from OpenAI: " + e.getMessage(),
                     e, MODEL_NAME, true);
         }
     }
@@ -84,7 +85,7 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
 
         try {
             BatchEmbeddingRequest request = new BatchEmbeddingRequest(texts, config.getModel());
-            
+
             EmbeddingResponse response = webClient.post()
                     .uri("/embeddings")
                     .bodyValue(request)
@@ -92,9 +93,9 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
                     .bodyToMono(EmbeddingResponse.class)
                     .retryWhen(Retry.backoff(config.getMaxRetries(), Duration.ofMillis(config.getRetryDelayMs()))
                             .filter(this::isRetryableError)
-                            .onRetryExhaustedThrow((spec, signal) -> 
-                                new EmbeddingException("Max retries exceeded for OpenAI API", 
-                                    signal.failure(), MODEL_NAME, false)))
+                            .onRetryExhaustedThrow(
+                                    (spec, signal) -> new EmbeddingException("Max retries exceeded for OpenAI API",
+                                            signal.failure(), MODEL_NAME, false)))
                     .timeout(Duration.ofMillis(config.getTimeoutMs()))
                     .block();
 
@@ -110,7 +111,7 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error calling OpenAI API for batch", e);
-            throw new EmbeddingException("Failed to get batch embeddings from OpenAI: " + e.getMessage(), 
+            throw new EmbeddingException("Failed to get batch embeddings from OpenAI: " + e.getMessage(),
                     e, MODEL_NAME, true);
         }
     }
@@ -155,24 +156,43 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
     }
 
     // Request/Response DTOs
-    record EmbeddingRequest(String input, String model) {}
-    
-    record BatchEmbeddingRequest(List<String> input, String model) {}
+    record EmbeddingRequest(
+            String input,
+            String model,
+            @JsonProperty("input_type") String inputType,
+            @JsonProperty("encoding_format") String encodingFormat) {
+        EmbeddingRequest(String input, String model) {
+            this(input, model, "query", "float");
+        }
+    }
 
+    record BatchEmbeddingRequest(
+            List<String> input,
+            String model,
+            @JsonProperty("input_type") String inputType,
+            @JsonProperty("encoding_format") String encodingFormat) {
+        BatchEmbeddingRequest(List<String> input, String model) {
+            this(input, model, "query", "float");
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     record EmbeddingResponse(
             List<EmbeddingData> data,
             String model,
-            Usage usage
-    ) {}
+            Usage usage) {
+    }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     record EmbeddingData(
             List<Float> embedding,
             int index,
-            String object
-    ) {}
+            String object) {
+    }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     record Usage(
             @JsonProperty("prompt_tokens") int promptTokens,
-            @JsonProperty("total_tokens") int totalTokens
-    ) {}
+            @JsonProperty("total_tokens") int totalTokens) {
+    }
 }

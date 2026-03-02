@@ -57,8 +57,8 @@ public class MilvusVectorStore implements VectorStore {
     private final MilvusServiceClient milvusClient;
     private final VectorStoreProperties.MilvusProperties properties;
 
-    public MilvusVectorStore(MilvusServiceClient milvusClient, 
-                             VectorStoreProperties.MilvusProperties properties) {
+    public MilvusVectorStore(MilvusServiceClient milvusClient,
+            VectorStoreProperties.MilvusProperties properties) {
         this.milvusClient = milvusClient;
         this.properties = properties;
     }
@@ -215,8 +215,7 @@ public class MilvusVectorStore implements VectorStore {
                 new InsertParam.Field(FIELD_ID, idList),
                 new InsertParam.Field(FIELD_VECTOR, vectorList),
                 new InsertParam.Field(FIELD_CONTENT, contentList),
-                new InsertParam.Field(FIELD_METADATA, metadataList)
-        );
+                new InsertParam.Field(FIELD_METADATA, metadataList));
 
         InsertParam insertParam = InsertParam.newBuilder()
                 .withCollectionName(collectionName)
@@ -286,7 +285,7 @@ public class MilvusVectorStore implements VectorStore {
                     continue;
                 }
 
-                String id = (String) row.get(FIELD_ID);
+                String id = String.valueOf(row.get(FIELD_ID));
                 String content = (String) row.get(FIELD_CONTENT);
                 String metadataJson = (String) row.get(FIELD_METADATA);
 
@@ -312,17 +311,17 @@ public class MilvusVectorStore implements VectorStore {
         // 构建基于 metadata JSON 字段的过滤表达式
         // Milvus 2.x 支持 JSON 字段过滤
         List<String> conditions = new ArrayList<>();
-        
+
         for (Map.Entry<String, Object> entry : filter.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
-            
+
             // 对于简单的字符串匹配，使用 JSON_CONTAINS
             if (value instanceof String) {
-                conditions.add(String.format("JSON_CONTAINS(%s, '\"%s\"', '$.%s')", 
+                conditions.add(String.format("JSON_CONTAINS(%s, '\"%s\"', '$.%s')",
                         FIELD_METADATA, value, key));
             } else if (value instanceof Number) {
-                conditions.add(String.format("JSON_CONTAINS(%s, '%s', '$.%s')", 
+                conditions.add(String.format("JSON_CONTAINS(%s, '%s', '$.%s')",
                         FIELD_METADATA, value, key));
             }
         }
@@ -386,7 +385,7 @@ public class MilvusVectorStore implements VectorStore {
 
         List<QueryResultsWrapper.RowRecord> records = wrapper.getRowRecords();
         for (QueryResultsWrapper.RowRecord row : records) {
-            String docId = (String) row.get(FIELD_ID);
+            String docId = String.valueOf(row.get(FIELD_ID));
             String content = (String) row.get(FIELD_CONTENT);
             String metadataJson = (String) row.get(FIELD_METADATA);
 

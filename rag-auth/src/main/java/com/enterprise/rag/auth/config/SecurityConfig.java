@@ -96,12 +96,11 @@ public class SecurityConfig {
                                                                 "/auth/login",
                                                                 "/auth/refresh",
                                                                 "/actuator/health",
-                                                                "/swagger-ui.html",             //copilot:2026-02-14
+                                                                "/swagger-ui.html",
                                                                 "/swagger-ui/**",
                                                                 "/v3/api-docs/**",
                                                                 "/api-docs/**",
-                                                                "/swagger-resources/**",
-                                                                "/webjars/**",
+                                                                "/favicon.ico",
                                                                 "/error")
                                                 .permitAll()
                                                 // 管理员接口

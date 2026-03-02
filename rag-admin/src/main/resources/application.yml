@@ -9,9 +9,9 @@ spring:
     active: dev
 
   datasource:
-    url: jdbc:mysql://localhost:3307/rag_qa?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/rag_qa?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: root
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
@@ -30,8 +30,8 @@ spring:
   data:
     redis:
       host: localhost
-      port: 6380
-      password: root
+      port: 6379
+      password: 123456
       database: 0
       lettuce:
         pool:
@@ -79,12 +79,51 @@ springdoc:
 
 # RAG Configuration
 rag:
+  # ===== 大模型配置（用于生成回答） =====
   llm:
-    # provider: openai # or qwen
-    provider: qwen
+    provider: openai  # 改为 openai，因为 NVIDIA NIM 兼容 OpenAI 接口规范
+    timeout: 120      # NVIDIA NIM 可能稍慢，给多一些超时时间
+    max-retries: 3
     qwen:
-      # 请在这里填入你的通义千问 API Key
-      api-key: sk-6d373e0b7b36413f7791d476de5c10dd2203791e08ed5f375639dd3ddd1e48d8
+      api-key: ${QWEN_API_KEY:sk-placeholder}
       model: qwen-turbo
+      temperature: 0.7
+      max-tokens: 2048
     openai:
-      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxx
+      api-key: ${NVIDIA_API_KEY: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}
+      base-url: https://integrate.api.nvidia.com/v1
+      model: meta/llama3-70b-instruct
+      temperature: 0.7
+      max-tokens: 2048
+
+  # ===== Embedding 配置（用于把文本转成向量） =====
+  embedding:
+    default-provider: openai  # 改为 openai，走 NVIDIA NIM 的 Embedding 模型
+    enable-fallback: false    # 暂时关闭回退，只用 NIM
+    openai:
+      enabled: true
+      api-key: ${NVIDIA_API_KEY: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}
+      base-url: https://integrate.api.nvidia.com/v1
+      model: nvidia/llama-nemotron-embed-vl-1b-v2
+      dimension: 2048
+      timeout-ms: 60000
+    qwen:
+      enabled: false
+      api-key: ${QWEN_API_KEY:sk-placeholder}
+      model: text-embedding-v1
+      dimension: 1536
+    bge:
+      enabled: false
+
+  # ===== 向量数据库配置（Milvus） =====
+  vectorstore:
+    type: milvus  # 可选: milvus / qdrant / elasticsearch
+    milvus:
+      host: localhost
+      port: 19530
+      database: default
+      connect-timeout: 10
+      index-type: IVF_FLAT
+      metric-type: COSINE
+      nlist: 1024
+      nprobe: 16

@@ -13,6 +13,10 @@ import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
+import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.vectorstore.VectorDocument;
+import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.document.chunker.DocumentChunk;
 import com.enterprise.rag.document.processor.DocumentInput;
 import com.enterprise.rag.document.processor.DocumentProcessor;
 import com.enterprise.rag.document.processor.ProcessResult;
@@ -53,6 +57,8 @@ public class KnowledgeBaseController {
     private final DocumentService documentService;
     private final DocumentProcessor documentProcessor;
     private final AsyncTaskManager asyncTaskManager;
+    private final EmbeddingService embeddingService;
+    private final VectorStore vectorStore;
 
     /**
      * 创建知识库
@@ -266,7 +272,47 @@ public class KnowledgeBaseController {
                         progressCallback.accept(AsyncTask.TaskProgress.of(30, "文档解析中"));
                         ProcessResult result = documentProcessor.process(input);
                         
-                        progressCallback.accept(AsyncTask.TaskProgress.of(70, "更新文档状态"));
+                        // ===== 向量化 + 存入 Milvus =====
+                        progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
+                        List<DocumentChunk> chunks = result.chunks();
+                        if (chunks != null && !chunks.isEmpty()) {
+                            // 获取知识库的向量集合名称
+                            String collectionName = knowledgeBaseService.getById(id)
+                                    .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
+                                    .getVectorCollection();
+
+                            // 提取所有 chunk 文本
+                            List<String> chunkTexts = chunks.stream()
+                                    .map(DocumentChunk::content)
+                                    .toList();
+
+                            // 批量生成 Embedding 向量
+                            progressCallback.accept(AsyncTask.TaskProgress.of(60, "批量向量化中 (" + chunkTexts.size() + " 块)"));
+                            List<float[]> vectors = embeddingService.embedBatch(chunkTexts);
+
+                            // 构造 VectorDocument 列表并写入 Milvus
+                            progressCallback.accept(AsyncTask.TaskProgress.of(80, "写入向量数据库"));
+                            List<VectorDocument> vectorDocs = new java.util.ArrayList<>();
+                            for (int i = 0; i < chunks.size(); i++) {
+                                DocumentChunk chunk = chunks.get(i);
+                                vectorDocs.add(new VectorDocument(
+                                        chunk.id(),
+                                        vectors.get(i),
+                                        chunk.content(),
+                                        Map.of(
+                                                "documentId", documentId,
+                                                "kbId", id,
+                                                "chunkIndex", i,
+                                                "startIndex", chunk.startIndex(),
+                                                "endIndex", chunk.endIndex()
+                                        )
+                                ));
+                            }
+                            vectorStore.upsert(collectionName, vectorDocs);
+                            log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
+                        }
+                        
+                        progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
                         documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
                         documentService.updateChunkCount(documentId, result.chunks().size());
                         knowledgeBaseService.updateDocumentCount(id, 1);
