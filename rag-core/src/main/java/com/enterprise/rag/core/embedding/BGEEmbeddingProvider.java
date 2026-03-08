@@ -25,9 +25,9 @@ public class BGEEmbeddingProvider implements EmbeddingProvider {
     private final EmbeddingProperties.BGE config;
     private volatile boolean available = true;
 
-    public BGEEmbeddingProvider(EmbeddingProperties.BGE config) {
+    public BGEEmbeddingProvider(EmbeddingProperties.BGE config, WebClient.Builder webClientBuilder) {
         this.config = config;
-        this.webClient = WebClient.builder()
+        this.webClient = webClientBuilder.clone()
                 .baseUrl(config.getBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();

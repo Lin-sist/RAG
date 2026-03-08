@@ -230,13 +230,16 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     }
 
     private KnowledgeBaseDTO toDTO(KnowledgeBase kb) {
+        // 使用实时查询的文档数量，而不是缓存的 documentCount 字段
+        // 因为异步处理失败的文档不会递增计数器，删除失败文档却会递减，导致计数器漂移
+        int realDocumentCount = documentService.countByKnowledgeBaseId(kb.getId());
         return KnowledgeBaseDTO.builder()
                 .id(kb.getId())
                 .name(kb.getName())
                 .description(kb.getDescription())
                 .ownerId(kb.getOwnerId())
                 .vectorCollection(kb.getVectorCollection())
-                .documentCount(kb.getDocumentCount())
+                .documentCount(realDocumentCount)
                 .isPublic(kb.getIsPublic())
                 .createdAt(kb.getCreatedAt())
                 .updatedAt(kb.getUpdatedAt())

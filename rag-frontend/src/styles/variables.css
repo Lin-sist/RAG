@@ -1,0 +1,75 @@
+:root {
+    /* === Design System V2 === */
+
+    /* Primary */
+    --rag-primary: #4F46E5;
+    --rag-primary-hover: #4338CA;
+    --rag-primary-light: #818CF8;
+    --rag-primary-dark: #3730A3;
+    --rag-accent: #0EA5E9;
+
+    /* Status */
+    --rag-success: #10B981;
+    --rag-warning: #F59E0B;
+    --rag-danger: #EF4444;
+    --rag-info: #64748B;
+
+    /* Text */
+    --rag-text-primary: #0F172A;
+    --rag-text-regular: #334155;
+    --rag-text-secondary: #64748B;
+    --rag-text-placeholder: #94A3B8;
+
+    /* Backgrounds */
+    --rag-bg-primary: #FFFFFF;
+    --rag-bg-page: #F8FAFC;
+    --rag-bg-hover: #F1F5F9;
+    --rag-bg-surface: #FFFFFF;
+    --rag-bg-ai-msg: #FFFFFF;
+    --rag-bg-user-msg: #F1F5F9;
+
+    /* Borders */
+    --rag-border: #E2E8F0;
+    --rag-border-light: #F1F5F9;
+
+    /* Radius */
+    --rag-radius-sm: 8px;
+    --rag-radius-md: 12px;
+    --rag-radius-lg: 16px;
+    --rag-radius-input: 24px;
+
+    /* Shadows */
+    --rag-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --rag-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --rag-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+
+    /* Spacing (4x grid) */
+    --rag-space-1: 4px;
+    --rag-space-2: 8px;
+    --rag-space-3: 12px;
+    --rag-space-4: 16px;
+    --rag-space-6: 24px;
+    --rag-space-8: 32px;
+    --rag-space-12: 48px;
+
+    /* Typography */
+    --rag-font-h1: 28px;
+    --rag-font-h2: 22px;
+    --rag-font-body: 14px;
+    --rag-font-small: 12px;
+    --rag-line-height: 1.6;
+
+    /* Transition */
+    --rag-transition: all 0.2s ease;
+
+    /* Brand gradient */
+    --rag-gradient: linear-gradient(135deg, #4F46E5, #0EA5E9);
+
+    /* Element Plus overrides */
+    --el-color-primary: #4F46E5;
+    --el-color-primary-light-3: #818CF8;
+    --el-color-primary-light-5: #A5B4FC;
+    --el-color-primary-light-7: #C7D2FE;
+    --el-color-primary-light-9: #EEF2FF;
+    --el-color-primary-dark-2: #4338CA;
+}

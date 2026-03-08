@@ -26,9 +26,9 @@ public class QwenEmbeddingProvider implements EmbeddingProvider {
     private final WebClient webClient;
     private final EmbeddingProperties.Qwen config;
 
-    public QwenEmbeddingProvider(EmbeddingProperties.Qwen config) {
+    public QwenEmbeddingProvider(EmbeddingProperties.Qwen config, WebClient.Builder webClientBuilder) {
         this.config = config;
-        this.webClient = WebClient.builder()
+        this.webClient = webClientBuilder.clone()
                 .baseUrl(config.getBaseUrl())
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + config.getApiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)

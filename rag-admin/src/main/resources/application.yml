@@ -77,6 +77,13 @@ springdoc:
     path: /swagger-ui.html
     enabled: true
 
+# HTTP Proxy（用于访问 NVIDIA/OpenAI 等外部 API）
+# 如果你不需要代理（比如服务器直连外网），把 enabled 改为 false 即可
+proxy:
+  enabled: true
+  host: 127.0.0.1
+  port: 7890
+
 # RAG Configuration
 rag:
   # ===== 大模型配置（用于生成回答） =====

@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,23 +26,23 @@ public class EmbeddingConfig {
 
     @Bean
     @ConditionalOnProperty(name = "rag.embedding.openai.enabled", havingValue = "true", matchIfMissing = true)
-    public OpenAIEmbeddingProvider openAIEmbeddingProvider(EmbeddingProperties properties) {
+    public OpenAIEmbeddingProvider openAIEmbeddingProvider(EmbeddingProperties properties, WebClient.Builder proxyWebClientBuilder) {
         log.info("Configuring OpenAI Embedding Provider");
-        return new OpenAIEmbeddingProvider(properties.getOpenai());
+        return new OpenAIEmbeddingProvider(properties.getOpenai(), proxyWebClientBuilder);
     }
 
     @Bean
     @ConditionalOnProperty(name = "rag.embedding.qwen.enabled", havingValue = "true", matchIfMissing = true)
-    public QwenEmbeddingProvider qwenEmbeddingProvider(EmbeddingProperties properties) {
+    public QwenEmbeddingProvider qwenEmbeddingProvider(EmbeddingProperties properties, WebClient.Builder proxyWebClientBuilder) {
         log.info("Configuring Qwen Embedding Provider");
-        return new QwenEmbeddingProvider(properties.getQwen());
+        return new QwenEmbeddingProvider(properties.getQwen(), proxyWebClientBuilder);
     }
 
     @Bean
     @ConditionalOnProperty(name = "rag.embedding.bge.enabled", havingValue = "true", matchIfMissing = true)
-    public BGEEmbeddingProvider bgeEmbeddingProvider(EmbeddingProperties properties) {
+    public BGEEmbeddingProvider bgeEmbeddingProvider(EmbeddingProperties properties, WebClient.Builder proxyWebClientBuilder) {
         log.info("Configuring BGE Embedding Provider");
-        return new BGEEmbeddingProvider(properties.getBge());
+        return new BGEEmbeddingProvider(properties.getBge(), proxyWebClientBuilder);
     }
 
     @Bean

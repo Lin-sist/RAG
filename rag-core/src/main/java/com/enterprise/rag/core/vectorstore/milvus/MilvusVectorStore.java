@@ -249,6 +249,9 @@ public class MilvusVectorStore implements VectorStore {
     public List<SearchResult> search(String collectionName, float[] queryVector, SearchOptions options) {
         log.debug("Searching in collection {} with topK={}", collectionName, options.topK());
 
+        // 确保集合已加载到内存（Milvus 重启后集合会被卸载，必须重新 load 才能搜索）
+        loadCollection(collectionName);
+
         List<String> outputFields = Arrays.asList(FIELD_ID, FIELD_CONTENT, FIELD_METADATA);
 
         SearchParam.Builder searchBuilder = SearchParam.newBuilder()
@@ -275,13 +278,18 @@ public class MilvusVectorStore implements VectorStore {
         SearchResultsWrapper wrapper = new SearchResultsWrapper(response.getData().getResults());
         List<SearchResult> results = new ArrayList<>();
 
+        int totalRawResults = 0;
         if (wrapper.getRowRecords(0) != null) {
+            totalRawResults = wrapper.getRowRecords(0).size();
             for (int i = 0; i < wrapper.getRowRecords(0).size(); i++) {
                 QueryResultsWrapper.RowRecord row = wrapper.getRowRecords(0).get(i);
                 float score = wrapper.getIDScore(0).get(i).getScore();
 
+                log.debug("Search result [{}]: score={}, minScore={}", i, score, options.minScore());
+
                 // 过滤低于最小分数的结果
                 if (score < options.minScore()) {
+                    log.debug("Filtered out result [{}] with score {} < minScore {}", i, score, options.minScore());
                     continue;
                 }
 
@@ -299,7 +307,8 @@ public class MilvusVectorStore implements VectorStore {
         // 确保按分数降序排列
         results.sort((a, b) -> Float.compare(b.score(), a.score()));
 
-        log.debug("Found {} results", results.size());
+        log.info("Search complete: collection={}, rawResults={}, filteredResults={}",
+                collectionName, totalRawResults, results.size());
         return results;
     }
 
