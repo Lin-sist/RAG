@@ -15,7 +15,7 @@ public class JwtProperties {
     /**
      * JWT 密钥
      */
-    private String secret = "enterprise-rag-qa-system-jwt-secret-key-must-be-at-least-256-bits";
+    private String secret;
 
     /**
      * Access Token 过期时间（秒），默认 2 小时

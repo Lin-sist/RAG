@@ -75,7 +75,7 @@
 | AUTH-01 | P0 | DONE | `rag-admin` `rag-auth` | 控制器从 `userDetails.getUsername()` 解析用户 ID，失败后默认回退到 `1L` | 多用户数据串号，owner/uploader/history/feedback 归属错误 |
 | AUTH-02 | P0 | DONE | `rag-auth` `rag-admin` | 仅做“是否登录”校验，缺少知识库、历史记录等资源级权限校验 | 已登录用户可越权访问、修改或删除他人数据 |
 | AUTH-03 | P0 | DONE | `rag-auth` | JWT 过期时间单位定义和使用不一致；logout 后 refresh token 仍可继续刷新 | Token 生命周期失真，安全策略无效 |
-| SEC-01 | P0 | TODO | `rag-admin` | 配置文件中存在数据库密码、Redis 密码、JWT secret、第三方 API key | 严重的敏感信息泄露风险 |
+| SEC-01 | P0 | DONE | `rag-admin` | 配置文件中存在数据库密码、Redis 密码、JWT secret、第三方 API key | 严重的敏感信息泄露风险 |
 
 ## 4.2 P1 级问题
 
@@ -324,7 +324,7 @@
 - [x] `AUTH-01` 修复当前用户 ID 获取方式
 - [x] `AUTH-02` 增加资源级授权校验
 - [x] `AUTH-03` 修复 JWT 时间单位与 refresh 会话校验
-- [ ] `SEC-01` 清理明文配置并改为环境变量
+- [x] `SEC-01` 清理明文配置并改为环境变量
 
 ### AUTH-01 实施说明（2026-03-13）
 
@@ -391,6 +391,25 @@
 
 - 当前 refresh 会话校验依赖 Redis，可在后续增加 Redis 异常场景的降级策略评估
 - 后续可补充集成测试，验证真实登录-登出-刷新完整链路（非 mock）
+
+### SEC-01 实施说明（2026-03-13）
+
+- 实施范围：`rag-admin/src/main/resources/application.yml`、`JwtProperties`、`README.md`
+- 配置治理：将数据库、Redis、JWT、第三方模型 API Key 全部改为环境变量注入
+- 风险收敛：移除配置中的真实/可用默认密钥，避免仓库泄露直接导致生产风险
+- 文档同步：补充 README 的环境变量清单，便于本地和部署配置
+
+### SEC-01 验收结果
+
+- [x] 主配置中不再包含明文数据库密码
+- [x] 主配置中不再包含明文 Redis 密码
+- [x] 主配置中不再包含明文 JWT 密钥
+- [x] 主配置中不再包含第三方 API 明文 Key
+
+### SEC-01 风险与后续
+
+- 当前 `docker-compose.yml` 与部分指南文档仍包含本地开发默认密码（非生产），后续可在阶段四统一治理为 `.env` 注入
+- 建议在 CI 中增加 secret scan（如 gitleaks）防止回归
 
 ## 13. 可执行实现步骤 Todo（阶段化）
 
@@ -490,5 +509,6 @@
 - 完成 `AUTH-01` 第一轮落地：统一 `CurrentUserService`，移除控制器默认 `1L` 兜底，并补充单元测试
 - 完成 `AUTH-02` 第一轮落地：新增 `AuthorizationService` 并在知识库/问答/历史接口接入资源级授权校验，补充授权单元测试
 - 完成 `AUTH-03` 第一轮落地：统一 JWT 时间单位为秒，补充 refresh 会话一致性校验，并修复 logout 后 refresh 可继续使用问题
+- 完成 `SEC-01` 第一轮落地：主配置改为环境变量注入，移除明文数据库/Redis/JWT/API key
 - 新增“可执行实现步骤 Todo（阶段化）”用于后续逐项推进和验收
 

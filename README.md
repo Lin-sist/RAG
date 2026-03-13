@@ -152,6 +152,13 @@ Flyway 会自动执行初始化脚本（`V1/V2/V3`），包含：
 
 建议通过环境变量覆盖 API Key，不要在生产环境明文存放。
 
+推荐至少配置以下环境变量：
+
+- `DB_URL` / `DB_USERNAME` / `DB_PASSWORD`
+- `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DB`
+- `JWT_SECRET`
+- `NVIDIA_API_KEY` / `QWEN_API_KEY`
+
 ## 9. 当前状态与后续优化方向
 
 当前版本已具备端到端主链路，但仍有可优化空间：
