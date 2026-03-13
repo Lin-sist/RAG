@@ -1,27 +1,18 @@
 package com.enterprise.rag.admin.controller;
 
 import com.enterprise.rag.admin.kb.dto.CreateKnowledgeBaseRequest;
+import com.enterprise.rag.admin.kb.dto.DocumentUploadResponse;
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseStatistics;
 import com.enterprise.rag.admin.kb.dto.UpdateKnowledgeBaseRequest;
 import com.enterprise.rag.admin.kb.entity.Document;
-import com.enterprise.rag.admin.kb.entity.DocumentStatus;
+import com.enterprise.rag.admin.kb.service.DocumentIndexingService;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
-import com.enterprise.rag.common.async.AsyncTask;
-import com.enterprise.rag.common.async.AsyncTaskManager;
-import com.enterprise.rag.common.async.TaskHandle;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
-import com.enterprise.rag.core.embedding.EmbeddingService;
-import com.enterprise.rag.core.vectorstore.VectorDocument;
-import com.enterprise.rag.core.vectorstore.VectorStore;
-import com.enterprise.rag.document.chunker.DocumentChunk;
-import com.enterprise.rag.document.processor.DocumentInput;
-import com.enterprise.rag.document.processor.DocumentProcessor;
-import com.enterprise.rag.document.processor.ProcessResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -41,7 +32,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 知识库 API 控制器
@@ -57,10 +47,7 @@ public class KnowledgeBaseController {
 
     private final KnowledgeBaseService knowledgeBaseService;
     private final DocumentService documentService;
-    private final DocumentProcessor documentProcessor;
-    private final AsyncTaskManager asyncTaskManager;
-    private final EmbeddingService embeddingService;
-    private final VectorStore vectorStore;
+    private final DocumentIndexingService documentIndexingService;
     private final CurrentUserService currentUserService;
     private final AuthorizationService authorizationService;
 
@@ -197,100 +184,21 @@ public class KnowledgeBaseController {
 
         Long uploaderId = currentUserService.requireUserId(userDetails);
         authorizationService.requireKnowledgeBaseWriteAccess(id, uploaderId);
+
+        // DOC-05: 基本校验（文件类型白名单和大小限制由 DocumentIndexingService 及 multipart 配置负责）
+        if (file.isEmpty()) {
+            throw new BusinessException("DOC_002", "上传文件不能为空");
+        }
         String fileName = file.getOriginalFilename();
-        String fileType = DocumentInput.extractFileType(fileName);
+        if (fileName == null || fileName.isBlank()) {
+            throw new BusinessException("DOC_003", "文件名不能为空");
+        }
 
-        log.info("文档上传请求: kbId={}, fileName={}, fileType={}, uploaderId={}",
-                id, fileName, fileType, uploaderId);
+        log.info("文档上传请求: kbId={}, fileName={}, uploaderId={}", id, fileName, uploaderId);
 
-        // 创建文档记录
-        Document document = new Document();
-        document.setKbId(id);
-        document.setUploaderId(uploaderId);
-        document.setTitle(title != null ? title : fileName);
-        document.setFileType(fileType);
-        document.setStatus(DocumentStatus.PENDING.name());
-        document = documentService.create(document);
-
-        final Long documentId = document.getId();
-
-        // 异步处理文档
+        // DOC-01: 索引编排完全委托给 DocumentIndexingService
         byte[] fileContent = file.getBytes();
-        TaskHandle<ProcessResult> taskHandle = asyncTaskManager.submit(
-                "DOCUMENT_INDEX",
-                progressCallback -> {
-                    try {
-                        progressCallback.accept(AsyncTask.TaskProgress.of(10, "开始解析文档"));
-
-                        DocumentInput input = DocumentInput.of(
-                                new java.io.ByteArrayInputStream(fileContent),
-                                fileName,
-                                Map.of("kbId", id, "documentId", documentId));
-
-                        progressCallback.accept(AsyncTask.TaskProgress.of(30, "文档解析中"));
-                        ProcessResult result = documentProcessor.process(input);
-
-                        // ===== 向量化 + 存入 Milvus =====
-                        progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
-                        List<DocumentChunk> chunks = result.chunks();
-                        if (chunks != null && !chunks.isEmpty()) {
-                            // 获取知识库的向量集合名称
-                            String collectionName = knowledgeBaseService.getById(id)
-                                    .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
-                                    .getVectorCollection();
-
-                            // 提取所有 chunk 文本
-                            List<String> chunkTexts = chunks.stream()
-                                    .map(DocumentChunk::content)
-                                    .toList();
-
-                            // 批量生成 Embedding 向量
-                            progressCallback
-                                    .accept(AsyncTask.TaskProgress.of(60, "批量向量化中 (" + chunkTexts.size() + " 块)"));
-                            List<float[]> vectors = embeddingService.embedBatch(chunkTexts);
-
-                            // 构造 VectorDocument 列表并写入 Milvus
-                            progressCallback.accept(AsyncTask.TaskProgress.of(80, "写入向量数据库"));
-                            List<VectorDocument> vectorDocs = new java.util.ArrayList<>();
-                            for (int i = 0; i < chunks.size(); i++) {
-                                DocumentChunk chunk = chunks.get(i);
-                                vectorDocs.add(new VectorDocument(
-                                        chunk.id(),
-                                        vectors.get(i),
-                                        chunk.content(),
-                                        Map.of(
-                                                "documentId", documentId,
-                                                "kbId", id,
-                                                "chunkIndex", i,
-                                                "startIndex", chunk.startIndex(),
-                                                "endIndex", chunk.endIndex())));
-                            }
-                            vectorStore.upsert(collectionName, vectorDocs);
-                            log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
-                        }
-
-                        progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
-                        documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
-                        documentService.updateChunkCount(documentId, result.chunks().size());
-                        knowledgeBaseService.updateDocumentCount(id, 1);
-
-                        progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档处理完成"));
-                        return result;
-                    } catch (Exception e) {
-                        log.error("文档处理失败: documentId={}", documentId, e);
-                        documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
-                        throw e;
-                    }
-                });
-
-        log.info("文档上传成功，异步处理中: documentId={}, taskId={}", documentId, taskHandle.taskId());
-
-        DocumentUploadResponse response = new DocumentUploadResponse(
-                documentId,
-                taskHandle.taskId(),
-                fileName,
-                fileType,
-                "PROCESSING");
+        DocumentUploadResponse response = documentIndexingService.submitIndexing(id, uploaderId, fileContent, fileName, title);
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success(response));
     }
@@ -334,16 +242,5 @@ public class KnowledgeBaseController {
         knowledgeBaseService.updateDocumentCount(kbId, -1);
         log.info("文档删除成功: docId={}", docId);
         return ResponseEntity.ok(ApiResponse.success());
-    }
-
-    /**
-     * 文档上传响应
-     */
-    public record DocumentUploadResponse(
-            Long documentId,
-            String taskId,
-            String fileName,
-            String fileType,
-            String status) {
     }
 }

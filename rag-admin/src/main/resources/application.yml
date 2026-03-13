@@ -8,6 +8,12 @@ spring:
   profiles:
     active: dev
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 55MB
+      enabled: true
+
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/rag_qa?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}

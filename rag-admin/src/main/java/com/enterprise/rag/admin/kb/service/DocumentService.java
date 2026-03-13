@@ -60,6 +60,14 @@ public interface DocumentService {
     void updateChunkCount(Long id, int chunkCount);
 
     /**
+     * 更新文档内容哈希（用于去重和幂等校验）
+     *
+     * @param id          文档ID
+     * @param contentHash SHA-256 内容哈希
+     */
+    void updateContentHash(Long id, String contentHash);
+
+    /**
      * 删除文档（级联删除分块和向量数据）
      *
      * @param id 文档ID

@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.enterprise.rag.admin.kb.entity.Document;
 import com.enterprise.rag.admin.kb.entity.DocumentChunk;
+import com.enterprise.rag.admin.kb.entity.KnowledgeBase;
 import com.enterprise.rag.admin.kb.mapper.DocumentChunkMapper;
 import com.enterprise.rag.admin.kb.mapper.DocumentMapper;
+import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentMapper documentMapper;
     private final DocumentChunkMapper chunkMapper;
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final VectorStore vectorStore;
 
     @Override
@@ -75,6 +78,15 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
+    public void updateContentHash(Long id, String contentHash) {
+        LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(Document::getId, id)
+               .set(Document::getContentHash, contentHash);
+        documentMapper.update(null, wrapper);
+    }
+
+    @Override
+    @Transactional
     public void delete(Long id) {
         Optional<Document> docOpt = getById(id);
         if (docOpt.isEmpty()) {
@@ -85,14 +97,19 @@ public class DocumentServiceImpl implements DocumentService {
         
         // 获取所有向量ID
         List<String> vectorIds = getVectorIdsByDocumentId(id);
-        
-        // 删除向量数据
+
+        // 删除向量数据（DOC-03: 使用知识库真实 vectorCollection，而非拼接 kb_{kbId}）
         if (!vectorIds.isEmpty()) {
             try {
-                // 获取知识库的向量集合名称
-                String collectionName = getCollectionName(document.getKbId());
-                vectorStore.delete(collectionName, vectorIds);
-                log.info("Deleted {} vectors for document {}", vectorIds.size(), id);
+                KnowledgeBase kb = knowledgeBaseMapper.selectById(document.getKbId());
+                if (kb != null && kb.getVectorCollection() != null) {
+                    vectorStore.delete(kb.getVectorCollection(), vectorIds);
+                    log.info("Deleted {} vectors for document {} from collection {}",
+                            vectorIds.size(), id, kb.getVectorCollection());
+                } else {
+                    log.warn("无法找到知识库或集合名，跳过向量删除: kbId={}, documentId={}",
+                            document.getKbId(), id);
+                }
             } catch (Exception e) {
                 log.error("Failed to delete vectors for document {}: {}", id, e.getMessage());
             }
@@ -154,9 +171,5 @@ public class DocumentServiceImpl implements DocumentService {
         LambdaQueryWrapper<DocumentChunk> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DocumentChunk::getDocumentId, documentId);
         chunkMapper.delete(wrapper);
-    }
-
-    private String getCollectionName(Long kbId) {
-        return "kb_" + kbId;
     }
 }
