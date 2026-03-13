@@ -52,7 +52,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
 
     @Override
     public DocumentUploadResponse submitIndexing(Long kbId, Long uploaderId,
-                                                 byte[] fileContent, String fileName, String title) {
+            byte[] fileContent, String fileName, String title) {
         // DOC-05: 文件类型白名单校验
         String fileType = DocumentInput.extractFileType(fileName);
         if (!documentParserFactory.isSupported(fileType)) {
@@ -91,8 +91,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
      * 异步索引核心逻辑（解析 → 去重 → 向量化 → 持久化）
      */
     private ProcessResult doIndex(Long kbId, Long documentId, String fileName, String fileType,
-                                   byte[] fileContent,
-                                   java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
+            byte[] fileContent,
+            java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
         try {
             progressCallback.accept(AsyncTask.TaskProgress.of(10, "开始解析文档"));
 
@@ -142,8 +142,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                                     "endIndex", chunk.endIndex())));
 
                     // DOC-02: 构建 DB Chunk 实体，包含 vectorId
-                    com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk =
-                            new com.enterprise.rag.admin.kb.entity.DocumentChunk();
+                    com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk = new com.enterprise.rag.admin.kb.entity.DocumentChunk();
                     entityChunk.setDocumentId(documentId);
                     entityChunk.setVectorId(chunk.id());
                     entityChunk.setContent(chunk.content());

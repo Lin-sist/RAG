@@ -21,5 +21,5 @@ public interface DocumentIndexingService {
      * @return 上传响应（含 documentId 和 taskId）
      */
     DocumentUploadResponse submitIndexing(Long kbId, Long uploaderId,
-                                          byte[] fileContent, String fileName, String title);
+            byte[] fileContent, String fileName, String title);
 }

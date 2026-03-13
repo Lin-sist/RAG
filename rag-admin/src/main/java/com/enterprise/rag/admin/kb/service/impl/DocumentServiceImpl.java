@@ -47,7 +47,7 @@ public class DocumentServiceImpl implements DocumentService {
     public List<Document> getByKnowledgeBaseId(Long kbId) {
         LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Document::getKbId, kbId)
-               .orderByDesc(Document::getCreatedAt);
+                .orderByDesc(Document::getCreatedAt);
         return documentMapper.selectList(wrapper);
     }
 
@@ -63,7 +63,7 @@ public class DocumentServiceImpl implements DocumentService {
     public void updateStatus(Long id, String status) {
         LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(Document::getId, id)
-               .set(Document::getStatus, status);
+                .set(Document::getStatus, status);
         documentMapper.update(null, wrapper);
     }
 
@@ -72,7 +72,7 @@ public class DocumentServiceImpl implements DocumentService {
     public void updateChunkCount(Long id, int chunkCount) {
         LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(Document::getId, id)
-               .set(Document::getChunkCount, chunkCount);
+                .set(Document::getChunkCount, chunkCount);
         documentMapper.update(null, wrapper);
     }
 
@@ -81,7 +81,7 @@ public class DocumentServiceImpl implements DocumentService {
     public void updateContentHash(Long id, String contentHash) {
         LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(Document::getId, id)
-               .set(Document::getContentHash, contentHash);
+                .set(Document::getContentHash, contentHash);
         documentMapper.update(null, wrapper);
     }
 
@@ -94,7 +94,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         Document document = docOpt.get();
-        
+
         // 获取所有向量ID
         List<String> vectorIds = getVectorIdsByDocumentId(id);
 
@@ -114,10 +114,10 @@ public class DocumentServiceImpl implements DocumentService {
                 log.error("Failed to delete vectors for document {}: {}", id, e.getMessage());
             }
         }
-        
+
         // 删除分块记录
         deleteChunksByDocumentId(id);
-        
+
         // 删除文档记录
         documentMapper.deleteById(id);
     }
@@ -143,7 +143,7 @@ public class DocumentServiceImpl implements DocumentService {
     public List<DocumentChunk> getChunksByDocumentId(Long documentId) {
         LambdaQueryWrapper<DocumentChunk> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DocumentChunk::getDocumentId, documentId)
-               .orderByAsc(DocumentChunk::getChunkIndex);
+                .orderByAsc(DocumentChunk::getChunkIndex);
         return chunkMapper.selectList(wrapper);
     }
 
@@ -151,8 +151,8 @@ public class DocumentServiceImpl implements DocumentService {
     public List<String> getVectorIdsByDocumentId(Long documentId) {
         LambdaQueryWrapper<DocumentChunk> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DocumentChunk::getDocumentId, documentId)
-               .isNotNull(DocumentChunk::getVectorId)
-               .select(DocumentChunk::getVectorId);
+                .isNotNull(DocumentChunk::getVectorId)
+                .select(DocumentChunk::getVectorId);
         return chunkMapper.selectList(wrapper)
                 .stream()
                 .map(DocumentChunk::getVectorId)

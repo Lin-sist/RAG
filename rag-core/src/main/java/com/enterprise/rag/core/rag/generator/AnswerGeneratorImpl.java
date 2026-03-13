@@ -29,7 +29,8 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
 
-    public AnswerGeneratorImpl(LLMProperties properties, PromptBuilder promptBuilder, WebClient.Builder proxyWebClientBuilder) {
+    public AnswerGeneratorImpl(LLMProperties properties, PromptBuilder promptBuilder,
+            WebClient.Builder proxyWebClientBuilder) {
         this.properties = properties;
         this.promptBuilder = promptBuilder;
         this.objectMapper = new ObjectMapper();
@@ -46,23 +47,32 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
 
         log.debug("Generating answer for query: {}", truncateForLog(query));
 
-        // 构建 Prompt
-        String prompt = promptBuilder.build(query, contexts, PromptStrategy.STRUCTURED);
+        // 构建 Prompt（RAG-02: 上下文去重 + token budget + 来源增强）
+        PromptBuilder.PromptBuildResult buildResult = promptBuilder.buildOptimized(
+                query,
+                contexts,
+                PromptStrategy.STRUCTURED,
+                PromptBuilder.DEFAULT_CONTEXT_TOKEN_BUDGET);
+        String prompt = buildResult.prompt();
+        List<RetrievedContext> effectiveContexts = buildResult.contexts();
 
         // 调用 LLM API
         String answer = callLLM(prompt);
 
         // 提取引用来源
-        List<Citation> citations = extractCitations(answer, contexts);
+        List<Citation> citations = extractCitations(answer, effectiveContexts);
 
         // 构建元数据
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("model", getModelName());
-        metadata.put("contextCount", contexts != null ? contexts.size() : 0);
+        metadata.put("contextCount", effectiveContexts.size());
+        metadata.put("contextTokenBudget", buildResult.tokenBudget());
+        metadata.put("estimatedContextTokens", buildResult.estimatedContextTokens());
+        metadata.put("removedByDedup", buildResult.removedByDedup());
+        metadata.put("removedByBudget", buildResult.removedByBudget());
 
         return GeneratedAnswer.of(answer, citations, metadata);
     }
-
 
     @Override
     public Flux<String> generateStream(String query, List<RetrievedContext> contexts) {
@@ -72,7 +82,12 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
 
         log.debug("Generating streaming answer for query: {}", truncateForLog(query));
 
-        String prompt = promptBuilder.build(query, contexts, PromptStrategy.STRUCTURED);
+        PromptBuilder.PromptBuildResult buildResult = promptBuilder.buildOptimized(
+                query,
+                contexts,
+                PromptStrategy.STRUCTURED,
+                PromptBuilder.DEFAULT_CONTEXT_TOKEN_BUDGET);
+        String prompt = buildResult.prompt();
 
         return callLLMStream(prompt);
     }
@@ -109,8 +124,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", config.getModel());
         requestBody.put("messages", List.of(
-                Map.of("role", "user", "content", prompt)
-        ));
+                Map.of("role", "user", "content", prompt)));
         requestBody.put("temperature", config.getTemperature());
         requestBody.put("max_tokens", config.getMaxTokens());
 
@@ -137,13 +151,10 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         requestBody.put("model", config.getModel());
         requestBody.put("input", Map.of(
                 "messages", List.of(
-                        Map.of("role", "user", "content", prompt)
-                )
-        ));
+                        Map.of("role", "user", "content", prompt))));
         requestBody.put("parameters", Map.of(
                 "temperature", config.getTemperature(),
-                "max_tokens", config.getMaxTokens()
-        ));
+                "max_tokens", config.getMaxTokens()));
 
         String response = webClient.post()
                 .uri(config.getBaseUrl() + "/services/aigc/text-generation/generation")
@@ -157,7 +168,6 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
 
         return parseQwenResponse(response);
     }
-
 
     /**
      * 调用 LLM API（流式）
@@ -179,8 +189,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", config.getModel());
         requestBody.put("messages", List.of(
-                Map.of("role", "user", "content", prompt)
-        ));
+                Map.of("role", "user", "content", prompt)));
         requestBody.put("temperature", config.getTemperature());
         requestBody.put("max_tokens", config.getMaxTokens());
         requestBody.put("stream", true);
@@ -208,14 +217,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         requestBody.put("model", config.getModel());
         requestBody.put("input", Map.of(
                 "messages", List.of(
-                        Map.of("role", "user", "content", prompt)
-                )
-        ));
+                        Map.of("role", "user", "content", prompt))));
         requestBody.put("parameters", Map.of(
                 "temperature", config.getTemperature(),
                 "max_tokens", config.getMaxTokens(),
-                "incremental_output", true
-        ));
+                "incremental_output", true));
 
         return webClient.post()
                 .uri(config.getBaseUrl() + "/services/aigc/text-generation/generation")
@@ -332,7 +338,8 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
      * 截断日志输出
      */
     private String truncateForLog(String text) {
-        if (text == null) return "null";
+        if (text == null)
+            return "null";
         return text.length() > 100 ? text.substring(0, 100) + "..." : text;
     }
 }

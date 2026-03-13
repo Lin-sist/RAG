@@ -4,7 +4,12 @@ import com.enterprise.rag.core.rag.model.RetrievedContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -15,6 +20,8 @@ import java.util.stream.IntStream;
 @Slf4j
 @Component
 public class PromptBuilder {
+
+    public static final int DEFAULT_CONTEXT_TOKEN_BUDGET = 1200;
 
     private static final String SIMPLE_TEMPLATE = """
             Based on the following context, please answer the question.
@@ -121,6 +128,43 @@ public class PromptBuilder {
     }
 
     /**
+     * 使用上下文优化策略构建 Prompt：去重 + token 预算裁剪 + 来源增强
+     */
+    public PromptBuildResult buildOptimized(String query,
+            List<RetrievedContext> contexts,
+            PromptStrategy strategy,
+            int contextTokenBudget) {
+        if (query == null || query.isBlank()) {
+            throw new IllegalArgumentException("Query cannot be null or blank");
+        }
+
+        if (contexts == null || contexts.isEmpty()) {
+            log.warn("No contexts provided for query: {}", truncateForLog(query));
+            return new PromptBuildResult(String.format(NO_CONTEXT_TEMPLATE, query), List.of(), 0, 0, 0,
+                    contextTokenBudget);
+        }
+
+        List<RetrievedContext> deduplicatedContexts = deduplicateContexts(contexts);
+        int removedByDedup = Math.max(0, contexts.size() - deduplicatedContexts.size());
+
+        List<RetrievedContext> budgetedContexts = applyTokenBudget(deduplicatedContexts, contextTokenBudget);
+        int removedByBudget = Math.max(0, deduplicatedContexts.size() - budgetedContexts.size());
+
+        String formattedContext = formatContexts(budgetedContexts);
+        String template = getTemplate(strategy);
+        String prompt = String.format(template, formattedContext, query);
+
+        int estimatedTokens = estimateTokens(formattedContext);
+        return new PromptBuildResult(
+                prompt,
+                budgetedContexts,
+                estimatedTokens,
+                removedByDedup,
+                removedByBudget,
+                contextTokenBudget);
+    }
+
+    /**
      * 格式化上下文列表
      */
     private String formatContexts(List<RetrievedContext> contexts) {
@@ -133,11 +177,80 @@ public class PromptBuilder {
      * 格式化单个上下文
      */
     private String formatSingleContext(int index, RetrievedContext context) {
+        Map<String, Object> metadata = context.metadata() == null ? Map.of() : context.metadata();
+        String sourceTitle = String.valueOf(metadata.getOrDefault("title", ""));
+        Object chunkIndex = metadata.get("chunkIndex");
+        String sourceHint = sourceTitle.isBlank() ? context.source() : sourceTitle + " / " + context.source();
+        String chunkHint = chunkIndex == null ? "" : " #chunk=" + chunkIndex;
+
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("[Source %d: %s (Score: %.2f)]%n",
-                index, context.source(), context.relevanceScore()));
-        sb.append(context.content());
+                index, sourceHint + chunkHint, context.relevanceScore()));
+        sb.append(context.content() == null ? "" : context.content());
         return sb.toString();
+    }
+
+    private List<RetrievedContext> deduplicateContexts(List<RetrievedContext> contexts) {
+        Set<String> seen = new LinkedHashSet<>();
+        List<RetrievedContext> deduplicated = new ArrayList<>();
+
+        for (RetrievedContext context : contexts) {
+            String key = normalizeForDedup(context.source()) + "::" + normalizeForDedup(context.content());
+            if (seen.add(key)) {
+                deduplicated.add(context);
+            }
+        }
+        return deduplicated;
+    }
+
+    private List<RetrievedContext> applyTokenBudget(List<RetrievedContext> contexts, int tokenBudget) {
+        if (tokenBudget <= 0) {
+            return contexts;
+        }
+
+        List<RetrievedContext> selected = new ArrayList<>();
+        int used = 0;
+        for (RetrievedContext context : contexts) {
+            int contextTokens = estimateTokens(
+                    (context.content() == null ? "" : context.content()) + " " + context.source());
+            if (selected.isEmpty() || used + contextTokens <= tokenBudget) {
+                selected.add(context);
+                used += contextTokens;
+            }
+        }
+
+        return selected;
+    }
+
+    private int estimateTokens(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+
+        int cjkCount = 0;
+        int otherCount = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            Character.UnicodeBlock block = Character.UnicodeBlock.of(ch);
+            if (block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS
+                    || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A
+                    || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B
+                    || block == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS) {
+                cjkCount++;
+            } else {
+                otherCount++;
+            }
+        }
+
+        int otherTokenEstimate = (int) Math.ceil(otherCount / 4.0d);
+        return cjkCount + otherTokenEstimate;
+    }
+
+    private String normalizeForDedup(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     /**
@@ -171,5 +284,14 @@ public class PromptBuilder {
         if (text == null)
             return "null";
         return text.length() > 100 ? text.substring(0, 100) + "..." : text;
+    }
+
+    public record PromptBuildResult(
+            String prompt,
+            List<RetrievedContext> contexts,
+            int estimatedContextTokens,
+            int removedByDedup,
+            int removedByBudget,
+            int tokenBudget) {
     }
 }

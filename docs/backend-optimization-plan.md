@@ -91,9 +91,9 @@
 
 | 编号 | 优先级 | 状态 | 模块 | 问题描述 | 影响 |
 |------|------|------|------|------|------|
-| RAG-01 | P2 | TODO | `rag-core` | 当前重排基于空格分词的简单关键词匹配，对中文场景不可靠 | 检索质量和回答稳定性不足 |
-| RAG-02 | P2 | TODO | `rag-core` | Prompt 拼装没有 token budget、上下文去重、来源增强策略 | 上下文质量不稳定，易浪费 token |
-| RAG-03 | P2 | TODO | `rag-core` | QA 缓存键未纳入 `topK/filter/model` 等参数 | 缓存脏命中风险 |
+| RAG-01 | P2 | DONE | `rag-core` | 当前重排基于空格分词的简单关键词匹配，对中文场景不可靠 | 检索质量和回答稳定性不足 |
+| RAG-02 | P2 | DONE | `rag-core` | Prompt 拼装没有 token budget、上下文去重、来源增强策略 | 上下文质量不稳定，易浪费 token |
+| RAG-03 | P2 | DONE | `rag-core` | QA 缓存键未纳入 `topK/filter/model` 等参数 | 缓存脏命中风险 |
 | RAG-04 | P2 | TODO | `rag-admin` `rag-core` | 知识库查询次数统计定义存在，但未形成真实更新闭环 | 统计面板数据不可信 |
 | RAG-05 | P2 | TODO | `rag-admin` | SSE 问答未形成完整的历史沉淀策略 | 流式问答与历史/审计链路不一致 |
 
@@ -471,11 +471,66 @@
 
 ## 10.3 阶段三任务
 
-- [ ] `RAG-01` 优化重排逻辑
-- [ ] `RAG-02` 增加 token budget 和上下文组装策略
-- [ ] `RAG-03` 修复 QA 缓存键设计
+- [x] `RAG-01` 优化重排逻辑
+- [x] `RAG-02` 增加 token budget 和上下文组装策略
+- [x] `RAG-03` 修复 QA 缓存键设计
 - [ ] `RAG-04` 补齐查询统计闭环
 - [ ] `RAG-05` 补齐流式问答历史策略
+
+### RAG-01 实施说明（2026-03-13）
+
+- 实施范围：`QueryEngineImpl`
+- 关键改造：将重排查询词提取从 `split("\\s+")` 升级为中英文混合分词
+  - 英文/数字词按 token 提取（长度 >= 2）
+  - 中文按连续片段提取，并补充 2-gram 提升中文短词命中率
+- 评分修正：移除仅允许 `term.length() > 2` 的硬编码条件，避免中文双字关键词（如“重排”“优化”）被过滤
+- 配套测试：新增 `QueryEngineImplTest`
+  - `shouldRerankForChineseQueryUsingCjkTerms`
+  - `shouldKeepEnglishKeywordRerankBehavior`
+
+### RAG-01 验收结果
+
+- [x] 中文查询不再依赖空格分词
+- [x] 中文双字关键词可参与重排评分
+- [x] 英文关键词重排行为保持可用
+- [x] 定向测试通过（`mvn -pl rag-core -Dtest=QueryEngineImplTest test`）
+
+### RAG-02 实施说明（2026-03-13）
+
+- 实施范围：`PromptBuilder`、`AnswerGeneratorImpl`
+- 关键改造：新增 `buildOptimized()` 上下文组装路径
+  - 上下文去重：按 `source + content` 归一化去重
+  - token budget：按启发式 token 估算进行预算裁剪（默认 `1200`）
+  - 来源增强：Prompt 中增加 `title` 与 `chunkIndex` 来源信息，提升可解释性
+- 生成链路接入：`AnswerGeneratorImpl` 改为调用优化组装路径，引用提取与元数据使用优化后上下文
+- 可观测性增强：回答元数据补充 `contextTokenBudget`、`estimatedContextTokens`、`removedByDedup`、`removedByBudget`
+- 配套测试：新增 `PromptBuilderTest`
+  - `shouldDeduplicateAndApplyTokenBudget`
+  - `shouldEnhanceSourceWithMetadataHints`
+
+### RAG-02 验收结果
+
+- [x] Prompt 组装具备上下文去重能力
+- [x] Prompt 组装具备 token budget 裁剪能力
+- [x] Prompt 来源信息增强（title/chunk）已生效
+- [x] 定向测试通过（`mvn -pl rag-core "-Dtest=PromptBuilderTest,QueryEngineImplTest" test`）
+
+### RAG-03 实施说明（2026-03-13）
+
+- 实施范围：`RAGServiceImpl`
+- 缓存键升级：`question + collection` 扩展为 `question + collection + topK + filter + model`
+- 过滤条件规范化：新增 filter 归一化序列化逻辑，避免 map 顺序差异导致同义请求缓存错失/错命中
+- 缓存淘汰兼容：`evictCache(question, collectionName)` 改为按 `queryHash + collection` 前缀模式删除，兼容多参数 key
+- 配套测试：新增 `RAGServiceCacheKeyTest`
+  - `shouldNotShareCacheBetweenDifferentTopK`
+  - `shouldNotShareCacheBetweenDifferentFilter`
+
+### RAG-03 验收结果
+
+- [x] 不同 `topK` 请求不再共用缓存
+- [x] 不同 `filter` 请求不再共用缓存
+- [x] 缓存清理可覆盖同一 query+collection 下的多参数键
+- [x] 定向测试通过（`mvn -pl rag-core "-Dtest=RAGServiceCacheKeyTest,PromptBuilderTest,QueryEngineImplTest" test`）
 
 ## 10.4 阶段四任务
 
@@ -515,3 +570,6 @@
 - 完成 `DOC-02` 落地：`DocumentService` 新增 `updateContentHash()`，向量写入后持久化 `DocumentChunk` 记录并回写 `contentHash`
 - 完成 `DOC-04` 落地：异步任务内通过 `documentService.getByContentHash()` 对 DB 做去重校验，覆盖重启后 in-memory map 失效场景
 - 完成 `DOC-01` 落地：抽取 `DocumentIndexingService` / `DocumentIndexingServiceImpl`，Controller 只保留鉴权+文件校验，索引编排完全移入应用服务层
+- 完成 `RAG-01` 第一轮落地：`QueryEngineImpl` 升级中英文混合分词重排策略，移除中文双字词过滤限制，并新增 `QueryEngineImplTest` 覆盖中文与英文重排场景
+- 完成 `RAG-02` 第一轮落地：`PromptBuilder` 新增上下文去重、token 预算裁剪与来源增强策略，并在 `AnswerGeneratorImpl` 接入优化链路，新增 `PromptBuilderTest` 覆盖关键场景
+- 完成 `RAG-03` 第一轮落地：`RAGServiceImpl` 缓存键纳入 `topK/filter/model` 维度并补充 filter 规范化与前缀淘汰策略，新增 `RAGServiceCacheKeyTest` 验证参数隔离

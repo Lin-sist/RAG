@@ -15,9 +15,12 @@ import reactor.core.publisher.Flux;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,13 +50,15 @@ public class RAGServiceImpl implements RAGService {
             return QAResponse.error(question, "知识库名称不能为空");
         }
 
-        log.info("Processing QA request for collection: {}, question: {}", 
+        log.info("Processing QA request for collection: {}, question: {}",
                 collectionName, truncateForLog(question));
 
         try {
             // 1. 检查缓存
+            String modelName = answerGenerator.getModelName();
             if (request.enableCache()) {
-                QAResponse cachedResponse = getFromCache(question, collectionName);
+                QAResponse cachedResponse = getFromCache(question, collectionName, request.topK(), request.filter(),
+                        modelName);
                 if (cachedResponse != null) {
                     log.debug("Cache hit for question: {}", truncateForLog(question));
                     return addCacheMetadata(cachedResponse, true);
@@ -66,8 +71,7 @@ public class RAGServiceImpl implements RAGService {
                     request.topK(),
                     RetrieveOptions.DEFAULT_MIN_SCORE,
                     request.filter(),
-                    true
-            );
+                    true);
             List<RetrievedContext> contexts = queryEngine.retrieve(question, retrieveOptions);
             log.debug("Retrieved {} contexts for question", contexts.size());
 
@@ -76,7 +80,6 @@ public class RAGServiceImpl implements RAGService {
                 log.info("No relevant contexts found for question: {}", truncateForLog(question));
                 return QAResponse.noResult(question);
             }
-
 
             // 4. 生成答案
             GeneratedAnswer generatedAnswer = answerGenerator.generate(question, contexts);
@@ -91,12 +94,11 @@ public class RAGServiceImpl implements RAGService {
                     generatedAnswer.answer(),
                     generatedAnswer.citations(),
                     contexts,
-                    metadata
-            );
+                    metadata);
 
             // 6. 缓存结果
             if (request.enableCache()) {
-                saveToCache(question, collectionName, response);
+                saveToCache(question, collectionName, request.topK(), request.filter(), modelName, response);
             }
 
             log.info("Successfully generated answer for question: {}", truncateForLog(question));
@@ -130,8 +132,7 @@ public class RAGServiceImpl implements RAGService {
                     request.topK(),
                     RetrieveOptions.DEFAULT_MIN_SCORE,
                     request.filter(),
-                    true
-            );
+                    true);
             List<RetrievedContext> contexts = queryEngine.retrieve(question, retrieveOptions);
 
             if (contexts.isEmpty()) {
@@ -149,8 +150,9 @@ public class RAGServiceImpl implements RAGService {
 
     @Override
     public void evictCache(String question, String collectionName) {
-        String cacheKey = buildCacheKey(question, collectionName);
-        redisUtil.delete(cacheKey);
+        String queryHash = hashString(question.toLowerCase().trim());
+        String pattern = RedisKeyConstants.QA_CACHE_PREFIX + queryHash + ":" + collectionName + ":*";
+        redisUtil.deleteByPattern(pattern);
         log.debug("Evicted cache for question: {}", truncateForLog(question));
     }
 
@@ -163,10 +165,14 @@ public class RAGServiceImpl implements RAGService {
     /**
      * 从缓存获取响应
      */
-    private QAResponse getFromCache(String question, String collectionName) {
-        String cacheKey = buildCacheKey(question, collectionName);
+    private QAResponse getFromCache(String question,
+            String collectionName,
+            int topK,
+            Map<String, Object> filter,
+            String modelName) {
+        String cacheKey = buildCacheKey(question, collectionName, topK, filter, modelName);
         String cachedJson = redisUtil.getString(cacheKey);
-        
+
         if (cachedJson != null) {
             try {
                 return objectMapper.readValue(cachedJson, QAResponse.class);
@@ -180,8 +186,13 @@ public class RAGServiceImpl implements RAGService {
     /**
      * 保存响应到缓存
      */
-    private void saveToCache(String question, String collectionName, QAResponse response) {
-        String cacheKey = buildCacheKey(question, collectionName);
+    private void saveToCache(String question,
+            String collectionName,
+            int topK,
+            Map<String, Object> filter,
+            String modelName,
+            QAResponse response) {
+        String cacheKey = buildCacheKey(question, collectionName, topK, filter, modelName);
         try {
             String json = objectMapper.writeValueAsString(response);
             redisUtil.setString(cacheKey, json, RedisKeyConstants.QA_CACHE_TTL, TimeUnit.SECONDS);
@@ -194,9 +205,50 @@ public class RAGServiceImpl implements RAGService {
     /**
      * 构建缓存键
      */
-    private String buildCacheKey(String question, String collectionName) {
+    private String buildCacheKey(String question,
+            String collectionName,
+            int topK,
+            Map<String, Object> filter,
+            String modelName) {
         String queryHash = hashString(question.toLowerCase().trim());
-        return RedisKeyConstants.QA_CACHE_PREFIX + queryHash + ":" + collectionName;
+        String filterHash = hashString(canonicalizeFilter(filter));
+        String optionHash = hashString(topK + "|" + modelName + "|" + filterHash);
+        return RedisKeyConstants.QA_CACHE_PREFIX + queryHash + ":" + collectionName + ":" + optionHash;
+    }
+
+    private String canonicalizeFilter(Map<String, Object> filter) {
+        if (filter == null || filter.isEmpty()) {
+            return "{}";
+        }
+
+        try {
+            Object normalized = normalizeFilterValue(filter);
+            return objectMapper.writeValueAsString(normalized);
+        } catch (Exception e) {
+            log.debug("Failed to canonicalize filter, using fallback toString", e);
+            return new TreeMap<>(filter).toString();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object normalizeFilterValue(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            TreeMap<String, Object> sorted = new TreeMap<>(Comparator.naturalOrder());
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                sorted.put(String.valueOf(entry.getKey()), normalizeFilterValue(entry.getValue()));
+            }
+            return sorted;
+        }
+
+        if (value instanceof List<?> list) {
+            List<Object> normalized = new ArrayList<>(list.size());
+            for (Object item : list) {
+                normalized.add(normalizeFilterValue(item));
+            }
+            return normalized;
+        }
+
+        return value;
     }
 
     /**
@@ -231,15 +283,15 @@ public class RAGServiceImpl implements RAGService {
                 response.answer(),
                 response.citations(),
                 response.contexts(),
-                newMetadata
-        );
+                newMetadata);
     }
 
     /**
      * 截断日志输出
      */
     private String truncateForLog(String text) {
-        if (text == null) return "null";
+        if (text == null)
+            return "null";
         return text.length() > 100 ? text.substring(0, 100) + "..." : text;
     }
 }
