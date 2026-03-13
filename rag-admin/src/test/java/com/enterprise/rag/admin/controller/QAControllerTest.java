@@ -27,77 +27,75 @@ import static org.mockito.Mockito.when;
 
 class QAControllerTest {
 
-    private RAGService ragService;
-    private KnowledgeBaseService knowledgeBaseService;
-    private QAHistoryService qaHistoryService;
-    private CurrentUserService currentUserService;
-    private AuthorizationService authorizationService;
-    private QAController qaController;
-    private UserDetails userDetails;
+        private RAGService ragService;
+        private KnowledgeBaseService knowledgeBaseService;
+        private QAHistoryService qaHistoryService;
+        private CurrentUserService currentUserService;
+        private AuthorizationService authorizationService;
+        private QAController qaController;
+        private UserDetails userDetails;
 
-    @BeforeEach
-    void setUp() {
-        ragService = mock(RAGService.class);
-        knowledgeBaseService = mock(KnowledgeBaseService.class);
-        qaHistoryService = mock(QAHistoryService.class);
-        currentUserService = mock(CurrentUserService.class);
-        authorizationService = mock(AuthorizationService.class);
-        userDetails = mock(UserDetails.class);
+        @BeforeEach
+        void setUp() {
+                ragService = mock(RAGService.class);
+                knowledgeBaseService = mock(KnowledgeBaseService.class);
+                qaHistoryService = mock(QAHistoryService.class);
+                currentUserService = mock(CurrentUserService.class);
+                authorizationService = mock(AuthorizationService.class);
+                userDetails = mock(UserDetails.class);
 
-        qaController = new QAController(
-                ragService,
-                knowledgeBaseService,
-                qaHistoryService,
-                currentUserService,
-                authorizationService);
+                qaController = new QAController(
+                                ragService,
+                                knowledgeBaseService,
+                                qaHistoryService,
+                                currentUserService,
+                                authorizationService);
 
-        when(currentUserService.requireUserId(any())).thenReturn(1001L);
-        doReturn(KnowledgeBaseDTO.builder()
-                .id(10L)
-                .ownerId(1001L)
-                .vectorCollection("kb_test_vector")
-                .isPublic(false)
-                .build())
-                .when(authorizationService)
-                .requireKnowledgeBaseReadAccess(anyLong(), anyLong());
-    }
+                when(currentUserService.requireUserId(any())).thenReturn(1001L);
+                doReturn(KnowledgeBaseDTO.builder()
+                                .id(10L)
+                                .ownerId(1001L)
+                                .vectorCollection("kb_test_vector")
+                                .isPublic(false)
+                                .build())
+                                .when(authorizationService)
+                                .requireKnowledgeBaseReadAccess(anyLong(), anyLong());
+        }
 
-    @Test
-    void askShouldIncrementQueryCount() {
-        when(ragService.ask(any(QARequest.class))).thenReturn(
-                QAResponse.success("问题", "答案", List.of(), List.of(), Map.of()));
+        @Test
+        void askShouldIncrementQueryCount() {
+                when(ragService.ask(any(QARequest.class))).thenReturn(
+                                QAResponse.success("问题", "答案", List.of(), List.of(), Map.of()));
 
-        QAController.AskRequest request = new QAController.AskRequest(
-                10L,
-                "什么是RAG",
-                5,
-                Map.of(),
-                true);
+                QAController.AskRequest request = new QAController.AskRequest(
+                                10L,
+                                "什么是RAG",
+                                5,
+                                Map.of(),
+                                true);
 
-        qaController.ask(request, userDetails);
+                qaController.ask(request, userDetails);
 
-        verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
                 verify(qaHistoryService, times(1)).save(any());
-    }
+        }
 
-    @Test
-    void askStreamShouldIncrementQueryCount() {
+        @Test
+        void askStreamShouldIncrementQueryCount() {
                 when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.just("chunk-1", "chunk-2", "[DONE]"));
 
-        QAController.AskRequest request = new QAController.AskRequest(
-                10L,
-                "什么是RAG",
-                5,
-                Map.of(),
-                false);
+                QAController.AskRequest request = new QAController.AskRequest(
+                                10L,
+                                "什么是RAG",
+                                5,
+                                Map.of(),
+                                false);
 
-        qaController.askStream(request, userDetails);
+                qaController.askStream(request, userDetails);
 
-        verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
-        verify(qaHistoryService, times(1)).save(argThat(saveReq ->
-                saveReq != null
-                        && "什么是RAG".equals(saveReq.getQuestion())
-                        && "chunk-1chunk-2".equals(saveReq.getAnswer())
-        ));
-    }
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
+                verify(qaHistoryService, times(1)).save(argThat(saveReq -> saveReq != null
+                                && "什么是RAG".equals(saveReq.getQuestion())
+                                && "chunk-1chunk-2".equals(saveReq.getAnswer())));
+        }
 }

@@ -162,11 +162,13 @@ public class QAController {
                         },
                         error -> {
                             log.error("流式问答错误: kbId={}, error={}", request.kbId(), error.getMessage());
-                            saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(), startTime);
+                            saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
+                                    startTime);
                             emitter.completeWithError(error);
                         },
                         () -> {
-                            saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(), startTime);
+                            saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
+                                    startTime);
                             try {
                                 emitter.send("[DONE]", MediaType.TEXT_PLAIN);
                                 emitter.complete();
