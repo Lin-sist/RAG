@@ -81,11 +81,11 @@
 
 | 编号 | 优先级 | 状态 | 模块 | 问题描述 | 影响 |
 |------|------|------|------|------|------|
-| DOC-01 | P1 | TODO | `rag-admin` `rag-document` | 上传控制器直接持有整份 `byte[]` 并在控制器内完成完整索引流程编排 | 大文件并发时内存压力大，职责混乱 |
-| DOC-02 | P1 | TODO | `rag-admin` | 文档上传后未完整持久化 `contentHash`、chunk 记录、vectorId | 删除、去重、回溯、审计链路不完整 |
-| DOC-03 | P1 | TODO | `rag-admin` `rag-core` | 删除文档时向量集合名使用 `kb_{kbId}`，与知识库真实 `vectorCollection` 不一致 | 单文档删除不能正确清理向量数据 |
-| DOC-04 | P1 | TODO | `rag-document` | 文档去重依赖 JVM 内存中的 `ConcurrentHashMap` | 单实例有效，多实例/重启后失效 |
-| DOC-05 | P1 | TODO | `rag-admin` | 未明确配置上传大小限制、文件校验和非法输入保护 | 文件上传边界不清晰，容易触发异常和资源耗尽 |
+| DOC-01 | P1 | DONE | `rag-admin` `rag-document` | 上传控制器直接持有整份 `byte[]` 并在控制器内完成完整索引流程编排 | 大文件并发时内存压力大，职责混乱 |
+| DOC-02 | P1 | DONE | `rag-admin` | 文档上传后未完整持久化 `contentHash`、chunk 记录、vectorId | 删除、去重、回溯、审计链路不完整 |
+| DOC-03 | P1 | DONE | `rag-admin` `rag-core` | 删除文档时向量集合名使用 `kb_{kbId}`，与知识库真实 `vectorCollection` 不一致 | 单文档删除不能正确清理向量数据 |
+| DOC-04 | P1 | DONE | `rag-document` | 文档去重依赖 JVM 内存中的 `ConcurrentHashMap` | 单实例有效，多实例/重启后失效 |
+| DOC-05 | P1 | DONE | `rag-admin` | 未明确配置上传大小限制、文件校验和非法输入保护 | 文件上传边界不清晰，容易触发异常和资源耗尽 |
 
 ## 4.3 P2 级问题
 
@@ -463,11 +463,11 @@
 
 ## 10.2 阶段二任务
 
-- [ ] `DOC-01` 控制器瘦身，抽出上传应用服务
-- [ ] `DOC-02` 补全文档和分块持久化
-- [ ] `DOC-03` 修复向量集合名使用错误
-- [ ] `DOC-04` 将去重逻辑迁移出 JVM 内存
-- [ ] `DOC-05` 增加文件上传边界控制
+- [x] `DOC-01` 控制器瘦身，抽出上传应用服务
+- [x] `DOC-02` 补全文档和分块持久化
+- [x] `DOC-03` 修复向量集合名使用错误
+- [x] `DOC-04` 将去重逻辑迁移出 JVM 内存
+- [x] `DOC-05` 增加文件上传边界控制
 
 ## 10.3 阶段三任务
 
@@ -510,5 +510,8 @@
 - 完成 `AUTH-02` 第一轮落地：新增 `AuthorizationService` 并在知识库/问答/历史接口接入资源级授权校验，补充授权单元测试
 - 完成 `AUTH-03` 第一轮落地：统一 JWT 时间单位为秒，补充 refresh 会话一致性校验，并修复 logout 后 refresh 可继续使用问题
 - 完成 `SEC-01` 第一轮落地：主配置改为环境变量注入，移除明文数据库/Redis/JWT/API key
-- 新增“可执行实现步骤 Todo（阶段化）”用于后续逐项推进和验收
-
+- 新增“可执行实现步骤 Todo（阶段化）”用于后续逐项推进和验收- 完成 `DOC-03` 落地：`DocumentServiceImpl.delete()` 改用 KB 真实 `vectorCollection`，移除硬编码 `kb_{kbId}` 逻辑
+- 完成 `DOC-05` 落地：`application.yml` 新增 multipart 50MB 限制，Controller 增加文件非空/文件名校验，Service 增加文件类型白名单校验
+- 完成 `DOC-02` 落地：`DocumentService` 新增 `updateContentHash()`，向量写入后持久化 `DocumentChunk` 记录并回写 `contentHash`
+- 完成 `DOC-04` 落地：异步任务内通过 `documentService.getByContentHash()` 对 DB 做去重校验，覆盖重启后 in-memory map 失效场景
+- 完成 `DOC-01` 落地：抽取 `DocumentIndexingService` / `DocumentIndexingServiceImpl`，Controller 只保留鉴权+文件校验，索引编排完全移入应用服务层
