@@ -94,8 +94,8 @@
 | RAG-01 | P2 | DONE | `rag-core` | 当前重排基于空格分词的简单关键词匹配，对中文场景不可靠 | 检索质量和回答稳定性不足 |
 | RAG-02 | P2 | DONE | `rag-core` | Prompt 拼装没有 token budget、上下文去重、来源增强策略 | 上下文质量不稳定，易浪费 token |
 | RAG-03 | P2 | DONE | `rag-core` | QA 缓存键未纳入 `topK/filter/model` 等参数 | 缓存脏命中风险 |
-| RAG-04 | P2 | TODO | `rag-admin` `rag-core` | 知识库查询次数统计定义存在，但未形成真实更新闭环 | 统计面板数据不可信 |
-| RAG-05 | P2 | TODO | `rag-admin` | SSE 问答未形成完整的历史沉淀策略 | 流式问答与历史/审计链路不一致 |
+| RAG-04 | P2 | DONE | `rag-admin` `rag-core` | 知识库查询次数统计定义存在，但未形成真实更新闭环 | 统计面板数据不可信 |
+| RAG-05 | P2 | DONE | `rag-admin` | SSE 问答未形成完整的历史沉淀策略 | 流式问答与历史/审计链路不一致 |
 
 ## 4.4 P3 级问题
 
@@ -474,8 +474,8 @@
 - [x] `RAG-01` 优化重排逻辑
 - [x] `RAG-02` 增加 token budget 和上下文组装策略
 - [x] `RAG-03` 修复 QA 缓存键设计
-- [ ] `RAG-04` 补齐查询统计闭环
-- [ ] `RAG-05` 补齐流式问答历史策略
+- [x] `RAG-04` 补齐查询统计闭环
+- [x] `RAG-05` 补齐流式问答历史策略
 
 ### RAG-01 实施说明（2026-03-13）
 
@@ -532,6 +532,41 @@
 - [x] 缓存清理可覆盖同一 query+collection 下的多参数键
 - [x] 定向测试通过（`mvn -pl rag-core "-Dtest=RAGServiceCacheKeyTest,PromptBuilderTest,QueryEngineImplTest" test`）
 
+### RAG-04 实施说明（2026-03-13）
+
+- 实施范围：`KnowledgeBaseService`、`KnowledgeBaseServiceImpl`、`QAController`
+- 关键改造：新增 `incrementQueryCount(kbId)`，统一写入 Redis 查询计数键
+- 链路接入：
+  - 同步问答 `POST /api/qa/ask` 完成问答后递增查询计数
+  - 流式问答 `POST /api/qa/ask/stream` 建立流式问答时递增查询计数
+- 测试覆盖：新增 `QAControllerTest`，验证同步/流式入口均会触发 `incrementQueryCount`
+
+### RAG-04 验收结果
+
+- [x] 查询次数统计读取与写入使用同一 Redis 键空间
+- [x] 同步问答触发查询计数递增
+- [x] 流式问答触发查询计数递增
+- [x] 定向测试通过（`mvn -pl rag-admin "-Dtest=QAControllerTest,KnowledgeBasePropertyTest" test`）
+
+### RAG-05 实施说明（2026-03-13）
+
+- 实施范围：`QAController`
+- 关键改造：流式问答增加历史沉淀策略
+  - 在流式回调中累积答案 chunk（忽略 `[DONE]`）
+  - 在流式完成回调中落库历史（question/answer/trace/latency）
+  - 在流式异常回调中也落库已生成的部分答案，避免审计断裂
+- 对齐策略：流式链路与同步链路都通过 `QAHistoryService.save()` 落历史
+- 配套测试：增强 `QAControllerTest`
+  - 验证流式问答触发历史保存
+  - 验证保存 answer 为流式 chunk 拼接结果
+
+### RAG-05 验收结果
+
+- [x] 流式问答完成后可沉淀完整历史
+- [x] 流式异常场景仍会沉淀已生成答案历史
+- [x] 流式与非流式问答统一纳入历史审计链路
+- [x] 定向测试通过（`mvn -pl rag-admin "-Dtest=QAControllerTest,KnowledgeBasePropertyTest" test`）
+
 ## 10.4 阶段四任务
 
 - [ ] `TEST-01` 修复 Redis 相关 property tests
@@ -573,3 +608,5 @@
 - 完成 `RAG-01` 第一轮落地：`QueryEngineImpl` 升级中英文混合分词重排策略，移除中文双字词过滤限制，并新增 `QueryEngineImplTest` 覆盖中文与英文重排场景
 - 完成 `RAG-02` 第一轮落地：`PromptBuilder` 新增上下文去重、token 预算裁剪与来源增强策略，并在 `AnswerGeneratorImpl` 接入优化链路，新增 `PromptBuilderTest` 覆盖关键场景
 - 完成 `RAG-03` 第一轮落地：`RAGServiceImpl` 缓存键纳入 `topK/filter/model` 维度并补充 filter 规范化与前缀淘汰策略，新增 `RAGServiceCacheKeyTest` 验证参数隔离
+- 完成 `RAG-04` 第一轮落地：问答入口接入知识库查询计数递增（同步+流式），补齐 `KnowledgeBaseService` 查询统计写入闭环，并新增 `QAControllerTest`
+- 完成 `RAG-05` 第一轮落地：流式问答在完成/异常回调均沉淀历史，保存流式拼接答案并纳入 trace/latency，补齐与同步问答一致的审计闭环

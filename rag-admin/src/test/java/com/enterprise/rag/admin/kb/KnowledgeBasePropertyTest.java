@@ -442,6 +442,11 @@ class KnowledgeBasePropertyTest {
             documentCounts.merge(id, delta, Integer::sum);
         }
 
+        @Override
+        public void incrementQueryCount(Long id) {
+            // 当前 property test 不覆盖查询统计增长，保持 no-op 即可。
+        }
+
         public void addDocument(Long kbId, int chunkCount) {
             documentCounts.merge(kbId, 1, Integer::sum);
             vectorCounts.merge(kbId, (long) chunkCount, Long::sum);

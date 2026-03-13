@@ -85,4 +85,11 @@ public interface KnowledgeBaseService {
      * @param delta 增量（可为负数）
      */
     void updateDocumentCount(Long id, int delta);
+
+    /**
+     * 增加知识库查询次数
+     *
+     * @param id 知识库ID
+     */
+    void incrementQueryCount(Long id);
 }

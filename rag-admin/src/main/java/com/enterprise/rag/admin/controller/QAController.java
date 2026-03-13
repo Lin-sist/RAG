@@ -31,6 +31,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -85,6 +86,9 @@ public class QAController {
         // 执行问答
         QAResponse response = ragService.ask(qaRequest);
 
+        // RAG-04: 问答入口计入知识库查询次数
+        knowledgeBaseService.incrementQueryCount(request.kbId());
+
         long latencyMs = System.currentTimeMillis() - startTime;
         log.info("问答完成: kbId={}, latencyMs={}, hasResult={}",
                 request.kbId(), latencyMs, response.hasResult());
@@ -126,20 +130,28 @@ public class QAController {
                 request.kbId(), truncate(request.question(), 50), userId);
 
         var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
+        long startTime = System.currentTimeMillis();
 
         // 构建流式 QA 请求
         QARequest qaRequest = QARequest.stream(request.question(), kb.getVectorCollection());
+
+        // RAG-04: 流式问答入口同样计入查询次数
+        knowledgeBaseService.incrementQueryCount(request.kbId());
 
         // 使用 SseEmitter 而不是 Flux<String>
         // 原因：Flux<String> + text/event-stream 会触发 Tomcat 异步分发，
         // 导致 Spring Security 的 OncePerRequestFilter 在异步线程中丢失安全上下文，
         // 抛出 AccessDeniedException。SseEmitter 直接写入响应流，完全避免这个问题。
         SseEmitter emitter = new SseEmitter(120_000L); // 120秒超时
+        StringBuffer answerBuffer = new StringBuffer();
 
         ragService.askStream(qaRequest)
                 .doOnSubscribe(s -> log.debug("流式问答开始: kbId={}", request.kbId()))
                 .subscribe(
                         chunk -> {
+                            if (!"[DONE]".equals(chunk)) {
+                                answerBuffer.append(chunk);
+                            }
                             try {
                                 // SseEmitter.send() 会自动格式化为 "data:chunk\n\n"
                                 emitter.send(chunk, MediaType.TEXT_PLAIN);
@@ -150,9 +162,11 @@ public class QAController {
                         },
                         error -> {
                             log.error("流式问答错误: kbId={}, error={}", request.kbId(), error.getMessage());
+                            saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(), startTime);
                             emitter.completeWithError(error);
                         },
                         () -> {
+                            saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(), startTime);
                             try {
                                 emitter.send("[DONE]", MediaType.TEXT_PLAIN);
                                 emitter.complete();
@@ -163,6 +177,22 @@ public class QAController {
                         });
 
         return emitter;
+    }
+
+    private void saveStreamHistory(Long userId, Long kbId, String question, String answer, long startTime) {
+        try {
+            qaHistoryService.save(SaveQAHistoryRequest.builder()
+                    .userId(userId)
+                    .kbId(kbId)
+                    .question(question)
+                    .answer(answer)
+                    .citations(List.of())
+                    .traceId(TraceContext.getTraceId())
+                    .latencyMs((int) (System.currentTimeMillis() - startTime))
+                    .build());
+        } catch (Exception e) {
+            log.warn("保存流式问答历史失败: {}", e.getMessage());
+        }
     }
 
     /**

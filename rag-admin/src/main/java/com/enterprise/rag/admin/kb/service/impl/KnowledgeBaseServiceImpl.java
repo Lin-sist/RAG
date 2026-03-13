@@ -229,6 +229,15 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         knowledgeBaseMapper.update(null, wrapper);
     }
 
+    @Override
+    public void incrementQueryCount(Long id) {
+        try {
+            redisTemplate.opsForValue().increment(QUERY_COUNT_KEY_PREFIX + id);
+        } catch (Exception e) {
+            log.warn("Failed to increment query count for kb {}: {}", id, e.getMessage());
+        }
+    }
+
     private KnowledgeBaseDTO toDTO(KnowledgeBase kb) {
         // 使用实时查询的文档数量，而不是缓存的 documentCount 字段
         // 因为异步处理失败的文档不会递增计数器，删除失败文档却会递减，导致计数器漂移
