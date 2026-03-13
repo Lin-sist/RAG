@@ -13,6 +13,8 @@ import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
+import com.enterprise.rag.common.ratelimit.RateLimit;
+import com.enterprise.rag.common.ratelimit.RateLimitDimension;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -55,6 +57,7 @@ public class KnowledgeBaseController {
          * 创建知识库
          */
         @PostMapping
+        @RateLimit(maxRequests = 20, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "创建知识库请求过于频繁，请稍后重试")
         @Operation(summary = "创建知识库", description = "创建新的知识库")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "创建成功", content = @Content(schema = @Schema(implementation = KnowledgeBaseDTO.class))),
@@ -110,6 +113,7 @@ public class KnowledgeBaseController {
          * 更新知识库
          */
         @PutMapping("/{id}")
+        @RateLimit(maxRequests = 30, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "更新知识库请求过于频繁，请稍后重试")
         @Operation(summary = "更新知识库", description = "更新知识库信息")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功", content = @Content(schema = @Schema(implementation = KnowledgeBaseDTO.class))),
@@ -131,6 +135,7 @@ public class KnowledgeBaseController {
          * 删除知识库
          */
         @DeleteMapping("/{id}")
+        @RateLimit(maxRequests = 10, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "删除知识库请求过于频繁，请稍后重试")
         @Operation(summary = "删除知识库", description = "删除知识库及其所有文档和向量数据")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "删除成功"),
@@ -170,6 +175,7 @@ public class KnowledgeBaseController {
          * 上传文档到知识库
          */
         @PostMapping(value = "/{id}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+        @RateLimit(maxRequests = 15, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "文档上传请求过于频繁，请稍后重试")
         @Operation(summary = "上传文档", description = "上传文档到知识库，支持 PDF、Markdown、Word、代码文件")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "文档上传成功，异步处理中"),
@@ -227,6 +233,7 @@ public class KnowledgeBaseController {
          * 删除文档
          */
         @DeleteMapping("/{kbId}/documents/{docId}")
+        @RateLimit(maxRequests = 20, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "删除文档请求过于频繁，请稍后重试")
         @Operation(summary = "删除文档", description = "删除知识库中的文档及其向量数据")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "删除成功"),

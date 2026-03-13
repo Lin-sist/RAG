@@ -10,6 +10,7 @@ import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
 import com.enterprise.rag.common.exception.BusinessException;
+import com.enterprise.rag.common.idempotency.Idempotent;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorDocument;
 import com.enterprise.rag.core.vectorstore.VectorStore;
@@ -51,6 +52,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     private final VectorStore vectorStore;
 
     @Override
+    @Idempotent(keyPrefix = "kb:upload", required = false, ttlSeconds = 3600)
     public DocumentUploadResponse submitIndexing(Long kbId, Long uploaderId,
             byte[] fileContent, String fileName, String title) {
         // DOC-05: 文件类型白名单校验

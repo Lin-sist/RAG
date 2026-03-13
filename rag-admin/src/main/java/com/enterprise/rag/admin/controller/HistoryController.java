@@ -7,6 +7,8 @@ import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
+import com.enterprise.rag.common.ratelimit.RateLimit;
+import com.enterprise.rag.common.ratelimit.RateLimitDimension;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -93,6 +95,7 @@ public class HistoryController {
          * 删除问答历史
          */
         @DeleteMapping("/{id}")
+        @RateLimit(maxRequests = 30, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "删除历史请求过于频繁，请稍后重试")
         @Operation(summary = "删除历史记录", description = "删除指定的问答历史记录")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "删除成功"),
@@ -112,6 +115,7 @@ public class HistoryController {
          * 提交反馈
          */
         @PostMapping("/{id}/feedback")
+        @RateLimit(maxRequests = 20, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "反馈提交过于频繁，请稍后重试")
         @Operation(summary = "提交反馈", description = "对问答结果提交反馈（有用/无用）")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "反馈提交成功", content = @Content(schema = @Schema(implementation = QAFeedbackDTO.class))),

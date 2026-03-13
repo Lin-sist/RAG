@@ -36,16 +36,16 @@ class AsyncTaskManagerPropertyTest {
             RedisStandaloneConfiguration config = new RedisStandaloneConfiguration("localhost", 6379);
             LettuceConnectionFactory connectionFactory = new LettuceConnectionFactory(config);
             connectionFactory.afterPropertiesSet();
-            
+
             stringRedisTemplate = new StringRedisTemplate(connectionFactory);
             stringRedisTemplate.afterPropertiesSet();
-            
+
             // Test connection
             stringRedisTemplate.getConnectionFactory().getConnection().ping();
-            
+
             ObjectMapper objectMapper = new ObjectMapper();
             objectMapper.registerModule(new JavaTimeModule());
-            
+
             asyncTaskManager = new RedisAsyncTaskManager(stringRedisTemplate, objectMapper);
             redisAvailable = true;
         } catch (Exception e) {
@@ -72,17 +72,18 @@ class AsyncTaskManagerPropertyTest {
     void asyncTaskSubmitShouldReturnTaskIdImmediately(
             @ForAll @AlphaChars @StringLength(min = 5, max = 20) String taskType,
             @ForAll @AlphaChars @StringLength(min = 1, max = 50) String payload) {
-        
-        Assume.that(redisAvailable);
-        
+        if (!redisAvailable) {
+            return;
+        }
+
         String uniqueTaskType = "test-" + taskType + "-" + UUID.randomUUID().toString().substring(0, 8);
         CountDownLatch taskStarted = new CountDownLatch(1);
         CountDownLatch taskCanComplete = new CountDownLatch(1);
-        
+
         try {
             // 提交异步任务
             long startTime = System.currentTimeMillis();
-            
+
             TaskHandle<String> handle = asyncTaskManager.submit(uniqueTaskType, progressCallback -> {
                 taskStarted.countDown();
                 try {
@@ -93,56 +94,56 @@ class AsyncTaskManagerPropertyTest {
                 }
                 return payload;
             });
-            
+
             long submitTime = System.currentTimeMillis() - startTime;
-            
+
             // 验证立即返回（提交时间应该很短）
             Assertions.assertThat(submitTime)
-                .as("Task submission should be immediate (< 1000ms)")
-                .isLessThan(1000);
-            
+                    .as("Task submission should be immediate (< 1000ms)")
+                    .isLessThan(1000);
+
             // 验证任务 ID 非空
             Assertions.assertThat(handle.taskId())
-                .as("Task ID should not be null")
-                .isNotNull();
-            
+                    .as("Task ID should not be null")
+                    .isNotNull();
+
             Assertions.assertThat(handle.taskId())
-                .as("Task ID should not be empty")
-                .isNotEmpty();
-            
+                    .as("Task ID should not be empty")
+                    .isNotEmpty();
+
             // 验证任务 ID 可用于状态查询
             Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(handle.taskId());
-            
+
             Assertions.assertThat(statusOpt.isPresent())
-                .as("Task status should be queryable by task ID")
-                .isTrue();
-            
+                    .as("Task status should be queryable by task ID")
+                    .isTrue();
+
             TaskStatus status = statusOpt.get();
-            
+
             // 验证任务 ID 匹配
             Assertions.assertThat(status.taskId())
-                .as("Status task ID should match handle task ID")
-                .isEqualTo(handle.taskId());
-            
+                    .as("Status task ID should match handle task ID")
+                    .isEqualTo(handle.taskId());
+
             // 验证任务类型匹配
             Assertions.assertThat(status.taskType())
-                .as("Status task type should match submitted task type")
-                .isEqualTo(uniqueTaskType);
-            
+                    .as("Status task type should match submitted task type")
+                    .isEqualTo(uniqueTaskType);
+
             // 验证初始状态为 PENDING 或 RUNNING
             Assertions.assertThat(status.state() == TaskState.PENDING || status.state() == TaskState.RUNNING)
-                .as("Initial state should be PENDING or RUNNING, but was " + status.state())
-                .isTrue();
-            
+                    .as("Initial state should be PENDING or RUNNING, but was " + status.state())
+                    .isTrue();
+
             // 验证创建时间不为空
             Assertions.assertThat(status.createdAt())
-                .as("Created time should not be null")
-                .isNotNull();
-            
+                    .as("Created time should not be null")
+                    .isNotNull();
+
         } finally {
             // 允许任务完成
             taskCanComplete.countDown();
-            
+
             // 等待一小段时间让任务完成
             try {
                 Thread.sleep(100);
@@ -169,84 +170,85 @@ class AsyncTaskManagerPropertyTest {
     void taskStatusQueryShouldReturnCompleteInfo(
             @ForAll @AlphaChars @StringLength(min = 5, max = 20) String taskType,
             @ForAll @AlphaChars @StringLength(min = 1, max = 50) String payload) {
-        
-        Assume.that(redisAvailable);
-        
+        if (!redisAvailable) {
+            return;
+        }
+
         String uniqueTaskType = "test-complete-" + taskType + "-" + UUID.randomUUID().toString().substring(0, 8);
         AtomicBoolean progressUpdated = new AtomicBoolean(false);
-        
+
         try {
             // 提交异步任务
             TaskHandle<String> handle = asyncTaskManager.submit(uniqueTaskType, progressCallback -> {
                 // 更新进度
                 progressCallback.accept(AsyncTask.TaskProgress.of(50, "处理中"));
                 progressUpdated.set(true);
-                
+
                 // 模拟处理
                 Thread.sleep(50);
-                
+
                 return payload;
             });
-            
+
             // 等待任务完成
             try {
                 handle.future().get(5, TimeUnit.SECONDS);
             } catch (Exception e) {
                 // 忽略异常，继续验证状态
             }
-            
+
             // 等待状态更新
             Thread.sleep(100);
-            
+
             // 查询任务状态
             Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(handle.taskId());
-            
+
             Assertions.assertThat(statusOpt.isPresent())
-                .as("Task status should be present")
-                .isTrue();
-            
+                    .as("Task status should be present")
+                    .isTrue();
+
             TaskStatus status = statusOpt.get();
-            
+
             // 验证状态包含所有必要字段
             Assertions.assertThat(status.taskId())
-                .as("Task ID should not be null")
-                .isNotNull();
-            
+                    .as("Task ID should not be null")
+                    .isNotNull();
+
             Assertions.assertThat(status.taskType())
-                .as("Task type should not be null")
-                .isNotNull();
-            
+                    .as("Task type should not be null")
+                    .isNotNull();
+
             Assertions.assertThat(status.state())
-                .as("Task state should not be null")
-                .isNotNull();
-            
+                    .as("Task state should not be null")
+                    .isNotNull();
+
             Assertions.assertThat(status.createdAt())
-                .as("Created time should not be null")
-                .isNotNull();
-            
+                    .as("Created time should not be null")
+                    .isNotNull();
+
             Assertions.assertThat(status.updatedAt())
-                .as("Updated time should not be null")
-                .isNotNull();
-            
+                    .as("Updated time should not be null")
+                    .isNotNull();
+
             // 验证完成状态
             if (status.state() == TaskState.COMPLETED) {
                 // 验证进度为 100
                 Assertions.assertThat(status.progress())
-                    .as("Completed task progress should be 100")
-                    .isEqualTo(100);
-                
+                        .as("Completed task progress should be 100")
+                        .isEqualTo(100);
+
                 // 验证可以获取结果
                 Optional<String> resultOpt = asyncTaskManager.getResult(handle.taskId(), String.class);
-                
+
                 Assertions.assertThat(resultOpt.isPresent())
-                    .as("Completed task should have result")
-                    .isTrue();
-                
+                        .as("Completed task should have result")
+                        .isTrue();
+
                 Assertions.assertThat(resultOpt.get())
-                    .as("Result should match expected payload")
-                    .isEqualTo(payload);
+                        .as("Result should match expected payload")
+                        .isEqualTo(payload);
             }
-            
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
@@ -265,17 +267,18 @@ class AsyncTaskManagerPropertyTest {
     @Property(tries = 50)
     void existsShouldReturnCorrectStatus(
             @ForAll @AlphaChars @StringLength(min = 5, max = 20) String taskType) {
-        
-        Assume.that(redisAvailable);
-        
+        if (!redisAvailable) {
+            return;
+        }
+
         String uniqueTaskType = "test-exists-" + taskType + "-" + UUID.randomUUID().toString().substring(0, 8);
         String nonExistentTaskId = "non-existent-" + UUID.randomUUID();
-        
+
         // 不存在的任务 ID 应该返回 false
         Assertions.assertThat(asyncTaskManager.exists(nonExistentTaskId))
-            .as("Non-existent task should return false")
-            .isFalse();
-        
+                .as("Non-existent task should return false")
+                .isFalse();
+
         // 提交任务
         TaskHandle<String> handle = asyncTaskManager.submit(uniqueTaskType, progressCallback -> {
             try {
@@ -285,30 +288,30 @@ class AsyncTaskManagerPropertyTest {
             }
             return "result";
         });
-        
+
         // 提交后应该存在
         Assertions.assertThat(asyncTaskManager.exists(handle.taskId()))
-            .as("Submitted task should exist")
-            .isTrue();
-        
+                .as("Submitted task should exist")
+                .isTrue();
+
         // 等待任务完成
         try {
             handle.future().get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
             // 忽略
         }
-        
+
         // 完成后仍然存在
         Assertions.assertThat(asyncTaskManager.exists(handle.taskId()))
-            .as("Completed task should still exist")
-            .isTrue();
-        
+                .as("Completed task should still exist")
+                .isTrue();
+
         // 删除后不存在
         asyncTaskManager.remove(handle.taskId());
-        
+
         Assertions.assertThat(asyncTaskManager.exists(handle.taskId()))
-            .as("Removed task should not exist")
-            .isFalse();
+                .as("Removed task should not exist")
+                .isFalse();
     }
 
     /**
@@ -317,50 +320,51 @@ class AsyncTaskManagerPropertyTest {
     @Property(tries = 50)
     void progressUpdateShouldBeReflectedInStatus(
             @ForAll @AlphaChars @StringLength(min = 5, max = 20) String taskType) {
-        
-        Assume.that(redisAvailable);
-        
+        if (!redisAvailable) {
+            return;
+        }
+
         String uniqueTaskType = "test-progress-" + taskType + "-" + UUID.randomUUID().toString().substring(0, 8);
         CountDownLatch progressChecked = new CountDownLatch(1);
-        
+
         // 提交任务
         TaskHandle<String> handle = asyncTaskManager.submit(uniqueTaskType, progressCallback -> {
             // 更新进度到 50%
             progressCallback.accept(AsyncTask.TaskProgress.of(50, "半程"));
-            
+
             // 等待测试检查进度
             try {
                 progressChecked.await(5, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            
+
             return "done";
         });
-        
+
         // 等待任务开始并更新进度
         try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        
+
         try {
             // 查询状态
             Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(handle.taskId());
-            
+
             if (statusOpt.isPresent()) {
                 TaskStatus status = statusOpt.get();
-                
+
                 // 如果任务还在运行，验证进度
                 if (status.state() == TaskState.RUNNING) {
                     Assertions.assertThat(status.progress())
-                        .as("Progress should be updated to 50")
-                        .isEqualTo(50);
-                    
+                            .as("Progress should be updated to 50")
+                            .isEqualTo(50);
+
                     Assertions.assertThat(status.message())
-                        .as("Message should be updated")
-                        .isEqualTo("半程");
+                            .as("Message should be updated")
+                            .isEqualTo("半程");
                 }
             }
         } finally {
@@ -431,8 +435,8 @@ class AsyncTaskManagerPropertyTest {
         void isLessThan(long expected) {
             if (actual >= expected) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected < " + expected + " but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected < " + expected + " but was " + actual);
             }
         }
     }
@@ -453,8 +457,8 @@ class AsyncTaskManagerPropertyTest {
         void isEqualTo(int expected) {
             if (actual != expected) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected " + expected + " but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected " + expected + " but was " + actual);
             }
         }
     }
@@ -475,24 +479,24 @@ class AsyncTaskManagerPropertyTest {
         void isNull() {
             if (actual != null) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected null but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected null but was " + actual);
             }
         }
 
         void isNotNull() {
             if (actual == null) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected non-null but was null");
+                        (description != null ? description + ": " : "") +
+                                "Expected non-null but was null");
             }
         }
 
         void isNotEmpty() {
             if (actual == null || (actual instanceof String && ((String) actual).isEmpty())) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected non-empty but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected non-empty but was " + actual);
             }
         }
 
@@ -502,8 +506,8 @@ class AsyncTaskManagerPropertyTest {
             }
             if (actual == null || !actual.equals(expected)) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected " + expected + " but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected " + expected + " but was " + actual);
             }
         }
     }

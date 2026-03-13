@@ -46,10 +46,9 @@ public class IdempotencyAspect {
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
             if (idempotent.required()) {
                 throw new BusinessException(
-                    "IDEMPOTENCY_003",
-                    idempotent.message(),
-                    HttpStatus.BAD_REQUEST
-                );
+                        "IDEMPOTENCY_003",
+                        idempotent.message(),
+                        HttpStatus.BAD_REQUEST);
             }
             // 不要求必须提供 Key，跳过幂等性检查
             log.debug("Idempotency key not provided, skipping check");
@@ -66,20 +65,19 @@ public class IdempotencyAspect {
         // 执行幂等性处理
         @SuppressWarnings("unchecked")
         IdempotencyResult<Object> result = idempotencyHandler.execute(
-            fullKey,
-            () -> {
-                try {
-                    return joinPoint.proceed();
-                } catch (Throwable e) {
-                    if (e instanceof RuntimeException) {
-                        throw (RuntimeException) e;
+                fullKey,
+                () -> {
+                    try {
+                        return joinPoint.proceed();
+                    } catch (Throwable e) {
+                        if (e instanceof RuntimeException) {
+                            throw (RuntimeException) e;
+                        }
+                        throw new RuntimeException(e);
                     }
-                    throw new RuntimeException(e);
-                }
-            },
-            (Class<Object>) returnType,
-            idempotent.ttlSeconds()
-        );
+                },
+                (Class<Object>) returnType,
+                idempotent.ttlSeconds());
 
         if (!result.isNew()) {
             log.info("Returning cached result for idempotency key: {}", fullKey);
@@ -92,8 +90,7 @@ public class IdempotencyAspect {
      * 获取当前 HTTP 请求
      */
     private HttpServletRequest getCurrentRequest() {
-        ServletRequestAttributes attributes = 
-            (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         return attributes != null ? attributes.getRequest() : null;
     }
 
@@ -110,6 +107,18 @@ public class IdempotencyAspect {
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             prefix = signature.getDeclaringTypeName() + "." + signature.getName();
         }
-        return prefix + ":" + idempotencyKey;
+        HttpServletRequest request = getCurrentRequest();
+        String principal = extractPrincipal(request);
+        return prefix + ":" + principal + ":" + idempotencyKey;
+    }
+
+    private String extractPrincipal(HttpServletRequest request) {
+        if (request == null) {
+            return "anonymous";
+        }
+        if (request.getUserPrincipal() != null && request.getUserPrincipal().getName() != null) {
+            return request.getUserPrincipal().getName();
+        }
+        return "anonymous";
     }
 }

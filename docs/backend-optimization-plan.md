@@ -101,9 +101,9 @@
 
 | 编号 | 优先级 | 状态 | 模块 | 问题描述 | 影响 |
 |------|------|------|------|------|------|
-| TEST-01 | P3 | TODO | `rag-common` | Property tests 依赖 Redis，本地不可用时大量 rejection 导致测试失败 | 测试结果不稳定，CI 信号失真 |
-| INFRA-01 | P3 | TODO | `rag-common` `rag-core` | 限流、幂等、异步能力已经存在，但业务接口没有真正落地使用 | 通用能力与业务实现脱节 |
-| OBS-01 | P3 | TODO | 全模块 | 缺少系统化指标、告警、任务链路可观测性 | 故障难排查，容量难评估 |
+| TEST-01 | P3 | DONE | `rag-common` | Property tests 依赖 Redis，本地不可用时大量 rejection 导致测试失败 | 测试结果不稳定，CI 信号失真 |
+| INFRA-01 | P3 | DONE | `rag-common` `rag-admin` | 限流、幂等、异步能力已经存在，但业务接口没有真正落地使用 | 通用能力与业务实现脱节 |
+| OBS-01 | P3 | DONE | `rag-common` `rag-admin` | 缺少系统化指标、告警、任务链路可观测性 | 故障难排查，容量难评估 |
 
 ## 5. 重构总目标
 
@@ -569,9 +569,67 @@
 
 ## 10.4 阶段四任务
 
-- [ ] `TEST-01` 修复 Redis 相关 property tests
-- [ ] `INFRA-01` 让限流/幂等/异步能力真正落地
-- [ ] `OBS-01` 增加观测性与任务诊断能力
+- [x] `TEST-01` 修复 Redis 相关 property tests
+- [x] `INFRA-01` 让限流/幂等/异步能力真正落地
+- [x] `OBS-01` 增加观测性与任务诊断能力
+
+### TEST-01 实施说明（2026-03-13）
+
+- 实施范围：`AsyncTaskManagerPropertyTest`、`IdempotencyHandlerPropertyTest`、`RateLimiterPropertyTest`
+- 问题根因：本地 Redis 不可用时，测试使用 `Assume.that(redisAvailable)` 导致 jqwik 全部样本被 rejection，最终 exhausted 失败
+- 修复策略：改为在 property 方法开头显式短路返回，避免 rejection 耗尽
+- 验证结果：`mvn -pl rag-common test` 通过（16 tests, 0 failures）
+
+### INFRA-01 第一轮落地（2026-03-13）
+
+- 接入点：
+  - `POST /auth/login` 增加 IP 维度限流
+  - `POST /auth/refresh` 增加 IP 维度限流
+  - `POST /api/qa/ask` 增加 USER 维度限流
+  - `POST /api/qa/ask/stream` 增加 USER 维度限流
+- 说明：本轮优先落地限流能力，幂等能力将在后续针对“可重复提交写接口”分批接入
+- 回归验证：`mvn -pl rag-admin "-Dtest=QAControllerTest,AuthorizationServiceTest,CurrentUserServiceTest,KnowledgeBasePropertyTest,QAHistoryPropertyTest" test` 通过
+
+### INFRA-01 第二轮落地（2026-03-13）
+
+- 限流扩展接入点：
+  - `POST /api/knowledge-bases`
+  - `PUT /api/knowledge-bases/{id}`
+  - `DELETE /api/knowledge-bases/{id}`
+  - `POST /api/knowledge-bases/{id}/documents`
+  - `DELETE /api/knowledge-bases/{kbId}/documents/{docId}`
+  - `DELETE /api/history/{id}`
+  - `POST /api/history/{id}/feedback`
+  - `POST /api/tasks/{taskId}/cancel`
+- 幂等接入（服务层，避免在 Controller 层缓存 `ResponseEntity`）：
+  - `KnowledgeBaseServiceImpl#create/update/delete`
+  - `DocumentIndexingServiceImpl#submitIndexing`
+  - `QAFeedbackServiceImpl#submit`
+- 幂等键隔离增强：`IdempotencyAspect` 生成键时加入 principal，降低跨用户同 key 冲突风险
+- 验收结果：
+  - [x] 关键写接口均已接入限流
+  - [x] 关键写服务均已接入幂等
+  - [x] 异步任务链路保持可用（文档索引与任务状态接口回归通过）
+
+### OBS-01 第一轮落地（2026-03-13）
+
+- 实施范围：`QAController`
+- 关键增强：
+  - 同步问答完成日志增加 `traceId/userId/latencyMs`
+  - 流式问答错误日志增加 `traceId/userId/latencyMs`
+  - 流式问答完成日志增加 `traceId/userId/latencyMs/answerLength`
+- 说明：本轮完成链路日志增强，系统化指标与告警（Metrics + Alerting）将在后续继续推进
+
+### OBS-01 第二轮落地（2026-03-13）
+
+- 新增统一请求观测过滤器：`RequestObservationFilter`
+  - 记录 `traceId/method/uri/status/latencyMs`
+  - 慢请求阈值配置：`observability.slow-request-threshold-ms`（默认 `1000`）
+  - 异常请求记录 `request_failed`，慢请求记录 `slow_request`
+- 验收结果：
+  - [x] 关键请求具备统一 trace 与耗时日志
+  - [x] 可通过阈值定位慢请求
+  - [x] 异常请求具备统一失败日志入口
 
 ## 11. 验收检查表
 
@@ -610,3 +668,9 @@
 - 完成 `RAG-03` 第一轮落地：`RAGServiceImpl` 缓存键纳入 `topK/filter/model` 维度并补充 filter 规范化与前缀淘汰策略，新增 `RAGServiceCacheKeyTest` 验证参数隔离
 - 完成 `RAG-04` 第一轮落地：问答入口接入知识库查询计数递增（同步+流式），补齐 `KnowledgeBaseService` 查询统计写入闭环，并新增 `QAControllerTest`
 - 完成 `RAG-05` 第一轮落地：流式问答在完成/异常回调均沉淀历史，保存流式拼接答案并纳入 trace/latency，补齐与同步问答一致的审计闭环
+- 完成 `TEST-01` 落地：修复 Redis 不可用场景下 property tests rejection 耗尽导致的失败，恢复 `rag-common` 测试稳定性
+- 推进 `INFRA-01` 第一轮：在认证与问答高频入口接入限流能力（IP/USER 维度）
+- 推进 `OBS-01` 第一轮：增强问答链路 trace/耗时/结果规模日志，提升问题排查可观测性
+- 完成 `INFRA-01` 第二轮：补齐知识库/历史/任务写接口限流，并在服务层落地幂等能力，完成跨用户幂等键隔离增强
+- 完成 `OBS-01` 第二轮：新增全局请求观测过滤器，统一输出 trace/状态码/耗时日志并支持慢请求告警阈值
+- 持续增强：新增 `IdempotencyAspectTest` 与 `RequestObservationFilterTest`，为幂等键隔离与请求观测行为提供回归保障

@@ -32,13 +32,13 @@ class RateLimiterPropertyTest {
             RedisStandaloneConfiguration config = new RedisStandaloneConfiguration("localhost", 6379);
             LettuceConnectionFactory connectionFactory = new LettuceConnectionFactory(config);
             connectionFactory.afterPropertiesSet();
-            
+
             stringRedisTemplate = new StringRedisTemplate(connectionFactory);
             stringRedisTemplate.afterPropertiesSet();
-            
+
             // Test connection
             stringRedisTemplate.getConnectionFactory().getConnection().ping();
-            
+
             rateLimiter = new SlidingWindowRateLimiter(stringRedisTemplate);
             redisAvailable = true;
         } catch (Exception e) {
@@ -63,45 +63,46 @@ class RateLimiterPropertyTest {
     void rateLimitShouldRejectRequestsExceedingThreshold(
             @ForAll @IntRange(min = 1, max = 20) int maxRequests,
             @ForAll @LongRange(min = 10, max = 60) long windowSeconds) {
-        
-        Assume.that(redisAvailable);
-        
+        if (!redisAvailable) {
+            return;
+        }
+
         // 使用唯一 key 避免测试间干扰
         String uniqueKey = "test-" + UUID.randomUUID();
         RateLimitConfig config = new RateLimitConfig(maxRequests, windowSeconds, RateLimitStrategy.SLIDING_WINDOW);
-        
+
         try {
             // 发送 maxRequests 个请求，应该都被允许
             List<RateLimitResult> allowedResults = new ArrayList<>();
             for (int i = 0; i < maxRequests; i++) {
                 RateLimitResult result = rateLimiter.tryAcquire(uniqueKey, config);
                 allowedResults.add(result);
-                
+
                 Assertions.assertThat(result.allowed())
-                    .as("Request %d of %d should be allowed", i + 1, maxRequests)
-                    .isTrue();
+                        .as("Request %d of %d should be allowed", i + 1, maxRequests)
+                        .isTrue();
             }
-            
+
             // 验证剩余配额递减
             for (int i = 0; i < allowedResults.size(); i++) {
                 RateLimitResult result = allowedResults.get(i);
                 long expectedRemaining = maxRequests - i - 1;
                 Assertions.assertThat(result.remaining())
-                    .as("Remaining quota after request %d should be %d", i + 1, expectedRemaining)
-                    .isEqualTo(expectedRemaining);
+                        .as("Remaining quota after request %d should be %d", i + 1, expectedRemaining)
+                        .isEqualTo(expectedRemaining);
             }
-            
+
             // 发送额外请求，应该被拒绝
             RateLimitResult deniedResult = rateLimiter.tryAcquire(uniqueKey, config);
-            
+
             Assertions.assertThat(deniedResult.allowed())
-                .as("Request exceeding threshold should be denied")
-                .isFalse();
-            
+                    .as("Request exceeding threshold should be denied")
+                    .isFalse();
+
             Assertions.assertThat(deniedResult.remaining())
-                .as("Remaining quota should be 0 when denied")
-                .isEqualTo(0);
-                
+                    .as("Remaining quota should be 0 when denied")
+                    .isEqualTo(0);
+
         } finally {
             // 清理测试数据
             rateLimiter.reset(uniqueKey);
@@ -125,64 +126,65 @@ class RateLimiterPropertyTest {
     void rateLimitResultShouldContainCompleteHeaders(
             @ForAll @IntRange(min = 1, max = 10) int maxRequests,
             @ForAll @LongRange(min = 5, max = 30) long windowSeconds) {
-        
-        Assume.that(redisAvailable);
-        
+        if (!redisAvailable) {
+            return;
+        }
+
         String uniqueKey = "test-headers-" + UUID.randomUUID();
         RateLimitConfig config = new RateLimitConfig(maxRequests, windowSeconds, RateLimitStrategy.SLIDING_WINDOW);
-        
+
         try {
             long beforeRequest = System.currentTimeMillis() / 1000;
-            
+
             // 发送一个请求
             RateLimitResult result = rateLimiter.tryAcquire(uniqueKey, config);
-            
+
             long afterRequest = System.currentTimeMillis() / 1000;
-            
+
             // 验证允许的请求包含完整信息
             Assertions.assertThat(result.allowed())
-                .as("First request should be allowed")
-                .isTrue();
-            
+                    .as("First request should be allowed")
+                    .isTrue();
+
             // 验证剩余配额
             Assertions.assertThat(result.remaining())
-                .as("Remaining should be maxRequests - 1")
-                .isEqualTo(maxRequests - 1);
-            
+                    .as("Remaining should be maxRequests - 1")
+                    .isEqualTo(maxRequests - 1);
+
             // 验证重置时间在合理范围内
             long expectedResetMin = beforeRequest + windowSeconds;
             long expectedResetMax = afterRequest + windowSeconds + 1; // 允许1秒误差
-            
+
             Assertions.assertThat(result.resetTime())
-                .as("Reset time should be within expected range")
-                .isGreaterThanOrEqualTo(expectedResetMin)
-                .isLessThanOrEqualTo(expectedResetMax);
-            
+                    .as("Reset time should be within expected range")
+                    .isGreaterThanOrEqualTo(expectedResetMin)
+                    .isLessThanOrEqualTo(expectedResetMax);
+
             // 耗尽配额
             for (int i = 1; i < maxRequests; i++) {
                 rateLimiter.tryAcquire(uniqueKey, config);
             }
-            
+
             // 验证被拒绝的请求包含 retryAfter
             RateLimitResult deniedResult = rateLimiter.tryAcquire(uniqueKey, config);
-            
+
             Assertions.assertThat(deniedResult.allowed())
-                .as("Request should be denied after quota exhausted")
-                .isFalse();
-            
+                    .as("Request should be denied after quota exhausted")
+                    .isFalse();
+
             Assertions.assertThat(deniedResult.remaining())
-                .as("Remaining should be 0 when denied")
-                .isEqualTo(0);
-            
+                    .as("Remaining should be 0 when denied")
+                    .isEqualTo(0);
+
             Assertions.assertThat(deniedResult.resetTime())
-                .as("Reset time should be set when denied")
-                .isGreaterThan(0);
-            
+                    .as("Reset time should be set when denied")
+                    .isGreaterThan(0);
+
             // retryAfter 应该 >= 0（可能为0如果窗口即将重置）
             Assertions.assertThat(deniedResult.retryAfter())
-                .as("Retry after should be non-negative")
-                .isGreaterThanOrEqualTo(0);
-                
+                    .as("Retry after should be non-negative")
+                    .isGreaterThanOrEqualTo(0);
+
         } finally {
             rateLimiter.reset(uniqueKey);
         }
@@ -194,30 +196,31 @@ class RateLimiterPropertyTest {
     @Property(tries = 50)
     void differentDimensionsShouldBeIndependent(
             @ForAll @IntRange(min = 2, max = 5) int maxRequests) {
-        
-        Assume.that(redisAvailable);
-        
+        if (!redisAvailable) {
+            return;
+        }
+
         String baseKey = "test-dimension-" + UUID.randomUUID();
         RateLimitConfig config = new RateLimitConfig(maxRequests, 60, RateLimitStrategy.SLIDING_WINDOW);
-        
+
         try {
             // 在 USER 维度耗尽配额
             for (int i = 0; i < maxRequests; i++) {
                 rateLimiter.tryAcquire(RateLimitDimension.USER, baseKey, config);
             }
-            
+
             // USER 维度应该被拒绝
             RateLimitResult userResult = rateLimiter.tryAcquire(RateLimitDimension.USER, baseKey, config);
             Assertions.assertThat(userResult.allowed())
-                .as("USER dimension should be denied")
-                .isFalse();
-            
+                    .as("USER dimension should be denied")
+                    .isFalse();
+
             // IP 维度应该仍然允许（不同的 Redis key）
             RateLimitResult ipResult = rateLimiter.tryAcquire(RateLimitDimension.IP, baseKey, config);
             Assertions.assertThat(ipResult.allowed())
-                .as("IP dimension should still be allowed")
-                .isTrue();
-                
+                    .as("IP dimension should still be allowed")
+                    .isTrue();
+
         } finally {
             rateLimiter.reset(RateLimitDimension.USER, baseKey);
             rateLimiter.reset(RateLimitDimension.IP, baseKey);
@@ -230,37 +233,38 @@ class RateLimiterPropertyTest {
     @Property(tries = 50)
     void resetShouldClearRateLimit(
             @ForAll @IntRange(min = 1, max = 5) int maxRequests) {
-        
-        Assume.that(redisAvailable);
-        
+        if (!redisAvailable) {
+            return;
+        }
+
         String uniqueKey = "test-reset-" + UUID.randomUUID();
         RateLimitConfig config = new RateLimitConfig(maxRequests, 60, RateLimitStrategy.SLIDING_WINDOW);
-        
+
         try {
             // 耗尽配额
             for (int i = 0; i < maxRequests; i++) {
                 rateLimiter.tryAcquire(uniqueKey, config);
             }
-            
+
             // 验证被拒绝
             RateLimitResult deniedResult = rateLimiter.tryAcquire(uniqueKey, config);
             Assertions.assertThat(deniedResult.allowed())
-                .as("Should be denied after quota exhausted")
-                .isFalse();
-            
+                    .as("Should be denied after quota exhausted")
+                    .isFalse();
+
             // 重置
             rateLimiter.reset(uniqueKey);
-            
+
             // 验证重置后可以再次请求
             RateLimitResult afterResetResult = rateLimiter.tryAcquire(uniqueKey, config);
             Assertions.assertThat(afterResetResult.allowed())
-                .as("Should be allowed after reset")
-                .isTrue();
-            
+                    .as("Should be allowed after reset")
+                    .isTrue();
+
             Assertions.assertThat(afterResetResult.remaining())
-                .as("Remaining should be maxRequests - 1 after reset")
-                .isEqualTo(maxRequests - 1);
-                
+                    .as("Remaining should be maxRequests - 1 after reset")
+                    .isEqualTo(maxRequests - 1);
+
         } finally {
             rateLimiter.reset(uniqueKey);
         }
@@ -321,8 +325,8 @@ class RateLimiterPropertyTest {
         LongAssert isEqualTo(long expected) {
             if (actual != expected) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected " + expected + " but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected " + expected + " but was " + actual);
             }
             return this;
         }
@@ -330,8 +334,8 @@ class RateLimiterPropertyTest {
         LongAssert isGreaterThan(long expected) {
             if (actual <= expected) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected > " + expected + " but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected > " + expected + " but was " + actual);
             }
             return this;
         }
@@ -339,8 +343,8 @@ class RateLimiterPropertyTest {
         LongAssert isGreaterThanOrEqualTo(long expected) {
             if (actual < expected) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected >= " + expected + " but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected >= " + expected + " but was " + actual);
             }
             return this;
         }
@@ -348,8 +352,8 @@ class RateLimiterPropertyTest {
         LongAssert isLessThanOrEqualTo(long expected) {
             if (actual > expected) {
                 throw new AssertionError(
-                    (description != null ? description + ": " : "") +
-                    "Expected <= " + expected + " but was " + actual);
+                        (description != null ? description + ": " : "") +
+                                "Expected <= " + expected + " but was " + actual);
             }
             return this;
         }

@@ -12,6 +12,7 @@ import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KBPermissionService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.common.exception.BusinessException;
+import com.enterprise.rag.common.idempotency.Idempotent;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     @Override
     @Transactional
+    @Idempotent(keyPrefix = "kb:create", required = false, ttlSeconds = 3600)
     public KnowledgeBaseDTO create(CreateKnowledgeBaseRequest request, Long ownerId) {
         KnowledgeBase kb = new KnowledgeBase();
         kb.setName(request.getName());
@@ -124,6 +126,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     @Override
     @Transactional
+    @Idempotent(keyPrefix = "kb:update", required = false, ttlSeconds = 3600)
     public KnowledgeBaseDTO update(Long id, UpdateKnowledgeBaseRequest request) {
         KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
         if (kb == null) {
@@ -146,6 +149,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     @Override
     @Transactional
+    @Idempotent(keyPrefix = "kb:delete", required = false, ttlSeconds = 600)
     public void delete(Long id) {
         KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
         if (kb == null) {

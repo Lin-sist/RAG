@@ -7,6 +7,8 @@ import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
+import com.enterprise.rag.common.ratelimit.RateLimit;
+import com.enterprise.rag.common.ratelimit.RateLimitDimension;
 import com.enterprise.rag.common.trace.TraceContext;
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
@@ -56,6 +58,7 @@ public class QAController {
      * 同步问答
      */
     @PostMapping("/ask")
+    @RateLimit(maxRequests = 30, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "问答请求过于频繁，请稍后重试")
     @Operation(summary = "问答", description = "向知识库提问并获取 AI 生成的答案")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "问答成功", content = @Content(schema = @Schema(implementation = QAResponse.class))),
@@ -67,6 +70,7 @@ public class QAController {
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = currentUserService.requireUserId(userDetails);
+        String traceId = TraceContext.getTraceId();
         log.info("问答请求: kbId={}, question={}, userId={}",
                 request.kbId(), truncate(request.question(), 50), userId);
 
@@ -90,8 +94,8 @@ public class QAController {
         knowledgeBaseService.incrementQueryCount(request.kbId());
 
         long latencyMs = System.currentTimeMillis() - startTime;
-        log.info("问答完成: kbId={}, latencyMs={}, hasResult={}",
-                request.kbId(), latencyMs, response.hasResult());
+        log.info("问答完成: traceId={}, kbId={}, userId={}, latencyMs={}, hasResult={}",
+                traceId, request.kbId(), userId, latencyMs, response.hasResult());
 
         // 保存问答历史
         try {
@@ -115,6 +119,7 @@ public class QAController {
      * 流式问答
      */
     @PostMapping(value = "/ask/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(maxRequests = 10, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "流式问答请求过于频繁，请稍后重试")
     @Operation(summary = "流式问答", description = "向知识库提问并以流式方式获取 AI 生成的答案")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "流式响应开始"),
@@ -126,6 +131,7 @@ public class QAController {
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = currentUserService.requireUserId(userDetails);
+        String traceId = TraceContext.getTraceId();
         log.info("流式问答请求: kbId={}, question={}, userId={}",
                 request.kbId(), truncate(request.question(), 50), userId);
 
@@ -161,18 +167,22 @@ public class QAController {
                             }
                         },
                         error -> {
-                            log.error("流式问答错误: kbId={}, error={}", request.kbId(), error.getMessage());
+                            long latencyMs = System.currentTimeMillis() - startTime;
+                            log.error("流式问答错误: traceId={}, kbId={}, userId={}, latencyMs={}, error={}",
+                                    traceId, request.kbId(), userId, latencyMs, error.getMessage());
                             saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
                                     startTime);
                             emitter.completeWithError(error);
                         },
                         () -> {
+                            long latencyMs = System.currentTimeMillis() - startTime;
                             saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
                                     startTime);
                             try {
                                 emitter.send("[DONE]", MediaType.TEXT_PLAIN);
                                 emitter.complete();
-                                log.debug("流式问答完成: kbId={}", request.kbId());
+                                log.info("流式问答完成: traceId={}, kbId={}, userId={}, latencyMs={}, answerLength={}",
+                                        traceId, request.kbId(), userId, latencyMs, answerBuffer.length());
                             } catch (IOException e) {
                                 emitter.completeWithError(e);
                             }

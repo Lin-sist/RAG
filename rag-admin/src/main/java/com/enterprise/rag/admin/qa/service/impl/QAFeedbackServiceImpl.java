@@ -7,6 +7,7 @@ import com.enterprise.rag.admin.qa.entity.QAFeedback;
 import com.enterprise.rag.admin.qa.mapper.QAFeedbackMapper;
 import com.enterprise.rag.admin.qa.service.QAFeedbackService;
 import com.enterprise.rag.common.exception.BusinessException;
+import com.enterprise.rag.common.idempotency.Idempotent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class QAFeedbackServiceImpl implements QAFeedbackService {
 
     @Override
     @Transactional
+    @Idempotent(keyPrefix = "qa:feedback:submit", required = false, ttlSeconds = 86400)
     public QAFeedbackDTO submit(SubmitFeedbackRequest request) {
         // 验证评分范围
         if (request.getRating() == null || request.getRating() < 1 || request.getRating() > 5) {
@@ -45,7 +47,7 @@ public class QAFeedbackServiceImpl implements QAFeedbackService {
         feedback.setComment(request.getComment());
 
         qaFeedbackMapper.insert(feedback);
-        log.info("Submitted feedback: id={}, qaId={}, userId={}, rating={}", 
+        log.info("Submitted feedback: id={}, qaId={}, userId={}, rating={}",
                 feedback.getId(), feedback.getQaId(), feedback.getUserId(), feedback.getRating());
 
         return toDTO(feedback);
@@ -61,8 +63,8 @@ public class QAFeedbackServiceImpl implements QAFeedbackService {
     public Optional<QAFeedbackDTO> getByQaId(Long qaId) {
         LambdaQueryWrapper<QAFeedback> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(QAFeedback::getQaId, qaId)
-               .orderByDesc(QAFeedback::getCreatedAt)
-               .last("LIMIT 1");
+                .orderByDesc(QAFeedback::getCreatedAt)
+                .last("LIMIT 1");
         QAFeedback feedback = qaFeedbackMapper.selectOne(wrapper);
         return Optional.ofNullable(feedback).map(this::toDTO);
     }
@@ -71,7 +73,7 @@ public class QAFeedbackServiceImpl implements QAFeedbackService {
     public List<QAFeedbackDTO> listByQaId(Long qaId) {
         LambdaQueryWrapper<QAFeedback> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(QAFeedback::getQaId, qaId)
-               .orderByDesc(QAFeedback::getCreatedAt);
+                .orderByDesc(QAFeedback::getCreatedAt);
         return qaFeedbackMapper.selectList(wrapper)
                 .stream()
                 .map(this::toDTO)
@@ -82,7 +84,7 @@ public class QAFeedbackServiceImpl implements QAFeedbackService {
     public List<QAFeedbackDTO> listByUserId(Long userId) {
         LambdaQueryWrapper<QAFeedback> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(QAFeedback::getUserId, userId)
-               .orderByDesc(QAFeedback::getCreatedAt);
+                .orderByDesc(QAFeedback::getCreatedAt);
         return qaFeedbackMapper.selectList(wrapper)
                 .stream()
                 .map(this::toDTO)
@@ -93,7 +95,7 @@ public class QAFeedbackServiceImpl implements QAFeedbackService {
     public boolean hasUserFeedback(Long qaId, Long userId) {
         LambdaQueryWrapper<QAFeedback> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(QAFeedback::getQaId, qaId)
-               .eq(QAFeedback::getUserId, userId);
+                .eq(QAFeedback::getUserId, userId);
         return qaFeedbackMapper.selectCount(wrapper) > 0;
     }
 
