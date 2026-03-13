@@ -3,6 +3,8 @@ package com.enterprise.rag.admin.controller;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.qa.dto.SaveQAHistoryRequest;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
+import com.enterprise.rag.admin.security.AuthorizationService;
+import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
 import com.enterprise.rag.common.trace.TraceContext;
@@ -46,6 +48,8 @@ public class QAController {
     private final RAGService ragService;
     private final KnowledgeBaseService knowledgeBaseService;
     private final QAHistoryService qaHistoryService;
+    private final CurrentUserService currentUserService;
+    private final AuthorizationService authorizationService;
 
     /**
      * 同步问答
@@ -61,13 +65,11 @@ public class QAController {
             @Valid @RequestBody AskRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = extractUserId(userDetails);
+        Long userId = currentUserService.requireUserId(userDetails);
         log.info("问答请求: kbId={}, question={}, userId={}",
                 request.kbId(), truncate(request.question(), 50), userId);
 
-        // 验证知识库存在
-        var kb = knowledgeBaseService.getById(request.kbId())
-                .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在: " + request.kbId()));
+        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
 
         long startTime = System.currentTimeMillis();
 
@@ -119,13 +121,11 @@ public class QAController {
             @Valid @RequestBody AskRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = extractUserId(userDetails);
+        Long userId = currentUserService.requireUserId(userDetails);
         log.info("流式问答请求: kbId={}, question={}, userId={}",
                 request.kbId(), truncate(request.question(), 50), userId);
 
-        // 验证知识库存在
-        var kb = knowledgeBaseService.getById(request.kbId())
-                .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在: " + request.kbId()));
+        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
 
         // 构建流式 QA 请求
         QARequest qaRequest = QARequest.stream(request.question(), kb.getVectorCollection());
@@ -183,20 +183,6 @@ public class QAController {
 
         AskRequest request = new AskRequest(kbId, question, topK, null, true);
         return ask(request, userDetails);
-    }
-
-    /**
-     * 从 UserDetails 中提取用户 ID
-     */
-    private Long extractUserId(UserDetails userDetails) {
-        if (userDetails == null) {
-            return 1L; // 默认用户 ID（开发环境）
-        }
-        try {
-            return Long.parseLong(userDetails.getUsername());
-        } catch (NumberFormatException e) {
-            return 1L;
-        }
     }
 
     /**

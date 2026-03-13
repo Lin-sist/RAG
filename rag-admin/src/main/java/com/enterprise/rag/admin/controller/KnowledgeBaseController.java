@@ -8,6 +8,8 @@ import com.enterprise.rag.admin.kb.entity.Document;
 import com.enterprise.rag.admin.kb.entity.DocumentStatus;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
+import com.enterprise.rag.admin.security.AuthorizationService;
+import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
@@ -59,6 +61,8 @@ public class KnowledgeBaseController {
     private final AsyncTaskManager asyncTaskManager;
     private final EmbeddingService embeddingService;
     private final VectorStore vectorStore;
+    private final CurrentUserService currentUserService;
+    private final AuthorizationService authorizationService;
 
     /**
      * 创建知识库
@@ -66,20 +70,13 @@ public class KnowledgeBaseController {
     @PostMapping
     @Operation(summary = "创建知识库", description = "创建新的知识库")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "201",
-            description = "创建成功",
-            content = @Content(schema = @Schema(implementation = KnowledgeBaseDTO.class))
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "请求参数错误"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "创建成功", content = @Content(schema = @Schema(implementation = KnowledgeBaseDTO.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "请求参数错误")
     })
     public ResponseEntity<ApiResponse<KnowledgeBaseDTO>> create(
             @Valid @RequestBody CreateKnowledgeBaseRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-        Long ownerId = extractUserId(userDetails);
+        Long ownerId = currentUserService.requireUserId(userDetails);
         log.info("创建知识库请求: name={}, ownerId={}", request.getName(), ownerId);
         KnowledgeBaseDTO kb = knowledgeBaseService.create(request, ownerId);
         log.info("知识库创建成功: id={}, name={}", kb.getId(), kb.getName());
@@ -92,19 +89,14 @@ public class KnowledgeBaseController {
     @GetMapping("/{id}")
     @Operation(summary = "获取知识库详情", description = "根据 ID 获取知识库详细信息")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "获取成功",
-            content = @Content(schema = @Schema(implementation = KnowledgeBaseDTO.class))
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "获取成功", content = @Content(schema = @Schema(implementation = KnowledgeBaseDTO.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
     public ResponseEntity<ApiResponse<KnowledgeBaseDTO>> getById(
-            @Parameter(description = "知识库 ID", required = true)
-            @PathVariable Long id) {
+            @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = currentUserService.requireUserId(userDetails);
+        authorizationService.requireKnowledgeBaseReadAccess(id, userId);
         log.debug("获取知识库详情: id={}", id);
         return knowledgeBaseService.getById(id)
                 .map(kb -> ResponseEntity.ok(ApiResponse.success(kb)))
@@ -117,14 +109,11 @@ public class KnowledgeBaseController {
     @GetMapping
     @Operation(summary = "获取知识库列表", description = "获取当前用户可访问的所有知识库")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "获取成功"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "获取成功")
     })
     public ResponseEntity<ApiResponse<List<KnowledgeBaseDTO>>> list(
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-        Long userId = extractUserId(userDetails);
+        Long userId = currentUserService.requireUserId(userDetails);
         log.debug("获取知识库列表: userId={}", userId);
         List<KnowledgeBaseDTO> kbs = knowledgeBaseService.getAccessibleByUserId(userId);
         return ResponseEntity.ok(ApiResponse.success(kbs));
@@ -136,20 +125,15 @@ public class KnowledgeBaseController {
     @PutMapping("/{id}")
     @Operation(summary = "更新知识库", description = "更新知识库信息")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "更新成功",
-            content = @Content(schema = @Schema(implementation = KnowledgeBaseDTO.class))
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功", content = @Content(schema = @Schema(implementation = KnowledgeBaseDTO.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
     public ResponseEntity<ApiResponse<KnowledgeBaseDTO>> update(
-            @Parameter(description = "知识库 ID", required = true)
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateKnowledgeBaseRequest request) {
+            @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
+            @Valid @RequestBody UpdateKnowledgeBaseRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = currentUserService.requireUserId(userDetails);
+        authorizationService.requireKnowledgeBaseAdminAccess(id, userId);
         log.info("更新知识库请求: id={}", id);
         KnowledgeBaseDTO kb = knowledgeBaseService.update(id, request);
         log.info("知识库更新成功: id={}", id);
@@ -162,18 +146,14 @@ public class KnowledgeBaseController {
     @DeleteMapping("/{id}")
     @Operation(summary = "删除知识库", description = "删除知识库及其所有文档和向量数据")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "删除成功"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "删除成功"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
     public ResponseEntity<ApiResponse<Void>> delete(
-            @Parameter(description = "知识库 ID", required = true)
-            @PathVariable Long id) {
+            @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = currentUserService.requireUserId(userDetails);
+        authorizationService.requireKnowledgeBaseAdminAccess(id, userId);
         log.info("删除知识库请求: id={}", id);
         knowledgeBaseService.delete(id);
         log.info("知识库删除成功: id={}", id);
@@ -186,19 +166,14 @@ public class KnowledgeBaseController {
     @GetMapping("/{id}/statistics")
     @Operation(summary = "获取知识库统计", description = "获取知识库的统计信息（文档数、向量数、查询次数）")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "获取成功",
-            content = @Content(schema = @Schema(implementation = KnowledgeBaseStatistics.class))
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "获取成功", content = @Content(schema = @Schema(implementation = KnowledgeBaseStatistics.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
     public ResponseEntity<ApiResponse<KnowledgeBaseStatistics>> getStatistics(
-            @Parameter(description = "知识库 ID", required = true)
-            @PathVariable Long id) {
+            @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = currentUserService.requireUserId(userDetails);
+        authorizationService.requireKnowledgeBaseReadAccess(id, userId);
         log.debug("获取知识库统计: id={}", id);
         KnowledgeBaseStatistics stats = knowledgeBaseService.getStatistics(id);
         return ResponseEntity.ok(ApiResponse.success(stats));
@@ -210,40 +185,24 @@ public class KnowledgeBaseController {
     @PostMapping(value = "/{id}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "上传文档", description = "上传文档到知识库，支持 PDF、Markdown、Word、代码文件")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "202",
-            description = "文档上传成功，异步处理中"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "文件格式不支持或文件过大"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "文档上传成功，异步处理中"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "文件格式不支持或文件过大"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
     public ResponseEntity<ApiResponse<DocumentUploadResponse>> uploadDocument(
-            @Parameter(description = "知识库 ID", required = true)
-            @PathVariable Long id,
-            @Parameter(description = "文档文件", required = true)
-            @RequestParam("file") MultipartFile file,
-            @Parameter(description = "文档标题（可选）")
-            @RequestParam(value = "title", required = false) String title,
+            @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
+            @Parameter(description = "文档文件", required = true) @RequestParam("file") MultipartFile file,
+            @Parameter(description = "文档标题（可选）") @RequestParam(value = "title", required = false) String title,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) throws IOException {
-        
-        // 验证知识库存在
-        if (!knowledgeBaseService.exists(id)) {
-            throw new BusinessException("KB_001", "知识库不存在: " + id);
-        }
-        
-        Long uploaderId = extractUserId(userDetails);
+
+        Long uploaderId = currentUserService.requireUserId(userDetails);
+        authorizationService.requireKnowledgeBaseWriteAccess(id, uploaderId);
         String fileName = file.getOriginalFilename();
         String fileType = DocumentInput.extractFileType(fileName);
-        
-        log.info("文档上传请求: kbId={}, fileName={}, fileType={}, uploaderId={}", 
+
+        log.info("文档上传请求: kbId={}, fileName={}, fileType={}, uploaderId={}",
                 id, fileName, fileType, uploaderId);
-        
+
         // 创建文档记录
         Document document = new Document();
         document.setKbId(id);
@@ -252,9 +211,9 @@ public class KnowledgeBaseController {
         document.setFileType(fileType);
         document.setStatus(DocumentStatus.PENDING.name());
         document = documentService.create(document);
-        
+
         final Long documentId = document.getId();
-        
+
         // 异步处理文档
         byte[] fileContent = file.getBytes();
         TaskHandle<ProcessResult> taskHandle = asyncTaskManager.submit(
@@ -262,16 +221,15 @@ public class KnowledgeBaseController {
                 progressCallback -> {
                     try {
                         progressCallback.accept(AsyncTask.TaskProgress.of(10, "开始解析文档"));
-                        
+
                         DocumentInput input = DocumentInput.of(
                                 new java.io.ByteArrayInputStream(fileContent),
                                 fileName,
-                                Map.of("kbId", id, "documentId", documentId)
-                        );
-                        
+                                Map.of("kbId", id, "documentId", documentId));
+
                         progressCallback.accept(AsyncTask.TaskProgress.of(30, "文档解析中"));
                         ProcessResult result = documentProcessor.process(input);
-                        
+
                         // ===== 向量化 + 存入 Milvus =====
                         progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
                         List<DocumentChunk> chunks = result.chunks();
@@ -287,7 +245,8 @@ public class KnowledgeBaseController {
                                     .toList();
 
                             // 批量生成 Embedding 向量
-                            progressCallback.accept(AsyncTask.TaskProgress.of(60, "批量向量化中 (" + chunkTexts.size() + " 块)"));
+                            progressCallback
+                                    .accept(AsyncTask.TaskProgress.of(60, "批量向量化中 (" + chunkTexts.size() + " 块)"));
                             List<float[]> vectors = embeddingService.embedBatch(chunkTexts);
 
                             // 构造 VectorDocument 列表并写入 Milvus
@@ -304,19 +263,17 @@ public class KnowledgeBaseController {
                                                 "kbId", id,
                                                 "chunkIndex", i,
                                                 "startIndex", chunk.startIndex(),
-                                                "endIndex", chunk.endIndex()
-                                        )
-                                ));
+                                                "endIndex", chunk.endIndex())));
                             }
                             vectorStore.upsert(collectionName, vectorDocs);
                             log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
                         }
-                        
+
                         progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
                         documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
                         documentService.updateChunkCount(documentId, result.chunks().size());
                         knowledgeBaseService.updateDocumentCount(id, 1);
-                        
+
                         progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档处理完成"));
                         return result;
                     } catch (Exception e) {
@@ -324,19 +281,17 @@ public class KnowledgeBaseController {
                         documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
                         throw e;
                     }
-                }
-        );
-        
+                });
+
         log.info("文档上传成功，异步处理中: documentId={}, taskId={}", documentId, taskHandle.taskId());
-        
+
         DocumentUploadResponse response = new DocumentUploadResponse(
                 documentId,
                 taskHandle.taskId(),
                 fileName,
                 fileType,
-                "PROCESSING"
-        );
-        
+                "PROCESSING");
+
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success(response));
     }
 
@@ -346,21 +301,14 @@ public class KnowledgeBaseController {
     @GetMapping("/{id}/documents")
     @Operation(summary = "获取文档列表", description = "获取知识库中的所有文档")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "获取成功"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "获取成功"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库不存在")
     })
     public ResponseEntity<ApiResponse<List<Document>>> listDocuments(
-            @Parameter(description = "知识库 ID", required = true)
-            @PathVariable Long id) {
-        if (!knowledgeBaseService.exists(id)) {
-            throw new BusinessException("KB_001", "知识库不存在: " + id);
-        }
+            @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = currentUserService.requireUserId(userDetails);
+        authorizationService.requireKnowledgeBaseReadAccess(id, userId);
         log.debug("获取文档列表: kbId={}", id);
         List<Document> documents = documentService.getByKnowledgeBaseId(id);
         return ResponseEntity.ok(ApiResponse.success(documents));
@@ -372,44 +320,20 @@ public class KnowledgeBaseController {
     @DeleteMapping("/{kbId}/documents/{docId}")
     @Operation(summary = "删除文档", description = "删除知识库中的文档及其向量数据")
     @ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "删除成功"
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "知识库或文档不存在"
-        )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "删除成功"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "知识库或文档不存在")
     })
     public ResponseEntity<ApiResponse<Void>> deleteDocument(
-            @Parameter(description = "知识库 ID", required = true)
-            @PathVariable Long kbId,
-            @Parameter(description = "文档 ID", required = true)
-            @PathVariable Long docId) {
-        if (!knowledgeBaseService.exists(kbId)) {
-            throw new BusinessException("KB_001", "知识库不存在: " + kbId);
-        }
+            @Parameter(description = "知识库 ID", required = true) @PathVariable Long kbId,
+            @Parameter(description = "文档 ID", required = true) @PathVariable Long docId,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = currentUserService.requireUserId(userDetails);
+        authorizationService.requireKnowledgeBaseWriteAccess(kbId, userId);
         log.info("删除文档请求: kbId={}, docId={}", kbId, docId);
         documentService.delete(docId);
         knowledgeBaseService.updateDocumentCount(kbId, -1);
         log.info("文档删除成功: docId={}", docId);
         return ResponseEntity.ok(ApiResponse.success());
-    }
-
-    /**
-     * 从 UserDetails 中提取用户 ID
-     */
-    private Long extractUserId(UserDetails userDetails) {
-        // 假设用户名是数字 ID 或者从 UserPrincipal 中获取
-        if (userDetails == null) {
-            return 1L; // 默认用户 ID（开发环境）
-        }
-        try {
-            return Long.parseLong(userDetails.getUsername());
-        } catch (NumberFormatException e) {
-            // 如果用户名不是数字，返回默认值
-            return 1L;
-        }
     }
 
     /**
@@ -420,6 +344,6 @@ public class KnowledgeBaseController {
             String taskId,
             String fileName,
             String fileType,
-            String status
-    ) {}
+            String status) {
+    }
 }

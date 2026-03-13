@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -45,9 +46,7 @@ public class AuthServiceImpl implements AuthService {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getUsername(),
-                            request.getPassword()
-                    )
-            );
+                            request.getPassword()));
 
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
@@ -85,6 +84,13 @@ public class AuthServiceImpl implements AuthService {
             Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
             if (userId != null) {
                 String sessionKey = RedisKeyConstants.userSessionKey(userId);
+
+                // 同步失效当前会话里的 refresh token，防止 logout 后继续刷新
+                Object refreshTokenInSession = redisUtil.hGet(sessionKey, "refreshToken");
+                if (refreshTokenInSession instanceof String refreshToken && !refreshToken.isBlank()) {
+                    tokenBlacklistService.addToBlacklist(refreshToken);
+                }
+
                 redisUtil.delete(sessionKey);
             }
 
@@ -115,10 +121,12 @@ public class AuthServiceImpl implements AuthService {
         // 获取用户信息
         UserPrincipal userPrincipal = jwtTokenProvider.getUserPrincipalFromToken(refreshToken);
 
+        // 校验 refresh token 对应会话必须存在且 token 一致
+        validateRefreshSession(userPrincipal.getId(), refreshToken);
+
         // 重新加载用户信息（确保用户状态最新）
         UserPrincipal freshUserPrincipal = (UserPrincipal) userDetailsService.loadUserByUsername(
-                userPrincipal.getUsername()
-        );
+                userPrincipal.getUsername());
 
         if (!freshUserPrincipal.isEnabled()) {
             throw AuthException.userDisabled();
@@ -165,7 +173,7 @@ public class AuthServiceImpl implements AuthService {
      */
     private void saveUserSession(Long userId, String accessToken, String refreshToken) {
         String sessionKey = RedisKeyConstants.userSessionKey(userId);
-        
+
         Map<String, Object> sessionData = new HashMap<>();
         sessionData.put("accessToken", accessToken);
         sessionData.put("refreshToken", refreshToken);
@@ -173,7 +181,21 @@ public class AuthServiceImpl implements AuthService {
         sessionData.put("lastActiveTime", Instant.now().toString());
 
         redisUtil.hSetAll(sessionKey, sessionData);
-        redisUtil.expire(sessionKey, RedisKeyConstants.USER_SESSION_TTL, TimeUnit.SECONDS);
+        // 会话 TTL 与 refresh token 生命周期保持一致，避免出现 token 未过期但会话先失效
+        redisUtil.expire(sessionKey, jwtTokenProvider.getRefreshTokenExpiration(), TimeUnit.SECONDS);
+    }
+
+    private void validateRefreshSession(Long userId, String refreshToken) {
+        String sessionKey = RedisKeyConstants.userSessionKey(userId);
+        if (!Boolean.TRUE.equals(redisUtil.hasKey(sessionKey))) {
+            throw AuthException.invalidRefreshToken();
+        }
+
+        Object storedRefreshToken = redisUtil.hGet(sessionKey, "refreshToken");
+        if (!(storedRefreshToken instanceof String tokenInSession)
+                || !Objects.equals(tokenInSession, refreshToken)) {
+            throw AuthException.invalidRefreshToken();
+        }
     }
 
     /**

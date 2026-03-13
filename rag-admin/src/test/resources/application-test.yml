@@ -19,8 +19,8 @@ mybatis-plus:
 
 jwt:
   secret: test-secret-key-for-testing-purposes-only-256-bits
-  access-token-expiration: 3600000
-  refresh-token-expiration: 604800000
+  access-token-expiration: 3600
+  refresh-token-expiration: 604800
 
 logging:
   level:
