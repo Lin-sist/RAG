@@ -506,6 +506,14 @@ class KnowledgeBasePropertyTest {
         }
 
         @Override
+        public Optional<Document> getByKnowledgeBaseAndContentHash(Long kbId, String contentHash) {
+            return docStorage.values().stream()
+                    .filter(d -> d.getKbId().equals(kbId))
+                    .filter(d -> contentHash.equals(d.getContentHash()))
+                    .findFirst();
+        }
+
+        @Override
         public void updateStatus(Long id, String status) {
             Document doc = docStorage.get(id);
             if (doc != null)
@@ -527,10 +535,10 @@ class KnowledgeBasePropertyTest {
         }
 
         @Override
-        public void delete(Long id) {
+        public boolean delete(Long id) {
             Document doc = docStorage.get(id);
             if (doc == null)
-                return;
+                return false;
 
             // Get vector IDs and delete from vector store
             List<String> vectorIds = getVectorIdsByDocumentId(id);
@@ -543,6 +551,7 @@ class KnowledgeBasePropertyTest {
 
             // Delete document
             docStorage.remove(id);
+            return true;
         }
 
         @Override

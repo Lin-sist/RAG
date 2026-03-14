@@ -18,8 +18,7 @@ public record QARequest(
         int topK,
         Map<String, Object> filter,
         boolean enableCache,
-        boolean stream
-) {
+        boolean stream) {
     /**
      * 默认检索数量
      */
@@ -44,6 +43,14 @@ public record QARequest(
      */
     public static QARequest stream(String question, String collectionName) {
         return new QARequest(question, collectionName, DEFAULT_TOP_K, Map.of(), false, true);
+    }
+
+    /**
+     * 创建带参数的流式请求
+     */
+    public static QARequest stream(String question, String collectionName, int topK,
+            Map<String, Object> filter, boolean enableCache) {
+        return new QARequest(question, collectionName, topK, filter, enableCache, true);
     }
 
     /**

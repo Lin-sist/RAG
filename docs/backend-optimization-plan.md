@@ -105,6 +105,23 @@
 | INFRA-01 | P3 | DONE | `rag-common` `rag-admin` | 限流、幂等、异步能力已经存在，但业务接口没有真正落地使用 | 通用能力与业务实现脱节 |
 | OBS-01 | P3 | DONE | `rag-common` `rag-admin` | 缺少系统化指标、告警、任务链路可观测性 | 故障难排查，容量难评估 |
 
+## 4.5 2026-03-14 复审新增 P0 / P1 问题
+
+| 编号 | 优先级 | 状态 | 模块 | 问题描述 | 影响 |
+|------|------|------|------|------|------|
+| DOC-06 | P0 | DONE | `rag-admin` | 删除文档接口只校验调用者对 `kbId` 的写权限，未校验 `docId` 是否属于该 `kbId`，且删除后固定执行 `updateDocumentCount(kbId, -1)` | 可被利用删除其他知识库文档，或在未实际删除目标文档时错误递减统计 |
+| TASK-01 | P1 | DONE | `rag-admin` `rag-common` | 异步任务状态/结果/取消接口仅按 `taskId` 访问，任务状态中未持久化 owner 信息 | 已登录用户只要拿到 `taskId` 即可查询、取消他人任务，存在任务越权风险 |
+| KB-01 | P1 | DONE | `rag-admin` `rag-core` | 创建知识库时数据库记录先落库，向量集合创建失败仅记录 warn 不回滚也不失败返回 | 会产生“数据库存在但向量集合不存在”的半初始化知识库，后续上传/问答链路不可用 |
+| FEEDBACK-01 | P1 | DONE | `rag-admin` | 反馈提交采用“先查后插”，但表结构缺少 `(qa_id, user_id)` 唯一约束，幂等又依赖客户端请求头 | 并发提交或未携带幂等 key 时可能落多条重复反馈，破坏审计与统计准确性 |
+
+## 4.6 2026-03-14 复审新增 P2 问题
+
+| 编号 | 优先级 | 状态 | 模块 | 问题描述 | 影响 |
+|------|------|------|------|------|------|
+| DOC-07 | P2 | DONE | `rag-admin` | 上传接口虽然已抽出应用服务，但控制器仍调用 `file.getBytes()`，异步任务也继续持有整份 `byte[]` | 大文件上传时仍会形成整包内存占用，控制器瘦身不彻底 |
+| DOC-08 | P2 | DONE | `rag-admin` | 内容去重当前基于全局唯一 `content_hash`，异步去重命中后又尝试给新文档写入同一 hash | 跨知识库上传相同内容会触发唯一键冲突，重复文档场景无法稳定落地 |
+| RAG-06 | P2 | DONE | `rag-admin` `rag-core` | 流式问答接口接收 `topK/filter/enableCache`，但实际构造 `QARequest.stream()` 时丢弃这些参数且未在客户端断开时取消下游订阅 | 流式与非流式语义不一致，断流后仍可能持续消耗检索与 LLM 资源 |
+
 ## 5. 重构总目标
 
 ## 5.1 功能目标
@@ -573,6 +590,159 @@
 - [x] `INFRA-01` 让限流/幂等/异步能力真正落地
 - [x] `OBS-01` 增加观测性与任务诊断能力
 
+## 10.5 2026-03-14 复审问题任务
+
+- [x] `DOC-06` 删除文档归属校验与计数一致性修复
+- [x] `TASK-01` 异步任务 owner 授权修复
+- [x] `KB-01` 知识库创建一致性修复
+- [x] `FEEDBACK-01` 反馈唯一约束与并发幂等修复
+- [x] `DOC-07` 上传链路内存占用优化
+- [x] `DOC-08` 内容去重唯一约束冲突修复
+- [x] `RAG-06` 流式问答参数透传与断流取消修复
+
+### DOC-06 实施说明（2026-03-14）
+
+- 实施范围：`KnowledgeBaseController`、`DocumentService`、`DocumentServiceImpl`
+- 关键改造：
+  - 删除接口新增 `docId -> kbId` 归属校验，阻断跨知识库删除
+  - `DocumentService.delete()` 改为返回删除结果，区分“文档不存在”和“实际删除成功”
+  - 仅在删除成功后执行 `updateDocumentCount(kbId, -1)`
+- 测试验证：`mvn -pl rag-admin "-Dtest=KnowledgeBasePropertyTest,QAControllerTest" test` 通过
+
+### DOC-06 验收结果
+
+- [x] 删除接口已校验文档归属关系（`docId` 必须属于当前 `kbId`）
+- [x] 文档不存在或归属不匹配时不会递减知识库文档计数
+- [x] 文档删除链路定向回归测试通过
+
+### DOC-06 风险与后续
+
+- 当前以 Controller 入口实现归属校验，后续可在应用服务层下沉该规则，减少重复调用风险
+- 若后续引入批量删除接口，需要复用同一归属与计数一致性策略
+
+### TASK-01 实施说明（2026-03-14）
+
+- 实施范围：`AsyncTaskManager`、`RedisAsyncTaskManager`、`TaskStatus`、`TaskController`、`DocumentIndexingServiceImpl`
+- 关键改造：
+  - 异步任务提交接口新增 owner 参数，任务创建时持久化 `ownerId`
+  - 任务状态模型与 Redis 序列化结构新增 `ownerId`
+  - 任务状态/结果/取消/存在/完成接口统一增加 owner 校验（当前用户必须等于任务 owner）
+  - 文档索引任务提交时传入 `uploaderId`，确保任务归属可追踪
+- 测试验证：
+  - `mvn -pl rag-common "-Dtest=AsyncTaskManagerPropertyTest" test` 通过
+  - `mvn -pl rag-admin "-Dtest=TaskControllerTest,QAControllerTest,KnowledgeBasePropertyTest" test` 通过
+
+### TASK-01 验收结果
+
+- [x] 任务状态已持久化 owner 信息
+- [x] 已登录用户无法查询/取消他人任务
+- [x] 任务控制器新增越权场景单元测试并通过
+
+### TASK-01 风险与后续
+
+- 历史存量任务若无 owner 字段将被拒绝访问；如需兼容可补一次性迁移或过渡逻辑
+- 当前 owner 校验位于 Controller 层，后续可在任务服务层统一沉淀鉴权策略
+
+### KB-01 实施说明（2026-03-14）
+
+- 实施范围：`KnowledgeBaseServiceImpl`
+- 关键改造：
+  - 创建知识库时，若向量集合初始化失败，立即抛出 `BusinessException(KB_005)`
+  - 依赖 `@Transactional` 回滚数据库写入，避免“库记录存在但向量集合不存在”的半初始化状态
+- 测试验证：`mvn -pl rag-admin "-Dtest=KnowledgeBaseServiceImplTest,TaskControllerTest,QAControllerTest,KnowledgeBasePropertyTest" test` 通过
+
+### KB-01 验收结果
+
+- [x] 向量集合创建失败时不再返回成功
+- [x] 创建链路在失败场景下具备事务回滚语义
+- [x] 新增 `KnowledgeBaseServiceImplTest` 覆盖故障分支
+
+### KB-01 风险与后续
+
+- 当前策略为“强一致失败即回滚”，后续若需要提升可用性，可演进为异步初始化并引入 `INITIALIZING` 状态机
+- 向量库偶发抖动会直接影响创建成功率，建议后续增加限次重试与熔断保护
+
+### FEEDBACK-01 实施说明（2026-03-14）
+
+- 实施范围：Flyway 脚本、`QAFeedbackServiceImpl`
+- 关键改造：
+  - 新增迁移脚本 `V4__qa_feedback_unique_constraint.sql`
+  - 迁移脚本先清理历史重复 `(qa_id, user_id)` 数据，再新增唯一约束 `uk_qa_feedback_qa_user`
+  - 服务层在插入时捕获 `DuplicateKeyException` 并统一转为 `FEEDBACK_002`
+- 测试验证：`mvn -pl rag-admin "-Dtest=QAFeedbackServiceImplTest,KnowledgeBaseServiceImplTest,TaskControllerTest,QAControllerTest" test` 通过
+
+### FEEDBACK-01 验收结果
+
+- [x] 数据库层已具备 `(qa_id, user_id)` 唯一约束
+- [x] 并发冲突可稳定返回“已提交过反馈”业务错误
+- [x] 新增 `QAFeedbackServiceImplTest` 覆盖重复键冲突与评分校验分支
+
+### FEEDBACK-01 风险与后续
+
+- Flyway 执行前建议先在预发环境核对历史重复数据清理结果
+- 若后续引入“软删除后允许重提”，需要调整唯一约束策略（如纳入 `deleted` 字段）
+
+### DOC-07 实施说明（2026-03-14）
+
+- 实施范围：`KnowledgeBaseController`、`DocumentIndexingService`、`DocumentIndexingServiceImpl`
+- 关键改造：
+  - 上传接口移除 `file.getBytes()`，改为直接传递 `MultipartFile` 到应用服务
+  - 应用服务先将上传内容写入临时文件，再提交异步任务，任务只持有 `Path` 引用
+  - 异步处理阶段通过文件流读取内容，并在 `finally` 中清理临时文件
+- 测试验证：`mvn -pl rag-admin "-Dtest=QAControllerTest,TaskControllerTest,QAFeedbackServiceImplTest,KnowledgeBaseServiceImplTest,KnowledgeBasePropertyTest" test` 通过
+
+### DOC-07 验收结果
+
+- [x] 控制器不再持有整份 `byte[]`
+- [x] 异步任务不再闭包捕获整包内容，仅使用临时文件路径
+- [x] 临时文件在处理完成或失败后均会清理
+
+### DOC-07 风险与后续
+
+- 临时文件目录容量需纳入运维监控，避免磁盘压力在高并发上传时积累
+- 后续可进一步演进为对象存储分段上传，减少本地磁盘依赖
+
+### DOC-08 实施说明（2026-03-14）
+
+- 实施范围：`DocumentService`、`DocumentServiceImpl`、`DocumentIndexingServiceImpl`、Flyway 脚本
+- 关键改造：
+  - 新增迁移脚本 `V5__document_content_hash_scope_kb.sql`，将唯一约束从 `content_hash` 调整为 `(kb_id, content_hash)`
+  - 新增 `DocumentService#getByKnowledgeBaseAndContentHash()`，去重查询改为“知识库内去重”
+  - 异步去重命中后不再给新文档回写冲突 hash，避免触发唯一键冲突
+- 测试验证：`mvn -pl rag-admin "-Dtest=QAControllerTest,TaskControllerTest,QAFeedbackServiceImplTest,KnowledgeBaseServiceImplTest,KnowledgeBasePropertyTest" test` 通过
+
+### DOC-08 验收结果
+
+- [x] 跨知识库上传相同内容不再受全局唯一约束阻塞
+- [x] 去重查询粒度已收敛到知识库维度
+- [x] 去重命中路径已消除重复 hash 写入冲突
+
+### DOC-08 风险与后续
+
+- 迁移脚本假定旧索引名为 `uk_content_hash`，上线前需确认生产库索引名一致
+- 若后续要严格限制“同知识库重复上传”，可补充显式 `DUPLICATE` 文档状态提高可观测性
+
+### RAG-06 实施说明（2026-03-14）
+
+- 实施范围：`QAController`、`QARequest`、`QAControllerTest`
+- 关键改造：
+  - 新增 `QARequest.stream(question, collectionName, topK, filter, enableCache)` 工厂方法
+  - 流式问答构造请求时完整透传 `topK/filter/enableCache`，与同步问答语义对齐
+  - 在 SSE 的 `onCompletion/onTimeout/onError` 回调中统一释放下游订阅，减少断流后的无效计算
+  - 测试增强：`QAControllerTest` 新增对流式参数透传的断言
+- 测试验证：`mvn -pl rag-admin "-Dtest=QAControllerTest,TaskControllerTest,QAFeedbackServiceImplTest,KnowledgeBaseServiceImplTest,KnowledgeBasePropertyTest" test` 通过
+
+### RAG-06 验收结果
+
+- [x] 流式请求参数与同步请求语义一致
+- [x] 客户端断连/超时场景会主动取消下游订阅
+- [x] 流式链路新增参数透传测试覆盖
+
+### RAG-06 风险与后续
+
+- 当前取消语义依赖 Reactor `dispose()` 传播到下游实现，建议后续补集成测试验证真实 LLM 调用是否及时中断
+- 可进一步把取消事件纳入观测指标，统计“用户主动断流”占比
+
 ### TEST-01 实施说明（2026-03-13）
 
 - 实施范围：`AsyncTaskManagerPropertyTest`、`IdempotencyHandlerPropertyTest`、`RateLimiterPropertyTest`
@@ -674,3 +844,21 @@
 - 完成 `INFRA-01` 第二轮：补齐知识库/历史/任务写接口限流，并在服务层落地幂等能力，完成跨用户幂等键隔离增强
 - 完成 `OBS-01` 第二轮：新增全局请求观测过滤器，统一输出 trace/状态码/耗时日志并支持慢请求告警阈值
 - 持续增强：新增 `IdempotencyAspectTest` 与 `RequestObservationFilterTest`，为幂等键隔离与请求观测行为提供回归保障
+
+### 2026-03-14
+
+- 基于新一轮后端复审，在保留原 `4. 核心问题总览` 历史记录的前提下新增 `4.5`、`4.6` 问题分组
+- 新增 `DOC-06`：补记文档删除缺少 `docId -> kbId` 归属校验且统计会错误递减的问题
+- 新增 `TASK-01`：补记异步任务接口缺少 owner 级资源授权的问题
+- 新增 `KB-01`：补记知识库创建与向量集合初始化缺少一致性保障的问题
+- 新增 `FEEDBACK-01`：补记反馈提交缺少数据库唯一约束的并发重复写入风险
+- 新增 `DOC-07`：补记上传链路仍持有整份 `byte[]` 的内存压力问题
+- 新增 `DOC-08`：补记全局 `content_hash` 唯一约束与当前去重策略冲突的问题
+- 新增 `RAG-06`：补记流式问答请求参数丢失与断流后未取消下游生成的问题
+- 完成 `DOC-06` 第一轮落地：删除接口新增 `docId -> kbId` 归属校验，`DocumentService.delete()` 返回删除结果并仅在成功后递减计数，消除跨库删除与错误计数风险
+- 完成 `TASK-01` 第一轮落地：任务状态持久化 owner 信息，任务状态/结果/取消等接口接入 owner 校验，修复 taskId 越权访问风险
+- 完成 `KB-01` 第一轮落地：知识库创建时向量集合初始化失败改为抛错并回滚事务，避免半初始化知识库进入可用链路
+- 完成 `FEEDBACK-01` 第一轮落地：补充 `(qa_id,user_id)` 唯一约束与重复键异常兜底，消除并发重复反馈写入风险
+- 完成 `DOC-07` 第一轮落地：上传链路改为临时文件流式处理，移除控制器与异步闭包中的整包 `byte[]` 占用
+- 完成 `DOC-08` 第一轮落地：`content_hash` 唯一约束收敛为 `(kb_id, content_hash)`，并修复去重命中写冲突问题
+- 完成 `RAG-06` 第一轮落地：流式问答透传 `topK/filter/enableCache` 参数并在 SSE 断连/超时/错误时取消下游订阅

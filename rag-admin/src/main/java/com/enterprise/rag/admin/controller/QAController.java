@@ -30,6 +30,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
@@ -139,7 +140,12 @@ public class QAController {
         long startTime = System.currentTimeMillis();
 
         // 构建流式 QA 请求
-        QARequest qaRequest = QARequest.stream(request.question(), kb.getVectorCollection());
+        QARequest qaRequest = QARequest.stream(
+                request.question(),
+                kb.getVectorCollection(),
+                request.topK() != null ? request.topK() : QARequest.DEFAULT_TOP_K,
+                request.filter() != null ? request.filter() : Map.of(),
+                request.enableCache() != null ? request.enableCache() : true);
 
         // RAG-04: 流式问答入口同样计入查询次数
         knowledgeBaseService.incrementQueryCount(request.kbId());
@@ -151,7 +157,7 @@ public class QAController {
         SseEmitter emitter = new SseEmitter(120_000L); // 120秒超时
         StringBuffer answerBuffer = new StringBuffer();
 
-        ragService.askStream(qaRequest)
+        Disposable subscription = ragService.askStream(qaRequest)
                 .doOnSubscribe(s -> log.debug("流式问答开始: kbId={}", request.kbId()))
                 .subscribe(
                         chunk -> {
@@ -187,6 +193,23 @@ public class QAController {
                                 emitter.completeWithError(e);
                             }
                         });
+
+        emitter.onCompletion(() -> {
+            if (!subscription.isDisposed()) {
+                subscription.dispose();
+            }
+        });
+        emitter.onTimeout(() -> {
+            if (!subscription.isDisposed()) {
+                subscription.dispose();
+            }
+            emitter.complete();
+        });
+        emitter.onError(error -> {
+            if (!subscription.isDisposed()) {
+                subscription.dispose();
+            }
+        });
 
         return emitter;
     }

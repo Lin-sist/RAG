@@ -203,9 +203,7 @@ public class KnowledgeBaseController {
                 log.info("文档上传请求: kbId={}, fileName={}, uploaderId={}", id, fileName, uploaderId);
 
                 // DOC-01: 索引编排完全委托给 DocumentIndexingService
-                byte[] fileContent = file.getBytes();
-                DocumentUploadResponse response = documentIndexingService.submitIndexing(id, uploaderId, fileContent,
-                                fileName, title);
+                DocumentUploadResponse response = documentIndexingService.submitIndexing(id, uploaderId, file, title);
 
                 return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success(response));
         }
@@ -245,8 +243,18 @@ public class KnowledgeBaseController {
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
                 Long userId = currentUserService.requireUserId(userDetails);
                 authorizationService.requireKnowledgeBaseWriteAccess(kbId, userId);
+
+                var document = documentService.getById(docId)
+                                .orElseThrow(() -> new BusinessException("DOC_004", "文档不存在"));
+                if (!kbId.equals(document.getKbId())) {
+                        throw new BusinessException("DOC_005", "文档不属于当前知识库");
+                }
+
                 log.info("删除文档请求: kbId={}, docId={}", kbId, docId);
-                documentService.delete(docId);
+                boolean deleted = documentService.delete(docId);
+                if (!deleted) {
+                        throw new BusinessException("DOC_006", "文档删除失败，请重试");
+                }
                 knowledgeBaseService.updateDocumentCount(kbId, -1);
                 log.info("文档删除成功: docId={}", docId);
                 return ResponseEntity.ok(ApiResponse.success());

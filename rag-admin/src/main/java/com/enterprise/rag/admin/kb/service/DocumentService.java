@@ -44,6 +44,15 @@ public interface DocumentService {
     Optional<Document> getByContentHash(String contentHash);
 
     /**
+     * 根据知识库 ID 和内容哈希查找文档
+     *
+     * @param kbId        知识库ID
+     * @param contentHash 内容哈希
+     * @return 文档（如果存在）
+     */
+    Optional<Document> getByKnowledgeBaseAndContentHash(Long kbId, String contentHash);
+
+    /**
      * 更新文档状态
      *
      * @param id     文档ID
@@ -71,8 +80,9 @@ public interface DocumentService {
      * 删除文档（级联删除分块和向量数据）
      *
      * @param id 文档ID
+     * @return true 表示文档记录实际删除，false 表示文档不存在
      */
-    void delete(Long id);
+    boolean delete(Long id);
 
     /**
      * 删除知识库的所有文档

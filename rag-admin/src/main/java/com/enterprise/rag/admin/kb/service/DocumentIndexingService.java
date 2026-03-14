@@ -1,6 +1,7 @@
 package com.enterprise.rag.admin.kb.service;
 
 import com.enterprise.rag.admin.kb.dto.DocumentUploadResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 文档索引应用服务
@@ -13,13 +14,12 @@ public interface DocumentIndexingService {
     /**
      * 提交文档索引任务（异步执行）
      *
-     * @param kbId        知识库 ID
-     * @param uploaderId  上传者用户 ID
-     * @param fileContent 文件字节内容
-     * @param fileName    原始文件名
-     * @param title       可选标题（为 null 时取文件名）
+     * @param kbId       知识库 ID
+     * @param uploaderId 上传者用户 ID
+     * @param file       上传文件
+     * @param title      可选标题（为 null 时取文件名）
      * @return 上传响应（含 documentId 和 taskId）
      */
     DocumentUploadResponse submitIndexing(Long kbId, Long uploaderId,
-            byte[] fileContent, String fileName, String title);
+            MultipartFile file, String title);
 }

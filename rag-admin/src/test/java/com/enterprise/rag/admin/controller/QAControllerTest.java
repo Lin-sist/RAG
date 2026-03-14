@@ -93,6 +93,11 @@ class QAControllerTest {
 
                 qaController.askStream(request, userDetails);
 
+                verify(ragService, times(1)).askStream(argThat(qaRequest -> qaRequest != null
+                                && qaRequest.stream()
+                                && qaRequest.topK() == 5
+                                && qaRequest.enableCache() == false
+                                && qaRequest.filter().isEmpty()));
                 verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
                 verify(qaHistoryService, times(1)).save(argThat(saveReq -> saveReq != null
                                 && "什么是RAG".equals(saveReq.getQuestion())

@@ -33,6 +33,17 @@ public interface AsyncTaskManager {
     <T> TaskHandle<T> submit(String taskType, AsyncTask<T> task);
 
     /**
+     * 提交异步任务（指定任务类型和所有者）
+     *
+     * @param taskType 任务类型
+     * @param ownerId  任务所有者用户 ID
+     * @param task     异步任务
+     * @param <T>      任务结果类型
+     * @return 任务句柄
+     */
+    <T> TaskHandle<T> submit(String taskType, Long ownerId, AsyncTask<T> task);
+
+    /**
      * 提交简单的异步任务（无进度回调）
      *
      * @param taskType 任务类型
@@ -41,6 +52,17 @@ public interface AsyncTaskManager {
      * @return 任务句柄
      */
     <T> TaskHandle<T> submit(String taskType, Callable<T> callable);
+
+    /**
+     * 提交简单的异步任务（指定任务所有者）
+     *
+     * @param taskType 任务类型
+     * @param ownerId  任务所有者用户 ID
+     * @param callable 可调用任务
+     * @param <T>      任务结果类型
+     * @return 任务句柄
+     */
+    <T> TaskHandle<T> submit(String taskType, Long ownerId, Callable<T> callable);
 
     /**
      * 获取任务状态

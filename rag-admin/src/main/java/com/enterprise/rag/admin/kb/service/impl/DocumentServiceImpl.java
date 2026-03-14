@@ -59,6 +59,15 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public Optional<Document> getByKnowledgeBaseAndContentHash(Long kbId, String contentHash) {
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Document::getKbId, kbId)
+                .eq(Document::getContentHash, contentHash)
+                .last("LIMIT 1");
+        return Optional.ofNullable(documentMapper.selectOne(wrapper));
+    }
+
+    @Override
     @Transactional
     public void updateStatus(Long id, String status) {
         LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
@@ -87,10 +96,10 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public void delete(Long id) {
+    public boolean delete(Long id) {
         Optional<Document> docOpt = getById(id);
         if (docOpt.isEmpty()) {
-            return;
+            return false;
         }
 
         Document document = docOpt.get();
@@ -119,7 +128,7 @@ public class DocumentServiceImpl implements DocumentService {
         deleteChunksByDocumentId(id);
 
         // 删除文档记录
-        documentMapper.deleteById(id);
+        return documentMapper.deleteById(id) > 0;
     }
 
     @Override

@@ -10,6 +10,7 @@ import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.idempotency.Idempotent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +47,11 @@ public class QAFeedbackServiceImpl implements QAFeedbackService {
         feedback.setRating(request.getRating());
         feedback.setComment(request.getComment());
 
-        qaFeedbackMapper.insert(feedback);
+        try {
+            qaFeedbackMapper.insert(feedback);
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException("FEEDBACK_002", "您已对该问答提交过反馈");
+        }
         log.info("Submitted feedback: id={}, qaId={}, userId={}, rating={}",
                 feedback.getId(), feedback.getQaId(), feedback.getUserId(), feedback.getRating());
 

@@ -68,7 +68,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             vectorStore.createCollection(collectionName, dimension);
             log.info("Created vector collection: {} with dimension: {}", collectionName, dimension);
         } catch (Exception e) {
-            log.warn("Failed to create vector collection {}: {}", collectionName, e.getMessage());
+            log.error("Failed to create vector collection {}, rollback create: {}", collectionName, e.getMessage());
+            throw new BusinessException("KB_005", "创建知识库失败：向量集合初始化失败", e);
         }
 
         return toDTO(kb);

@@ -1,5 +1,6 @@
 package com.enterprise.rag.admin.controller;
 
+import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskStatus;
 import com.enterprise.rag.common.async.TaskStatusResponse;
@@ -17,6 +18,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -33,6 +36,7 @@ public class TaskController {
 
     private final AsyncTaskManager asyncTaskManager;
     private final TaskStatusService taskStatusService;
+    private final CurrentUserService currentUserService;
 
     /**
      * 获取任务状态
@@ -44,11 +48,11 @@ public class TaskController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "任务不存在")
     })
     public ResponseEntity<ApiResponse<TaskStatusResponse>> getTaskStatus(
-            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId) {
+            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("查询任务状态: taskId={}", taskId);
 
-        TaskStatus status = asyncTaskManager.getStatus(taskId)
-                .orElseThrow(() -> new BusinessException("TASK_001", "任务不存在: " + taskId));
+        TaskStatus status = requireTaskOwner(taskId, userDetails);
 
         TaskStatusResponse response = TaskStatusResponse.from(status);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -65,11 +69,11 @@ public class TaskController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "任务尚未完成")
     })
     public ResponseEntity<ApiResponse<TaskStatusResponse>> getTaskResult(
-            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId) {
+            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("查询任务结果: taskId={}", taskId);
 
-        TaskStatus status = asyncTaskManager.getStatus(taskId)
-                .orElseThrow(() -> new BusinessException("TASK_001", "任务不存在: " + taskId));
+        TaskStatus status = requireTaskOwner(taskId, userDetails);
 
         if (!status.isTerminal()) {
             throw new BusinessException("TASK_002", "任务尚未完成: " + taskId);
@@ -97,15 +101,12 @@ public class TaskController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "任务已完成，无法取消")
     })
     public ResponseEntity<ApiResponse<CancelResponse>> cancelTask(
-            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId) {
+            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.info("取消任务请求: taskId={}", taskId);
 
-        if (!asyncTaskManager.exists(taskId)) {
-            throw new BusinessException("TASK_001", "任务不存在: " + taskId);
-        }
-
-        TaskStatus status = asyncTaskManager.getStatus(taskId).orElse(null);
-        if (status != null && status.isTerminal()) {
+        TaskStatus status = requireTaskOwner(taskId, userDetails);
+        if (status.isTerminal()) {
             throw new BusinessException("TASK_003", "任务已完成，无法取消: " + taskId);
         }
 
@@ -124,10 +125,11 @@ public class TaskController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "检查成功")
     })
     public ResponseEntity<ApiResponse<ExistsResponse>> checkTaskExists(
-            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId) {
+            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("检查任务是否存在: taskId={}", taskId);
-        boolean exists = asyncTaskManager.exists(taskId);
-        return ResponseEntity.ok(ApiResponse.success(new ExistsResponse(taskId, exists)));
+        requireTaskOwner(taskId, userDetails);
+        return ResponseEntity.ok(ApiResponse.success(new ExistsResponse(taskId, true)));
     }
 
     /**
@@ -140,12 +142,11 @@ public class TaskController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "任务不存在")
     })
     public ResponseEntity<ApiResponse<CompletedResponse>> checkTaskCompleted(
-            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId) {
+            @Parameter(description = "任务 ID", required = true) @PathVariable String taskId,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("检查任务是否完成: taskId={}", taskId);
 
-        if (!asyncTaskManager.exists(taskId)) {
-            throw new BusinessException("TASK_001", "任务不存在: " + taskId);
-        }
+        requireTaskOwner(taskId, userDetails);
 
         boolean completed = taskStatusService.isCompleted(taskId);
         boolean successful = taskStatusService.isSuccessful(taskId);
@@ -169,5 +170,16 @@ public class TaskController {
      * 完成检查响应
      */
     public record CompletedResponse(String taskId, boolean completed, boolean successful) {
+    }
+
+    private TaskStatus requireTaskOwner(String taskId, UserDetails userDetails) {
+        Long userId = currentUserService.requireUserId(userDetails);
+        TaskStatus status = asyncTaskManager.getStatus(taskId)
+                .orElseThrow(() -> new BusinessException("TASK_001", "任务不存在: " + taskId));
+
+        if (status.ownerId() == null || !status.ownerId().equals(userId)) {
+            throw new BusinessException("AUTH_004", "无权限访问该任务");
+        }
+        return status;
     }
 }
