@@ -26,11 +26,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 public class DocumentProcessorImpl implements DocumentProcessor {
+    private static final String DEFAULT_DEDUP_SCOPE = "global";
+    private static final String KB_SCOPE_KEY = "kbId";
+    private static final String KNOWLEDGE_BASE_SCOPE_KEY = "knowledgeBaseId";
     
     private final DocumentParserFactory parserFactory;
     private final DocumentChunker chunker;
     
-    // 内存存储已处理文档的哈希（生产环境应使用 Redis 或数据库）
+    // 内存存储已处理文档的哈希（按知识库作用域隔离，生产环境应使用 Redis 或数据库）
     private final Map<String, String> processedHashes = new ConcurrentHashMap<>();
     
     public DocumentProcessorImpl(DocumentParserFactory parserFactory, DocumentChunker chunker) {
@@ -68,10 +71,11 @@ public class DocumentProcessorImpl implements DocumentProcessor {
         
         // 4. 计算内容哈希
         String contentHash = computeHash(rawContent);
+        String dedupKey = buildDedupKey(input.metadata(), contentHash);
         
         // 5. 幂等性检查
-        if (exists(contentHash)) {
-            String existingDocId = processedHashes.get(contentHash);
+        if (processedHashes.containsKey(dedupKey)) {
+            String existingDocId = processedHashes.get(dedupKey);
             return ProcessResult.duplicate(existingDocId, contentHash);
         }
         
@@ -80,7 +84,7 @@ public class DocumentProcessorImpl implements DocumentProcessor {
         
         // 7. 生成文档 ID 并记录
         String documentId = UUID.randomUUID().toString();
-        processedHashes.put(contentHash, documentId);
+        processedHashes.put(dedupKey, documentId);
         
         return ProcessResult.newDocument(documentId, contentHash, rawContent, chunks);
     }
@@ -95,7 +99,7 @@ public class DocumentProcessorImpl implements DocumentProcessor {
     
     @Override
     public boolean exists(String contentHash) {
-        return processedHashes.containsKey(contentHash);
+        return processedHashes.containsKey(buildDedupKey(Map.of(), contentHash));
     }
     
     @Override
@@ -123,6 +127,32 @@ public class DocumentProcessorImpl implements DocumentProcessor {
      * 手动添加哈希记录（用于测试）
      */
     public void addProcessedHash(String hash, String documentId) {
-        processedHashes.put(hash, documentId);
+        processedHashes.put(buildDedupKey(Map.of(), hash), documentId);
+    }
+
+    private String buildDedupKey(Map<String, Object> metadata, String contentHash) {
+        return resolveDedupScope(metadata) + "::" + contentHash;
+    }
+
+    private String resolveDedupScope(Map<String, Object> metadata) {
+        if (metadata == null || metadata.isEmpty()) {
+            return DEFAULT_DEDUP_SCOPE;
+        }
+
+        Object kbId = metadata.get(KB_SCOPE_KEY);
+        if (kbId == null) {
+            kbId = metadata.get(KNOWLEDGE_BASE_SCOPE_KEY);
+        }
+
+        if (kbId == null) {
+            return DEFAULT_DEDUP_SCOPE;
+        }
+
+        if (kbId instanceof Number number) {
+            return "kb:" + number.longValue();
+        }
+
+        String normalized = String.valueOf(kbId).trim();
+        return normalized.isEmpty() ? DEFAULT_DEDUP_SCOPE : "kb:" + normalized;
     }
 }
