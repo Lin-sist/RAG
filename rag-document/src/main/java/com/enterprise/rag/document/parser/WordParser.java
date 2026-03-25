@@ -9,19 +9,20 @@ import java.io.InputStream;
 
 /**
  * Word 文档解析器
- * 使用 Apache POI 解析 Word 文件（.docx）
+ * 使用 Apache POI 解析 Word 文件（.docx）。
+ * 当前实现仅支持 OOXML 格式，避免把老式 .doc 误判为可上传。
  */
 @Component
 public class WordParser implements DocumentParser {
     
-    private static final String[] SUPPORTED_TYPES = {"docx", "doc"};
+    private static final String[] SUPPORTED_TYPES = {"docx"};
     
     @Override
     public String parse(InputStream input) throws DocumentParseException {
         try (XWPFDocument document = new XWPFDocument(input);
              XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
             return extractor.getText();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new DocumentParseException("Failed to parse Word document", e);
         }
     }

@@ -161,6 +161,22 @@ public class DocumentChunker {
             if (sentence.isEmpty()) {
                 continue;
             }
+
+            // Markdown 里的长表格行、长代码行或无标点大段文本，可能整个段落都被视为一个“句子”。
+            // 这时退回固定大小切分，避免生成超大 chunk 拖垮后续 embedding / 向量写入。
+            if (sentence.length() > config.chunkSize()) {
+                if (currentChunk.length() > 0) {
+                    chunks.add(createChunk(currentChunk.toString().trim(), currentStart, position, index++));
+                    currentChunk = new StringBuilder();
+                }
+
+                List<DocumentChunk> oversizedChunks = splitOversizedText(sentence, position, config, index);
+                chunks.addAll(oversizedChunks);
+                index += oversizedChunks.size();
+                position += sentence.length() + 1;
+                currentStart = position;
+                continue;
+            }
             
             if (currentChunk.length() + sentence.length() + 1 > config.chunkSize() && currentChunk.length() > 0) {
                 chunks.add(createChunk(currentChunk.toString().trim(), currentStart, position, index++));
@@ -182,6 +198,27 @@ public class DocumentChunker {
         }
         
         return chunks;
+    }
+
+    /**
+     * 将超长文本回退为固定大小分块，并保留语义分块中的基准位置信息。
+     */
+    private List<DocumentChunk> splitOversizedText(String text, int basePosition, ChunkConfig config, int startIndex) {
+        List<DocumentChunk> fixedChunks = chunkByFixedSize(text, ChunkConfig.fixedSize(config.chunkSize(), config.chunkOverlap()));
+        List<DocumentChunk> rebasedChunks = new ArrayList<>(fixedChunks.size());
+
+        for (int i = 0; i < fixedChunks.size(); i++) {
+            DocumentChunk fixedChunk = fixedChunks.get(i);
+            rebasedChunks.add(new DocumentChunk(
+                    fixedChunk.id(),
+                    fixedChunk.content(),
+                    basePosition + fixedChunk.startIndex(),
+                    basePosition + fixedChunk.endIndex(),
+                    Map.of("chunkIndex", startIndex + i)
+            ));
+        }
+
+        return rebasedChunks;
     }
     
     /**

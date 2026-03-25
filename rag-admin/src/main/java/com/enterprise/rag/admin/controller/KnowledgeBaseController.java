@@ -176,7 +176,7 @@ public class KnowledgeBaseController {
          */
         @PostMapping(value = "/{id}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
         @RateLimit(maxRequests = 15, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "文档上传请求过于频繁，请稍后重试")
-        @Operation(summary = "上传文档", description = "上传文档到知识库，支持 PDF、Markdown、Word、代码文件")
+        @Operation(summary = "上传文档", description = "上传文档到知识库，支持 PDF、Markdown、Word(.docx)、代码文件")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "文档上传成功，异步处理中"),
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "文件格式不支持或文件过大"),

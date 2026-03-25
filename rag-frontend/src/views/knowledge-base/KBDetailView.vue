@@ -192,7 +192,8 @@ async function pollTaskOnce(task: ProgressTask) {
       if (state === 'COMPLETED') {
         ElMessage.success(`「${task.fileName}」处理完成`)
       } else {
-        ElMessage.error(`「${task.fileName}」处理失败`)
+        const reason = task.status?.error || task.status?.message || '处理失败'
+        ElMessage.error(`「${task.fileName}」处理失败：${reason}`)
       }
 
       // 刷新文档列表和统计

@@ -19,7 +19,7 @@
       </div>
       <template #tip>
         <div class="el-upload__tip">
-          支持 PDF、Markdown、Word、TXT、代码文件，单次最多 5 个文件
+          支持 PDF、Markdown、Word(.docx)、TXT、代码文件，单次最多 5 个文件
         </div>
       </template>
     </el-upload>
@@ -71,7 +71,7 @@ const fileList = ref<UploadFile[]>([])
 const uploading = ref(false)
 
 // 支持的文件类型
-const acceptTypes = '.pdf,.md,.markdown,.doc,.docx,.txt,.java,.py,.js,.ts,.go,.c,.cpp,.h,.vue,.json,.yml,.yaml,.xml,.html,.css'
+const acceptTypes = '.pdf,.md,.markdown,.docx,.txt,.java,.py,.js,.ts,.go,.c,.cpp,.h,.vue,.json,.yml,.yaml,.xml,.html,.css'
 
 interface UploadResult {
   success: boolean
