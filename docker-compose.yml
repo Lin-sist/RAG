@@ -7,7 +7,7 @@ services:
     container_name: rag-mysql
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "${MYSQL_HOST_PORT:-3306}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: "123456"
       MYSQL_DATABASE: rag_qa
@@ -30,7 +30,7 @@ services:
     container_name: rag-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_HOST_PORT:-6379}:6379"
     command: redis-server --requirepass 123456
     volumes:
       - redis_data:/data
@@ -70,8 +70,8 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     ports:
-      - "9001:9001"
-      - "9000:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+      - "${MINIO_API_HOST_PORT:-9000}:9000"
     volumes:
       - minio_data:/minio_data
     command: minio server /minio_data --console-address ":9001"
@@ -94,8 +94,8 @@ services:
     volumes:
       - milvus_data:/var/lib/milvus
     ports:
-      - "19530:19530"
-      - "9091:9091"
+      - "${MILVUS_GRPC_HOST_PORT:-19530}:19530"
+      - "${MILVUS_HTTP_HOST_PORT:-9091}:9091"
     depends_on:
       etcd:
         condition: service_started

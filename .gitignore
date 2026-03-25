@@ -8,3 +8,8 @@ target/
 # Docker volume data (runtime generated, do not commit)
 data/
 *m2repo/
+
+# Local docker overrides (machine-specific, do not commit)
+.env
+.env.local
+docker-compose.local.yml

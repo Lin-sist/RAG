@@ -113,8 +113,20 @@ docker compose up -d
 方式二（Maven）：
 
 ```bash
-mvn -pl rag-admin -am spring-boot:run
+mvn -pl rag-admin -am install -DskipTests
+mvn -f rag-admin/pom.xml spring-boot:run
 ```
+
+方式三（一键启动，推荐 Linux 本地开发）：
+
+```bash
+chmod +x start_backend.sh
+./start_backend.sh --with-docker
+```
+
+说明：
+- 脚本会自动读取 `.env.local`（若存在），并自动映射 MySQL/Redis 端口到 Spring 环境变量。
+- 脚本默认使用 `root/123456`（MySQL）与 `123456`（Redis）作为本地开发密码，可通过环境变量覆盖。
 
 后端默认地址：`http://localhost:8080`
 
@@ -127,6 +139,17 @@ cd rag-frontend
 npm install
 npm run dev
 ```
+
+如果 `npm install` 报 `CERT_HAS_EXPIRED` 或仍访问 `r2.cnpmjs.org`：
+
+```bash
+npm config set registry https://registry.npmjs.org/
+cd rag-frontend
+rm -f package-lock.json
+npm install --registry=https://registry.npmjs.org/
+```
+
+说明：旧的 `package-lock.json` 可能锁定了历史镜像地址，单独切换 registry 不足以生效，需重建 lock 文件。
 
 ## 7. 默认数据与账号
 
