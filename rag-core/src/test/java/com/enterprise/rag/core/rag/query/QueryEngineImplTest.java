@@ -13,9 +13,11 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class QueryEngineImplTest {
@@ -61,5 +63,80 @@ class QueryEngineImplTest {
 
         assertEquals(2, contexts.size());
         assertEquals("b", contexts.get(0).source());
+    }
+
+    @Test
+    void shouldRewriteConversationalJwtQueryAndMergeResults() {
+        when(embeddingService.embed(anyString())).thenAnswer(invocation -> {
+            String query = invocation.getArgument(0, String.class).toLowerCase();
+            if (query.contains("json web token")) {
+                return new float[] { 2.0f, 0.0f, 0.0f };
+            }
+            if ("jwt".equals(query)) {
+                return new float[] { 1.0f, 0.0f, 0.0f };
+            }
+            return new float[] { 0.0f, 0.0f, 0.0f };
+        });
+
+        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenAnswer(invocation -> {
+            float[] queryVector = invocation.getArgument(1, float[].class);
+            if (queryVector[0] == 2.0f) {
+                return List.of(
+                        new SearchResult("jwt-doc", "JSON Web Token is a compact claims format", 0.92f, Map.of()));
+            }
+            if (queryVector[0] == 1.0f) {
+                return List.of(
+                        new SearchResult("jwt-doc", "JWT is the short name for JSON Web Token", 0.82f, Map.of()),
+                        new SearchResult("noise-doc", "Session storage cleanup guide", 0.65f, Map.of()));
+            }
+            return List.of(
+                    new SearchResult("noise-doc", "Session storage cleanup guide", 0.75f, Map.of()));
+        });
+
+        List<RetrievedContext> contexts = queryEngine.retrieve(
+                "什么是JWT？",
+                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+
+        assertEquals(2, contexts.size());
+        assertEquals("jwt-doc", contexts.get(0).source());
+        verify(embeddingService).embed("JWT");
+        verify(embeddingService).embed("json web token");
+    }
+
+    @Test
+    void shouldLimitMergedResultsBackToRequestedTopK() {
+        when(embeddingService.embed(anyString())).thenAnswer(invocation -> {
+            String query = invocation.getArgument(0, String.class).toLowerCase();
+            if (query.contains("json web token")) {
+                return new float[] { 2.0f, 0.0f, 0.0f };
+            }
+            if ("jwt".equals(query)) {
+                return new float[] { 1.0f, 0.0f, 0.0f };
+            }
+            return new float[] { 0.0f, 0.0f, 0.0f };
+        });
+
+        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenAnswer(invocation -> {
+            float[] queryVector = invocation.getArgument(1, float[].class);
+            if (queryVector[0] == 2.0f) {
+                return List.of(
+                        new SearchResult("a", "JSON Web Token specification overview", 0.95f, Map.of()),
+                        new SearchResult("b", "JWT header and payload explanation", 0.91f, Map.of()));
+            }
+            if (queryVector[0] == 1.0f) {
+                return List.of(
+                        new SearchResult("c", "JWT refresh token flow", 0.89f, Map.of()),
+                        new SearchResult("d", "JWT logout blacklist strategy", 0.87f, Map.of()));
+            }
+            return List.of();
+        });
+
+        List<RetrievedContext> contexts = queryEngine.retrieve(
+                "请介绍一下JWT",
+                new RetrieveOptions("kb_test", 2, 0.0f, Map.of(), true));
+
+        assertEquals(2, contexts.size());
+        assertEquals("b", contexts.get(0).source());
+        assertFalse(contexts.stream().map(RetrievedContext::source).toList().contains("d"));
     }
 }
