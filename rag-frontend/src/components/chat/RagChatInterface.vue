@@ -17,50 +17,76 @@
       <!-- 新建对话按钮 -->
       <button class="new-chat-btn" @click="handleNewChat">
         <Plus :size="18" />
-        <span>新建对话</span>
+        <span>New Chat</span>
       </button>
 
-      <!-- 知识库选择器 -->
-      <div class="kb-section">
-        <div class="section-label">知识库</div>
-        <div class="kb-list">
-          <div
-            v-for="kb in knowledgeBases"
-            :key="kb.id"
-            :class="['kb-item', { active: currentKbId === kb.id }]"
-            @click="selectKnowledgeBase(kb.id)"
-          >
-            <Database :size="16" />
-            <span class="kb-name">{{ kb.name }}</span>
-            <span class="kb-doc-count">{{ kb.docCount }} 篇</span>
+      <!-- 侧边栏内容区 -->
+      <div class="sidebar-content">
+        <!-- 知识库（可折叠） -->
+        <div class="collapsible-section">
+          <div class="section-header" @click="toggleKbSection">
+            <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !kbSectionExpanded }]" />
+            <span class="section-title">知识库</span>
+          </div>
+          <div :class="['section-body', { expanded: kbSectionExpanded }]">
+            <div class="kb-list">
+              <div
+                v-for="kb in knowledgeBases"
+                :key="kb.id"
+                :class="['kb-item', { active: currentKbId === kb.id }]"
+                @click="selectKnowledgeBase(kb.id)"
+              >
+                <FolderOpen :size="16" class="kb-icon" />
+                <span class="kb-name">{{ kb.name }}</span>
+                <span class="kb-doc-count">{{ kb.docCount }}篇</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 历史对话（可折叠） -->
+        <div class="collapsible-section">
+          <div class="section-header" @click="toggleHistorySection">
+            <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !historySectionExpanded }]" />
+            <span class="section-title">历史对话</span>
+          </div>
+          <div :class="['section-body', { expanded: historySectionExpanded }]">
+            <div class="history-list">
+              <div
+                v-for="item in historyList"
+                :key="item.id"
+                :class="['history-item', { active: currentHistoryId === item.id }]"
+                @click="loadHistory(item.id)"
+              >
+                <MessageSquare :size="16" class="history-icon" />
+                <span class="history-title">{{ item.title }}</span>
+              </div>
+              <div v-if="historyList.length === 0" class="empty-history">
+                暂无历史记录
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 历史对话 -->
-      <div class="history-section">
-        <div class="section-label">历史对话</div>
-        <div class="history-list">
-          <div
-            v-for="item in historyList"
-            :key="item.id"
-            class="history-item"
-            @click="loadHistory(item.id)"
-          >
-            <MessageSquare :size="14" />
-            <span class="history-title">{{ item.title }}</span>
-          </div>
-          <div v-if="historyList.length === 0" class="empty-history">
-            暂无历史记录
-          </div>
-        </div>
-      </div>
-
-      <!-- 底部信息 -->
+      <!-- 底部固定区域 -->
       <div class="sidebar-footer">
         <div class="footer-item" @click="showSettings = true">
           <Settings :size="16" />
           <span>设置</span>
+        </div>
+        <div class="footer-divider"></div>
+        <div class="user-profile">
+          <div class="user-avatar">
+            <User :size="16" />
+          </div>
+          <div class="user-info">
+            <span class="user-name">用户名称</span>
+          </div>
+          <button class="theme-toggle" @click="toggleDarkMode" :title="isDarkMode ? '切换亮色模式' : '切换暗色模式'">
+            <Moon v-if="!isDarkMode" :size="16" />
+            <Sun v-else :size="16" />
+          </button>
         </div>
       </div>
     </aside>
@@ -225,7 +251,7 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import {
   Layers,
   Plus,
-  Database,
+  FolderOpen,
   MessageSquare,
   Settings,
   Sparkles,
@@ -236,6 +262,11 @@ import {
   ThumbsDown,
   FileText,
   Send,
+  ChevronDown,
+  User,
+  Moon,
+  Sun,
+  Database,
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
 
@@ -272,6 +303,12 @@ const currentKbId = ref<number | null>(null)
 const topK = ref(5)
 const isStreaming = ref(false)
 const showSettings = ref(false)
+
+// Sidebar collapse state
+const kbSectionExpanded = ref(true)
+const historySectionExpanded = ref(true)
+const currentHistoryId = ref<string | null>(null)
+const isDarkMode = ref(false)
 
 const inputRef = ref<HTMLTextAreaElement>()
 const messagesContainer = ref<HTMLElement>()
@@ -323,8 +360,22 @@ function selectKnowledgeBase(id: number) {
 }
 
 function loadHistory(id: string) {
+  currentHistoryId.value = id
   // Load history implementation
   console.log('Load history:', id)
+}
+
+function toggleKbSection() {
+  kbSectionExpanded.value = !kbSectionExpanded.value
+}
+
+function toggleHistorySection() {
+  historySectionExpanded.value = !historySectionExpanded.value
+}
+
+function toggleDarkMode() {
+  isDarkMode.value = !isDarkMode.value
+  // Dark mode implementation can be added here
 }
 
 function scrollToBottom() {
@@ -520,22 +571,61 @@ onMounted(() => {
   border-color: var(--rag-primary);
 }
 
-.section-label {
-  padding: 12px 16px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--rag-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+/* ========== Sidebar Content ========== */
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
-/* Knowledge Base List */
-.kb-section {
+/* Collapsible Section */
+.collapsible-section {
+  margin-bottom: 4px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.section-header:hover {
+  background: var(--rag-bg-hover);
+}
+
+.chevron-icon {
+  color: var(--rag-text-secondary);
+  transition: transform 0.2s ease;
   flex-shrink: 0;
 }
 
+.chevron-icon.collapsed {
+  transform: rotate(-90deg);
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--rag-text-primary);
+}
+
+.section-body {
+  height: 0;
+  overflow: hidden;
+  transition: height 0.2s ease;
+}
+
+.section-body.expanded {
+  height: auto;
+}
+
+/* Knowledge Base List */
 .kb-list {
-  padding: 0 8px;
+  padding: 0 8px 8px;
 }
 
 .kb-item {
@@ -550,12 +640,21 @@ onMounted(() => {
 }
 
 .kb-item:hover {
-  background: var(--rag-bg-hover);
+  background: #f9f9f9;
 }
 
 .kb-item.active {
-  background: var(--rag-success-light);
+  background: #e6f6f3;
+  color: #0d7a60;
+}
+
+.kb-icon {
   color: var(--rag-primary);
+  flex-shrink: 0;
+}
+
+.kb-item.active .kb-icon {
+  color: #0d7a60;
 }
 
 .kb-name {
@@ -568,23 +667,17 @@ onMounted(() => {
 
 .kb-doc-count {
   font-size: 11px;
-  color: var(--rag-text-secondary);
+  color: #b4b4b4;
 }
 
 .kb-item.active .kb-doc-count {
-  color: var(--rag-primary);
+  color: #0d7a60;
   opacity: 0.7;
 }
 
 /* History List */
-.history-section {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-}
-
 .history-list {
-  padding: 0 8px;
+  padding: 0 8px 8px;
 }
 
 .history-item {
@@ -599,7 +692,16 @@ onMounted(() => {
 }
 
 .history-item:hover {
-  background: var(--rag-bg-hover);
+  background: #f9f9f9;
+}
+
+.history-item.active {
+  background: #f4f4f4;
+}
+
+.history-icon {
+  color: #b4b4b4;
+  flex-shrink: 0;
 }
 
 .history-title {
@@ -608,6 +710,7 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 160px;
 }
 
 .empty-history {
@@ -617,9 +720,9 @@ onMounted(() => {
   color: var(--rag-text-secondary);
 }
 
-/* Sidebar Footer */
+/* ========== Sidebar Footer ========== */
 .sidebar-footer {
-  padding: 12px 8px;
+  padding: 8px;
   border-top: 1px solid var(--rag-border);
 }
 
@@ -637,6 +740,66 @@ onMounted(() => {
 
 .footer-item:hover {
   background: var(--rag-bg-hover);
+}
+
+.footer-divider {
+  height: 1px;
+  background: var(--rag-border);
+  margin: 8px 0;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background: var(--rag-bg-hover);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rag-text-secondary);
+  flex-shrink: 0;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--rag-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-toggle {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--rag-border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--rag-text-secondary);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: var(--rag-bg-hover);
+  color: var(--rag-primary);
 }
 
 /* ========== Main Chat Area ========== */
