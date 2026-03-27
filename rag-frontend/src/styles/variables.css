@@ -1,49 +1,53 @@
 :root {
-    /* === Design System V2 === */
+    /* === Design System V2 — ChatGPT Style (Light Mode) === */
 
-    /* Primary */
-    --rag-primary: #4F46E5;
-    --rag-primary-hover: #4338CA;
-    --rag-primary-light: #818CF8;
-    --rag-primary-dark: #3730A3;
-    --rag-accent: #0EA5E9;
+    /* Primary — 改为 ChatGPT 标志性绿色 */
+    --rag-primary: #10A37F;
+    --rag-primary-hover: #1A7F5E;
+    --rag-primary-light: #2D9D78;
+    --rag-primary-dark: #0D7A60;
+    --rag-accent: #10A37F;
 
-    /* Status */
+    /* Status — 保持不变 */
     --rag-success: #10B981;
     --rag-warning: #F59E0B;
     --rag-danger: #EF4444;
-    --rag-info: #64748B;
+    --rag-info: #676767;
 
     /* Text */
-    --rag-text-primary: #0F172A;
-    --rag-text-regular: #334155;
-    --rag-text-secondary: #64748B;
-    --rag-text-placeholder: #94A3B8;
+    --rag-text-primary: #0D0D0D;
+    --rag-text-regular: #2D2D2D;
+    --rag-text-secondary: #676767;
+    --rag-text-placeholder: #B4B4B4;
 
     /* Backgrounds */
     --rag-bg-primary: #FFFFFF;
-    --rag-bg-page: #F8FAFC;
-    --rag-bg-hover: #F1F5F9;
+    --rag-bg-page: #FFFFFF;
+    --rag-bg-sidebar: #F9F9F9;
+    --rag-bg-hover: #F4F4F4;
     --rag-bg-surface: #FFFFFF;
-    --rag-bg-ai-msg: #FFFFFF;
-    --rag-bg-user-msg: #F1F5F9;
+    --rag-bg-ai-msg: transparent;
+    --rag-bg-user-msg: #F4F4F4;
+    --rag-bg-input: #FFFFFF;
+    --rag-bg-card: #FFFFFF;
 
     /* Borders */
-    --rag-border: #E2E8F0;
-    --rag-border-light: #F1F5F9;
+    --rag-border: #E5E5E5;
+    --rag-border-light: #F4F4F4;
 
     /* Radius */
     --rag-radius-sm: 8px;
     --rag-radius-md: 12px;
     --rag-radius-lg: 16px;
-    --rag-radius-input: 24px;
+    --rag-radius-input: 9999px;
+    /* pill 形输入框，ChatGPT 风格 */
 
     /* Shadows */
-    --rag-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
-    --rag-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-    --rag-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+    --rag-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --rag-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --rag-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
 
-    /* Spacing (4x grid) */
+    /* Spacing (4x grid) — 保持不变 */
     --rag-space-1: 4px;
     --rag-space-2: 8px;
     --rag-space-3: 12px;
@@ -53,23 +57,95 @@
     --rag-space-12: 48px;
 
     /* Typography */
+    --rag-font-family: 'Inter', -apple-system, system-ui, sans-serif;
     --rag-font-h1: 28px;
     --rag-font-h2: 22px;
-    --rag-font-body: 14px;
-    --rag-font-small: 12px;
+    --rag-font-body: 16px;
+    /* ChatGPT 用 16px，比原来 14px 更舒适 */
+    --rag-font-small: 13px;
     --rag-line-height: 1.6;
+
+    /* Layout */
+    --rag-max-width-content: 800px;
+    /* 消息区最大宽度，对齐 ChatGPT */
 
     /* Transition */
     --rag-transition: all 0.2s ease;
 
     /* Brand gradient */
-    --rag-gradient: linear-gradient(135deg, #4F46E5, #0EA5E9);
+    --rag-gradient: linear-gradient(135deg, #10A37F, #2D9D78);
+
+    /* RAG 专属 — 引用来源标签颜色 */
+    --rag-tag-match: #1A7F5E;
 
     /* Element Plus overrides */
-    --el-color-primary: #4F46E5;
-    --el-color-primary-light-3: #818CF8;
-    --el-color-primary-light-5: #A5B4FC;
-    --el-color-primary-light-7: #C7D2FE;
-    --el-color-primary-light-9: #EEF2FF;
-    --el-color-primary-dark-2: #4338CA;
+    --el-color-primary: #10A37F;
+    --el-color-primary-light-3: #2D9D78;
+    --el-color-primary-light-5: #5BBFA6;
+    --el-color-primary-light-7: #A8DDD4;
+    --el-color-primary-light-9: #E6F6F3;
+    --el-color-primary-dark-2: #0D7A60;
+}
+
+/* === Dark Mode — ChatGPT 深灰暗色方案 === */
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* Primary — 保持绿色，暗色下更亮一点 */
+        --rag-primary: #10A37F;
+        --rag-primary-hover: #2D9D78;
+        --rag-primary-light: #5BBFA6;
+        --rag-primary-dark: #0D7A60;
+        --rag-accent: #10A37F;
+
+        /* Text */
+        --rag-text-primary: #ECECEC;
+        --rag-text-regular: #D1D1D1;
+        --rag-text-secondary: #B4B4B4;
+        --rag-text-placeholder: #6B6B6B;
+
+        /* Backgrounds */
+        --rag-bg-primary: #212121;
+        --rag-bg-page: #212121;
+        --rag-bg-sidebar: #171717;
+        --rag-bg-hover: #2F2F2F;
+        --rag-bg-surface: #2F2F2F;
+        --rag-bg-ai-msg: transparent;
+        --rag-bg-user-msg: #2F2F2F;
+        --rag-bg-input: #2F2F2F;
+        --rag-bg-card: rgba(255, 255, 255, 0.05);
+
+        /* Borders */
+        --rag-border: rgba(255, 255, 255, 0.1);
+        --rag-border-light: rgba(255, 255, 255, 0.05);
+
+        /* Shadows — 暗色下阴影更重 */
+        --rag-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.2);
+        --rag-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+        --rag-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+        /* RAG 专属 */
+        --rag-tag-match: #2D9D78;
+
+        /* Element Plus dark overrides */
+        --el-color-primary: #10A37F;
+        --el-color-primary-light-3: #2D9D78;
+        --el-color-primary-light-5: #5BBFA6;
+        --el-color-primary-light-7: #3A6B62;
+        --el-color-primary-light-9: #1E3D38;
+        --el-color-primary-dark-2: #0D7A60;
+
+        /* Element Plus 全局暗色覆盖 */
+        --el-bg-color: #212121;
+        --el-bg-color-page: #171717;
+        --el-bg-color-overlay: #2F2F2F;
+        --el-text-color-primary: #ECECEC;
+        --el-text-color-regular: #D1D1D1;
+        --el-text-color-secondary: #B4B4B4;
+        --el-text-color-placeholder: #6B6B6B;
+        --el-border-color: rgba(255, 255, 255, 0.1);
+        --el-border-color-light: rgba(255, 255, 255, 0.05);
+        --el-fill-color: #2F2F2F;
+        --el-fill-color-light: #383838;
+        --el-fill-color-blank: #212121;
+    }
 }

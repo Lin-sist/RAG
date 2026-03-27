@@ -1,4 +1,4 @@
-<template>
+ <template>
   <el-header class="app-header">
     <div class="header-left">
       <el-icon class="collapse-btn" @click="emit('toggle-collapse')">

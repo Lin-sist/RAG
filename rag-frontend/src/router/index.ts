@@ -49,6 +49,14 @@ const routes: RouteRecordRaw[] = [
             },
         ],
     },
+
+    //临时测试v0
+    {
+        path: '/chat-v2',
+        name: 'ChatV2',
+        component: () => import('@/components/chat/RagChatInterface.vue')
+    },
+
     {
         path: '/:pathMatch(.*)*',
         redirect: '/login',
