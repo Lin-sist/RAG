@@ -152,7 +152,6 @@
 }
 
 /* === Manual Dark Mode Toggle via html.dark class === */
-html.dark,
 html.dark :root {
     /* Primary — 保持绿色，暗色下更亮一点 */
     --rag-primary: #10A37F;
