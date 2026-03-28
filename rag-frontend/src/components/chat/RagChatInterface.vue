@@ -78,16 +78,19 @@
           <span class="user-bar-name">{{ props.username }}</span>
         </div>
         <div class="user-bar-right">
-          <span class="mode-label">Light Mode</span>
+          <span class="mode-label">{{ isDark ? 'Dark' : 'Light' }}</span>
           <button 
             class="mode-toggle" 
-            :class="{ active: !isDarkMode }"
+            :class="{ active: !isDark }"
             @click="toggleDarkMode"
             role="switch"
-            :aria-checked="!isDarkMode"
+            :aria-checked="!isDark"
           >
             <span class="toggle-track">
-              <span class="toggle-thumb"></span>
+              <span class="toggle-thumb">
+                <Moon v-if="!isDark" :size="10" class="thumb-icon" />
+                <Sun v-else :size="10" class="thumb-icon" />
+              </span>
             </span>
           </button>
         </div>
@@ -265,6 +268,8 @@ import {
   ChevronDown,
   Mic,
   ArrowUp,
+  Moon,
+  Sun,
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
 
@@ -305,7 +310,7 @@ const isStreaming = ref(false)
 const kbSectionExpanded = ref(true)
 const historySectionExpanded = ref(true)
 const currentHistoryId = ref<string | null>(null)
-const isDarkMode = ref(false)
+const isDark = ref(false)
 
 const inputRef = ref<HTMLInputElement>()
 const messagesContainer = ref<HTMLElement>()
@@ -371,8 +376,9 @@ function toggleHistorySection() {
 }
 
 function toggleDarkMode() {
-  isDarkMode.value = !isDarkMode.value
-  // Dark mode implementation can be added here
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
 }
 
 function scrollToBottom() {
@@ -467,6 +473,10 @@ function thumbDown(id: string) {
 }
 
 onMounted(() => {
+  // Restore theme from localStorage
+  isDark.value = localStorage.getItem('theme') === 'dark'
+  document.documentElement.classList.toggle('dark', isDark.value)
+
   // Default select first KB
   if (knowledgeBases.value.length > 0) {
     currentKbId.value = knowledgeBases.value[0].id
@@ -787,6 +797,13 @@ onMounted(() => {
   border-radius: 50%;
   transition: transform 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumb-icon {
+  color: #676767;
 }
 
 .mode-toggle.active .toggle-thumb {
