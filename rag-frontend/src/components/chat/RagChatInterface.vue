@@ -270,6 +270,11 @@ import {
   ArrowUp,
   Moon,
   Sun,
+  PanelLeftClose,
+  PanelLeftOpen,
+  User,
+  Settings,
+  LogOut,
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
 
@@ -311,6 +316,8 @@ const kbSectionExpanded = ref(true)
 const historySectionExpanded = ref(true)
 const currentHistoryId = ref<string | null>(null)
 const isDark = ref(false)
+const sidebarCollapsed = ref(false)
+const userMenuOpen = ref(false)
 
 const inputRef = ref<HTMLInputElement>()
 const messagesContainer = ref<HTMLElement>()
