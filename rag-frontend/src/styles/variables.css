@@ -88,6 +88,7 @@
 }
 
 /* === Dark Mode — ChatGPT 深灰暗色方案 === */
+/* Support both system preference and manual toggle via html.dark class */
 @media (prefers-color-scheme: dark) {
     :root {
         /* Primary — 保持绿色，暗色下更亮一点 */
@@ -148,4 +149,65 @@
         --el-fill-color-light: #383838;
         --el-fill-color-blank: #212121;
     }
+}
+
+/* === Manual Dark Mode Toggle via html.dark class === */
+html.dark {
+    /* Primary — 保持绿色，暗色下更亮一点 */
+    --rag-primary: #10A37F;
+    --rag-primary-hover: #2D9D78;
+    --rag-primary-light: #5BBFA6;
+    --rag-primary-dark: #0D7A60;
+    --rag-accent: #10A37F;
+
+    /* Text */
+    --rag-text-primary: #ECECEC;
+    --rag-text-regular: #D1D1D1;
+    --rag-text-secondary: #B4B4B4;
+    --rag-text-placeholder: #6B6B6B;
+
+    /* Backgrounds */
+    --rag-bg-primary: #212121;
+    --rag-bg-page: #212121;
+    --rag-bg-sidebar: #171717;
+    --rag-bg-hover: #2F2F2F;
+    --rag-bg-surface: #2F2F2F;
+    --rag-bg-ai-msg: transparent;
+    --rag-bg-user-msg: #2F2F2F;
+    --rag-bg-input: #2F2F2F;
+    --rag-bg-card: rgba(255, 255, 255, 0.05);
+
+    /* Borders */
+    --rag-border: rgba(255, 255, 255, 0.1);
+    --rag-border-light: rgba(255, 255, 255, 0.05);
+
+    /* Shadows — 暗色下阴影更重 */
+    --rag-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.2);
+    --rag-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --rag-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+    /* RAG 专属 */
+    --rag-tag-match: #2D9D78;
+
+    /* Element Plus dark overrides */
+    --el-color-primary: #10A37F;
+    --el-color-primary-light-3: #2D9D78;
+    --el-color-primary-light-5: #5BBFA6;
+    --el-color-primary-light-7: #3A6B62;
+    --el-color-primary-light-9: #1E3D38;
+    --el-color-primary-dark-2: #0D7A60;
+
+    /* Element Plus 全局暗色覆盖 */
+    --el-bg-color: #212121;
+    --el-bg-color-page: #171717;
+    --el-bg-color-overlay: #2F2F2F;
+    --el-text-color-primary: #ECECEC;
+    --el-text-color-regular: #D1D1D1;
+    --el-text-color-secondary: #B4B4B4;
+    --el-text-color-placeholder: #6B6B6B;
+    --el-border-color: rgba(255, 255, 255, 0.1);
+    --el-border-color-light: rgba(255, 255, 255, 0.05);
+    --el-fill-color: #2F2F2F;
+    --el-fill-color-light: #383838;
+    --el-fill-color-blank: #212121;
 }
