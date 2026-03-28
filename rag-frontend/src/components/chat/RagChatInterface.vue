@@ -69,23 +69,26 @@
         </div>
       </div>
 
-      <!-- 底部固定区域 -->
-      <div class="sidebar-footer">
-        <div class="footer-item" @click="showSettings = true">
-          <Settings :size="16" />
-          <span>设置</span>
+      <!-- 底部用户信息栏 -->
+      <div class="user-bar">
+        <div class="user-bar-left">
+          <div class="user-avatar-initial">
+            {{ userInitial }}
+          </div>
+          <span class="user-bar-name">{{ props.username }}</span>
         </div>
-        <div class="footer-divider"></div>
-        <div class="user-profile">
-          <div class="user-avatar">
-            <User :size="16" />
-          </div>
-          <div class="user-info">
-            <span class="user-name">用户名称</span>
-          </div>
-          <button class="theme-toggle" @click="toggleDarkMode" :title="isDarkMode ? '切换亮色模式' : '切换暗色模式'">
-            <Moon v-if="!isDarkMode" :size="16" />
-            <Sun v-else :size="16" />
+        <div class="user-bar-right">
+          <span class="mode-label">Light Mode</span>
+          <button 
+            class="mode-toggle" 
+            :class="{ active: !isDarkMode }"
+            @click="toggleDarkMode"
+            role="switch"
+            :aria-checked="!isDarkMode"
+          >
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
           </button>
         </div>
       </div>
@@ -247,13 +250,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, withDefaults, defineProps } from 'vue'
+
+// Props
+interface Props {
+  username?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  username: 'Linsist'
+})
+
+// Computed
+const userInitial = computed(() => {
+  return props.username.charAt(0).toUpperCase()
+})
 import {
   Layers,
   Plus,
   FolderOpen,
   MessageSquare,
-  Settings,
   Sparkles,
   ArrowRight,
   Copy,
@@ -263,9 +279,6 @@ import {
   FileText,
   Send,
   ChevronDown,
-  User,
-  Moon,
-  Sun,
   Database,
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
@@ -302,7 +315,6 @@ const inputText = ref('')
 const currentKbId = ref<number | null>(null)
 const topK = ref(5)
 const isStreaming = ref(false)
-const showSettings = ref(false)
 
 // Sidebar collapse state
 const kbSectionExpanded = ref(true)
@@ -720,86 +732,90 @@ onMounted(() => {
   color: var(--rag-text-secondary);
 }
 
-/* ========== Sidebar Footer ========== */
-.sidebar-footer {
-  padding: 8px;
-  border-top: 1px solid var(--rag-border);
+/* ========== User Bar (Bottom) ========== */
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-top: auto;
+  border-top: 1px solid #e5e5e5;
 }
 
-.footer-item {
+.user-bar-left {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--rag-text-secondary);
-  transition: all 0.2s ease;
 }
 
-.footer-item:hover {
-  background: var(--rag-bg-hover);
-}
-
-.footer-divider {
-  height: 1px;
-  background: var(--rag-border);
-  margin: 8px 0;
-}
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-}
-
-.user-avatar {
+.user-avatar-initial {
   width: 32px;
   height: 32px;
-  background: var(--rag-bg-hover);
+  background: #1a1a1a;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--rag-text-secondary);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
-.user-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-name {
-  font-size: 13px;
+.user-bar-name {
+  font-size: 14px;
   font-weight: 500;
-  color: var(--rag-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: #0d0d0d;
 }
 
-.theme-toggle {
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: 1px solid var(--rag-border);
-  border-radius: 8px;
+.user-bar-right {
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--rag-text-secondary);
-  transition: all 0.2s ease;
-  flex-shrink: 0;
+  gap: 8px;
 }
 
-.theme-toggle:hover {
-  background: var(--rag-bg-hover);
-  color: var(--rag-primary);
+.mode-label {
+  font-size: 12px;
+  color: var(--rag-text-secondary);
+}
+
+.mode-toggle {
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.toggle-track {
+  display: block;
+  width: 36px;
+  height: 20px;
+  background: #e5e5e5;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.mode-toggle.active .toggle-track {
+  background: var(--rag-primary);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.mode-toggle.active .toggle-thumb {
+  transform: translateX(16px);
 }
 
 /* ========== Main Chat Area ========== */
