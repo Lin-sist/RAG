@@ -78,13 +78,13 @@
           <span class="user-bar-name">{{ props.username }}</span>
         </div>
         <div class="user-bar-right">
-          <span class="mode-label">{{ isDark ? 'Dark' : 'Light' }}</span>
           <button 
             class="mode-toggle" 
             :class="{ active: !isDark }"
             @click="toggleDarkMode"
             role="switch"
             :aria-checked="!isDark"
+            :title="isDark ? '切换到亮色模式' : '切换到暗色模式'"
           >
             <span class="toggle-track">
               <span class="toggle-thumb">
@@ -488,11 +488,13 @@ onMounted(() => {
 /* ========== CSS Variables ========== */
 .rag-chat-interface {
   --rag-primary: #10A37F;
+  --rag-primary-dark: #0D7A60;
   --rag-bg-ai-msg: transparent;
   --rag-bg-user-msg: #F4F4F4;
   --rag-border: #E5E5E5;
   --rag-text-primary: #0D0D0D;
   --rag-text-secondary: #676767;
+  --rag-text-placeholder: #B4B4B4;
   --rag-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
 
   /* Extended palette */
@@ -500,6 +502,25 @@ onMounted(() => {
   --rag-bg-sidebar: #F9F9F9;
   --rag-bg-hover: #ECECEC;
   --rag-success-light: rgba(16, 163, 127, 0.1);
+}
+
+/* Dark mode overrides */
+:global(html.dark) .rag-chat-interface {
+  --rag-primary: #10A37F;
+  --rag-primary-dark: #2D9D78;
+  --rag-bg-ai-msg: transparent;
+  --rag-bg-user-msg: #2F2F2F;
+  --rag-border: rgba(255, 255, 255, 0.1);
+  --rag-text-primary: #ECECEC;
+  --rag-text-secondary: #B4B4B4;
+  --rag-text-placeholder: #6B6B6B;
+  --rag-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+
+  /* Extended palette */
+  --rag-bg-surface: #212121;
+  --rag-bg-sidebar: #171717;
+  --rag-bg-hover: #2F2F2F;
+  --rag-success-light: rgba(16, 163, 127, 0.2);
 }
 
 /* ========== Layout ========== */
@@ -637,12 +658,12 @@ onMounted(() => {
 }
 
 .kb-item:hover {
-  background: #f9f9f9;
+  background: var(--rag-bg-hover);
 }
 
 .kb-item.active {
-  background: #e6f6f3;
-  color: #0d7a60;
+  background: var(--rag-success-light);
+  color: var(--rag-primary-dark);
 }
 
 .kb-icon {
@@ -651,7 +672,7 @@ onMounted(() => {
 }
 
 .kb-item.active .kb-icon {
-  color: #0d7a60;
+  color: var(--rag-primary-dark);
 }
 
 .kb-name {
@@ -664,11 +685,11 @@ onMounted(() => {
 
 .kb-doc-count {
   font-size: 11px;
-  color: #b4b4b4;
+  color: var(--rag-text-placeholder);
 }
 
 .kb-item.active .kb-doc-count {
-  color: #0d7a60;
+  color: var(--rag-primary-dark);
   opacity: 0.7;
 }
 
@@ -689,15 +710,15 @@ onMounted(() => {
 }
 
 .history-item:hover {
-  background: #f9f9f9;
+  background: var(--rag-bg-hover);
 }
 
 .history-item.active {
-  background: #f4f4f4;
+  background: var(--rag-bg-user-msg);
 }
 
 .history-icon {
-  color: #b4b4b4;
+  color: var(--rag-text-placeholder);
   flex-shrink: 0;
 }
 
@@ -724,7 +745,7 @@ onMounted(() => {
   justify-content: space-between;
   padding: 12px 16px;
   margin-top: auto;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--rag-border);
 }
 
 .user-bar-left {
@@ -736,12 +757,12 @@ onMounted(() => {
 .user-avatar-initial {
   width: 32px;
   height: 32px;
-  background: #1a1a1a;
+  background: var(--rag-text-primary);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  color: var(--rag-bg-surface);
   font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
@@ -750,18 +771,13 @@ onMounted(() => {
 .user-bar-name {
   font-size: 14px;
   font-weight: 500;
-  color: #0d0d0d;
+  color: var(--rag-text-primary);
 }
 
 .user-bar-right {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.mode-label {
-  font-size: 12px;
-  color: var(--rag-text-secondary);
 }
 
 .mode-toggle {
@@ -777,7 +793,7 @@ onMounted(() => {
   display: block;
   width: 36px;
   height: 20px;
-  background: #e5e5e5;
+  background: var(--rag-border);
   border-radius: 10px;
   position: relative;
   transition: background 0.2s ease;
@@ -793,7 +809,7 @@ onMounted(() => {
   left: 2px;
   width: 16px;
   height: 16px;
-  background: #ffffff;
+  background: var(--rag-bg-surface);
   border-radius: 50%;
   transition: transform 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
@@ -803,7 +819,7 @@ onMounted(() => {
 }
 
 .thumb-icon {
-  color: #676767;
+  color: var(--rag-text-secondary);
 }
 
 .mode-toggle.active .toggle-thumb {
