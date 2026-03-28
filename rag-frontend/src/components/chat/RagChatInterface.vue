@@ -199,51 +199,36 @@
       <!-- ========== 悬浮输入框 ========== -->
       <div class="input-wrapper">
         <div class="input-container">
-          <!-- 工具栏 -->
-          <div class="input-toolbar">
-            <div class="toolbar-item">
-              <Database :size="14" />
-              <select v-model="currentKbId" class="kb-selector">
-                <option :value="null" disabled>选择知识库</option>
-                <option v-for="kb in knowledgeBases" :key="kb.id" :value="kb.id">
-                  {{ kb.name }}
-                </option>
-              </select>
-            </div>
-            <div class="toolbar-item">
-              <span class="topk-label">Top-K</span>
-              <input
-                v-model.number="topK"
-                type="number"
-                min="1"
-                max="20"
-                class="topk-input"
-              />
-            </div>
-          </div>
+          <!-- 左侧附件按钮 -->
+          <button class="attach-btn" title="添加附件">
+            <Plus :size="16" />
+          </button>
 
-          <!-- 输入框 -->
-          <div class="input-box">
-            <textarea
-              ref="inputRef"
-              v-model="inputText"
-              placeholder="输入你的问题..."
-              rows="1"
-              @keydown="handleKeydown"
-              @input="autoResize"
-            ></textarea>
-            <button
-              :class="['send-btn', { active: canSend }]"
-              :disabled="!canSend"
-              @click="handleSend"
-            >
-              <Send :size="18" />
-            </button>
-          </div>
+          <!-- 中间输入框 -->
+          <input
+            ref="inputRef"
+            v-model="inputText"
+            type="text"
+            class="pill-input"
+            placeholder="Ask about company knowledge..."
+            @keydown="handleKeydown"
+          />
 
-          <!-- 免责声明 -->
-          <p class="disclaimer">AI 可能产生不准确内容，请核对引用来源</p>
+          <!-- 右侧按钮组 -->
+          <button class="mic-btn" title="语音输入">
+            <Mic :size="18" />
+          </button>
+          <button
+            :class="['send-btn-pill', { active: canSend }]"
+            :disabled="!canSend"
+            @click="handleSend"
+          >
+            <ArrowUp :size="18" />
+          </button>
         </div>
+
+        <!-- 免责声明 -->
+        <p class="disclaimer">AI 可能产生不准确内容，请核对引用来源</p>
       </div>
     </main>
   </div>
@@ -277,9 +262,9 @@ import {
   ThumbsUp,
   ThumbsDown,
   FileText,
-  Send,
   ChevronDown,
-  Database,
+  Mic,
+  ArrowUp,
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
 
@@ -322,7 +307,7 @@ const historySectionExpanded = ref(true)
 const currentHistoryId = ref<string | null>(null)
 const isDarkMode = ref(false)
 
-const inputRef = ref<HTMLTextAreaElement>()
+const inputRef = ref<HTMLInputElement>()
 const messagesContainer = ref<HTMLElement>()
 const scrollAnchor = ref<HTMLElement>()
 
@@ -355,7 +340,7 @@ const md = new MarkdownIt({
 })
 
 // Computed
-const canSend = computed(() => inputText.value.trim().length > 0 && !isStreaming.value && currentKbId.value !== null)
+const canSend = computed(() => inputText.value.trim().length > 0 && !isStreaming.value)
 
 // Methods
 function renderMarkdown(content: string): string {
@@ -396,13 +381,6 @@ function scrollToBottom() {
   })
 }
 
-function autoResize() {
-  if (inputRef.value) {
-    inputRef.value.style.height = 'auto'
-    inputRef.value.style.height = Math.min(inputRef.value.scrollHeight, 150) + 'px'
-  }
-}
-
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -414,13 +392,10 @@ function handleSend() {
   if (!canSend.value) return
   sendMessage(inputText.value.trim())
   inputText.value = ''
-  if (inputRef.value) {
-    inputRef.value.style.height = 'auto'
-  }
 }
 
 function sendMessage(text: string) {
-  if (!text || !currentKbId.value) return
+  if (!text) return
 
   // Add user message
   const userMsg: Message = {
@@ -1160,107 +1135,98 @@ onMounted(() => {
   width: fit-content;
 }
 
-/* ========== Floating Input ========== */
+/* ========== Floating Input (Pill Style) ========== */
 .input-wrapper {
   position: sticky;
   bottom: 0;
   padding: 16px 24px 24px;
   background: linear-gradient(to top, var(--rag-bg-surface) 80%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .input-container {
-  max-width: 800px;
-  margin: 0 auto;
-  background: var(--rag-bg-surface);
-  border: 1px solid var(--rag-border);
-  border-radius: 16px;
-  padding: 12px 16px;
-  box-shadow: var(--rag-shadow-md);
-}
-
-/* Toolbar */
-.input-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--rag-border);
-}
-
-.toolbar-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--rag-text-secondary);
-}
-
-.kb-selector {
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  color: var(--rag-text-primary);
-  cursor: pointer;
-  outline: none;
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.kb-selector:hover {
-  background: var(--rag-bg-user-msg);
-}
-
-.topk-label {
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.topk-input {
-  width: 50px;
-  padding: 4px 8px;
-  border: 1px solid var(--rag-border);
-  border-radius: 6px;
-  font-size: 13px;
-  text-align: center;
-  outline: none;
-}
-
-.topk-input:focus {
-  border-color: var(--rag-primary);
-}
-
-/* Input Box */
-.input-box {
-  display: flex;
-  align-items: flex-end;
   gap: 12px;
+  max-width: 720px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 9999px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
-.input-box textarea {
+/* Attach Button (Left) */
+.attach-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: #e5e5e5;
+  color: #676767;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.attach-btn:hover {
+  background: #d5d5d5;
+  color: #4a4a4a;
+}
+
+/* Pill Input (Center) */
+.pill-input {
   flex: 1;
   border: none;
   outline: none;
-  resize: none;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.4;
   font-family: inherit;
   color: var(--rag-text-primary);
   background: transparent;
-  min-height: 24px;
-  max-height: 150px;
 }
 
-.input-box textarea::placeholder {
-  color: var(--rag-text-secondary);
+.pill-input::placeholder {
+  color: #b4b4b4;
 }
 
-.send-btn {
-  width: 36px;
-  height: 36px;
+/* Mic Button (Right) */
+.mic-btn {
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 10px;
-  background: var(--rag-border);
-  color: var(--rag-text-secondary);
+  border-radius: 50%;
+  background: transparent;
+  color: #676767;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.mic-btn:hover {
+  color: #4a4a4a;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Send Button (Right, Pill) */
+.send-btn-pill {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: #e5e5e5;
+  color: #b4b4b4;
   cursor: not-allowed;
   display: flex;
   align-items: center;
@@ -1269,22 +1235,22 @@ onMounted(() => {
   transition: all 0.2s ease;
 }
 
-.send-btn.active {
-  background: var(--rag-primary);
-  color: white;
+.send-btn-pill.active {
+  background: #1a1a1a;
+  color: #ffffff;
   cursor: pointer;
 }
 
-.send-btn.active:hover {
-  opacity: 0.9;
+.send-btn-pill.active:hover {
+  background: #333333;
 }
 
 /* Disclaimer */
 .disclaimer {
   text-align: center;
   font-size: 11px;
-  color: var(--rag-text-secondary);
-  margin: 10px 0 0;
+  color: #b4b4b4;
+  margin-top: 10px;
 }
 
 /* ========== Responsive ========== */
