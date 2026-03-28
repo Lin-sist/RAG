@@ -77,6 +77,7 @@
 
     /* RAG 专属 — 引用来源标签颜色 */
     --rag-tag-match: #1A7F5E;
+    --rag-success-light: rgba(16, 163, 127, 0.1);
 
     /* Element Plus overrides */
     --el-color-primary: #10A37F;
@@ -90,7 +91,7 @@
 /* === Dark Mode — ChatGPT 深灰暗色方案 === */
 /* Support both system preference and manual toggle via html.dark class */
 @media (prefers-color-scheme: dark) {
-    :root {
+    html:not(.light) {
         /* Primary — 保持绿色，暗色下更亮一点 */
         --rag-primary: #10A37F;
         --rag-primary-hover: #2D9D78;
@@ -126,6 +127,7 @@
 
         /* RAG 专属 */
         --rag-tag-match: #2D9D78;
+        --rag-success-light: rgba(16, 163, 127, 0.2);
 
         /* Element Plus dark overrides */
         --el-color-primary: #10A37F;
@@ -152,7 +154,7 @@
 }
 
 /* === Manual Dark Mode Toggle via html.dark class === */
-html.dark :root {
+html.dark {
     /* Primary — 保持绿色，暗色下更亮一点 */
     --rag-primary: #10A37F;
     --rag-primary-hover: #2D9D78;
@@ -188,6 +190,7 @@ html.dark :root {
 
     /* RAG 专属 */
     --rag-tag-match: #2D9D78;
+    --rag-success-light: rgba(16, 163, 127, 0.2);
 
     /* Element Plus dark overrides */
     --el-color-primary: #10A37F;

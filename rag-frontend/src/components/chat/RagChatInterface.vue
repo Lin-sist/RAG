@@ -100,7 +100,7 @@
     <!-- ========== 主聊天区域 ========== -->
     <main class="chat-main">
       <!-- 消息列表区域 -->
-      <div ref="messagesContainer" class="messages-container">
+      <div class="messages-container">
         <!-- 欢迎页面 -->
         <div v-if="messages.length === 0" class="welcome-screen">
           <div class="welcome-icon">
@@ -209,7 +209,6 @@
 
           <!-- 中间输入框 -->
           <input
-            ref="inputRef"
             v-model="inputText"
             type="text"
             class="pill-input"
@@ -238,7 +237,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, withDefaults, defineProps } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 
 // Props
 interface Props {
@@ -303,7 +302,6 @@ interface Message {
 const messages = ref<Message[]>([])
 const inputText = ref('')
 const currentKbId = ref<number | null>(null)
-const topK = ref(5)
 const isStreaming = ref(false)
 
 // Sidebar collapse state
@@ -312,8 +310,6 @@ const historySectionExpanded = ref(true)
 const currentHistoryId = ref<string | null>(null)
 const isDark = ref(false)
 
-const inputRef = ref<HTMLInputElement>()
-const messagesContainer = ref<HTMLElement>()
 const scrollAnchor = ref<HTMLElement>()
 
 // Mock Data
@@ -375,9 +371,14 @@ function toggleHistorySection() {
   historySectionExpanded.value = !historySectionExpanded.value
 }
 
+function applyTheme(dark: boolean) {
+  document.documentElement.classList.toggle('dark', dark)
+  document.documentElement.classList.toggle('light', !dark)
+}
+
 function toggleDarkMode() {
   isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
+  applyTheme(isDark.value)
   localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
 }
 
@@ -473,9 +474,16 @@ function thumbDown(id: string) {
 }
 
 onMounted(() => {
-  // Restore theme from localStorage
-  isDark.value = localStorage.getItem('theme') === 'dark'
-  document.documentElement.classList.toggle('dark', isDark.value)
+  // Restore theme from localStorage; fallback to system preference
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark') {
+    isDark.value = true
+  } else if (savedTheme === 'light') {
+    isDark.value = false
+  } else {
+    isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  applyTheme(isDark.value)
 
   // Default select first KB
   if (knowledgeBases.value.length > 0) {
@@ -485,44 +493,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* ========== CSS Variables ========== */
-.rag-chat-interface {
-  --rag-primary: #10A37F;
-  --rag-primary-dark: #0D7A60;
-  --rag-bg-ai-msg: transparent;
-  --rag-bg-user-msg: #F4F4F4;
-  --rag-border: #E5E5E5;
-  --rag-text-primary: #0D0D0D;
-  --rag-text-secondary: #676767;
-  --rag-text-placeholder: #B4B4B4;
-  --rag-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-
-  /* Extended palette */
-  --rag-bg-surface: #FFFFFF;
-  --rag-bg-sidebar: #F9F9F9;
-  --rag-bg-hover: #ECECEC;
-  --rag-success-light: rgba(16, 163, 127, 0.1);
-}
-
-/* Dark mode overrides */
-:global(html.dark) .rag-chat-interface {
-  --rag-primary: #10A37F;
-  --rag-primary-dark: #2D9D78;
-  --rag-bg-ai-msg: transparent;
-  --rag-bg-user-msg: #2F2F2F;
-  --rag-border: rgba(255, 255, 255, 0.1);
-  --rag-text-primary: #ECECEC;
-  --rag-text-secondary: #B4B4B4;
-  --rag-text-placeholder: #6B6B6B;
-  --rag-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
-
-  /* Extended palette */
-  --rag-bg-surface: #212121;
-  --rag-bg-sidebar: #171717;
-  --rag-bg-hover: #2F2F2F;
-  --rag-success-light: rgba(16, 163, 127, 0.2);
-}
-
 /* ========== Layout ========== */
 .rag-chat-interface {
   display: flex;
@@ -1185,13 +1155,13 @@ onMounted(() => {
   gap: 12px;
   max-width: 720px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--rag-bg-input);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--rag-border);
   border-radius: 9999px;
   padding: 12px 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--rag-shadow-sm);
 }
 
 /* Attach Button (Left) */
@@ -1200,8 +1170,8 @@ onMounted(() => {
   height: 24px;
   border: none;
   border-radius: 50%;
-  background: #e5e5e5;
-  color: #676767;
+  background: var(--rag-border);
+  color: var(--rag-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1211,8 +1181,8 @@ onMounted(() => {
 }
 
 .attach-btn:hover {
-  background: #d5d5d5;
-  color: #4a4a4a;
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-regular);
 }
 
 /* Pill Input (Center) */
@@ -1228,7 +1198,7 @@ onMounted(() => {
 }
 
 .pill-input::placeholder {
-  color: #b4b4b4;
+  color: var(--rag-text-placeholder);
 }
 
 /* Mic Button (Right) */
@@ -1238,7 +1208,7 @@ onMounted(() => {
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #676767;
+  color: var(--rag-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1248,7 +1218,7 @@ onMounted(() => {
 }
 
 .mic-btn:hover {
-  color: #4a4a4a;
+  color: var(--rag-text-regular);
   background: rgba(0, 0, 0, 0.05);
 }
 
@@ -1258,8 +1228,8 @@ onMounted(() => {
   height: 32px;
   border: none;
   border-radius: 50%;
-  background: #e5e5e5;
-  color: #b4b4b4;
+  background: var(--rag-border);
+  color: var(--rag-text-placeholder);
   cursor: not-allowed;
   display: flex;
   align-items: center;
@@ -1269,20 +1239,20 @@ onMounted(() => {
 }
 
 .send-btn-pill.active {
-  background: #1a1a1a;
-  color: #ffffff;
+  background: var(--rag-text-primary);
+  color: var(--rag-bg-primary);
   cursor: pointer;
 }
 
 .send-btn-pill.active:hover {
-  background: #333333;
+  background: var(--rag-bg-hover);
 }
 
 /* Disclaimer */
 .disclaimer {
   text-align: center;
   font-size: 11px;
-  color: #b4b4b4;
+  color: var(--rag-text-placeholder);
   margin-top: 10px;
 }
 
