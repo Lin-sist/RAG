@@ -8,19 +8,29 @@
     <!-- ========== 左侧边栏 (240px / 64px) ========== -->
     <aside :class="['chat-sidebar', { collapsed: sidebarCollapsed }]">
       <div class="sidebar-header">
-        <div class="logo-wrapper">
-          <Layers :size="20" />
+        <!-- 收起状态下的 hover 切换容器 -->
+        <div v-if="sidebarCollapsed" class="logo-toggle-container" @click="toggleSidebar">
+          <div class="logo-wrapper">
+            <Layers :size="20" />
+          </div>
+          <button class="collapse-btn-overlay" title="展开侧边栏">
+            <PanelLeftOpen :size="18" />
+          </button>
         </div>
-        <span v-if="!sidebarCollapsed" class="logo-text">RAG 智能问答</span>
-        <!-- 收起/展开按钮 -->
-        <button 
-          class="collapse-btn" 
-          @click="toggleSidebar"
-          :title="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
-        >
-          <PanelLeftOpen v-if="sidebarCollapsed" :size="18" />
-          <PanelLeftClose v-else :size="18" />
-        </button>
+        <!-- 展开状态下的正常布局 -->
+        <template v-else>
+          <div class="logo-wrapper">
+            <Layers :size="20" />
+          </div>
+          <span class="logo-text">RAG 智能问答</span>
+          <button 
+            class="collapse-btn" 
+            @click="toggleSidebar"
+            title="收起侧边栏"
+          >
+            <PanelLeftClose :size="18" />
+          </button>
+        </template>
       </div>
 
       <!-- 新建对话按钮 -->
@@ -652,14 +662,47 @@ onUnmounted(() => {
   padding: 16px 8px;
 }
 
-.chat-sidebar.collapsed .logo-wrapper {
-  margin: 0;
+/* Logo/展开按钮切换容器 - ChatGPT 风格 hover 交互 */
+.logo-toggle-container {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
 }
 
-.chat-sidebar.collapsed .collapse-btn {
+.logo-toggle-container .logo-wrapper {
   position: absolute;
-  right: 8px;
-  margin-left: 0;
+  top: 0;
+  left: 0;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.logo-toggle-container .collapse-btn-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--rag-bg-hover);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rag-text-secondary);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.logo-toggle-container:hover .logo-wrapper {
+  opacity: 0;
+}
+
+.logo-toggle-container:hover .collapse-btn-overlay {
+  opacity: 1;
+  color: var(--rag-text-primary);
 }
 
 .new-chat-btn {
