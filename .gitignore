@@ -12,4 +12,7 @@ data/
 # Local docker overrides (machine-specific, do not commit)
 .env
 .env.local
-docker-compose.local.ymlrag-frontend/tsconfig.tsbuildinfo
+docker-compose.local.yml
+rag-frontend/tsconfig.tsbuildinfo
+application-dev.yml
+.jqwik-database

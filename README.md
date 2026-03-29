@@ -151,6 +151,44 @@ npm install --registry=https://registry.npmjs.org/
 
 说明：旧的 `package-lock.json` 可能锁定了历史镜像地址，单独切换 registry 不足以生效，需重建 lock 文件。
 
+### 6.4 Windows 端统一启动流程（PowerShell）
+
+在项目根目录执行以下步骤：
+
+1) 准备本机端口配置（首次执行）
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+如本机端口冲突，请修改 `.env.local` 中的 `MYSQL_HOST_PORT` / `REDIS_HOST_PORT` / `MILVUS_*` 等端口。
+
+2) 一键启动依赖服务 + 后端
+
+```powershell
+./start-backend.ps1 -WithDocker
+```
+
+说明：
+- 脚本会自动读取 `.env.local`，并映射数据库与 Redis 连接参数。
+- 若提示脚本执行策略受限，可先在当前 PowerShell 会话执行：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+```
+
+3) 新开一个 PowerShell 窗口，启动前端
+
+```powershell
+cd rag-frontend
+npm install
+npm run dev
+```
+
+前端默认地址：`http://127.0.0.1:5173`
+后端默认地址：`http://localhost:8080`
+Swagger：`http://localhost:8080/swagger-ui.html`
+
 ## 7. 默认数据与账号
 
 Flyway 会自动执行初始化脚本（`V1/V2/V3`），包含：
