@@ -5,40 +5,54 @@
 -->
 <template>
   <div class="rag-chat-interface">
-    <!-- ========== 左侧边栏 (240px) ========== -->
-    <aside class="chat-sidebar">
+    <!-- ========== 左侧边栏 (240px / 64px) ========== -->
+    <aside :class="['chat-sidebar', { collapsed: sidebarCollapsed }]">
       <div class="sidebar-header">
         <div class="logo-wrapper">
           <Layers :size="20" />
         </div>
-        <span class="logo-text">RAG 智能问答</span>
+        <span v-if="!sidebarCollapsed" class="logo-text">RAG 智能问答</span>
+        <!-- 收起/展开按钮 -->
+        <button 
+          class="collapse-btn" 
+          @click="toggleSidebar"
+          :title="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
+        >
+          <PanelLeftOpen v-if="sidebarCollapsed" :size="18" />
+          <PanelLeftClose v-else :size="18" />
+        </button>
       </div>
 
       <!-- 新建对话按钮 -->
-      <button class="new-chat-btn" @click="handleNewChat">
+      <button 
+        class="new-chat-btn" 
+        @click="handleNewChat"
+        :title="sidebarCollapsed ? 'New Chat' : ''"
+      >
         <Plus :size="18" />
-        <span>New Chat</span>
+        <span v-if="!sidebarCollapsed">New Chat</span>
       </button>
 
       <!-- 侧边栏内容区 -->
       <div class="sidebar-content">
         <!-- 知识库（可折叠） -->
         <div class="collapsible-section">
-          <div class="section-header" @click="toggleKbSection">
+          <div v-if="!sidebarCollapsed" class="section-header" @click="toggleKbSection">
             <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !kbSectionExpanded }]" />
             <span class="section-title">知识库</span>
           </div>
-          <div :class="['section-body', { expanded: kbSectionExpanded }]">
+          <div :class="['section-body', { expanded: kbSectionExpanded || sidebarCollapsed }]">
             <div class="kb-list">
               <div
                 v-for="kb in knowledgeBases"
                 :key="kb.id"
                 :class="['kb-item', { active: currentKbId === kb.id }]"
                 @click="selectKnowledgeBase(kb.id)"
+                :title="sidebarCollapsed ? kb.name : ''"
               >
                 <FolderOpen :size="16" class="kb-icon" />
-                <span class="kb-name">{{ kb.name }}</span>
-                <span class="kb-doc-count">{{ kb.docCount }}篇</span>
+                <span v-if="!sidebarCollapsed" class="kb-name">{{ kb.name }}</span>
+                <span v-if="!sidebarCollapsed" class="kb-doc-count">{{ kb.docCount }}篇</span>
               </div>
             </div>
           </div>
@@ -46,22 +60,23 @@
 
         <!-- 历史对话（可折叠） -->
         <div class="collapsible-section">
-          <div class="section-header" @click="toggleHistorySection">
+          <div v-if="!sidebarCollapsed" class="section-header" @click="toggleHistorySection">
             <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !historySectionExpanded }]" />
             <span class="section-title">历史对话</span>
           </div>
-          <div :class="['section-body', { expanded: historySectionExpanded }]">
+          <div :class="['section-body', { expanded: historySectionExpanded || sidebarCollapsed }]">
             <div class="history-list">
               <div
                 v-for="item in historyList"
                 :key="item.id"
                 :class="['history-item', { active: currentHistoryId === item.id }]"
                 @click="loadHistory(item.id)"
+                :title="sidebarCollapsed ? item.title : ''"
               >
                 <MessageSquare :size="16" class="history-icon" />
-                <span class="history-title">{{ item.title }}</span>
+                <span v-if="!sidebarCollapsed" class="history-title">{{ item.title }}</span>
               </div>
-              <div v-if="historyList.length === 0" class="empty-history">
+              <div v-if="historyList.length === 0 && !sidebarCollapsed" class="empty-history">
                 暂无历史记录
               </div>
             </div>
@@ -72,12 +87,33 @@
       <!-- 底部用户信息栏 -->
       <div class="user-bar">
         <div class="user-bar-left">
-          <div class="user-avatar-initial">
+          <div 
+            class="user-avatar-initial" 
+            @click="toggleUserMenu"
+            :title="sidebarCollapsed ? props.username : ''"
+          >
             {{ userInitial }}
           </div>
-          <span class="user-bar-name">{{ props.username }}</span>
+          <span v-if="!sidebarCollapsed" class="user-bar-name">{{ props.username }}</span>
+          
+          <!-- 用户菜单浮层 -->
+          <div v-if="userMenuOpen" class="user-menu" @click.stop>
+            <div class="user-menu-item" @click="handleProfile">
+              <User :size="16" />
+              <span>个人资料</span>
+            </div>
+            <div class="user-menu-item" @click="handleSettings">
+              <Settings :size="16" />
+              <span>设置</span>
+            </div>
+            <div class="user-menu-divider"></div>
+            <div class="user-menu-item logout" @click="handleLogout">
+              <LogOut :size="16" />
+              <span>退出登录</span>
+            </div>
+          </div>
         </div>
-        <div class="user-bar-right">
+        <div v-if="!sidebarCollapsed" class="user-bar-right">
           <button 
             class="mode-toggle" 
             :class="{ active: !isDark }"
@@ -237,21 +273,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
-
-// Props
-interface Props {
-  username?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  username: 'Linsist'
-})
-
-// Computed
-const userInitial = computed(() => {
-  return props.username.charAt(0).toUpperCase()
-})
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import {
   Layers,
   Plus,
@@ -269,7 +291,26 @@ import {
   ArrowUp,
   Moon,
   Sun,
+  PanelLeftClose,
+  PanelLeftOpen,
+  User,
+  Settings,
+  LogOut,
 } from 'lucide-vue-next'
+
+// Props
+interface Props {
+  username?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  username: 'Linsist'
+})
+
+// Computed
+const userInitial = computed(() => {
+  return props.username.charAt(0).toUpperCase()
+})
 import MarkdownIt from 'markdown-it'
 
 // Types
@@ -305,10 +346,12 @@ const currentKbId = ref<number | null>(null)
 const isStreaming = ref(false)
 
 // Sidebar collapse state
+const sidebarCollapsed = ref(false)
 const kbSectionExpanded = ref(true)
 const historySectionExpanded = ref(true)
 const currentHistoryId = ref<string | null>(null)
 const isDark = ref(false)
+const userMenuOpen = ref(false)
 
 const scrollAnchor = ref<HTMLElement>()
 
@@ -369,6 +412,36 @@ function toggleKbSection() {
 
 function toggleHistorySection() {
   historySectionExpanded.value = !historySectionExpanded.value
+}
+
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
+function toggleUserMenu() {
+  userMenuOpen.value = !userMenuOpen.value
+}
+
+function closeUserMenu(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('.user-bar-left')) {
+    userMenuOpen.value = false
+  }
+}
+
+function handleProfile() {
+  console.log('Navigate to profile')
+  userMenuOpen.value = false
+}
+
+function handleSettings() {
+  console.log('Navigate to settings')
+  userMenuOpen.value = false
+}
+
+function handleLogout() {
+  console.log('Logout')
+  userMenuOpen.value = false
 }
 
 function applyTheme(dark: boolean) {
@@ -489,6 +562,13 @@ onMounted(() => {
   if (knowledgeBases.value.length > 0) {
     currentKbId.value = knowledgeBases.value[0].id
   }
+
+  // Listen for clicks outside user menu
+  document.addEventListener('click', closeUserMenu)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeUserMenu)
 })
 </script>
 
@@ -503,7 +583,7 @@ onMounted(() => {
   color: var(--rag-text-primary);
 }
 
-/* ========== Sidebar (240px) ========== */
+/* ========== Sidebar (240px / 64px collapsed) ========== */
 .chat-sidebar {
   width: 240px;
   flex-shrink: 0;
@@ -511,6 +591,11 @@ onMounted(() => {
   flex-direction: column;
   background: var(--rag-bg-sidebar);
   border-right: 1px solid var(--rag-border);
+  transition: width 0.2s ease;
+}
+
+.chat-sidebar.collapsed {
+  width: 64px;
 }
 
 .sidebar-header {
@@ -519,6 +604,7 @@ onMounted(() => {
   gap: 12px;
   padding: 16px;
   border-bottom: 1px solid var(--rag-border);
+  position: relative;
 }
 
 .logo-wrapper {
@@ -536,6 +622,44 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: var(--rag-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.collapse-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rag-text-secondary);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.collapse-btn:hover {
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-primary);
+}
+
+.chat-sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 16px 8px;
+}
+
+.chat-sidebar.collapsed .logo-wrapper {
+  margin: 0;
+}
+
+.chat-sidebar.collapsed .collapse-btn {
+  position: absolute;
+  right: 8px;
+  margin-left: 0;
 }
 
 .new-chat-btn {
@@ -557,6 +681,12 @@ onMounted(() => {
 .new-chat-btn:hover {
   background: var(--rag-bg-hover);
   border-color: var(--rag-primary);
+}
+
+.chat-sidebar.collapsed .new-chat-btn {
+  margin: 12px 8px;
+  padding: 10px;
+  justify-content: center;
 }
 
 /* ========== Sidebar Content ========== */
@@ -663,6 +793,15 @@ onMounted(() => {
   opacity: 0.7;
 }
 
+.chat-sidebar.collapsed .kb-list {
+  padding: 0 8px 8px;
+}
+
+.chat-sidebar.collapsed .kb-item {
+  justify-content: center;
+  padding: 10px;
+}
+
 /* History List */
 .history-list {
   padding: 0 8px 8px;
@@ -708,6 +847,15 @@ onMounted(() => {
   color: var(--rag-text-secondary);
 }
 
+.chat-sidebar.collapsed .history-list {
+  padding: 0 8px 8px;
+}
+
+.chat-sidebar.collapsed .history-item {
+  justify-content: center;
+  padding: 10px;
+}
+
 /* ========== User Bar (Bottom) ========== */
 .user-bar {
   display: flex;
@@ -722,6 +870,59 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
+}
+
+/* User Menu */
+.user-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  min-width: 160px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #0d0d0d;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.user-menu-item:hover {
+  background: #f4f4f4;
+}
+
+.user-menu-item.logout {
+  color: #ef4444;
+}
+
+.user-menu-item.logout:hover {
+  background: #fef2f2;
+}
+
+.user-menu-divider {
+  height: 1px;
+  background: #e5e5e5;
+  margin: 4px 0;
+}
+
+.chat-sidebar.collapsed .user-bar {
+  justify-content: center;
+  padding: 12px 8px;
+}
+
+.chat-sidebar.collapsed .user-bar-left {
+  gap: 0;
 }
 
 .user-avatar-initial {
@@ -736,6 +937,12 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.user-avatar-initial:hover {
+  transform: scale(1.05);
 }
 
 .user-bar-name {
