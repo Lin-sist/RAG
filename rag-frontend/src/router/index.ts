@@ -57,6 +57,22 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/components/chat/RagChatInterface.vue')
     },
 
+    // 历史记录页面
+    {
+        path: '/history-v2',
+        name: 'ChatHistory',
+        component: () => import('@/views/history/ChatHistory.vue'),
+        meta: { title: '历史记录' }
+    },
+
+    // 个人资料页面
+    {
+        path: '/profile',
+        name: 'UserProfile',
+        component: () => import('@/views/profile/UserProfile.vue'),
+        meta: { title: '个人资料' }
+    },
+
     {
         path: '/:pathMatch(.*)*',
         redirect: '/login',
