@@ -34,18 +34,24 @@ function openSettings(tab: 'profile' | 'security' | 'apiKey') {
 <style scoped>
 .app-shell {
   display: flex;
+  flex-direction: row;
   height: 100vh;
+  width: 100%;
   background: var(--rag-bg-surface);
+  overflow: hidden;
 }
 
 .shell-content {
   flex: 1;
   min-width: 0;
+  height: 100vh;
   background: var(--rag-bg-page);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .route-page {
+  width: 100%;
   height: 100%;
 }
 

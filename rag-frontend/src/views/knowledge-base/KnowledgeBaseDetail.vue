@@ -294,22 +294,28 @@ async function confirmDelete() {
 
 <style scoped>
 .kb-detail-view {
-  max-width: 960px;
-  height: 100%;
-  overflow-y: auto;
-  padding: var(--rag-space-6);
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 16px 24px;
 }
 
 .detail-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--rag-space-4);
-  margin-bottom: var(--rag-space-6);
+  gap: var(--rag-space-3);
+  margin-bottom: var(--rag-space-4);
+  padding: 8px 0;
+  max-height: 180px;
+  width: 100%;
 }
 
 .back-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--rag-border);
   background: var(--rag-bg-card);
   border-radius: var(--rag-radius-sm);
@@ -333,11 +339,12 @@ async function confirmDelete() {
   align-items: center;
   gap: var(--rag-space-3);
   flex: 1;
+  min-width: 0;
 }
 
 .title-text {
   margin: 0;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--rag-text-primary);
   letter-spacing: -0.01em;
@@ -362,23 +369,42 @@ async function confirmDelete() {
 
 .header-actions {
   display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: var(--rag-space-2);
+  flex-shrink: 0;
 }
 
 .action-btn {
   display: flex;
+  justify-content: center;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 6px;
+  width: auto;
   padding: 8px 16px;
   border: none;
   border-radius: var(--rag-radius-sm);
   font-size: 14px;
   font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
+.action-btn :deep(svg) {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.action-btn > span {
+  white-space: nowrap;
+}
+
 .action-btn.small {
+  width: auto;
   padding: 6px 12px;
   font-size: 13px;
 }
@@ -417,8 +443,21 @@ async function confirmDelete() {
 .card-header-v2 {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 10px;
   margin-bottom: var(--rag-space-4);
+}
+
+.card-header-v2.doc-header {
+  justify-content: space-between;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.card-header-v2.doc-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .header-left {
@@ -428,6 +467,9 @@ async function confirmDelete() {
 }
 
 .header-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
   color: var(--rag-primary);
 }
 
@@ -440,12 +482,14 @@ async function confirmDelete() {
 .info-grid {
   display: flex;
   flex-direction: column;
+  padding: 0 8px;
 }
 
 .info-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--rag-space-4);
+  padding: var(--rag-space-2) 8px;
 }
 
 .info-row.full {
@@ -456,6 +500,7 @@ async function confirmDelete() {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-left: 8px;
 }
 
 .info-label {
@@ -488,12 +533,22 @@ async function confirmDelete() {
 }
 
 .upload-section {
+  padding-left: 8px;
+  padding-right: 8px;
   margin-bottom: var(--rag-space-4);
+}
+
+:deep(.doc-progress),
+:deep(.doc-list) {
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .section-divider {
   height: 1px;
   background: var(--rag-border);
+  margin-left: 8px;
+  margin-right: 8px;
   margin-top: var(--rag-space-4);
 }
 </style>

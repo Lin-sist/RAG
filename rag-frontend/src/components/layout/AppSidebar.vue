@@ -291,6 +291,7 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-sidebar {
+  flex: 0 0 240px;
   width: 240px;
   flex-shrink: 0;
   display: flex;
@@ -301,6 +302,7 @@ onUnmounted(() => {
 }
 
 .chat-sidebar.collapsed {
+  flex-basis: 64px;
   width: 64px;
 }
 
