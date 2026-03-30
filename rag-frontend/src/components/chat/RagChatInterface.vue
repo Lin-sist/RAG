@@ -279,6 +279,12 @@
         <p class="disclaimer">AI 可能产生不准确内容，请核对引用来源</p>
       </div>
     </main>
+
+    <!-- Settings Modal -->
+    <SettingsModal
+      v-model="settingsOpen"
+      :initial-tab="settingsInitialTab"
+    />
   </div>
 </template>
 
@@ -307,6 +313,7 @@ import {
   Settings,
   LogOut,
 } from 'lucide-vue-next'
+import SettingsModal from '@/components/settings/SettingsModal.vue'
 
 // Props
 interface Props {
@@ -362,6 +369,8 @@ const historySectionExpanded = ref(true)
 const currentHistoryId = ref<string | null>(null)
 const isDark = ref(false)
 const userMenuOpen = ref(false)
+const settingsOpen = ref(false)
+const settingsInitialTab = ref<'profile' | 'security' | 'apiKey'>('profile')
 
 const scrollAnchor = ref<HTMLElement>()
 
@@ -381,7 +390,7 @@ const historyList = ref<HistoryItem[]>([
 const exampleQuestions = [
   '这个知识库包含哪些主要内容？',
   '请总结一下最重要的要点',
-  '帮我解释一下核心概念',
+  '帮我解释一下核心概��',
   '有哪些实际应用场景？',
 ]
 
@@ -440,12 +449,14 @@ function closeUserMenu(e: MouseEvent) {
 }
 
 function handleProfile() {
-  console.log('Navigate to profile')
+  settingsInitialTab.value = 'profile'
+  settingsOpen.value = true
   userMenuOpen.value = false
 }
 
 function handleSettings() {
-  console.log('Navigate to settings')
+  settingsInitialTab.value = 'security'
+  settingsOpen.value = true
   userMenuOpen.value = false
 }
 
@@ -512,7 +523,7 @@ function sendMessage(text: string) {
 
 function simulateStreamResponse(msgId: string) {
   isStreaming.value = true
-  const responseText = '根据知识库中的相关文档，我为您找到了以下信息：\n\n这是一个模拟的 AI 回复内容。在实际应用中，这里会显示来自 RAG 系统的真实回答，包括从知识库中检索到的相关信息和 AI 的总结分析。\n\n**关键要点：**\n\n1. 第一个要点内容\n2. 第二个要点内容\n3. 第三个要点内容\n\n如需了解更多详情，请参考下方的引用来源。'
+  const responseText = '根据知识库中的相关文档，我为您找到了以下信息：\n\n这是一个模拟的 AI 回复内容。在实际应用中，这里会显示来自 RAG 系统的真实回答，包括从知识库中检索到的相关信息和 AI 的总结分析。\n\n**关键要点：**\n\n1. 第一个要点内容\n2. ��二个要点内容\n3. 第三个要点内容\n\n如需了解更多详情，请参考下方的引用来源。'
   
   let index = 0
   const msg = messages.value.find(m => m.id === msgId)
