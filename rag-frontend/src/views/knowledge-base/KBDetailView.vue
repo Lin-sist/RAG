@@ -1,60 +1,96 @@
 <template>
   <div class="kb-detail-view" v-loading="kbStore.loading">
     <!-- 顶部返回导航 -->
-    <el-page-header @back="router.push('/knowledge-base')">
-      <template #content>
-        <div class="detail-title">
-          <span>{{ kbStore.current?.name || '知识库详情' }}</span>
-          <el-tag v-if="kbStore.current" :type="kbStore.current.isPublic ? 'success' : 'info'" size="small">
-            {{ kbStore.current.isPublic ? '公开' : '私有' }}
-          </el-tag>
-        </div>
-      </template>
-      <template #extra>
-        <el-button-group>
-          <el-button type="primary" :icon="Edit" @click="editDialogVisible = true">编辑</el-button>
-          <el-button type="danger" :icon="Delete" @click="confirmDelete">删除</el-button>
-        </el-button-group>
-      </template>
-    </el-page-header>
+    <div class="detail-header">
+      <button class="back-btn" @click="router.push('/knowledge-base')">
+        <ArrowLeft :size="18" />
+      </button>
+      <div class="detail-title">
+        <span class="title-text">{{ kbStore.current?.name || '知识库详情' }}</span>
+        <span 
+          v-if="kbStore.current" 
+          :class="['visibility-pill', kbStore.current.isPublic ? 'public' : 'private']"
+        >
+          {{ kbStore.current.isPublic ? '公开' : '私有' }}
+        </span>
+      </div>
+      <div class="header-actions">
+        <button class="action-btn primary" @click="editDialogVisible = true">
+          <Edit :size="16" />
+          <span>编辑</span>
+        </button>
+        <button class="action-btn danger" @click="confirmDelete">
+          <Delete :size="16" />
+          <span>删除</span>
+        </button>
+      </div>
+    </div>
 
     <div v-if="kbStore.current" class="detail-content">
-      <!-- 基础信息卡片 -->
-      <el-card shadow="never" class="info-card">
-        <template #header>
+      <!-- 基础信息卡片 - 改为卡片式信息组 -->
+      <div class="info-card-v2">
+        <div class="card-header-v2">
+          <Info :size="18" class="header-icon" />
           <span class="card-section-title">基本信息</span>
-        </template>
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="知识库 ID">{{ kbStore.current.id }}</el-descriptions-item>
-          <el-descriptions-item label="名称">{{ kbStore.current.name }}</el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">
-            {{ kbStore.current.description || '暂无描述' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="向量集合">
-            <el-tag type="info" size="small">{{ kbStore.current.vectorCollection }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="文档数量">
-            <el-tag type="primary" size="small">{{ kbStore.current.documentCount }} 篇</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatDate(kbStore.current.createdAt) }}</el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ formatDate(kbStore.current.updatedAt) }}</el-descriptions-item>
-        </el-descriptions>
-      </el-card>
+        </div>
+        <div class="info-grid">
+          <div class="info-row">
+            <div class="info-item">
+              <span class="info-label">知识库 ID</span>
+              <span class="info-value">{{ kbStore.current.id }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">名称</span>
+              <span class="info-value">{{ kbStore.current.name }}</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-row full">
+            <div class="info-item">
+              <span class="info-label">描述</span>
+              <span class="info-value desc">{{ kbStore.current.description || '暂无描述' }}</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-row">
+            <div class="info-item">
+              <span class="info-label">向量集合</span>
+              <span class="info-value mono">{{ kbStore.current.vectorCollection }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">文档数量</span>
+              <span class="info-value highlight">{{ kbStore.current.documentCount }} 篇</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-row">
+            <div class="info-item">
+              <span class="info-label">创建时间</span>
+              <span class="info-value">{{ formatDate(kbStore.current.createdAt) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">更新时间</span>
+              <span class="info-value">{{ formatDate(kbStore.current.updatedAt) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- 统计面板 -->
       <KBStatsPanel :stats="kbStore.statistics" :loading="statsLoading" />
 
       <!-- 文档管理区域 -->
-      <el-card shadow="never" class="info-card">
-        <template #header>
-          <div class="doc-header">
+      <div class="info-card-v2">
+        <div class="card-header-v2 doc-header">
+          <div class="header-left">
+            <FileText :size="18" class="header-icon" />
             <span class="card-section-title">文档管理</span>
-            <el-button type="primary" size="small" @click="uploadVisible = !uploadVisible">
-              <el-icon><Upload /></el-icon>
-              {{ uploadVisible ? '收起上传' : '上传文档' }}
-            </el-button>
           </div>
-        </template>
+          <button class="action-btn primary small" @click="uploadVisible = !uploadVisible">
+            <Upload :size="14" />
+            <span>{{ uploadVisible ? '收起上传' : '上传文档' }}</span>
+          </button>
+        </div>
 
         <!-- 上传区域（可折叠） -->
         <div v-show="uploadVisible" class="upload-section">
@@ -63,7 +99,7 @@
             @uploaded="handleDocUploaded"
             @all-done="handleAllUploadDone"
           />
-          <el-divider />
+          <div class="section-divider"></div>
         </div>
 
         <!-- 进度面板（有任务时显示） -->
@@ -76,7 +112,7 @@
           :loading="docsLoading"
           @refresh="loadDocuments"
         />
-      </el-card>
+      </div>
     </div>
 
     <!-- 编辑弹窗 -->
@@ -92,7 +128,8 @@
 import { ref, reactive, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Edit, Delete, Upload } from '@element-plus/icons-vue'
+import { Edit, Delete, Upload, ArrowLeft, Info } from '@element-plus/icons-vue'
+import { FileText } from 'lucide-vue-next'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
 import { formatDate } from '@/utils/format'
 import { listDocuments } from '@/api/knowledgeBase'
@@ -287,33 +324,217 @@ async function confirmDelete() {
 <style scoped>
 .kb-detail-view {
   max-width: 960px;
+  padding: var(--rag-space-6);
 }
+
+/* 顶部导航头 */
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--rag-space-4);
+  margin-bottom: var(--rag-space-6);
+}
+
+.back-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--rag-border);
+  background: var(--rag-bg-card);
+  border-radius: var(--rag-radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rag-text-secondary);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-primary);
+  border-color: var(--rag-primary);
+}
+
 .detail-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 600;
+  gap: var(--rag-space-3);
+  flex: 1;
 }
+
+.title-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--rag-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.visibility-pill {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+
+.visibility-pill.private {
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-secondary);
+}
+
+.visibility-pill.public {
+  background: var(--rag-success-light);
+  color: var(--rag-primary);
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--rag-space-2);
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--rag-radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn.small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.action-btn.primary {
+  background: var(--rag-primary);
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background: var(--rag-primary-hover);
+}
+
+.action-btn.danger {
+  background: transparent;
+  color: var(--rag-danger);
+  border: 1px solid var(--rag-danger);
+}
+
+.action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
 .detail-content {
-  margin-top: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--rag-space-6);
 }
-.info-card {
-  /* 无额外样式，使用默认 el-card */
+
+/* 信息卡片 V2 */
+.info-card-v2 {
+  background: var(--rag-bg-card);
+  border: 1px solid var(--rag-border);
+  border-radius: var(--rag-radius-lg);
+  padding: var(--rag-space-6);
 }
+
+.card-header-v2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--rag-space-4);
+}
+
+.card-header-v2 .header-icon {
+  color: var(--rag-primary);
+}
+
+.card-header-v2.doc-header {
+  justify-content: space-between;
+}
+
+.card-header-v2.doc-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .card-section-title {
   font-weight: 600;
   font-size: 15px;
+  color: var(--rag-text-primary);
 }
-.doc-header {
+
+/* 信息网格 */
+.info-grid {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 0;
 }
+
+.info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--rag-space-6);
+  padding: var(--rag-space-3) 0;
+}
+
+.info-row.full {
+  grid-template-columns: 1fr;
+}
+
+.info-divider {
+  height: 1px;
+  background: var(--rag-border-light);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: var(--rag-text-placeholder);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.info-value {
+  font-size: 14px;
+  color: var(--rag-text-primary);
+  font-weight: 500;
+}
+
+.info-value.desc {
+  color: var(--rag-text-secondary);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.info-value.mono {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 13px;
+  color: var(--rag-text-secondary);
+}
+
+.info-value.highlight {
+  color: var(--rag-primary);
+}
+
 .upload-section {
-  margin-bottom: 8px;
+  margin-bottom: var(--rag-space-4);
+}
+
+.section-divider {
+  height: 1px;
+  background: var(--rag-border-light);
+  margin: var(--rag-space-4) 0;
 }
 </style>

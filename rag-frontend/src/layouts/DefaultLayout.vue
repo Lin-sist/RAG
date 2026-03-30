@@ -9,9 +9,7 @@
       <AppHeader
         :collapsed="isCollapse"
         :title="currentTitle"
-        :username="authStore.userInfo?.username || '用户'"
         @toggle-collapse="isCollapse = !isCollapse"
-        @logout="handleLogout"
       />
 
       <!-- 主内容区 -->
@@ -29,20 +27,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useAuth } from '@/composables/useAuth'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 
 const route = useRoute()
-const authStore = useAuthStore()
-const { logout } = useAuth()
 const isCollapse = ref(false)
 const currentTitle = computed(() => (route.meta.title as string) || 'RAG 系统')
-
-async function handleLogout() {
-  await logout()
-}
 </script>
 
 <style scoped>

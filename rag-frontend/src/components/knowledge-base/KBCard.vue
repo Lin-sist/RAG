@@ -71,32 +71,34 @@ function handleCommand(cmd: string) {
 <style scoped>
 .kb-card {
   cursor: pointer;
-  background: var(--rag-bg-surface);
+  background: var(--rag-bg-card);
   border: 1px solid var(--rag-border);
-  border-radius: var(--rag-radius-md);
+  border-radius: var(--rag-radius-lg);
   padding: 0;
   overflow: hidden;
-  transition: var(--rag-transition);
+  transition: all 0.2s ease;
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .kb-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--rag-shadow-md);
-  border-color: var(--rag-primary-light);
+  transform: translateY(-3px);
+  box-shadow: var(--rag-shadow-lg);
+  border-color: var(--rag-primary);
 }
 
-/* 顶部渐变装饰条 */
+/* 顶部渐变装饰条 - 更细腻 */
 .card-gradient-bar {
-  height: 4px;
+  height: 3px;
   background: var(--rag-gradient);
   flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .kb-card:hover .card-gradient-bar {
-  height: 5px;
+  height: 4px;
+  opacity: 1;
 }
 
 .card-header {
@@ -107,10 +109,10 @@ function handleCommand(cmd: string) {
 }
 
 .card-icon-circle {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(14, 165, 233, 0.1));
+  width: 44px;
+  height: 44px;
+  border-radius: var(--rag-radius-md);
+  background: var(--rag-success-light);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -124,12 +126,31 @@ function handleCommand(cmd: string) {
   gap: var(--rag-space-2);
 }
 
+/* 私有/公开标签 - pill 样式 */
+.card-header-right :deep(.el-tag) {
+  border: none;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 9999px;
+}
+
+.card-header-right :deep(.el-tag--info) {
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-secondary);
+}
+
+.card-header-right :deep(.el-tag--success) {
+  background: var(--rag-success-light);
+  color: var(--rag-primary);
+}
+
 .more-btn {
   font-size: 18px;
   color: var(--rag-text-placeholder);
   cursor: pointer;
   padding: var(--rag-space-1);
-  border-radius: var(--rag-space-1);
+  border-radius: var(--rag-radius-sm);
   transition: var(--rag-transition);
 }
 
@@ -139,21 +160,22 @@ function handleCommand(cmd: string) {
 }
 
 .card-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--rag-text-primary);
   margin: var(--rag-space-3) var(--rag-space-4) 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 .card-desc {
   color: var(--rag-text-secondary);
   font-size: 13px;
-  line-height: var(--rag-line-height);
+  line-height: 1.5;
   margin: var(--rag-space-2) var(--rag-space-4) 0;
-  min-height: 42px;
+  min-height: 40px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -168,24 +190,21 @@ function handleCommand(cmd: string) {
   padding: var(--rag-space-3) var(--rag-space-4);
   margin-top: auto;
   border-top: 1px solid var(--rag-border-light);
-  font-size: var(--rag-font-small);
-  color: var(--rag-text-secondary);
+  font-size: 12px;
+  color: var(--rag-text-placeholder);
 }
 
 .footer-badge {
   display: flex;
   align-items: center;
-  gap: var(--rag-space-1);
-  background: rgba(79, 70, 229, 0.08);
-  color: var(--rag-primary);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 500;
+  gap: 4px;
+  color: var(--rag-text-secondary);
+  font-weight: 400;
 }
 
 .footer-time {
   display: flex;
   align-items: center;
-  gap: var(--rag-space-1);
+  gap: 4px;
 }
 </style>

@@ -3,7 +3,10 @@
     <!-- 页面标题 + 创建按钮 -->
     <div class="page-header">
       <h2>知识库管理</h2>
-      <el-button type="primary" :icon="Plus" @click="dialogVisible = true">创建知识库</el-button>
+      <button class="create-btn" @click="dialogVisible = true">
+        <Plus :size="18" />
+        <span>创建知识库</span>
+      </button>
     </div>
 
     <!-- 知识库卡片网格 -->
@@ -47,7 +50,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus } from 'lucide-vue-next'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
 import type { KnowledgeBaseDTO } from '@/types/knowledgeBase'
 import KBCard from '@/components/knowledge-base/KBCard.vue'
@@ -109,16 +112,53 @@ async function openStats(kb: KnowledgeBaseDTO) {
 </script>
 
 <style scoped>
+.kb-list-view {
+  padding: var(--rag-space-6);
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--rag-space-6);
+  margin-bottom: var(--rag-space-8);
 }
+
 .page-header h2 {
   margin: 0;
-  font-size: var(--rag-font-h2);
+  font-size: 24px;
   font-weight: 600;
   color: var(--rag-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.create-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--rag-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--rag-radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-btn:hover {
+  background: var(--rag-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--rag-shadow-sm);
+}
+
+/* 空状态样式覆盖 */
+:deep(.el-empty) {
+  padding: var(--rag-space-12);
+}
+
+:deep(.el-empty__description p) {
+  color: var(--rag-text-secondary);
+  font-size: 14px;
 }
 </style>
