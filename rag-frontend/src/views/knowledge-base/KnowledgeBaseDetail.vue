@@ -1,14 +1,13 @@
 <template>
   <div class="kb-detail-view" v-loading="kbStore.loading">
-    <!-- 顶部返回导航 -->
     <div class="detail-header">
-      <button class="back-btn" @click="router.push('/knowledge-base')">
+      <button class="back-btn" @click="router.push('/kb')">
         <ArrowLeft :size="18" />
       </button>
       <div class="detail-title">
-        <span class="title-text">{{ kbStore.current?.name || '知识库详情' }}</span>
-        <span 
-          v-if="kbStore.current" 
+        <h1 class="title-text">{{ kbStore.current?.name || '知识库详情' }}</h1>
+        <span
+          v-if="kbStore.current"
           :class="['visibility-pill', kbStore.current.isPublic ? 'public' : 'private']"
         >
           {{ kbStore.current.isPublic ? '公开' : '私有' }}
@@ -27,7 +26,6 @@
     </div>
 
     <div v-if="kbStore.current" class="detail-content">
-      <!-- 基础信息卡片 - 改为卡片式信息组 -->
       <div class="info-card-v2">
         <div class="card-header-v2">
           <InfoFilled class="header-icon" />
@@ -76,10 +74,8 @@
         </div>
       </div>
 
-      <!-- 统计面板 -->
       <KBStatsPanel :stats="kbStore.statistics" :loading="statsLoading" />
 
-      <!-- 文档管理区域 -->
       <div class="info-card-v2">
         <div class="card-header-v2 doc-header">
           <div class="header-left">
@@ -92,7 +88,6 @@
           </button>
         </div>
 
-        <!-- 上传区域（可折叠） -->
         <div v-show="uploadVisible" class="upload-section">
           <DocUploader
             :kb-id="getKbId()"
@@ -102,10 +97,8 @@
           <div class="section-divider"></div>
         </div>
 
-        <!-- 进度面板（有任务时显示） -->
         <DocProgress :tasks="progressTasks" />
 
-        <!-- 文档列表 -->
         <DocList
           :kb-id="getKbId()"
           :documents="documents"
@@ -115,7 +108,6 @@
       </div>
     </div>
 
-    <!-- 编辑弹窗 -->
     <KBCreateDialog
       v-model:visible="editDialogVisible"
       :edit-data="kbStore.current"
@@ -157,20 +149,16 @@ const editDialogVisible = ref(false)
 const statsLoading = ref(false)
 const uploadVisible = ref(false)
 
-// ========== 文档列表状态 ==========
 const documents = ref<DocumentInfo[]>([])
 const docsLoading = ref(false)
 
-// ========== 进度任务状态 ==========
 const progressTasks = reactive<ProgressTask[]>([])
 const pollingTimers = new Map<string, ReturnType<typeof setInterval>>()
 
-// 获取路由参数中的 id
 function getKbId(): number {
   return Number(route.params.id)
 }
 
-// ---------- 加载文档列表 ----------
 async function loadDocuments() {
   const id = getKbId()
   if (!id || isNaN(id)) return
@@ -185,28 +173,21 @@ async function loadDocuments() {
   }
 }
 
-// ---------- 文件上传成功回调 ----------
 function handleDocUploaded(data: DocumentUploadResponse) {
-  // 添加到进度追踪列表
   const task: ProgressTask = {
     taskId: data.taskId,
     fileName: data.fileName,
     status: null,
   }
   progressTasks.push(task)
-  // 开始轮询该任务
   startTaskPolling(task)
 }
 
-// ---------- 全部上传完成回调 ----------
 function handleAllUploadDone() {
-  // 刷新文档列表以显示新上传的文档（即使它们还在 PROCESSING 中）
   loadDocuments()
 }
 
-// ---------- 轮询单个任务的进度 ----------
 function startTaskPolling(task: ProgressTask) {
-  // 立即查询一次
   pollTaskOnce(task)
 
   const timer = setInterval(() => {
@@ -223,7 +204,6 @@ async function pollTaskOnce(task: ProgressTask) {
     const state = res.data.data.state
 
     if (state === 'COMPLETED' || state === 'FAILED' || state === 'CANCELLED') {
-      // 终态：停止轮询
       stopTaskPolling(task.taskId)
 
       if (state === 'COMPLETED') {
@@ -233,12 +213,10 @@ async function pollTaskOnce(task: ProgressTask) {
         ElMessage.error(`「${task.fileName}」处理失败：${reason}`)
       }
 
-      // 刷新文档列表和统计
       loadDocuments()
       kbStore.fetchStatistics(getKbId())
-      kbStore.fetchById(getKbId()) // 刷新 documentCount
+      kbStore.fetchById(getKbId())
 
-      // 3 秒后从进度列表中移除已完成的任务
       setTimeout(() => {
         const idx = progressTasks.findIndex(t => t.taskId === task.taskId)
         if (idx !== -1) progressTasks.splice(idx, 1)
@@ -262,12 +240,11 @@ function stopAllPolling() {
   pollingTimers.clear()
 }
 
-// ---------- 加载知识库详情 + 统计 ----------
 async function loadDetail() {
   const id = getKbId()
   if (!id || isNaN(id)) {
     ElMessage.error('无效的知识库 ID')
-    router.push('/knowledge-base')
+    router.push('/kb')
     return
   }
   try {
@@ -275,17 +252,14 @@ async function loadDetail() {
     statsLoading.value = true
     await kbStore.fetchStatistics(id)
     statsLoading.value = false
-    // 同时加载文档列表
     await loadDocuments()
   } catch {
-    router.push('/knowledge-base')
+    router.push('/kb')
   }
 }
 
-// 页面初始化
 onMounted(loadDetail)
 
-// 路由参数变化时重新加载
 watch(() => route.params.id, () => {
   if (route.params.id) {
     stopAllPolling()
@@ -294,17 +268,14 @@ watch(() => route.params.id, () => {
   }
 })
 
-// 组件销毁时清理所有轮询
 onUnmounted(() => {
   stopAllPolling()
 })
 
-// 编辑成功后刷新
 function handleEditSuccess() {
   loadDetail()
 }
 
-// 确认删除
 async function confirmDelete() {
   if (!kbStore.current) return
   try {
@@ -314,7 +285,7 @@ async function confirmDelete() {
       { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning', confirmButtonClass: 'el-button--danger' }
     )
     await kbStore.remove(kbStore.current.id)
-    router.push('/knowledge-base')
+    router.push('/kb')
   } catch {
     // 用户取消
   }
@@ -324,10 +295,11 @@ async function confirmDelete() {
 <style scoped>
 .kb-detail-view {
   max-width: 960px;
+  height: 100%;
+  overflow-y: auto;
   padding: var(--rag-space-6);
 }
 
-/* 顶部导航头 */
 .detail-header {
   display: flex;
   align-items: center;
@@ -364,8 +336,9 @@ async function confirmDelete() {
 }
 
 .title-text {
-  font-size: 20px;
-  font-weight: 600;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
   color: var(--rag-text-primary);
   letter-spacing: -0.01em;
 }
@@ -420,112 +393,98 @@ async function confirmDelete() {
 }
 
 .action-btn.danger {
-  background: transparent;
-  color: var(--rag-danger);
-  border: 1px solid var(--rag-danger);
+  background: #ef4444;
+  color: #fff;
 }
 
 .action-btn.danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: #dc2626;
 }
 
 .detail-content {
   display: flex;
   flex-direction: column;
-  gap: var(--rag-space-6);
+  gap: var(--rag-space-4);
 }
 
-/* 信息卡片 V2 */
 .info-card-v2 {
   background: var(--rag-bg-card);
   border: 1px solid var(--rag-border);
-  border-radius: var(--rag-radius-lg);
-  padding: var(--rag-space-6);
+  border-radius: var(--rag-radius-md);
+  padding: var(--rag-space-5);
 }
 
 .card-header-v2 {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
   margin-bottom: var(--rag-space-4);
 }
 
-.card-header-v2 .header-icon {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
   color: var(--rag-primary);
 }
 
-.card-header-v2.doc-header {
-  justify-content: space-between;
-}
-
-.card-header-v2.doc-header .header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .card-section-title {
-  font-weight: 600;
   font-size: 15px;
+  font-weight: 600;
   color: var(--rag-text-primary);
 }
 
-/* 信息网格 */
 .info-grid {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .info-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--rag-space-6);
-  padding: var(--rag-space-3) 0;
+  gap: var(--rag-space-4);
 }
 
 .info-row.full {
   grid-template-columns: 1fr;
 }
 
-.info-divider {
-  height: 1px;
-  background: var(--rag-border-light);
-}
-
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .info-label {
   font-size: 12px;
-  color: var(--rag-text-placeholder);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--rag-text-secondary);
 }
 
 .info-value {
   font-size: 14px;
   color: var(--rag-text-primary);
-  font-weight: 500;
-}
-
-.info-value.desc {
-  color: var(--rag-text-secondary);
-  font-weight: 400;
-  line-height: 1.5;
 }
 
 .info-value.mono {
-  font-family: 'SF Mono', Monaco, monospace;
-  font-size: 13px;
-  color: var(--rag-text-secondary);
+  font-family: 'SF Mono', Consolas, monospace;
 }
 
 .info-value.highlight {
   color: var(--rag-primary);
+  font-weight: 600;
+}
+
+.info-value.desc {
+  line-height: 1.7;
+}
+
+.info-divider {
+  height: 1px;
+  background: var(--rag-border);
+  margin: var(--rag-space-4) 0;
 }
 
 .upload-section {
@@ -534,7 +493,7 @@ async function confirmDelete() {
 
 .section-divider {
   height: 1px;
-  background: var(--rag-border-light);
-  margin: var(--rag-space-4) 0;
+  background: var(--rag-border);
+  margin-top: var(--rag-space-4);
 }
 </style>

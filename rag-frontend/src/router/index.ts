@@ -16,61 +16,72 @@ const routes: RouteRecordRaw[] = [
     },
     {
         path: '/',
-        component: () => import('@/layouts/DefaultLayout.vue'),
+        component: () => import('@/layouts/AppShell.vue'),
         meta: { requiresAuth: true },
+        redirect: '/chat',
         children: [
-            {
-                path: '',
-                redirect: '/knowledge-base',
-            },
-            {
-                path: 'knowledge-base',
-                name: 'KBList',
-                component: () => import('@/views/knowledge-base/KBListView.vue'),
-                meta: { title: '知识库管理' },
-            },
-            {
-                path: 'knowledge-base/:id',
-                name: 'KBDetail',
-                component: () => import('@/views/knowledge-base/KBDetailView.vue'),
-                meta: { title: '知识库详情' },
-            },
             {
                 path: 'chat',
                 name: 'Chat',
-                component: () => import('@/views/chat/ChatView.vue'),
-                meta: { title: '智能问答' },
+                component: () => import('@/components/chat/ChatPanel.vue'),
+                meta: { title: '新会话' },
+            },
+            {
+                path: 'chat/:id',
+                name: 'ChatSession',
+                component: () => import('@/components/chat/ChatPanel.vue'),
+                meta: { title: '历史会话' },
+            },
+            {
+                path: 'chat-v2',
+                name: 'ChatV2',
+                component: () => import('@/components/chat/ChatPanel.vue'),
+                meta: { title: '新会话' },
+            },
+            {
+                path: 'kb',
+                name: 'KnowledgeBaseList',
+                component: () => import('@/views/knowledge-base/KnowledgeBaseList.vue'),
+                meta: { title: '知识库列表' },
+            },
+            {
+                path: 'kb/:id',
+                name: 'KnowledgeBaseDetail',
+                component: () => import('@/views/knowledge-base/KnowledgeBaseDetail.vue'),
+                meta: { title: '知识库详情' },
             },
             {
                 path: 'history',
                 name: 'History',
-                component: () => import('@/views/history/HistoryView.vue'),
-                meta: { title: '问答历史' },
+                component: () => import('@/views/history/ChatHistory.vue'),
+                meta: { title: '历史记录' },
             },
         ],
     },
 
     //临时测试v0
-    {
-        path: '/chat-v2',
-        name: 'ChatV2',
-        component: () => import('@/components/chat/RagChatInterface.vue')
-    },
-
-    // 历史记录页面
+    // 历史记录页面兼容入口
     {
         path: '/history-v2',
         name: 'ChatHistory',
-        component: () => import('@/views/history/ChatHistory.vue'),
-        meta: { title: '历史记录' }
+        redirect: '/history',
     },
 
-    // 个人资料页面
+    // 兼容旧知识库路径
+    {
+        path: '/knowledge-base',
+        redirect: '/kb',
+    },
+    {
+        path: '/knowledge-base/:id',
+        redirect: (to) => `/kb/${to.params.id}`,
+    },
+
+    // 个人资料页面兼容入口
     {
         path: '/profile',
         name: 'UserProfile',
-        component: () => import('@/views/profile/UserProfile.vue'),
-        meta: { title: '个人资料' }
+        redirect: '/chat',
     },
 
     {
