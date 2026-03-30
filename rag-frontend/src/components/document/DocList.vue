@@ -58,7 +58,18 @@
       </el-table-column>
     </el-table>
 
-    <el-empty v-else-if="!loading" description="暂无文档，请上传文件" :image-size="60" />
+    <!-- 简洁空状态 -->
+    <div v-else-if="!loading" class="empty-state">
+      <div class="empty-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+      </div>
+      <p class="empty-text">暂无文档，点击上传开始使用</p>
+    </div>
   </div>
 </template>
 
@@ -125,9 +136,37 @@ async function handleDelete(doc: DocumentInfo & { _deleting?: boolean }) {
 }
 .doc-count {
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: var(--rag-text-secondary);
 }
 .text-muted {
-  color: var(--el-text-color-placeholder);
+  color: var(--rag-text-placeholder);
+}
+
+/* 简洁空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rag-space-12) var(--rag-space-6);
+  text-align: center;
+}
+
+.empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--rag-radius-lg);
+  background: var(--rag-bg-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rag-text-placeholder);
+  margin-bottom: var(--rag-space-4);
+}
+
+.empty-text {
+  font-size: 14px;
+  color: var(--rag-text-secondary);
+  margin: 0;
 }
 </style>

@@ -9,51 +9,21 @@
         <h3 class="header-title">{{ title }}</h3>
       </div>
     </div>
-    <div class="header-right">
-      <el-dropdown trigger="click" @command="handleCommand">
-        <span class="user-dropdown">
-          <el-avatar :size="32" class="user-avatar">
-            {{ username.charAt(0).toUpperCase() }}
-          </el-avatar>
-          <span class="username">{{ username }}</span>
-          <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
-        </span>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item disabled>
-              <el-icon><User /></el-icon>
-              {{ username }}
-            </el-dropdown-item>
-            <el-dropdown-item divided command="logout">
-              <el-icon><SwitchButton /></el-icon>
-              退出登录
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-    </div>
+    <!-- 用户信息已移至侧边栏底部头像菜单 -->
   </el-header>
 </template>
 
 <script setup lang="ts">
-import { Fold, Expand, ArrowDown, User, SwitchButton } from '@element-plus/icons-vue'
+import { Fold, Expand } from '@element-plus/icons-vue'
 
 defineProps<{
   collapsed: boolean
   title: string
-  username: string
 }>()
 
 const emit = defineEmits<{
   'toggle-collapse': []
-  'logout': []
 }>()
-
-function handleCommand(command: string) {
-  if (command === 'logout') {
-    emit('logout')
-  }
-}
 </script>
 
 <style scoped>
@@ -94,46 +64,4 @@ function handleCommand(command: string) {
   margin: 0;
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: var(--rag-space-4);
-}
-
-.user-dropdown {
-  display: flex;
-  align-items: center;
-  gap: var(--rag-space-3);
-  cursor: pointer;
-  color: var(--rag-text-regular);
-  outline: none;
-  padding: var(--rag-space-2) var(--rag-space-3);
-  border-radius: var(--rag-radius-sm);
-  transition: var(--rag-transition);
-}
-
-.user-dropdown:hover {
-  background: var(--rag-bg-hover);
-  color: var(--rag-primary);
-}
-
-.user-avatar {
-  background: var(--rag-gradient);
-  color: #fff;
-  font-weight: 600;
-}
-
-.username {
-  font-size: var(--rag-font-body);
-  font-weight: 500;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dropdown-arrow {
-  font-size: 12px;
-  color: var(--rag-text-placeholder);
-}
 </style>
