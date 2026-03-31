@@ -91,10 +91,73 @@
     </div>
 
     <div class="input-wrapper">
+      <div
+        v-if="selectedKb"
+        style="max-width: 720px; width: 100%; margin-bottom: 8px; display: flex; justify-content: flex-start;"
+      >
+        <div
+          style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--rag-border); border-radius: 999px; background: var(--rag-bg-surface); color: var(--rag-text-secondary); font-size: 12px;"
+        >
+          <span>知识库：{{ selectedKb.name }}</span>
+          <button
+            type="button"
+            title="取消选择"
+            @click="clearSelectedKb"
+            style="border: none; background: transparent; color: var(--rag-text-secondary); cursor: pointer; font-size: 14px; line-height: 1; padding: 0;"
+          >
+            x
+          </button>
+        </div>
+      </div>
+
       <div class="input-container">
-        <button class="attach-btn" title="添加附件">
-          <Plus :size="16" />
-        </button>
+        <div ref="kbDropdownRoot" style="position: relative; display: flex;">
+          <button class="attach-btn" title="选择知识库" @click.stop="toggleKbDropdown">
+            <Plus :size="16" />
+          </button>
+          <div
+            v-if="kbDropdownOpen"
+            @click.stop
+            style="position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 30; min-width: 280px; max-height: 280px; overflow-y: auto; border: 1px solid var(--rag-border); border-radius: 12px; background: var(--rag-bg-surface); box-shadow: var(--rag-shadow-md); padding: 8px;"
+          >
+            <div
+              v-if="kbList.length === 0"
+              style="padding: 10px 12px; color: var(--rag-text-secondary); font-size: 13px;"
+            >
+              暂无知识库
+            </div>
+            <button
+              v-for="kb in kbList"
+              :key="kb.id"
+              type="button"
+              @click="selectKbFromDropdown(kb)"
+              :style="{
+                width: '100%',
+                textAlign: 'left',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 10px',
+                background: selectedKbId === kb.id ? 'var(--rag-bg-user-msg)' : 'transparent',
+                cursor: 'pointer',
+                marginBottom: '4px',
+              }"
+            >
+              <div
+                :style="{
+                  fontSize: '13px',
+                  color: 'var(--rag-text-primary)',
+                  fontWeight: selectedKbId === kb.id ? '600' : '500',
+                  lineHeight: '1.4',
+                }"
+              >
+                {{ kb.name }}
+              </div>
+              <div style="font-size: 12px; color: var(--rag-text-secondary); margin-top: 2px;">
+                {{ kb.documentCount }} 篇文档
+              </div>
+            </button>
+          </div>
+        </div>
 
         <input
           v-model="inputText"
@@ -122,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Sparkles,
@@ -139,6 +202,8 @@ import {
 import MarkdownIt from 'markdown-it'
 import { useSSE } from '@/composables/useSSE'
 import { useChatStore } from '@/stores/chat'
+import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
+import type { KnowledgeBaseDTO } from '@/types/knowledgeBase'
 
 interface Citation {
   source: string
@@ -158,8 +223,12 @@ const messages = ref<Message[]>([])
 const inputText = ref('')
 const isStreaming = ref(false)
 const scrollAnchor = ref<HTMLElement>()
+const kbDropdownRoot = ref<HTMLElement>()
+const kbDropdownOpen = ref(false)
+const selectedKbId = ref<number | null>(null)
 const sse = useSSE()
 const chatStore = useChatStore()
+const kbStore = useKnowledgeBaseStore()
 
 const exampleQuestions = [
   '这个知识库包含哪些主要内容？',
@@ -176,6 +245,38 @@ const md = new MarkdownIt({
 })
 
 const canSend = computed(() => inputText.value.trim().length > 0 && !isStreaming.value)
+const kbList = computed(() => kbStore.list)
+const selectedKb = computed(() => kbList.value.find(kb => kb.id === selectedKbId.value) ?? null)
+
+async function loadKbListIfNeeded() {
+  if (kbStore.list.length > 0) return
+  try {
+    await kbStore.fetchList()
+  } catch {
+    // keep panel usable even if dropdown list loading fails
+  }
+}
+
+function toggleKbDropdown() {
+  kbDropdownOpen.value = !kbDropdownOpen.value
+}
+
+function selectKbFromDropdown(kb: KnowledgeBaseDTO) {
+  selectedKbId.value = kb.id
+  kbDropdownOpen.value = false
+}
+
+function clearSelectedKb() {
+  selectedKbId.value = null
+}
+
+function handleOutsideClick(event: MouseEvent) {
+  if (!kbDropdownOpen.value) return
+  const target = event.target as Node | null
+  if (!target) return
+  if (kbDropdownRoot.value?.contains(target)) return
+  kbDropdownOpen.value = false
+}
 
 function renderMarkdown(content: string): string {
   if (!content) return ''
@@ -203,7 +304,8 @@ function handleSend() {
 
 function sendMessage(text: string) {
   if (!text) return
-  if (!chatStore.currentKbId) {
+  const effectiveKbId = selectedKbId.value ?? chatStore.currentKbId
+  if (!effectiveKbId) {
     ElMessage.warning('请先选择一个知识库')
     return
   }
@@ -224,10 +326,10 @@ function sendMessage(text: string) {
   messages.value.push(aiMsg)
 
   scrollToBottom()
-  simulateStreamResponse(aiMsg.id, text)
+  simulateStreamResponse(aiMsg.id, text, effectiveKbId)
 }
 
-async function simulateStreamResponse(msgId: string, question: string) {
+async function simulateStreamResponse(msgId: string, question: string, kbId: number) {
   isStreaming.value = true
   const msg = messages.value.find(m => m.id === msgId)
   if (!msg) {
@@ -239,7 +341,7 @@ async function simulateStreamResponse(msgId: string, question: string) {
     await sse.connect(
       '/api/qa/ask/stream',
       {
-        kbId: chatStore.currentKbId!,
+        kbId,
         question,
         topK: chatStore.topK,
       },
@@ -275,6 +377,15 @@ function thumbUp(id: string) {
 function thumbDown(id: string) {
   console.log('Thumb down:', id)
 }
+
+onMounted(async () => {
+  await loadKbListIfNeeded()
+  document.addEventListener('click', handleOutsideClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleOutsideClick)
+})
 </script>
 
 <style scoped>

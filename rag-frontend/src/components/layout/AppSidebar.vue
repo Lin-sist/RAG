@@ -57,7 +57,7 @@
       <div class="collapsible-section">
         <div v-if="!sidebarCollapsed" class="section-header" @click="toggleHistorySection">
           <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !historySectionExpanded }]" />
-          <span class="section-title">历史对话</span>
+          <span class="section-title" @click.stop="goHistoryList">历史对话</span>
         </div>
 
         <div :class="['section-body', { expanded: historySectionExpanded || sidebarCollapsed }]">
@@ -172,6 +172,7 @@ const historySectionExpanded = ref(true)
 const isDark = ref(false)
 const userMenuOpen = ref(false)
 const historyList = ref<HistoryItem[]>([])
+const HISTORY_UPDATED_EVENT = 'rag-history-updated'
 
 const username = computed(() => authStore.userInfo?.username || 'Linsist')
 const userInitial = computed(() => username.value.charAt(0).toUpperCase())
@@ -196,6 +197,10 @@ function goKbDetail(id: number) {
 
 function goHistoryChat(id: string) {
   router.push(`/chat/${id}`)
+}
+
+function goHistoryList() {
+  router.push('/history')
 }
 
 function toggleKbSection() {
@@ -269,6 +274,10 @@ async function loadSidebarData() {
   }
 }
 
+function handleHistoryUpdated() {
+  loadSidebarData()
+}
+
 onMounted(() => {
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme === 'dark') {
@@ -282,10 +291,12 @@ onMounted(() => {
 
   loadSidebarData()
   document.addEventListener('click', closeUserMenu)
+  window.addEventListener(HISTORY_UPDATED_EVENT, handleHistoryUpdated)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', closeUserMenu)
+  window.removeEventListener(HISTORY_UPDATED_EVENT, handleHistoryUpdated)
 })
 </script>
 

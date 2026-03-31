@@ -120,6 +120,7 @@ interface HistoryGroup {
 
 const HISTORY_PAGE_SIZE = 100
 const GROUP_LABELS: DateGroupLabel[] = ['今天', '昨天', '更早']
+const HISTORY_UPDATED_EVENT = 'rag-history-updated'
 
 // Theme state
 const isDark = ref(false)
@@ -230,6 +231,10 @@ function getAllHistoryIds(): number[] {
   return historyGroups.value.flatMap(group => group.items.map(item => item.id))
 }
 
+function notifyHistoryUpdated() {
+  window.dispatchEvent(new Event(HISTORY_UPDATED_EVENT))
+}
+
 // Filtered groups based on search query
 const filteredGroups = computed(() => {
   if (!searchQuery.value.trim()) {
@@ -262,6 +267,7 @@ async function handleDelete(item: HistoryItem) {
   try {
     await deleteHistory(item.id)
     removeLocalHistoryItem(item.id)
+    notifyHistoryUpdated()
     ElMessage.success('删除成功')
   } catch {
     ElMessage.error('删除失败，请稍后重试')
@@ -273,13 +279,19 @@ async function handleClearAll() {
   if (ids.length === 0) return
 
   let failedCount = 0
+  let successCount = 0
   for (const id of ids) {
     try {
       await deleteHistory(id)
       removeLocalHistoryItem(id)
+      successCount += 1
     } catch {
       failedCount += 1
     }
+  }
+
+  if (successCount > 0) {
+    notifyHistoryUpdated()
   }
 
   if (failedCount === 0) {
