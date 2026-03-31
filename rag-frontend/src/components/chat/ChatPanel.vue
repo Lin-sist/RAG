@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import {
   Sparkles,
   ArrowRight,
@@ -136,6 +137,8 @@ import {
   Plus,
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
+import { useSSE } from '@/composables/useSSE'
+import { useChatStore } from '@/stores/chat'
 
 interface Citation {
   source: string
@@ -155,6 +158,8 @@ const messages = ref<Message[]>([])
 const inputText = ref('')
 const isStreaming = ref(false)
 const scrollAnchor = ref<HTMLElement>()
+const sse = useSSE()
+const chatStore = useChatStore()
 
 const exampleQuestions = [
   '这个知识库包含哪些主要内容？',
@@ -198,6 +203,10 @@ function handleSend() {
 
 function sendMessage(text: string) {
   if (!text) return
+  if (!chatStore.currentKbId) {
+    ElMessage.warning('请先选择一个知识库')
+    return
+  }
 
   const userMsg: Message = {
     id: `msg_${Date.now()}_user`,
@@ -215,34 +224,38 @@ function sendMessage(text: string) {
   messages.value.push(aiMsg)
 
   scrollToBottom()
-  simulateStreamResponse(aiMsg.id)
+  simulateStreamResponse(aiMsg.id, text)
 }
 
-function simulateStreamResponse(msgId: string) {
+async function simulateStreamResponse(msgId: string, question: string) {
   isStreaming.value = true
-  const responseText = '根据知识库中的相关文档，我为您找到了以下信息：\n\n这是一个模拟的 AI 回复内容。在实际应用中，这里会显示来自 RAG 系统的真实回答，包括从知识库中检索到的相关信息和 AI 的总结分析。\n\n**关键要点：**\n\n1. 第一个要点内容\n2. 第二个要点内容\n3. 第三个要点内容\n\n如需了解更多详情，请参考下方的引用来源。'
-
-  let index = 0
   const msg = messages.value.find(m => m.id === msgId)
-  if (!msg) return
+  if (!msg) {
+    isStreaming.value = false
+    return
+  }
 
-  const interval = setInterval(() => {
-    if (index < responseText.length) {
-      msg.content += responseText[index]
-      index++
-      scrollToBottom()
-    } else {
-      clearInterval(interval)
-      msg.loading = false
-      msg.citations = [
-        { source: 'product-guide.pdf', snippet: '相关内容片段...', score: 0.98 },
-        { source: 'faq-collection.docx', snippet: '相关内容片段...', score: 0.92 },
-        { source: 'tech-manual.md', snippet: '相关内容片段...', score: 0.87 },
-      ]
-      isStreaming.value = false
-      scrollToBottom()
+  try {
+    await sse.connect(
+      '/api/qa/ask/stream',
+      {
+        kbId: chatStore.currentKbId!,
+        question,
+        topK: chatStore.topK,
+      },
+      (chunk: string) => {
+        msg.content += chunk
+        scrollToBottom()
+      },
+    )
+  } finally {
+    msg.loading = false
+    if (sse.error.value && !msg.content) {
+      msg.content = sse.error.value
     }
-  }, 20)
+    isStreaming.value = false
+    scrollToBottom()
+  }
 }
 
 function copyToClipboard(text: string) {

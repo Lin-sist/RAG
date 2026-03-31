@@ -91,6 +91,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import {
   Clock,
   Sun,
@@ -100,6 +101,10 @@ import {
   Folder,
   Trash2
 } from 'lucide-vue-next'
+import { getHistoryPage, deleteHistory } from '@/api/history'
+import type { QAHistoryDTO } from '@/types/history'
+
+type DateGroupLabel = '今天' | '昨天' | '更早'
 
 interface HistoryItem {
   id: number
@@ -109,9 +114,12 @@ interface HistoryItem {
 }
 
 interface HistoryGroup {
-  label: string
+  label: DateGroupLabel
   items: HistoryItem[]
 }
+
+const HISTORY_PAGE_SIZE = 100
+const GROUP_LABELS: DateGroupLabel[] = ['今天', '昨天', '更早']
 
 // Theme state
 const isDark = ref(false)
@@ -120,37 +128,107 @@ const isDark = ref(false)
 const searchQuery = ref('')
 const hoveredItemId = ref<number | null>(null)
 
-// Mock data
-const historyGroups = ref<HistoryGroup[]>([
-  {
-    label: '今天',
-    items: [
-      { id: 1, title: '新功能发布讨论', knowledgeBase: '产品文档库', time: '10分钟前' },
-      { id: 2, title: 'API集成问题排查', knowledgeBase: '技术支持', time: '2小时前' }
-    ]
-  },
-  {
-    label: '昨天',
-    items: [
-      { id: 3, title: 'Q3营销策略复盘', knowledgeBase: '市场运营', time: '昨天 15:30' },
-      { id: 4, title: '团队协作工具对比', knowledgeBase: '内部资料', time: '昨天 11:45' }
-    ]
-  },
-  {
-    label: '过去 7 天',
-    items: [
-      { id: 5, title: '用户反馈分析报告', knowledgeBase: '客户洞察', time: '5天前' },
-      { id: 6, title: '数据安全合规指南', knowledgeBase: '法律法务', time: '6天前' }
-    ]
-  },
-  {
-    label: '更早',
-    items: [
-      { id: 7, title: '年度计划草案', knowledgeBase: '战略规划', time: '2023年12月15日' },
-      { id: 8, title: '竞品分析报告V2', knowledgeBase: '市场研究', time: '2023年11月28日' }
-    ]
+function createEmptyGroups(): HistoryGroup[] {
+  return GROUP_LABELS.map(label => ({ label, items: [] }))
+}
+
+const historyGroups = ref<HistoryGroup[]>(createEmptyGroups())
+
+function getDateBucket(date: Date, now: Date): DateGroupLabel {
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterdayStart = new Date(todayStart)
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1)
+
+  if (date >= todayStart) return '今天'
+  if (date >= yesterdayStart && date < todayStart) return '昨天'
+  return '更早'
+}
+
+function formatTwoDigits(n: number): string {
+  return n.toString().padStart(2, '0')
+}
+
+function formatItemTime(date: Date, bucket: DateGroupLabel, fallback: string): string {
+  if (Number.isNaN(date.getTime())) return fallback
+  const hhmm = `${formatTwoDigits(date.getHours())}:${formatTwoDigits(date.getMinutes())}`
+
+  if (bucket === '今天') return hhmm
+  if (bucket === '昨天') return `昨天 ${hhmm}`
+
+  const y = date.getFullYear()
+  const m = formatTwoDigits(date.getMonth() + 1)
+  const d = formatTwoDigits(date.getDate())
+  return `${y}-${m}-${d}`
+}
+
+function convertRecordsToGroups(records: QAHistoryDTO[]): HistoryGroup[] {
+  const grouped: Record<DateGroupLabel, HistoryItem[]> = {
+    今天: [],
+    昨天: [],
+    更早: [],
   }
-])
+
+  const now = new Date()
+  const sorted = [...records].sort((a, b) => {
+    const ta = new Date(a.createdAt).getTime()
+    const tb = new Date(b.createdAt).getTime()
+    return tb - ta
+  })
+
+  for (const record of sorted) {
+    const createdAtDate = new Date(record.createdAt)
+    const bucket = Number.isNaN(createdAtDate.getTime()) ? '更早' : getDateBucket(createdAtDate, now)
+
+    grouped[bucket].push({
+      id: record.id,
+      title: record.question || `历史记录 #${record.id}`,
+      knowledgeBase: `知识库#${record.kbId}`,
+      time: formatItemTime(createdAtDate, bucket, record.createdAt),
+    })
+  }
+
+  return GROUP_LABELS.map(label => ({ label, items: grouped[label] }))
+}
+
+async function fetchAllHistoryRecords(): Promise<QAHistoryDTO[]> {
+  let page = 1
+  let totalPages = 1
+  const all: QAHistoryDTO[] = []
+
+  while (page <= totalPages) {
+    const res = await getHistoryPage(page, HISTORY_PAGE_SIZE)
+    const pageData = res.data.data
+    all.push(...pageData.records)
+    totalPages = pageData.totalPages || 1
+    page += 1
+  }
+
+  return all
+}
+
+async function loadHistoryGroups() {
+  try {
+    const records = await fetchAllHistoryRecords()
+    historyGroups.value = convertRecordsToGroups(records)
+  } catch {
+    historyGroups.value = createEmptyGroups()
+    ElMessage.error('获取历史记录失败')
+  }
+}
+
+function removeLocalHistoryItem(itemId: number) {
+  for (const group of historyGroups.value) {
+    const index = group.items.findIndex(i => i.id === itemId)
+    if (index !== -1) {
+      group.items.splice(index, 1)
+      return
+    }
+  }
+}
+
+function getAllHistoryIds(): number[] {
+  return historyGroups.value.flatMap(group => group.items.map(item => item.id))
+}
 
 // Filtered groups based on search query
 const filteredGroups = computed(() => {
@@ -180,27 +258,38 @@ function setTheme(dark: boolean) {
 }
 
 // Action handlers
-function handleDelete(item: HistoryItem) {
-  console.log('delete', item.id)
-  // Remove item from mock data
-  for (const group of historyGroups.value) {
-    const index = group.items.findIndex(i => i.id === item.id)
-    if (index !== -1) {
-      group.items.splice(index, 1)
-      break
+async function handleDelete(item: HistoryItem) {
+  try {
+    await deleteHistory(item.id)
+    removeLocalHistoryItem(item.id)
+    ElMessage.success('删除成功')
+  } catch {
+    ElMessage.error('删除失败，请稍后重试')
+  }
+}
+
+async function handleClearAll() {
+  const ids = getAllHistoryIds()
+  if (ids.length === 0) return
+
+  let failedCount = 0
+  for (const id of ids) {
+    try {
+      await deleteHistory(id)
+      removeLocalHistoryItem(id)
+    } catch {
+      failedCount += 1
     }
   }
-}
 
-function handleClearAll() {
-  console.log('clear all')
-  // Clear all mock data
-  for (const group of historyGroups.value) {
-    group.items = []
+  if (failedCount === 0) {
+    ElMessage.success('已清空历史记录')
+  } else {
+    ElMessage.warning(`清空完成，${failedCount} 条记录删除失败`)
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // Restore theme from localStorage
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme === 'dark') {
@@ -211,6 +300,8 @@ onMounted(() => {
     isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
   }
   applyTheme(isDark.value)
+
+  await loadHistoryGroups()
 })
 </script>
 
