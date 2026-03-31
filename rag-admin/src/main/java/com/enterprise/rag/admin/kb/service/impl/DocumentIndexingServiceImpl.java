@@ -125,60 +125,73 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 Optional<Document> existingDoc = documentService.getByKnowledgeBaseAndContentHash(kbId,
                         result.contentHash());
                 if (existingDoc.isPresent() && !existingDoc.get().getId().equals(documentId)) {
-                    log.info("文档内容重复，跳过索引: documentId={}, existingDocId={}",
-                            documentId, existingDoc.get().getId());
-                    documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
-                    progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档内容已存在，跳过重复索引"));
-                    return result;
+                    Document existing = existingDoc.get();
+                    if (isIndexReady(existing)) {
+                        log.info("文档内容重复，复用已有索引: documentId={}, existingDocId={}",
+                                documentId, existing.getId());
+                        documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
+                        documentService.updateChunkCount(documentId, existing.getChunkCount());
+                        documentService.updateContentHash(documentId, result.contentHash());
+                        progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档内容已存在，复用已有索引"));
+                        return result;
+                    }
+                    log.warn(
+                            "检测到重复内容，但已有文档索引不完整，将继续重建索引: documentId={}, existingDocId={}, existingStatus={}, existingChunkCount={}",
+                            documentId,
+                            existing.getId(),
+                            existing.getStatus(),
+                            existing.getChunkCount());
                 }
 
                 List<DocumentChunk> chunks = result.chunks();
-                if (chunks != null && !chunks.isEmpty()) {
-                    String collectionName = knowledgeBaseService.getById(kbId)
-                            .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
-                            .getVectorCollection();
-
-                    List<String> chunkTexts = chunks.stream().map(DocumentChunk::content).toList();
-
-                    progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
-                    List<float[]> vectors = embeddingService.embedBatch(chunkTexts);
-
-                    // 构造向量文档列表及对应的 DB Chunk 实体
-                    List<VectorDocument> vectorDocs = new ArrayList<>(chunks.size());
-                    List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks = new ArrayList<>(
-                            chunks.size());
-
-                    for (int i = 0; i < chunks.size(); i++) {
-                        DocumentChunk chunk = chunks.get(i);
-                        vectorDocs.add(new VectorDocument(
-                                chunk.id(),
-                                vectors.get(i),
-                                chunk.content(),
-                                Map.of("documentId", documentId, "kbId", kbId,
-                                        "chunkIndex", i,
-                                        "startIndex", chunk.startIndex(),
-                                        "endIndex", chunk.endIndex())));
-
-                        // DOC-02: 构建 DB Chunk 实体，包含 vectorId
-                        com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk = new com.enterprise.rag.admin.kb.entity.DocumentChunk();
-                        entityChunk.setDocumentId(documentId);
-                        entityChunk.setVectorId(chunk.id());
-                        entityChunk.setContent(chunk.content());
-                        entityChunk.setChunkIndex(i);
-                        entityChunk.setStartPos(chunk.startIndex());
-                        entityChunk.setEndPos(chunk.endIndex());
-                        entityChunks.add(entityChunk);
-                    }
-
-                    progressCallback.accept(AsyncTask.TaskProgress.of(70, "写入向量数据库"));
-                    vectorStore.upsert(collectionName, vectorDocs);
-                    log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
-
-                    // DOC-02: 持久化分块记录和 contentHash
-                    progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
-                    documentService.saveChunks(entityChunks);
-                    documentService.updateContentHash(documentId, result.contentHash());
+                if (chunks == null || chunks.isEmpty()) {
+                    throw new BusinessException("DOC_010", "文档解析未产生有效分块，无法建立索引");
                 }
+
+                String collectionName = knowledgeBaseService.getById(kbId)
+                        .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
+                        .getVectorCollection();
+
+                List<String> chunkTexts = chunks.stream().map(DocumentChunk::content).toList();
+
+                progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
+                List<float[]> vectors = embeddingService.embedBatch(chunkTexts);
+
+                // 构造向量文档列表及对应的 DB Chunk 实体
+                List<VectorDocument> vectorDocs = new ArrayList<>(chunks.size());
+                List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks = new ArrayList<>(
+                        chunks.size());
+
+                for (int i = 0; i < chunks.size(); i++) {
+                    DocumentChunk chunk = chunks.get(i);
+                    vectorDocs.add(new VectorDocument(
+                            chunk.id(),
+                            vectors.get(i),
+                            chunk.content(),
+                            Map.of("documentId", documentId, "kbId", kbId,
+                                    "chunkIndex", i,
+                                    "startIndex", chunk.startIndex(),
+                                    "endIndex", chunk.endIndex())));
+
+                    // DOC-02: 构建 DB Chunk 实体，包含 vectorId
+                    com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk = new com.enterprise.rag.admin.kb.entity.DocumentChunk();
+                    entityChunk.setDocumentId(documentId);
+                    entityChunk.setVectorId(chunk.id());
+                    entityChunk.setContent(chunk.content());
+                    entityChunk.setChunkIndex(i);
+                    entityChunk.setStartPos(chunk.startIndex());
+                    entityChunk.setEndPos(chunk.endIndex());
+                    entityChunks.add(entityChunk);
+                }
+
+                progressCallback.accept(AsyncTask.TaskProgress.of(70, "写入向量数据库"));
+                vectorStore.upsert(collectionName, vectorDocs);
+                log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
+
+                // DOC-02: 持久化分块记录和 contentHash
+                progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
+                documentService.saveChunks(entityChunks);
+                documentService.updateContentHash(documentId, result.contentHash());
 
                 progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
                 documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
@@ -200,6 +213,16 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 log.warn("清理临时上传文件失败: documentId={}, path={}, error={}", documentId, tempFilePath, e.getMessage());
             }
         }
+    }
+
+    private boolean isIndexReady(Document document) {
+        if (document == null) {
+            return false;
+        }
+        Integer chunkCount = document.getChunkCount();
+        return DocumentStatus.COMPLETED.name().equalsIgnoreCase(document.getStatus())
+                && chunkCount != null
+                && chunkCount > 0;
     }
 
     private Path createTempFile(MultipartFile file, String fileType) {

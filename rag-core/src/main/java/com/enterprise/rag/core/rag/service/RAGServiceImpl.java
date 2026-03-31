@@ -106,7 +106,7 @@ public class RAGServiceImpl implements RAGService {
 
         } catch (Exception e) {
             log.error("Failed to process QA request", e);
-            return QAResponse.error(question, e.getMessage());
+            return QAResponse.error(question, toClientErrorMessage(e));
         }
     }
 
@@ -144,8 +144,29 @@ public class RAGServiceImpl implements RAGService {
 
         } catch (Exception e) {
             log.error("Failed to process streaming QA request", e);
-            return Flux.error(e);
+            return Flux.error(new IllegalStateException(toClientErrorMessage(e), e));
         }
+    }
+
+    private String toClientErrorMessage(Exception e) {
+        String message = e != null ? e.getMessage() : null;
+        if (message == null || message.isBlank()) {
+            return "问答服务暂时不可用，请稍后重试";
+        }
+        String lower = message.toLowerCase();
+        if (lower.contains("collection not found")) {
+            return "知识库向量索引不存在，请重新上传文档以重建索引";
+        }
+        if (lower.contains("max retries exceeded")) {
+            return "模型服务当前不稳定（重试耗尽），请稍后重试";
+        }
+        if (lower.contains("too many requests") || lower.contains(" 429 ") || lower.startsWith("429")) {
+            return "模型服务触发限流，请稍后重试";
+        }
+        if (lower.contains("timeout")) {
+            return "模型服务响应超时，请稍后重试";
+        }
+        return message;
     }
 
     @Override

@@ -169,13 +169,13 @@ public class QAController {
                                 emitter.send(chunk, MediaType.TEXT_PLAIN);
                             } catch (IOException e) {
                                 log.warn("SSE发送失败: {}", e.getMessage());
-                                emitter.completeWithError(e);
+                                emitter.complete();
                             }
                         },
                         error -> {
                             long latencyMs = System.currentTimeMillis() - startTime;
                             log.error("流式问答错误: traceId={}, kbId={}, userId={}, latencyMs={}, error={}",
-                                traceId, request.kbId(), userId, latencyMs, error.getMessage(), error);
+                                    traceId, request.kbId(), userId, latencyMs, error.getMessage(), error);
                             saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
                                     startTime);
                             try {
@@ -185,7 +185,7 @@ public class QAController {
                                 emitter.complete();
                             } catch (IOException ioException) {
                                 log.warn("SSE错误消息发送失败: {}", ioException.getMessage());
-                                emitter.completeWithError(ioException);
+                                emitter.complete();
                             }
                         },
                         () -> {
@@ -198,7 +198,7 @@ public class QAController {
                                 log.info("流式问答完成: traceId={}, kbId={}, userId={}, latencyMs={}, answerLength={}",
                                         traceId, request.kbId(), userId, latencyMs, answerBuffer.length());
                             } catch (IOException e) {
-                                emitter.completeWithError(e);
+                                emitter.complete();
                             }
                         });
 
@@ -242,6 +242,9 @@ public class QAController {
         String message = error != null ? error.getMessage() : null;
         if (message != null && message.contains("Max retries exceeded")) {
             return "模型服务当前不稳定（重试耗尽），请稍后重试";
+        }
+        if (message != null && message.toLowerCase().contains("collection not found")) {
+            return "知识库向量索引不存在，请重新上传文档以重建索引";
         }
         if (message != null && (message.contains("429") || message.toLowerCase().contains("too many requests"))) {
             return "模型服务触发限流，请稍后重试";

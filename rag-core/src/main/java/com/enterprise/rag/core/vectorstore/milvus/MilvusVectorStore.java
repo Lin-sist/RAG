@@ -192,6 +192,13 @@ public class MilvusVectorStore implements VectorStore {
 
         log.debug("Upserting {} documents to collection {}", documents.size(), collectionName);
 
+        if (!hasCollection(collectionName)) {
+            int dimension = documents.get(0).vector().length;
+            log.warn("Collection {} not found before upsert, auto-creating with dimension {}",
+                    collectionName, dimension);
+            createCollection(collectionName, dimension);
+        }
+
         // 先删除已存在的文档
         List<String> ids = documents.stream()
                 .map(VectorDocument::id)
@@ -223,9 +230,27 @@ public class MilvusVectorStore implements VectorStore {
                 .build();
 
         R<MutationResult> response = milvusClient.insert(insertParam);
-        handleResponse(response, "Failed to insert documents");
+        try {
+            handleResponse(response, "Failed to insert documents");
+        } catch (VectorStoreException e) {
+            if (!isCollectionNotFoundMessage(e.getMessage())) {
+                throw e;
+            }
+            int dimension = vectorList.get(0).size();
+            log.warn(
+                    "Insert failed because collection is missing, retry after auto-create: collection={}, dimension={}",
+                    collectionName,
+                    dimension);
+            createCollection(collectionName, dimension);
+            R<MutationResult> retryResponse = milvusClient.insert(insertParam);
+            handleResponse(retryResponse, "Failed to insert documents after auto-create");
+        }
 
         log.debug("Successfully upserted {} documents", documents.size());
+    }
+
+    private boolean isCollectionNotFoundMessage(String message) {
+        return message != null && message.toLowerCase().contains("collection not found");
     }
 
     private void deleteIfExists(String collectionName, List<String> ids) {

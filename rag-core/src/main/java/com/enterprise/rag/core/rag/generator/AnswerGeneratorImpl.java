@@ -141,11 +141,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
-            .timeout(Duration.ofSeconds(properties.getTimeout()));
+                .timeout(Duration.ofSeconds(properties.getTimeout()));
 
         String response = applyRetryPolicy(responseMono, "openai", "/chat/completions")
-            .doOnError(error -> logLlmError("openai", "/chat/completions", error))
-            .block();
+                .doOnError(error -> logLlmError("openai", "/chat/completions", error))
+                .block();
 
         return parseOpenAIResponse(response);
     }
@@ -172,11 +172,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
-            .timeout(Duration.ofSeconds(properties.getTimeout()));
+                .timeout(Duration.ofSeconds(properties.getTimeout()));
 
         String response = applyRetryPolicy(responseMono, "qwen", "/services/aigc/text-generation/generation")
-            .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation", error))
-            .block();
+                .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation", error))
+                .block();
 
         return parseQwenResponse(response);
     }
@@ -213,10 +213,10 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToFlux(String.class)
-            .timeout(Duration.ofSeconds(properties.getTimeout()));
+                .timeout(Duration.ofSeconds(properties.getTimeout()));
 
         return applyRetryPolicy(responseFlux, "openai", "/chat/completions(stream)")
-            .doOnError(error -> logLlmError("openai", "/chat/completions(stream)", error))
+                .doOnError(error -> logLlmError("openai", "/chat/completions(stream)", error))
                 .filter(line -> !line.equals("[DONE]"))
                 .map(this::parseOpenAIStreamChunk)
                 .filter(content -> content != null && !content.isEmpty());
