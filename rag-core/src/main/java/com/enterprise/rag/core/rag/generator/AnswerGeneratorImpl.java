@@ -10,10 +10,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
+import java.io.IOException;
+import java.net.ConnectException;
 import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import java.util.*;
 
 /**
@@ -128,15 +134,18 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         requestBody.put("temperature", config.getTemperature());
         requestBody.put("max_tokens", config.getMaxTokens());
 
-        String response = webClient.post()
+        Mono<String> responseMono = webClient.post()
                 .uri(config.getBaseUrl() + "/chat/completions")
                 .header("Authorization", "Bearer " + config.getApiKey())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(properties.getTimeout()))
-                .block();
+            .timeout(Duration.ofSeconds(properties.getTimeout()));
+
+        String response = applyRetryPolicy(responseMono, "openai", "/chat/completions")
+            .doOnError(error -> logLlmError("openai", "/chat/completions", error))
+            .block();
 
         return parseOpenAIResponse(response);
     }
@@ -156,15 +165,18 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 "temperature", config.getTemperature(),
                 "max_tokens", config.getMaxTokens()));
 
-        String response = webClient.post()
+        Mono<String> responseMono = webClient.post()
                 .uri(config.getBaseUrl() + "/services/aigc/text-generation/generation")
                 .header("Authorization", "Bearer " + config.getApiKey())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(properties.getTimeout()))
-                .block();
+            .timeout(Duration.ofSeconds(properties.getTimeout()));
+
+        String response = applyRetryPolicy(responseMono, "qwen", "/services/aigc/text-generation/generation")
+            .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation", error))
+            .block();
 
         return parseQwenResponse(response);
     }
@@ -194,14 +206,17 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         requestBody.put("max_tokens", config.getMaxTokens());
         requestBody.put("stream", true);
 
-        return webClient.post()
+        Flux<String> responseFlux = webClient.post()
                 .uri(config.getBaseUrl() + "/chat/completions")
                 .header("Authorization", "Bearer " + config.getApiKey())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToFlux(String.class)
-                .timeout(Duration.ofSeconds(properties.getTimeout()))
+            .timeout(Duration.ofSeconds(properties.getTimeout()));
+
+        return applyRetryPolicy(responseFlux, "openai", "/chat/completions(stream)")
+            .doOnError(error -> logLlmError("openai", "/chat/completions(stream)", error))
                 .filter(line -> !line.equals("[DONE]"))
                 .map(this::parseOpenAIStreamChunk)
                 .filter(content -> content != null && !content.isEmpty());
@@ -223,7 +238,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 "max_tokens", config.getMaxTokens(),
                 "incremental_output", true));
 
-        return webClient.post()
+        Flux<String> responseFlux = webClient.post()
                 .uri(config.getBaseUrl() + "/services/aigc/text-generation/generation")
                 .header("Authorization", "Bearer " + config.getApiKey())
                 .header("X-DashScope-SSE", "enable")
@@ -231,9 +246,82 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToFlux(String.class)
-                .timeout(Duration.ofSeconds(properties.getTimeout()))
+                .timeout(Duration.ofSeconds(properties.getTimeout()));
+
+        return applyRetryPolicy(responseFlux, "qwen", "/services/aigc/text-generation/generation(stream)")
+                .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation(stream)", error))
                 .map(this::parseQwenStreamChunk)
                 .filter(content -> content != null && !content.isEmpty());
+    }
+
+    private <T> Mono<T> applyRetryPolicy(Mono<T> source, String provider, String endpoint) {
+        int maxRetries = Math.max(0, properties.getMaxRetries());
+        if (maxRetries == 0) {
+            return source;
+        }
+        return source.retryWhen(buildRetrySpec(provider, endpoint, maxRetries));
+    }
+
+    private <T> Flux<T> applyRetryPolicy(Flux<T> source, String provider, String endpoint) {
+        int maxRetries = Math.max(0, properties.getMaxRetries());
+        if (maxRetries == 0) {
+            return source;
+        }
+        return source.retryWhen(buildRetrySpec(provider, endpoint, maxRetries));
+    }
+
+    private Retry buildRetrySpec(String provider, String endpoint, int maxRetries) {
+        return Retry.backoff(maxRetries, Duration.ofMillis(800))
+                .filter(this::isRetryableError)
+                .doBeforeRetry(signal -> {
+                    Throwable cause = unwrap(signal.failure());
+                    log.warn("LLM调用重试: provider={}, endpoint={}, attempt={}/{}, reason={}",
+                            provider,
+                            endpoint,
+                            signal.totalRetries() + 1,
+                            maxRetries,
+                            cause.getClass().getSimpleName() + ": " + cause.getMessage());
+                })
+                .onRetryExhaustedThrow((spec, signal) -> {
+                    Throwable cause = unwrap(signal.failure());
+                    return new LLMException("Max retries exceeded for LLM API: " + cause.getMessage(), cause);
+                });
+    }
+
+    private boolean isRetryableError(Throwable error) {
+        Throwable cause = unwrap(error);
+        if (cause instanceof WebClientResponseException ex) {
+            int statusCode = ex.getStatusCode().value();
+            return statusCode == 429 || statusCode >= 500;
+        }
+        return cause instanceof TimeoutException
+                || cause instanceof IOException
+                || cause instanceof ConnectException;
+    }
+
+    private void logLlmError(String provider, String endpoint, Throwable error) {
+        Throwable cause = unwrap(error);
+        if (cause instanceof WebClientResponseException ex) {
+            String body = ex.getResponseBodyAsString();
+            String bodyPreview = body == null ? "" : (body.length() > 500 ? body.substring(0, 500) + "..." : body);
+            log.error("LLM调用失败: provider={}, endpoint={}, status={}, body={}",
+                    provider, endpoint, ex.getStatusCode().value(), bodyPreview, ex);
+            return;
+        }
+        log.error("LLM调用失败: provider={}, endpoint={}, causeType={}, message={}",
+                provider,
+                endpoint,
+                cause.getClass().getSimpleName(),
+                cause.getMessage(),
+                cause);
+    }
+
+    private Throwable unwrap(Throwable error) {
+        Throwable current = error;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
     }
 
     /**

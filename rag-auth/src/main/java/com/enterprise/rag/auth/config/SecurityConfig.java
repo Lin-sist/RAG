@@ -93,8 +93,9 @@ public class SecurityConfig {
                                 // 配置请求授权
                                 .authorizeHttpRequests(auth -> auth
                                                 // SSE 流式问答的异步分发需要放行，否则 Tomcat 异步完成时
-                                                // 会重新触发 Spring Security 过滤链导致 AccessDeniedException
-                                                .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
+                                                // 或错误分发时会重新触发 Spring Security 过滤链导致 401/403
+                                                .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR)
+                                                .permitAll()
                                                 // 公开接口
                                                 .requestMatchers(
                                                                 "/auth/login",

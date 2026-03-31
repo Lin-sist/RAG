@@ -175,10 +175,18 @@ public class QAController {
                         error -> {
                             long latencyMs = System.currentTimeMillis() - startTime;
                             log.error("流式问答错误: traceId={}, kbId={}, userId={}, latencyMs={}, error={}",
-                                    traceId, request.kbId(), userId, latencyMs, error.getMessage());
+                                traceId, request.kbId(), userId, latencyMs, error.getMessage(), error);
                             saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
                                     startTime);
-                            emitter.completeWithError(error);
+                            try {
+                                String clientError = toStreamClientErrorMessage(error);
+                                emitter.send("[ERROR] " + clientError, MediaType.TEXT_PLAIN);
+                                emitter.send("[DONE]", MediaType.TEXT_PLAIN);
+                                emitter.complete();
+                            } catch (IOException ioException) {
+                                log.warn("SSE错误消息发送失败: {}", ioException.getMessage());
+                                emitter.completeWithError(ioException);
+                            }
                         },
                         () -> {
                             long latencyMs = System.currentTimeMillis() - startTime;
@@ -228,6 +236,23 @@ public class QAController {
         } catch (Exception e) {
             log.warn("保存流式问答历史失败: {}", e.getMessage());
         }
+    }
+
+    private String toStreamClientErrorMessage(Throwable error) {
+        String message = error != null ? error.getMessage() : null;
+        if (message != null && message.contains("Max retries exceeded")) {
+            return "模型服务当前不稳定（重试耗尽），请稍后重试";
+        }
+        if (message != null && (message.contains("429") || message.toLowerCase().contains("too many requests"))) {
+            return "模型服务触发限流，请稍后重试";
+        }
+        if (message != null && message.toLowerCase().contains("timeout")) {
+            return "模型服务响应超时，请稍后重试";
+        }
+        if (message != null && message.contains("No embedding provider is available")) {
+            return "系统未配置可用的向量化服务，请先配置 NVIDIA_API_KEY 或启用本地 BGE 服务";
+        }
+        return "问答服务暂时不可用，请稍后重试";
     }
 
     /**
