@@ -8,6 +8,9 @@ target/
 # Docker volume data (runtime generated, do not commit)
 data/
 *m2repo/
+*scripts/
+*test-data/
+*diagnostics/
 
 # Local docker overrides (machine-specific, do not commit)
 .env

@@ -100,13 +100,13 @@ rag:
     qwen:
       api-key: ${QWEN_API_KEY:}
       model: qwen-turbo
-      temperature: 0.7
+      temperature: 0.4
       max-tokens: 2048
     openai:
       api-key: ${NVIDIA_API_KEY:}
       base-url: https://integrate.api.nvidia.com/v1
       model: meta/llama3-70b-instruct
-      temperature: 0.7
+      temperature: 0.4
       max-tokens: 2048
 
   # ===== Embedding 配置（用于把文本转成向量） =====

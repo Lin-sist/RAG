@@ -71,6 +71,7 @@ class QAControllerTest {
                                 10L,
                                 "什么是RAG",
                                 5,
+                                null,
                                 Map.of(),
                                 true);
 
@@ -88,6 +89,7 @@ class QAControllerTest {
                                 10L,
                                 "什么是RAG",
                                 5,
+                                null,
                                 Map.of(),
                                 false);
 
@@ -96,6 +98,7 @@ class QAControllerTest {
                 verify(ragService, times(1)).askStream(argThat(qaRequest -> qaRequest != null
                                 && qaRequest.stream()
                                 && qaRequest.topK() == 5
+                                && qaRequest.minScore() == QARequest.DEFAULT_MIN_SCORE
                                 && qaRequest.enableCache() == false
                                 && qaRequest.filter().isEmpty()));
                 verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);

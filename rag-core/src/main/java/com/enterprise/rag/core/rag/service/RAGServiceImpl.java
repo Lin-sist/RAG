@@ -69,11 +69,12 @@ public class RAGServiceImpl implements RAGService {
             RetrieveOptions retrieveOptions = new RetrieveOptions(
                     collectionName,
                     request.topK(),
-                    RetrieveOptions.DEFAULT_MIN_SCORE,
+                    request.minScore(),
                     request.filter(),
                     true);
             List<RetrievedContext> contexts = queryEngine.retrieve(question, retrieveOptions);
             log.debug("Retrieved {} contexts for question", contexts.size());
+            log.debug("Top retrieval scores: {}", topScoresForLog(contexts, 5));
 
             // 3. 处理无结果情况
             if (contexts.isEmpty()) {
@@ -87,7 +88,16 @@ public class RAGServiceImpl implements RAGService {
             // 5. 构建响应
             Map<String, Object> metadata = new HashMap<>(generatedAnswer.metadata());
             metadata.put("cached", false);
-            metadata.put("contextCount", contexts.size());
+            metadata.putIfAbsent("contextCount", contexts.size());
+            metadata.put("retrievedContextCount", contexts.size());
+            metadata.put("retrievedTopScore", contexts.stream()
+                    .mapToDouble(RetrievedContext::relevanceScore)
+                    .max()
+                    .orElse(0.0d));
+            metadata.put("retrievedAvgScore", contexts.stream()
+                    .mapToDouble(RetrievedContext::relevanceScore)
+                    .average()
+                    .orElse(0.0d));
 
             QAResponse response = QAResponse.success(
                     question,
@@ -130,7 +140,7 @@ public class RAGServiceImpl implements RAGService {
             RetrieveOptions retrieveOptions = new RetrieveOptions(
                     collectionName,
                     request.topK(),
-                    RetrieveOptions.DEFAULT_MIN_SCORE,
+                    request.minScore(),
                     request.filter(),
                     true);
             List<RetrievedContext> contexts = queryEngine.retrieve(question, retrieveOptions);
@@ -314,5 +324,19 @@ public class RAGServiceImpl implements RAGService {
         if (text == null)
             return "null";
         return text.length() > 100 ? text.substring(0, 100) + "..." : text;
+    }
+
+    private String topScoresForLog(List<RetrievedContext> contexts, int limit) {
+        if (contexts == null || contexts.isEmpty()) {
+            return "[]";
+        }
+
+        return contexts.stream()
+                .map(RetrievedContext::relevanceScore)
+                .sorted(Comparator.reverseOrder())
+                .limit(Math.max(1, limit))
+                .map(score -> String.format("%.4f", score))
+                .toList()
+                .toString();
     }
 }

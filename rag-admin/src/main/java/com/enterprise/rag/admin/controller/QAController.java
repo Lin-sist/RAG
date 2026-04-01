@@ -84,6 +84,7 @@ public class QAController {
                 request.question(),
                 kb.getVectorCollection(),
                 request.topK() != null ? request.topK() : QARequest.DEFAULT_TOP_K,
+            request.minScore() != null ? request.minScore() : QARequest.DEFAULT_MIN_SCORE,
                 request.filter() != null ? request.filter() : Map.of(),
                 request.enableCache() != null ? request.enableCache() : true,
                 false);
@@ -144,6 +145,7 @@ public class QAController {
                 request.question(),
                 kb.getVectorCollection(),
                 request.topK() != null ? request.topK() : QARequest.DEFAULT_TOP_K,
+            request.minScore() != null ? request.minScore() : QARequest.DEFAULT_MIN_SCORE,
                 request.filter() != null ? request.filter() : Map.of(),
                 request.enableCache() != null ? request.enableCache() : true);
 
@@ -274,7 +276,7 @@ public class QAController {
             @Parameter(description = "返回结果数量") @RequestParam(required = false, defaultValue = "5") Integer topK,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
-        AskRequest request = new AskRequest(kbId, question, topK, null, true);
+        AskRequest request = new AskRequest(kbId, question, topK, null, null, true);
         return ask(request, userDetails);
     }
 
@@ -296,6 +298,8 @@ public class QAController {
             @NotBlank(message = "问题不能为空") String question,
 
             Integer topK,
+
+            Float minScore,
 
             Map<String, Object> filter,
 

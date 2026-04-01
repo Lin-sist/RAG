@@ -41,6 +41,9 @@ public class PromptBuilder {
             - Answer the question based ONLY on the provided context
             - If the context doesn't contain enough information, say so
             - Cite the source when possible
+            - Use complete and fluent sentences; avoid broken words or truncated phrases
+            - Preserve original terms, numbers, and definitions from the context whenever possible
+            - Do not invent facts or mix in outside knowledge
             - Be concise and accurate
             - You MUST reply in the SAME language as the user's question (e.g. Chinese question → Chinese answer)
 
