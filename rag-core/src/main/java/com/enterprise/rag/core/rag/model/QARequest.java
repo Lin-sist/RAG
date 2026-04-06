@@ -17,7 +17,7 @@ public record QARequest(
         String question,
         String collectionName,
         int topK,
-     float minScore,
+        float minScore,
         Map<String, Object> filter,
         boolean enableCache,
         boolean stream) {

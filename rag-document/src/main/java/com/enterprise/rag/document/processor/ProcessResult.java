@@ -52,4 +52,11 @@ public record ProcessResult(
     public static ProcessResult duplicate(String documentId, String contentHash) {
         return new ProcessResult(documentId, contentHash, "", List.of(), false);
     }
+
+    /**
+     * 创建重复文档结果（包含解析内容与分块）
+     */
+    public static ProcessResult duplicate(String documentId, String contentHash, String rawContent, List<DocumentChunk> chunks) {
+        return new ProcessResult(documentId, contentHash, rawContent, chunks, false);
+    }
 }

@@ -52,4 +52,34 @@ class MarkdownProcessingRegressionTest {
         assertFalse(result.chunks().isEmpty());
         assertTrue(result.chunks().stream().map(DocumentChunk::content).allMatch(content -> content.length() <= 500));
     }
+
+    @Test
+    void duplicateProcessResultShouldStillContainChunks() {
+        String markdown = """
+                # RAG Guide
+
+                RAG combines retrieval and generation to ground responses in knowledge.
+                """;
+
+        DocumentInput input = new DocumentInput(
+                new ByteArrayInputStream(markdown.getBytes(StandardCharsets.UTF_8)),
+                "rag-guide.md",
+                "md",
+                null);
+
+        ProcessResult first = processor.process(input);
+
+        DocumentInput duplicateInput = new DocumentInput(
+                new ByteArrayInputStream(markdown.getBytes(StandardCharsets.UTF_8)),
+                "rag-guide.md",
+                "md",
+                null);
+
+        ProcessResult second = processor.process(duplicateInput);
+
+        assertTrue(first.isNew());
+        assertFalse(second.isNew());
+        assertFalse(second.chunks().isEmpty());
+        assertFalse(second.rawContent().isBlank());
+    }
 }

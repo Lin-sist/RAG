@@ -84,7 +84,7 @@ public class QAController {
                 request.question(),
                 kb.getVectorCollection(),
                 request.topK() != null ? request.topK() : QARequest.DEFAULT_TOP_K,
-            request.minScore() != null ? request.minScore() : QARequest.DEFAULT_MIN_SCORE,
+                request.minScore() != null ? request.minScore() : QARequest.DEFAULT_MIN_SCORE,
                 request.filter() != null ? request.filter() : Map.of(),
                 request.enableCache() != null ? request.enableCache() : true,
                 false);
@@ -145,7 +145,7 @@ public class QAController {
                 request.question(),
                 kb.getVectorCollection(),
                 request.topK() != null ? request.topK() : QARequest.DEFAULT_TOP_K,
-            request.minScore() != null ? request.minScore() : QARequest.DEFAULT_MIN_SCORE,
+                request.minScore() != null ? request.minScore() : QARequest.DEFAULT_MIN_SCORE,
                 request.filter() != null ? request.filter() : Map.of(),
                 request.enableCache() != null ? request.enableCache() : true);
 

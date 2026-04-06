@@ -88,7 +88,7 @@ springdoc:
 proxy:
   enabled: true
   host: 127.0.0.1
-  port: 10808
+  port: 7897
 
 # RAG Configuration
 rag:
@@ -105,7 +105,7 @@ rag:
     openai:
       api-key: ${NVIDIA_API_KEY:}
       base-url: https://integrate.api.nvidia.com/v1
-      model: meta/llama3-70b-instruct
+      model: meta/llama-3.3-70b-instruct
       temperature: 0.4
       max-tokens: 2048
 
@@ -117,7 +117,7 @@ rag:
       enabled: true
       api-key: ${NVIDIA_API_KEY:}
       base-url: https://integrate.api.nvidia.com/v1
-      model: nvidia/llama-nemotron-embed-vl-1b-v2
+      model: nvidia/llama-nemotron-embed-1b-v2
       dimension: 2048
       timeout-ms: 60000
     qwen:

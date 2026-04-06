@@ -76,7 +76,8 @@ public class DocumentProcessorImpl implements DocumentProcessor {
         // 5. 幂等性检查
         if (processedHashes.containsKey(dedupKey)) {
             String existingDocId = processedHashes.get(dedupKey);
-            return ProcessResult.duplicate(existingDocId, contentHash);
+            // 返回重复文档时仍携带解析结果，避免上层在需要重建索引时拿到空分块。
+            return ProcessResult.duplicate(existingDocId, contentHash, rawContent, chunk(rawContent, config));
         }
         
         // 6. 分块
