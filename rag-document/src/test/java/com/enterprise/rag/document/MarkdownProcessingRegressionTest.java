@@ -19,67 +19,68 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MarkdownProcessingRegressionTest {
 
-    private final DocumentProcessorImpl processor;
+        private final DocumentProcessorImpl processor;
 
-    MarkdownProcessingRegressionTest() {
-        List<DocumentParser> parsers = List.of(new MarkdownParser());
-        this.processor = new DocumentProcessorImpl(new DocumentParserFactory(parsers), new DocumentChunker());
-    }
+        MarkdownProcessingRegressionTest() {
+                List<DocumentParser> parsers = List.of(new MarkdownParser());
+                this.processor = new DocumentProcessorImpl(new DocumentParserFactory(parsers), new DocumentChunker());
+        }
 
-    @Test
-    void processShouldKeepLargeMarkdownChunksWithinDefaultBudget() {
-        String markdown = """
-                # JWT Guide
+        @Test
+        void processShouldKeepLargeMarkdownChunksWithinDefaultBudget() {
+                String markdown = """
+                                # JWT Guide
 
-                %s
+                                %s
 
-                ## Table
+                                ## Table
 
-                | field | value |
-                | --- | --- |
-                | token | %s |
-                """.formatted("authentication".repeat(220), "jwt_claim_".repeat(120));
+                                | field | value |
+                                | --- | --- |
+                                | token | %s |
+                                """.formatted("authentication".repeat(220), "jwt_claim_".repeat(120));
 
-        DocumentInput input = new DocumentInput(
-                new ByteArrayInputStream(markdown.getBytes(StandardCharsets.UTF_8)),
-                "jwt-guide.md",
-                "md",
-                null);
+                DocumentInput input = new DocumentInput(
+                                new ByteArrayInputStream(markdown.getBytes(StandardCharsets.UTF_8)),
+                                "jwt-guide.md",
+                                "md",
+                                null);
 
-        ProcessResult result = processor.process(input);
+                ProcessResult result = processor.process(input);
 
-        assertTrue(result.isNew());
-        assertFalse(result.chunks().isEmpty());
-        assertTrue(result.chunks().stream().map(DocumentChunk::content).allMatch(content -> content.length() <= 500));
-    }
+                assertTrue(result.isNew());
+                assertFalse(result.chunks().isEmpty());
+                assertTrue(result.chunks().stream().map(DocumentChunk::content)
+                                .allMatch(content -> content.length() <= 500));
+        }
 
-    @Test
-    void duplicateProcessResultShouldStillContainChunks() {
-        String markdown = """
-                # RAG Guide
+        @Test
+        void duplicateProcessResultShouldStillContainChunks() {
+                String markdown = """
+                                # RAG Guide
 
-                RAG combines retrieval and generation to ground responses in knowledge.
-                """;
+                                RAG combines retrieval and generation to ground responses in knowledge.
+                                """;
 
-        DocumentInput input = new DocumentInput(
-                new ByteArrayInputStream(markdown.getBytes(StandardCharsets.UTF_8)),
-                "rag-guide.md",
-                "md",
-                null);
+                DocumentInput input = new DocumentInput(
+                                new ByteArrayInputStream(markdown.getBytes(StandardCharsets.UTF_8)),
+                                "rag-guide.md",
+                                "md",
+                                null);
 
-        ProcessResult first = processor.process(input);
+                ProcessResult first = processor.process(input);
 
-        DocumentInput duplicateInput = new DocumentInput(
-                new ByteArrayInputStream(markdown.getBytes(StandardCharsets.UTF_8)),
-                "rag-guide.md",
-                "md",
-                null);
+                DocumentInput duplicateInput = new DocumentInput(
+                                new ByteArrayInputStream(markdown.getBytes(StandardCharsets.UTF_8)),
+                                "rag-guide.md",
+                                "md",
+                                null);
 
-        ProcessResult second = processor.process(duplicateInput);
+                ProcessResult second = processor.process(duplicateInput);
 
-        assertTrue(first.isNew());
-        assertFalse(second.isNew());
-        assertFalse(second.chunks().isEmpty());
-        assertFalse(second.rawContent().isBlank());
-    }
+                assertTrue(first.isNew());
+                assertFalse(second.isNew());
+                assertFalse(second.chunks().isEmpty());
+                assertFalse(second.rawContent().isBlank());
+        }
 }

@@ -29,30 +29,30 @@ public class DocumentProcessorImpl implements DocumentProcessor {
     private static final String DEFAULT_DEDUP_SCOPE = "global";
     private static final String KB_SCOPE_KEY = "kbId";
     private static final String KNOWLEDGE_BASE_SCOPE_KEY = "knowledgeBaseId";
-    
+
     private final DocumentParserFactory parserFactory;
     private final DocumentChunker chunker;
-    
+
     // 内存存储已处理文档的哈希（按知识库作用域隔离，生产环境应使用 Redis 或数据库）
     private final Map<String, String> processedHashes = new ConcurrentHashMap<>();
-    
+
     public DocumentProcessorImpl(DocumentParserFactory parserFactory, DocumentChunker chunker) {
         this.parserFactory = parserFactory;
         this.chunker = chunker;
     }
-    
+
     @Override
     public ProcessResult process(DocumentInput input) {
         return process(input, ChunkConfig.DEFAULT);
     }
-    
+
     @Override
     public ProcessResult process(DocumentInput input, ChunkConfig config) {
         // 1. 获取解析器
         DocumentParser parser = parserFactory.getParser(input.fileType())
                 .orElseThrow(() -> new DocumentParseException(
                         "Unsupported file type: " + input.fileType()));
-        
+
         // 2. 读取输入流内容（需要多次使用）
         byte[] content;
         try {
@@ -60,7 +60,7 @@ public class DocumentProcessorImpl implements DocumentProcessor {
         } catch (IOException e) {
             throw new DocumentParseException("Failed to read document content", e);
         }
-        
+
         // 3. 解析文档
         String rawContent;
         try (InputStream is = new ByteArrayInputStream(content)) {
@@ -68,28 +68,28 @@ public class DocumentProcessorImpl implements DocumentProcessor {
         } catch (IOException e) {
             throw new DocumentParseException("Failed to parse document", e);
         }
-        
+
         // 4. 计算内容哈希
         String contentHash = computeHash(rawContent);
         String dedupKey = buildDedupKey(input.metadata(), contentHash);
-        
+
         // 5. 幂等性检查
         if (processedHashes.containsKey(dedupKey)) {
             String existingDocId = processedHashes.get(dedupKey);
             // 返回重复文档时仍携带解析结果，避免上层在需要重建索引时拿到空分块。
             return ProcessResult.duplicate(existingDocId, contentHash, rawContent, chunk(rawContent, config));
         }
-        
+
         // 6. 分块
         List<DocumentChunk> chunks = chunk(rawContent, config);
-        
+
         // 7. 生成文档 ID 并记录
         String documentId = UUID.randomUUID().toString();
         processedHashes.put(dedupKey, documentId);
-        
+
         return ProcessResult.newDocument(documentId, contentHash, rawContent, chunks);
     }
-    
+
     @Override
     public List<DocumentChunk> chunk(String content, ChunkConfig config) {
         if (content == null || content.isEmpty()) {
@@ -97,12 +97,12 @@ public class DocumentProcessorImpl implements DocumentProcessor {
         }
         return chunker.chunk(content, config);
     }
-    
+
     @Override
     public boolean exists(String contentHash) {
         return processedHashes.containsKey(buildDedupKey(Map.of(), contentHash));
     }
-    
+
     @Override
     public String computeHash(String content) {
         if (content == null) {
@@ -116,14 +116,14 @@ public class DocumentProcessorImpl implements DocumentProcessor {
             throw new RuntimeException("SHA-256 algorithm not available", e);
         }
     }
-    
+
     /**
      * 清除已处理的哈希记录（用于测试）
      */
     public void clearProcessedHashes() {
         processedHashes.clear();
     }
-    
+
     /**
      * 手动添加哈希记录（用于测试）
      */
