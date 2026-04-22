@@ -2,6 +2,27 @@
 
 先做根因诊断，再做基线、调参、代码精修和回归护栏。核心原则是先定位损失层，避免在错误层面反复调参。
 
+## 当前状态（2026-04-22）
+
+| 阶段 | 状态 | 当前结论 |
+|------|------|------|
+| 阶段零：根因快速诊断 | `PARTIAL` | 首批样本、同步 `ask` 诊断方式和默认 `kbId=2` 已固定，但完整根因快照还需继续积累 |
+| 阶段一：建立可量化基线 | `PARTIAL` | 关键元数据字段已在接口和脚本中可采集，首轮样本与记录模板已补齐 |
+| 阶段二：低风险参数调优 | `PARTIAL` | `qa_grid_experiment.ps1` 已可复用，但参数实验结论还未沉淀 |
+| 阶段三：小规模代码优化 | `PARTIAL` | 已完成文档去重语义修复、聊天页流式来源降级与上下文展示，引用提取和分块边界优化待后续继续 |
+| 阶段四：质量护栏与回归 | `TODO` | 还没有正式回归门禁与阈值阻断机制 |
+
+## 第一轮已落地项（2026-04-22）
+
+- 文档处理去重语义已统一为“同知识库重复上传返回 `isNew=false`、空 `chunks`、保留 `contentHash`”，并恢复后端测试基线。
+- 聊天页已区分同步回答和流式回答；同步回答继续展示 `citations + contexts`，流式回答在无结构化来源时展示显式降级提示。
+- 第一轮最小诊断闭环已补齐：
+  - 样本文件：[qa-phase0-questions.txt](/C:/_01_Code/RAG/test-data/qa-phase0-questions.txt)
+  - 快照脚本：[phase0_qa_snapshot.ps1](/C:/_01_Code/RAG/scripts/phase0_qa_snapshot.ps1)
+  - 网格实验脚本：[qa_grid_experiment.ps1](/C:/_01_Code/RAG/scripts/qa_grid_experiment.ps1)
+  - 诊断说明：[qa-first-round-diagnostics.md](/C:/_01_Code/RAG/docs/开发文档/qa-first-round-diagnostics.md)
+  - 结果模板：[qa-first-round-record-template.md](/C:/_01_Code/RAG/diagnostics/templates/qa-first-round-record-template.md)
+
 **Steps**
 1. 阶段零：根因快速诊断（0.5天）
 2. 选2-3个低质量问答样例，逐层保留链路快照：原始问题、检索chunk及分数、最终Prompt、模型原始输出、前端最终渲染。
@@ -35,6 +56,8 @@
 - c:/_01_Code/RAG/rag-core/src/main/java/com/enterprise/rag/core/rag/query/QueryEngineImpl.java — Query预处理
 - c:/_01_Code/RAG/rag-admin/src/main/resources/application.yml — 生成与检索关键参数
 - c:/_01_Code/RAG/rag-frontend/src/composables/useSSE.ts — 前端流式拼接
+- c:/_01_Code/RAG/docs/开发文档/qa-first-round-diagnostics.md — 第一轮诊断样本、执行方式与记录口径
+- c:/_01_Code/RAG/diagnostics/templates/qa-first-round-record-template.md — 诊断结果记录模板
 
 **Verification**
 1. 阶段零完成标准：至少2条问题链路快照齐全，并明确首个失真层。

@@ -50,14 +50,13 @@ public record ProcessResult(
      * 创建重复文档结果
      */
     public static ProcessResult duplicate(String documentId, String contentHash) {
-        return new ProcessResult(documentId, contentHash, "", List.of(), false);
+        return duplicate(documentId, contentHash, "");
     }
 
     /**
-     * 创建重复文档结果（包含解析内容与分块）
+     * 创建重复文档结果（保留解析内容，但不重复生成分块）
      */
-    public static ProcessResult duplicate(String documentId, String contentHash, String rawContent,
-            List<DocumentChunk> chunks) {
-        return new ProcessResult(documentId, contentHash, rawContent, chunks, false);
+    public static ProcessResult duplicate(String documentId, String contentHash, String rawContent) {
+        return new ProcessResult(documentId, contentHash, rawContent, List.of(), false);
     }
 }

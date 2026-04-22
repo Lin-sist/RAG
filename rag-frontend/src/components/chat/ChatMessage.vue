@@ -49,6 +49,16 @@
           :citations="msg.citations"
         />
 
+        <RetrievedContextList
+          v-if="showContexts"
+          :contexts="msg.contexts!"
+        />
+
+        <div v-if="sourceHint" :class="['source-status', msg.sourceStatus]">
+          <el-icon><InfoFilled /></el-icon>
+          <span>{{ sourceHint }}</span>
+        </div>
+
         <!-- 时间 -->
         <div class="msg-time">{{ formatTime(msg.timestamp) }}</div>
       </div>
@@ -58,7 +68,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { WarningFilled, CopyDocument } from '@element-plus/icons-vue'
+import { WarningFilled, CopyDocument, InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js/lib/core'
@@ -73,6 +83,7 @@ import bash from 'highlight.js/lib/languages/bash'
 import cssLang from 'highlight.js/lib/languages/css'
 import 'highlight.js/styles/atom-one-dark.css'
 import CitationList from './CitationList.vue'
+import RetrievedContextList from './RetrievedContextList.vue'
 import type { ChatMessage } from '@/stores/chat'
 
 hljs.registerLanguage('javascript', javascript)
@@ -116,6 +127,21 @@ const md = new MarkdownIt({
 const renderedContent = computed(() => {
   if (!props.msg.content) return ''
   return md.render(props.msg.content)
+})
+
+const showContexts = computed(() => {
+  return props.msg.role === 'assistant'
+    && props.msg.responseMode === 'sync'
+    && !props.msg.loading
+    && Array.isArray(props.msg.contexts)
+    && props.msg.contexts.length > 0
+})
+
+const sourceHint = computed(() => {
+  if (props.msg.role !== 'assistant' || props.msg.loading) {
+    return ''
+  }
+  return props.msg.sourceHint ?? ''
 })
 
 function formatTime(ts: number): string {
@@ -403,6 +429,32 @@ function handleContentClick(e: MouseEvent) {
   font-size: 11px;
   color: var(--rag-text-placeholder);
   margin-top: var(--rag-space-2);
+}
+
+.source-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--rag-space-2);
+  margin-top: var(--rag-space-3);
+  padding: var(--rag-space-2) var(--rag-space-3);
+  border-radius: var(--rag-radius-sm);
+  font-size: var(--rag-font-small);
+  line-height: 1.5;
+}
+
+.source-status.unavailable {
+  background: rgba(64, 158, 255, 0.08);
+  color: #2563eb;
+}
+
+.source-status.interrupted {
+  background: rgba(245, 108, 108, 0.08);
+  color: #d14343;
+}
+
+.source-status.complete {
+  background: rgba(103, 194, 58, 0.08);
+  color: #3f8f2f;
 }
 
 .chat-message.user .msg-time {

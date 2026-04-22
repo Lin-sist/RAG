@@ -212,6 +212,7 @@ async function sendQuestion(question: string, useStream: boolean) {
     role: 'assistant',
     content: '',
     loading: true,
+    responseMode: useStream ? 'stream' : 'sync',
     timestamp: Date.now(),
   })
 
@@ -237,7 +238,12 @@ async function doSyncAsk(question: string) {
     const qaResp = res.data.data
     chatStore.updateLastAssistantMessage(qaResp.answer)
     chatStore.setLastAssistantMeta(qaResp.citations, qaResp.contexts)
-    chatStore.setLastAssistantLoading(false)
+    chatStore.patchLastAssistant({
+      loading: false,
+      error: false,
+      sourceStatus: 'complete',
+      sourceHint: undefined,
+    })
   } catch (e: any) {
     const msg = e?.response?.data?.message || e?.message || '请求失败，请稍后重试'
     chatStore.setLastAssistantError(msg)
@@ -254,22 +260,42 @@ async function doStreamAsk(question: string) {
     topK: chatStore.topK,
   }
 
-  await sse.connect('/api/qa/ask/stream', body, (chunk: string) => {
+  const streamResult = await sse.connect('/api/qa/ask/stream', body, (chunk: string) => {
     chatStore.appendToLastAssistant(chunk)
     scrollToBottom()
   })
 
+  const last = chatStore.messages[chatStore.messages.length - 1]
+  const hasContent = Boolean(last && last.role === 'assistant' && last.content.trim())
+
   // 流结束
-  chatStore.setLastAssistantLoading(false)
   chatStore.setStreaming(false)
+  chatStore.setLastAssistantLoading(false)
 
   if (sse.error.value) {
-    // 如果流整体失败且没有收到任何内容
-    const last = chatStore.messages[chatStore.messages.length - 1]
-    if (last && last.role === 'assistant' && !last.content) {
+    if (!hasContent) {
       chatStore.setLastAssistantError(sse.error.value)
+      return
     }
+
+    chatStore.patchLastAssistant({
+      error: false,
+      sourceStatus: 'interrupted',
+      sourceHint: '流式回答已中断，已保留已生成内容；如需查看引用，请改用同步问答。',
+    })
+    return
   }
+
+  if (!streamResult.receivedChunks || !hasContent) {
+    chatStore.setLastAssistantError('未收到有效响应，请稍后重试')
+    return
+  }
+
+  chatStore.patchLastAssistant({
+    error: false,
+    sourceStatus: 'unavailable',
+    sourceHint: '该流式回答当前未保存来源，可改用同步问答查看引用。',
+  })
 }
 
 // ---- 清空对话 ----

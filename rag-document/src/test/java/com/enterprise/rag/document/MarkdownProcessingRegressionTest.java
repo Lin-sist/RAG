@@ -55,7 +55,7 @@ class MarkdownProcessingRegressionTest {
         }
 
         @Test
-        void duplicateProcessResultShouldStillContainChunks() {
+        void duplicateProcessResultShouldPreserveRawContentWithoutReChunking() {
                 String markdown = """
                                 # RAG Guide
 
@@ -80,7 +80,7 @@ class MarkdownProcessingRegressionTest {
 
                 assertTrue(first.isNew());
                 assertFalse(second.isNew());
-                assertFalse(second.chunks().isEmpty());
+                assertTrue(second.chunks().isEmpty());
                 assertFalse(second.rawContent().isBlank());
         }
 }

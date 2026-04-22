@@ -2,12 +2,18 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Citation, RetrievedContext } from '@/types/qa'
 
+export type ResponseMode = 'sync' | 'stream'
+export type SourceStatus = 'complete' | 'unavailable' | 'interrupted'
+
 export interface ChatMessage {
     id: string
     role: 'user' | 'assistant'
     content: string
     citations?: Citation[]
     contexts?: RetrievedContext[]
+    responseMode?: ResponseMode
+    sourceStatus?: SourceStatus
+    sourceHint?: string
     loading?: boolean
     error?: boolean
     timestamp: number
@@ -30,11 +36,19 @@ export const useChatStore = defineStore('chat', () => {
         messages.value.push({ ...msg, id: genMsgId() })
     }
 
+    function patchLastAssistant(patch: Partial<ChatMessage>) {
+        const last = messages.value[messages.value.length - 1]
+        if (last && last.role === 'assistant') {
+            Object.assign(last, patch)
+        }
+    }
+
     /** 追加文本到最后一条 assistant 消息 */
     function appendToLastAssistant(chunk: string) {
         const last = messages.value[messages.value.length - 1]
         if (last && last.role === 'assistant') {
             last.content += chunk
+            last.error = false
         }
     }
 
@@ -46,27 +60,25 @@ export const useChatStore = defineStore('chat', () => {
 
     /** 设置最后一条 assistant 消息的引用和上下文 */
     function setLastAssistantMeta(citations?: Citation[], contexts?: RetrievedContext[]) {
-        const last = messages.value[messages.value.length - 1]
-        if (last && last.role === 'assistant') {
-            if (citations) last.citations = citations
-            if (contexts) last.contexts = contexts
-        }
+        patchLastAssistant({
+            ...(citations ? { citations } : {}),
+            ...(contexts ? { contexts } : {}),
+        })
     }
 
     /** 设置最后一条 assistant 消息的 loading 状态 */
     function setLastAssistantLoading(loading: boolean) {
-        const last = messages.value[messages.value.length - 1]
-        if (last && last.role === 'assistant') last.loading = loading
+        patchLastAssistant({ loading })
     }
 
     /** 标记最后一条 assistant 消息为错误 */
     function setLastAssistantError(errorMsg: string) {
-        const last = messages.value[messages.value.length - 1]
-        if (last && last.role === 'assistant') {
-            last.loading = false
-            last.error = true
-            last.content = errorMsg
-        }
+        patchLastAssistant({
+            loading: false,
+            error: true,
+            content: errorMsg,
+            sourceStatus: 'interrupted',
+        })
     }
 
     function clearMessages() { messages.value = [] }
@@ -79,6 +91,7 @@ export const useChatStore = defineStore('chat', () => {
 
     return {
         messages, currentKbId, currentKbName, isStreaming, topK,
+        patchLastAssistant,
         addMessage, appendToLastAssistant, updateLastAssistantMessage,
         setLastAssistantMeta, setLastAssistantLoading, setLastAssistantError,
         clearMessages, setCurrentKb, setStreaming, setTopK,
