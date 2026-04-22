@@ -33,9 +33,16 @@ public class QueryEngineImpl implements QueryEngine {
     private static final Pattern LATIN_TOKEN_PATTERN = Pattern.compile("[\\p{Alnum}]+");
     private static final Pattern CJK_SEGMENT_PATTERN = Pattern.compile("[\\p{IsHan}]+");
     private static final Pattern TRAILING_PUNCTUATION_PATTERN = Pattern.compile("[\\s？?！!。,.，；;：:]+$");
-    private static final Pattern LEADING_POLITE_PATTERN = Pattern.compile("^(请问|请教一下|请教|想问一下|想问|麻烦问下|麻烦问一下|帮我|请你|请)\\s*");
+    private static final Pattern LEADING_POLITE_PATTERN = Pattern.compile(
+            "^(请问|请教一下|请教|想问一下|想问|麻烦问下|麻烦问一下|帮我|请你|请|你认为|你觉得|你看|可以说说|说说|聊聊|分析一下|分析下|帮忙分析一下|帮忙分析下)\\s*");
     private static final Pattern EXPLANATION_PATTERN = Pattern.compile("^(什么是|什么叫|何谓|介绍一下|讲讲|解释一下|解释下|说明一下)\\s*(.+)$");
     private static final Pattern REVERSED_EXPLANATION_PATTERN = Pattern.compile("^(.+?)\\s*(是什么|是啥|指什么|是什么意思)$");
+    private static final Pattern HOW_QUERY_PATTERN = Pattern.compile("^(.+?)\\s*(?:是)?如何(?:运作|工作|运行|实现|发挥作用)的?$");
+    private static final Pattern HOW_QUERY_ALT_PATTERN = Pattern.compile("^(.+?)\\s*(?:是)?怎么(?:运作|工作|运行|实现|发挥作用)的?$");
+    private static final Pattern WHY_QUERY_PATTERN = Pattern.compile("^为什么(?:需要|要|会)?\\s*(.+)$");
+    private static final Pattern WHY_SUBJECT_PATTERN = Pattern.compile("^(.+?)\\s*为什么(?:重要|需要|有用)$");
+    private static final Pattern PRINCIPLE_QUERY_PATTERN = Pattern.compile(
+            "^(.+?)\\s*(?:的)?(?:工作原理|运行原理|原理|机制|流程|作用|实现方式)(?:是什么)?$");
     private static final Map<String, List<String>> QUERY_SYNONYMS = Map.of(
             "jwt", List.of("json web token", "jwt token", "token认证"),
             "oauth", List.of("oauth 2.0", "oauth2", "授权协议"),
@@ -196,6 +203,8 @@ public class QueryEngineImpl implements QueryEngine {
             addQueryVariant(variants, conversationalCore, 0.98f);
         }
 
+        addExplanationVariants(variants, conversationalCore);
+
         for (String token : extractLatinTokens(conversationalCore)) {
             List<String> expansions = QUERY_SYNONYMS.get(token);
             if (expansions != null) {
@@ -243,6 +252,91 @@ public class QueryEngineImpl implements QueryEngine {
         return stripped;
     }
 
+    private void addExplanationVariants(Map<String, Float> variants, String query) {
+        ExplanationIntent intent = parseExplanationIntent(query);
+        if (intent == null || intent.subject().isBlank()) {
+            return;
+        }
+
+        addQueryVariant(variants, intent.subject(), 0.985f);
+
+        switch (intent.type()) {
+            case HOW -> {
+                addQueryVariant(variants, intent.subject() + " 工作原理", 0.98f);
+                addQueryVariant(variants, intent.subject() + " 运行流程", 0.97f);
+                addQueryVariant(variants, intent.subject() + " 核心机制", 0.96f);
+            }
+            case WHY -> {
+                addQueryVariant(variants, intent.subject() + " 作用", 0.98f);
+                addQueryVariant(variants, intent.subject() + " 目的", 0.97f);
+                addQueryVariant(variants, "为什么需要 " + intent.subject(), 0.96f);
+            }
+            case GENERAL -> {
+                addQueryVariant(variants, intent.subject() + " 原理", 0.97f);
+                addQueryVariant(variants, intent.subject() + " 机制", 0.96f);
+                addQueryVariant(variants, intent.subject() + " 流程", 0.95f);
+            }
+        }
+    }
+
+    private ExplanationIntent parseExplanationIntent(String query) {
+        String normalized = normalizeQuery(query);
+        if (normalized.isBlank()) {
+            return null;
+        }
+
+        String subject = matchSubject(HOW_QUERY_PATTERN, normalized);
+        if (subject != null) {
+            return new ExplanationIntent(ExplanationType.HOW, subject);
+        }
+
+        subject = matchSubject(HOW_QUERY_ALT_PATTERN, normalized);
+        if (subject != null) {
+            return new ExplanationIntent(ExplanationType.HOW, subject);
+        }
+
+        subject = matchSubject(WHY_QUERY_PATTERN, normalized);
+        if (subject != null) {
+            return new ExplanationIntent(ExplanationType.WHY, subject);
+        }
+
+        subject = matchSubject(WHY_SUBJECT_PATTERN, normalized);
+        if (subject != null) {
+            return new ExplanationIntent(ExplanationType.WHY, subject);
+        }
+
+        subject = matchSubject(PRINCIPLE_QUERY_PATTERN, normalized);
+        if (subject != null) {
+            return new ExplanationIntent(ExplanationType.GENERAL, subject);
+        }
+
+        if (containsExplanationCue(normalized)) {
+            return new ExplanationIntent(ExplanationType.GENERAL, normalized);
+        }
+
+        return null;
+    }
+
+    private String matchSubject(Pattern pattern, String query) {
+        Matcher matcher = pattern.matcher(query);
+        if (!matcher.matches()) {
+            return null;
+        }
+        return normalizeQuery(matcher.group(1));
+    }
+
+    private boolean containsExplanationCue(String query) {
+        return query.contains("如何")
+                || query.contains("怎么")
+                || query.contains("为什么")
+                || query.contains("原理")
+                || query.contains("机制")
+                || query.contains("流程")
+                || query.contains("运作")
+                || query.contains("工作")
+                || query.contains("运行");
+    }
+
     private List<String> extractLatinTokens(String query) {
         List<String> tokens = new ArrayList<>();
         Matcher latinMatcher = LATIN_TOKEN_PATTERN.matcher(query == null ? "" : query.toLowerCase(Locale.ROOT));
@@ -269,7 +363,7 @@ public class QueryEngineImpl implements QueryEngine {
      */
     private List<String> extractQueryTerms(String query) {
         Set<String> terms = new LinkedHashSet<>();
-        String normalized = query == null ? "" : query.toLowerCase();
+        String normalized = stripConversationalNoise(query == null ? "" : query).toLowerCase(Locale.ROOT);
 
         Matcher latinMatcher = LATIN_TOKEN_PATTERN.matcher(normalized);
         while (latinMatcher.find()) {
@@ -296,7 +390,36 @@ public class QueryEngineImpl implements QueryEngine {
             }
         }
 
+        ExplanationIntent intent = parseExplanationIntent(normalized);
+        if (intent != null) {
+            addExplanationTerms(terms, intent);
+        }
+
         return new ArrayList<>(terms);
+    }
+
+    private void addExplanationTerms(Set<String> terms, ExplanationIntent intent) {
+        String subject = intent.subject().toLowerCase(Locale.ROOT);
+        if (!subject.isBlank()) {
+            terms.add(subject);
+        }
+
+        switch (intent.type()) {
+            case HOW -> {
+                terms.add("原理");
+                terms.add("流程");
+                terms.add("机制");
+            }
+            case WHY -> {
+                terms.add("作用");
+                terms.add("目的");
+                terms.add("原因");
+            }
+            case GENERAL -> {
+                terms.add("原理");
+                terms.add("机制");
+            }
+        }
     }
 
     /**
@@ -306,5 +429,14 @@ public class QueryEngineImpl implements QueryEngine {
     }
 
     private record QueryVariant(String query, float weight) {
+    }
+
+    private record ExplanationIntent(ExplanationType type, String subject) {
+    }
+
+    private enum ExplanationType {
+        HOW,
+        WHY,
+        GENERAL
     }
 }

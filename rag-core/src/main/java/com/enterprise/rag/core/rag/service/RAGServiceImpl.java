@@ -18,10 +18,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * RAG 服务实现
@@ -31,6 +34,14 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 public class RAGServiceImpl implements RAGService {
+    private static final Pattern LEADING_CONVERSATIONAL_PATTERN = Pattern.compile(
+            "^(请问|请教一下|请教|想问一下|想问|麻烦问下|麻烦问一下|帮我|请你|请|你认为|你觉得|你看|可以说说|说说|聊聊|分析一下|分析下|帮忙分析一下|帮忙分析下)\\s*");
+    private static final Pattern HOW_PATTERN = Pattern.compile("^(.+?)\\s*(?:是)?(?:如何|怎么)(?:运作|工作|运行|实现|发挥作用)的?$");
+    private static final Pattern WHY_PATTERN = Pattern.compile("^为什么(?:需要|要|会)?\\s*(.+)$");
+    private static final Pattern WHY_SUBJECT_PATTERN = Pattern.compile("^(.+?)\\s*为什么(?:重要|需要|有用)$");
+    private static final Pattern PRINCIPLE_PATTERN = Pattern.compile(
+            "^(.+?)\\s*(?:的)?(?:工作原理|运行原理|原理|机制|流程|作用|实现方式)(?:是什么)?$");
+    private static final float EXPLANATORY_FALLBACK_MIN_SCORE = 0.15f;
 
     private final QueryEngine queryEngine;
     private final AnswerGenerator answerGenerator;
@@ -77,6 +88,10 @@ public class RAGServiceImpl implements RAGService {
             log.debug("Top retrieval scores: {}", topScoresForLog(contexts, 5));
 
             // 3. 处理无结果情况
+            if (contexts.isEmpty()) {
+                contexts = retryExplanatoryRetrieval(question, request, collectionName);
+            }
+
             if (contexts.isEmpty()) {
                 log.info("No relevant contexts found for question: {}", truncateForLog(question));
                 return QAResponse.noResult(question);
@@ -136,6 +151,8 @@ public class RAGServiceImpl implements RAGService {
         log.info("Processing streaming QA request for collection: {}", collectionName);
 
         try {
+            long retrievalStartTime = System.currentTimeMillis();
+
             // 检索相关文档
             RetrieveOptions retrieveOptions = new RetrieveOptions(
                     collectionName,
@@ -144,8 +161,22 @@ public class RAGServiceImpl implements RAGService {
                     request.filter(),
                     true);
             List<RetrievedContext> contexts = queryEngine.retrieve(question, retrieveOptions);
+            long retrievalLatencyMs = System.currentTimeMillis() - retrievalStartTime;
 
             if (contexts.isEmpty()) {
+                contexts = retryExplanatoryRetrieval(question, request, collectionName);
+            }
+
+            log.info("stream_retrieval_done collection={}, question={}, retrievalLatencyMs={}, contextCount={}, topScores={}",
+                    collectionName,
+                    truncateForLog(question),
+                    retrievalLatencyMs,
+                    contexts.size(),
+                    topScoresForLog(contexts, 5));
+
+            if (contexts.isEmpty()) {
+                log.info("stream_retrieval_no_context collection={}, question={}, retrievalLatencyMs={}",
+                        collectionName, truncateForLog(question), retrievalLatencyMs);
                 return Flux.just("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。");
             }
 
@@ -177,6 +208,152 @@ public class RAGServiceImpl implements RAGService {
             return "模型服务响应超时，请稍后重试";
         }
         return message;
+    }
+
+    private List<RetrievedContext> retryExplanatoryRetrieval(String question, QARequest request, String collectionName) {
+        if (!isExplanatoryQuestion(question)) {
+            return List.of();
+        }
+
+        List<String> fallbackQueries = buildExplanatoryFallbackQueries(question);
+        if (fallbackQueries.isEmpty()) {
+            return List.of();
+        }
+
+        float fallbackMinScore = Math.min(request.minScore(), EXPLANATORY_FALLBACK_MIN_SCORE);
+        if (fallbackMinScore <= 0f) {
+            fallbackMinScore = request.minScore();
+        }
+
+        List<RetrievedContext> merged = new ArrayList<>();
+        for (String fallbackQuery : fallbackQueries) {
+            RetrieveOptions fallbackOptions = new RetrieveOptions(
+                    collectionName,
+                    request.topK(),
+                    fallbackMinScore,
+                    request.filter(),
+                    true);
+            List<RetrievedContext> fallbackContexts = queryEngine.retrieve(fallbackQuery, fallbackOptions);
+            if (!fallbackContexts.isEmpty()) {
+                log.info("explanatory_retrieval_fallback_hit originalQuestion={}, fallbackQuery={}, fallbackMinScore={}, contextCount={}",
+                        truncateForLog(question),
+                        truncateForLog(fallbackQuery),
+                        fallbackMinScore,
+                        fallbackContexts.size());
+            }
+            mergeDistinctContexts(merged, fallbackContexts);
+        }
+
+        return merged.stream()
+                .sorted(Comparator.comparingDouble(RetrievedContext::relevanceScore).reversed())
+                .limit(request.topK())
+                .toList();
+    }
+
+    private boolean isExplanatoryQuestion(String question) {
+        if (question == null || question.isBlank()) {
+            return false;
+        }
+
+        return question.contains("如何")
+                || question.contains("怎么")
+                || question.contains("为什么")
+                || question.contains("原理")
+                || question.contains("机制")
+                || question.contains("流程")
+                || question.contains("运作")
+                || question.contains("工作")
+                || question.contains("运行");
+    }
+
+    private List<String> buildExplanatoryFallbackQueries(String question) {
+        String normalized = normalizeQuestion(question);
+        String stripped = LEADING_CONVERSATIONAL_PATTERN.matcher(normalized).replaceFirst("");
+        LinkedHashMap<String, Boolean> queries = new LinkedHashMap<>();
+
+        addFallbackQuery(queries, stripped);
+
+        String subject = matchFallbackSubject(HOW_PATTERN, stripped);
+        if (subject != null) {
+            addFallbackQuery(queries, subject);
+            addFallbackQuery(queries, subject + " 工作原理");
+            addFallbackQuery(queries, subject + " 运行流程");
+            return List.copyOf(queries.keySet());
+        }
+
+        subject = matchFallbackSubject(WHY_PATTERN, stripped);
+        if (subject != null) {
+            addFallbackQuery(queries, subject);
+            addFallbackQuery(queries, subject + " 作用");
+            addFallbackQuery(queries, subject + " 目的");
+            return List.copyOf(queries.keySet());
+        }
+
+        subject = matchFallbackSubject(WHY_SUBJECT_PATTERN, stripped);
+        if (subject != null) {
+            addFallbackQuery(queries, subject);
+            addFallbackQuery(queries, subject + " 作用");
+            addFallbackQuery(queries, subject + " 目的");
+            return List.copyOf(queries.keySet());
+        }
+
+        subject = matchFallbackSubject(PRINCIPLE_PATTERN, stripped);
+        if (subject != null) {
+            addFallbackQuery(queries, subject);
+            addFallbackQuery(queries, subject + " 原理");
+            addFallbackQuery(queries, subject + " 机制");
+            return List.copyOf(queries.keySet());
+        }
+
+        return List.copyOf(queries.keySet());
+    }
+
+    private void addFallbackQuery(Map<String, Boolean> queries, String candidate) {
+        String normalized = normalizeQuestion(candidate);
+        if (!normalized.isBlank()) {
+            queries.put(normalized, Boolean.TRUE);
+        }
+    }
+
+    private String matchFallbackSubject(Pattern pattern, String question) {
+        Matcher matcher = pattern.matcher(question);
+        if (!matcher.matches()) {
+            return null;
+        }
+        return normalizeQuestion(matcher.group(1));
+    }
+
+    private String normalizeQuestion(String question) {
+        if (question == null) {
+            return "";
+        }
+        return question.trim()
+                .replaceAll("[\\s？?！!。,.，；;：:]+$", "")
+                .replaceAll("\\s+", " ");
+    }
+
+    private void mergeDistinctContexts(List<RetrievedContext> merged, List<RetrievedContext> additions) {
+        if (additions == null || additions.isEmpty()) {
+            return;
+        }
+        for (RetrievedContext addition : additions) {
+            boolean exists = merged.stream().anyMatch(existing -> sameContext(existing, addition));
+            if (!exists) {
+                merged.add(addition);
+            }
+        }
+    }
+
+    private boolean sameContext(RetrievedContext left, RetrievedContext right) {
+        if (left == null || right == null) {
+            return false;
+        }
+
+        String leftSource = left.source() == null ? "" : left.source().trim();
+        String rightSource = right.source() == null ? "" : right.source().trim();
+        String leftContent = left.content() == null ? "" : left.content().trim();
+        String rightContent = right.content() == null ? "" : right.content().trim();
+        return leftSource.equalsIgnoreCase(rightSource) && leftContent.equalsIgnoreCase(rightContent);
     }
 
     @Override

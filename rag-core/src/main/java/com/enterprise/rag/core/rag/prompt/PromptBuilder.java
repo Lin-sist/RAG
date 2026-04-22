@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -22,6 +23,7 @@ import java.util.stream.IntStream;
 public class PromptBuilder {
 
     public static final int DEFAULT_CONTEXT_TOKEN_BUDGET = 1200;
+    private static final Pattern EXPLANATORY_QUERY_PATTERN = Pattern.compile(".*(如何|怎么|为什么|原理|机制|流程|运作|工作|运行).*");
 
     private static final String SIMPLE_TEMPLATE = """
             Based on the following context, please answer the question.
@@ -40,12 +42,14 @@ public class PromptBuilder {
             ## Instructions
             - Answer the question based ONLY on the provided context
             - If the context doesn't contain enough information, say so
-            - Cite the source when possible
+            - Do not include raw source headers, chunk numbers, relevance scores, or bracketed markers such as [Source 1: ...] in the final answer
+            - Citations are handled separately by the system, so keep the answer body clean and user-facing
             - Use complete and fluent sentences; avoid broken words or truncated phrases
             - Preserve original terms, numbers, and definitions from the context whenever possible
             - Do not invent facts or mix in outside knowledge
             - Be concise and accurate
             - You MUST reply in the SAME language as the user's question (e.g. Chinese question → Chinese answer)
+            %s
 
             ## Context
             %s
@@ -123,8 +127,7 @@ public class PromptBuilder {
 
         String formattedContext = formatContexts(contexts);
         String template = getTemplate(strategy);
-
-        String prompt = String.format(template, formattedContext, query);
+        String prompt = renderPrompt(template, strategy, query, formattedContext);
         log.debug("Built prompt with strategy {} for query: {}", strategy, truncateForLog(query));
 
         return prompt;
@@ -155,7 +158,7 @@ public class PromptBuilder {
 
         String formattedContext = formatContexts(budgetedContexts);
         String template = getTemplate(strategy);
-        String prompt = String.format(template, formattedContext, query);
+        String prompt = renderPrompt(template, strategy, query, formattedContext);
 
         int estimatedTokens = estimateTokens(formattedContext);
         return new PromptBuildResult(
@@ -182,15 +185,30 @@ public class PromptBuilder {
     private String formatSingleContext(int index, RetrievedContext context) {
         Map<String, Object> metadata = context.metadata() == null ? Map.of() : context.metadata();
         String sourceTitle = String.valueOf(metadata.getOrDefault("title", ""));
-        Object chunkIndex = metadata.get("chunkIndex");
-        String sourceHint = sourceTitle.isBlank() ? context.source() : sourceTitle + " / " + context.source();
-        String chunkHint = chunkIndex == null ? "" : " #chunk=" + chunkIndex;
+        String sourceHint = buildSourceHint(index, sourceTitle, context.source());
 
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("[Source %d: %s (Score: %.2f)]%n",
-                index, sourceHint + chunkHint, context.relevanceScore()));
+        sb.append(String.format("Context %d%n", index));
+        sb.append(String.format("Source: %s%n", sourceHint));
+        sb.append("Content:\n");
         sb.append(context.content() == null ? "" : context.content());
         return sb.toString();
+    }
+
+    private String buildSourceHint(int index, String sourceTitle, String rawSource) {
+        String normalizedSource = rawSource == null ? "" : rawSource.trim();
+        boolean hasReadableSource = !normalizedSource.isBlank() && !normalizedSource.matches("\\d+(\\.\\d+)?");
+
+        if (!sourceTitle.isBlank() && hasReadableSource) {
+            return sourceTitle + " / " + normalizedSource;
+        }
+        if (!sourceTitle.isBlank()) {
+            return sourceTitle;
+        }
+        if (hasReadableSource) {
+            return normalizedSource;
+        }
+        return "Document " + index;
     }
 
     private List<RetrievedContext> deduplicateContexts(List<RetrievedContext> contexts) {
@@ -266,6 +284,30 @@ public class PromptBuilder {
             case CHAIN_OF_THOUGHT -> CHAIN_OF_THOUGHT_TEMPLATE;
             case CODE_FOCUSED -> CODE_FOCUSED_TEMPLATE;
         };
+    }
+
+    private String renderPrompt(String template, PromptStrategy strategy, String query, String formattedContext) {
+        if (strategy == PromptStrategy.STRUCTURED) {
+            return String.format(template, buildExplanationGuidance(query), formattedContext, query);
+        }
+        return String.format(template, formattedContext, query);
+    }
+
+    private String buildExplanationGuidance(String query) {
+        if (!isExplanatoryQuery(query)) {
+            return "";
+        }
+
+        return """
+            - When the question asks how something works, why it matters, or what process it follows, synthesize the relevant context into a coherent explanation instead of only copying one sentence
+            - You MAY combine multiple context snippets into one grounded explanation, but you MUST stay within the provided context and clearly say when the evidence is incomplete""";
+    }
+
+    private boolean isExplanatoryQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return false;
+        }
+        return EXPLANATORY_QUERY_PATTERN.matcher(query).matches();
     }
 
     /**

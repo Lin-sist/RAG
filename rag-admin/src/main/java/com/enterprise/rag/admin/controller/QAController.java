@@ -48,6 +48,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Tag(name = "问答服务", description = "RAG 问答接口：同步问答、流式问答")
 public class QAController {
+    private static final long STREAM_GAP_WARN_THRESHOLD_MS = 1500L;
 
     private final RAGService ragService;
     private final KnowledgeBaseService knowledgeBaseService;
@@ -158,6 +159,7 @@ public class QAController {
         // 抛出 AccessDeniedException。SseEmitter 直接写入响应流，完全避免这个问题。
         SseEmitter emitter = new SseEmitter(120_000L); // 120秒超时
         StringBuffer answerBuffer = new StringBuffer();
+        StreamDeliveryDiagnostics diagnostics = new StreamDeliveryDiagnostics(startTime, STREAM_GAP_WARN_THRESHOLD_MS);
 
         Disposable subscription = ragService.askStream(qaRequest)
                 .doOnSubscribe(s -> log.debug("流式问答开始: kbId={}", request.kbId()))
@@ -165,12 +167,15 @@ public class QAController {
                         chunk -> {
                             if (!"[DONE]".equals(chunk)) {
                                 answerBuffer.append(chunk);
+                                diagnostics.recordChunk(chunk);
                             }
                             try {
                                 // SseEmitter.send() 会自动格式化为 "data:chunk\n\n"
                                 emitter.send(chunk, MediaType.TEXT_PLAIN);
                             } catch (IOException e) {
                                 log.warn("SSE发送失败: {}", e.getMessage());
+                                logStreamDiagnostics("stream_delivery_send_failed", traceId, request.kbId(), userId,
+                                        diagnostics, answerBuffer.length(), System.currentTimeMillis() - startTime);
                                 emitter.complete();
                             }
                         },
@@ -180,6 +185,8 @@ public class QAController {
                                     traceId, request.kbId(), userId, latencyMs, error.getMessage(), error);
                             saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
                                     startTime);
+                            logStreamDiagnostics("stream_delivery_error", traceId, request.kbId(), userId,
+                                    diagnostics, answerBuffer.length(), latencyMs);
                             try {
                                 String clientError = toStreamClientErrorMessage(error);
                                 emitter.send("[ERROR] " + clientError, MediaType.TEXT_PLAIN);
@@ -194,6 +201,8 @@ public class QAController {
                             long latencyMs = System.currentTimeMillis() - startTime;
                             saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
                                     startTime);
+                            logStreamDiagnostics("stream_delivery_complete", traceId, request.kbId(), userId,
+                                    diagnostics, answerBuffer.length(), latencyMs);
                             try {
                                 emitter.send("[DONE]", MediaType.TEXT_PLAIN);
                                 emitter.complete();
@@ -222,6 +231,28 @@ public class QAController {
         });
 
         return emitter;
+    }
+
+    private void logStreamDiagnostics(String event,
+            String traceId,
+            Long kbId,
+            Long userId,
+            StreamDeliveryDiagnostics diagnostics,
+            int answerLength,
+            long totalLatencyMs) {
+        log.info(
+                "{} traceId={}, kbId={}, userId={}, totalLatencyMs={}, firstChunkLatencyMs={}, chunkCount={}, answerLength={}, avgChunkGapMs={}, maxChunkGapMs={}, slowGapCount={}",
+                event,
+                traceId,
+                kbId,
+                userId,
+                totalLatencyMs,
+                diagnostics.firstChunkLatencyMs(),
+                diagnostics.chunkCount(),
+                answerLength,
+                diagnostics.averageGapMs(),
+                diagnostics.maxGapMs(),
+                diagnostics.slowGapCount());
     }
 
     private void saveStreamHistory(Long userId, Long kbId, String question, String answer, long startTime) {
@@ -304,5 +335,64 @@ public class QAController {
             Map<String, Object> filter,
 
             Boolean enableCache) {
+    }
+
+    private static final class StreamDeliveryDiagnostics {
+        private final long startTimeMs;
+        private final long gapWarnThresholdMs;
+        private long firstChunkTimeMs = -1L;
+        private long lastChunkTimeMs = -1L;
+        private long totalGapMs = 0L;
+        private long maxGapMs = 0L;
+        private int gapCount = 0;
+        private int slowGapCount = 0;
+        private int chunkCount = 0;
+
+        private StreamDeliveryDiagnostics(long startTimeMs, long gapWarnThresholdMs) {
+            this.startTimeMs = startTimeMs;
+            this.gapWarnThresholdMs = gapWarnThresholdMs;
+        }
+
+        private void recordChunk(String chunk) {
+            long now = System.currentTimeMillis();
+            if (firstChunkTimeMs < 0) {
+                firstChunkTimeMs = now;
+            }
+
+            if (lastChunkTimeMs >= 0) {
+                long gapMs = now - lastChunkTimeMs;
+                totalGapMs += gapMs;
+                gapCount++;
+                maxGapMs = Math.max(maxGapMs, gapMs);
+                if (gapMs >= gapWarnThresholdMs) {
+                    slowGapCount++;
+                    log.warn("流式回答片段间隔过长: gapMs={}, chunkChars={}, chunkCount={}",
+                            gapMs, chunk.length(), chunkCount + 1);
+                }
+            }
+
+            lastChunkTimeMs = now;
+            chunkCount++;
+        }
+
+        private long firstChunkLatencyMs() {
+            return firstChunkTimeMs < 0 ? -1L : firstChunkTimeMs - startTimeMs;
+        }
+
+        private long averageGapMs() {
+            return gapCount == 0 ? 0L : totalGapMs / gapCount;
+        }
+
+        private long maxGapMs() {
+            return maxGapMs;
+        }
+
+        private int slowGapCount() {
+            return slowGapCount;
+        }
+
+        private int chunkCount() {
+            return chunkCount;
+        }
     }
 }

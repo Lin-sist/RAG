@@ -21,6 +21,7 @@ import java.net.ConnectException;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * 答案生成器实现
@@ -29,6 +30,9 @@ import java.util.*;
 @Slf4j
 @Service
 public class AnswerGeneratorImpl implements AnswerGenerator {
+    static final String SOURCE_MARKER_PREFIX = "[Source";
+    private static final Pattern RAW_SOURCE_MARKER_PATTERN = Pattern.compile("\\[Source\\s+\\d+:[^\\]]*]");
+    private static final Pattern INLINE_SOURCE_MARKER_PATTERN = Pattern.compile("\\[Source\\s+\\d+]");
 
     private final LLMProperties properties;
     private final PromptBuilder promptBuilder;
@@ -63,7 +67,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         List<RetrievedContext> effectiveContexts = buildResult.contexts();
 
         // 调用 LLM API
-        String answer = callLLM(prompt);
+        String answer = sanitizeAnswerText(callLLM(prompt));
 
         // 提取引用来源
         List<Citation> citations = extractCitations(answer, effectiveContexts);
@@ -94,8 +98,15 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 PromptStrategy.STRUCTURED,
                 PromptBuilder.DEFAULT_CONTEXT_TOKEN_BUDGET);
         String prompt = buildResult.prompt();
+        log.info("stream_prompt_ready model={}, query={}, contextCount={}, estimatedContextTokens={}, removedByDedup={}, removedByBudget={}",
+                getModelName(),
+                truncateForLog(query),
+                buildResult.contexts().size(),
+                buildResult.estimatedContextTokens(),
+                buildResult.removedByDedup(),
+                buildResult.removedByBudget());
 
-        return callLLMStream(prompt);
+        return sanitizeStream(callLLMStream(prompt));
     }
 
     @Override
@@ -350,6 +361,27 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         }
     }
 
+    static String sanitizeAnswerText(String answer) {
+        if (answer == null || answer.isBlank()) {
+            return answer;
+        }
+
+        String sanitized = RAW_SOURCE_MARKER_PATTERN.matcher(answer).replaceAll("");
+        sanitized = INLINE_SOURCE_MARKER_PATTERN.matcher(sanitized).replaceAll("");
+        sanitized = sanitized.replaceAll("([。！？.!?])\\s*中指出", "$1");
+        sanitized = sanitized.replaceAll("\\s{2,}", " ")
+                .replaceAll("\\s+([，。！？；：,!.?;:])", "$1")
+                .trim();
+        return sanitized;
+    }
+
+    Flux<String> sanitizeStream(Flux<String> upstream) {
+        StreamSanitizer sanitizer = new StreamSanitizer();
+        return upstream.concatMap(chunk -> Flux.fromIterable(sanitizer.accept(chunk)))
+                .concatWith(Flux.defer(() -> Flux.fromIterable(sanitizer.finish())))
+                .filter(content -> content != null && !content.isEmpty());
+    }
+
     /**
      * 解析 OpenAI 流式响应块
      */
@@ -429,5 +461,60 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         if (text == null)
             return "null";
         return text.length() > 100 ? text.substring(0, 100) + "..." : text;
+    }
+
+    static final class StreamSanitizer {
+        private final StringBuilder pending = new StringBuilder();
+
+        List<String> accept(String chunk) {
+            if (chunk == null || chunk.isEmpty()) {
+                return List.of();
+            }
+            pending.append(chunk);
+            return drain(false);
+        }
+
+        List<String> finish() {
+            return drain(true);
+        }
+
+        private List<String> drain(boolean finalFlush) {
+            List<String> emitted = new ArrayList<>();
+
+            while (pending.length() > 0) {
+                int markerIndex = pending.indexOf(SOURCE_MARKER_PREFIX);
+                if (markerIndex >= 0) {
+                    if (markerIndex > 0) {
+                        emitted.add(pending.substring(0, markerIndex));
+                        pending.delete(0, markerIndex);
+                    }
+
+                    int markerEnd = pending.indexOf("]");
+                    if (markerEnd >= 0) {
+                        pending.delete(0, markerEnd + 1);
+                        continue;
+                    }
+                    break;
+                }
+
+                if (finalFlush) {
+                    emitted.add(pending.toString());
+                    pending.setLength(0);
+                    break;
+                }
+
+                int safeLength = Math.max(0, pending.length() - (SOURCE_MARKER_PREFIX.length() - 1));
+                if (safeLength == 0) {
+                    break;
+                }
+                emitted.add(pending.substring(0, safeLength));
+                pending.delete(0, safeLength);
+            }
+
+            return emitted.stream()
+                    .map(AnswerGeneratorImpl::sanitizeAnswerText)
+                    .filter(text -> text != null && !text.isEmpty())
+                    .toList();
+        }
     }
 }

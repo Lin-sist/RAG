@@ -40,7 +40,7 @@ class PromptBuilderTest {
         assertEquals(1, result.removedByDedup());
         assertTrue(result.removedByBudget() >= 1);
         assertEquals(1, result.contexts().size());
-        assertTrue(result.prompt().contains("并发入门 / doc-a #chunk=1"));
+        assertTrue(result.prompt().contains("Source: 并发入门 / doc-a"));
     }
 
     @Test
@@ -58,7 +58,44 @@ class PromptBuilderTest {
                 800);
 
         assertEquals(1, result.contexts().size());
-        assertTrue(result.prompt().contains("配置指南 / doc-config #chunk=5"));
+        assertTrue(result.prompt().contains("Source: 配置指南 / doc-config"));
         assertTrue(result.estimatedContextTokens() > 0);
+    }
+
+    @Test
+    void shouldAddExplanationGuidanceForHowQueries() {
+        RetrievedContext context = new RetrievedContext(
+                "RAG 的工作流程包括检索知识库、构建上下文并生成回答。",
+                "doc-rag",
+                0.91f,
+                Map.of("title", "RAG 原理", "chunkIndex", 2));
+
+        PromptBuilder.PromptBuildResult result = promptBuilder.buildOptimized(
+                "你认为RAG是如何运作的？",
+                List.of(context),
+                PromptStrategy.STRUCTURED,
+                800);
+
+        assertTrue(result.prompt().contains("synthesize the relevant context into a coherent explanation"));
+        assertTrue(result.prompt().contains("You MAY combine multiple context snippets into one grounded explanation"));
+    }
+
+    @Test
+    void shouldAvoidLeakingRawSourceMarkersIntoPromptInstructions() {
+        RetrievedContext context = new RetrievedContext(
+                "RAG 是一种检索增强生成架构。",
+                "0",
+                0.34f,
+                Map.of("chunkIndex", 0.0));
+
+        PromptBuilder.PromptBuildResult result = promptBuilder.buildOptimized(
+                "什么是RAG？",
+                List.of(context),
+                PromptStrategy.STRUCTURED,
+                800);
+
+        assertTrue(result.prompt().contains("Do not include raw source headers"));
+        assertTrue(result.prompt().contains("Source: Document 1"));
+        assertTrue(!result.prompt().contains("[Source 1:"));
     }
 }
