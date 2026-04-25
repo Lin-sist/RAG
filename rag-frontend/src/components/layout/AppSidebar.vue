@@ -32,12 +32,36 @@
 
     <div class="sidebar-content">
       <div class="collapsible-section">
-        <div v-if="!sidebarCollapsed" class="section-header" @click="toggleKbSection">
-          <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !kbSectionExpanded }]" />
-          <span class="section-title">知识库</span>
+        <div
+          v-if="!sidebarCollapsed"
+          :class="['section-header', { active: isKbSectionActive }]"
+        >
+          <button
+            class="section-toggle-btn"
+            @click.stop="toggleKbSection"
+            title="展开/收起知识库列表"
+          >
+            <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !kbSectionExpanded }]" />
+          </button>
+          <button class="section-title-btn" @click="goKbList" title="进入知识库主页">
+            <FolderOpen :size="16" />
+            <span class="section-title">知识库</span>
+          </button>
         </div>
 
-        <div :class="['section-body', { expanded: kbSectionExpanded || sidebarCollapsed }]">
+        <button
+          v-else
+          :class="['collapsed-nav-btn', { active: isKbSectionActive }]"
+          @click="goKbList"
+          title="知识库"
+        >
+          <FolderOpen :size="18" />
+        </button>
+
+        <div
+          v-if="!sidebarCollapsed"
+          :class="['section-body', { expanded: kbSectionExpanded }]"
+        >
           <div class="kb-list">
             <div
               v-for="kb in knowledgeBases"
@@ -55,12 +79,36 @@
       </div>
 
       <div class="collapsible-section">
-        <div v-if="!sidebarCollapsed" class="section-header" @click="toggleHistorySection">
-          <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !historySectionExpanded }]" />
-          <span class="section-title" @click.stop="goHistoryList">历史对话</span>
+        <div
+          v-if="!sidebarCollapsed"
+          :class="['section-header', { active: isHistorySectionActive }]"
+        >
+          <button
+            class="section-toggle-btn"
+            @click.stop="toggleHistorySection"
+            title="展开/收起历史记录列表"
+          >
+            <ChevronDown :size="16" :class="['chevron-icon', { collapsed: !historySectionExpanded }]" />
+          </button>
+          <button class="section-title-btn" @click="goHistoryList" title="进入历史记录">
+            <MessageSquare :size="16" />
+            <span class="section-title">历史对话</span>
+          </button>
         </div>
 
-        <div :class="['section-body', { expanded: historySectionExpanded || sidebarCollapsed }]">
+        <button
+          v-else
+          :class="['collapsed-nav-btn', { active: isHistorySectionActive }]"
+          @click="goHistoryList"
+          title="历史记录"
+        >
+          <MessageSquare :size="18" />
+        </button>
+
+        <div
+          v-if="!sidebarCollapsed"
+          :class="['section-body', { expanded: historySectionExpanded }]"
+        >
           <div class="history-list">
             <div
               v-for="item in historyList"
@@ -178,6 +226,8 @@ const username = computed(() => authStore.userInfo?.username || 'Linsist')
 const userInitial = computed(() => username.value.charAt(0).toUpperCase())
 const knowledgeBases = computed(() => kbStore.list)
 const isNewChatActive = computed(() => route.path === '/chat' || route.path === '/chat-v2')
+const isKbSectionActive = computed(() => route.path === '/kb' || route.path.startsWith('/kb/'))
+const isHistorySectionActive = computed(() => route.path === '/history' || route.path.startsWith('/chat/'))
 
 function isKbActive(id: number): boolean {
   return route.path === `/kb/${id}`
@@ -189,6 +239,10 @@ function isHistoryActive(id: string): boolean {
 
 function goNewChat() {
   router.push('/chat')
+}
+
+function goKbList() {
+  router.push('/kb')
 }
 
 function goKbDetail(id: number) {
@@ -461,13 +515,63 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  cursor: pointer;
   user-select: none;
   transition: background 0.2s ease;
 }
 
 .section-header:hover {
   background: var(--rag-bg-hover);
+}
+
+.section-header.active {
+  background: var(--rag-success-light);
+}
+
+.section-toggle-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rag-text-secondary);
+  padding: 0;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.section-toggle-btn:hover {
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-primary);
+}
+
+.section-title-btn {
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  color: var(--rag-text-primary);
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.section-title-btn:hover {
+  background: var(--rag-bg-hover);
+}
+
+.section-header.active .section-toggle-btn,
+.section-header.active .section-title-btn,
+.section-header.active .section-title {
+  color: var(--rag-primary-dark);
 }
 
 .chevron-icon {
@@ -494,6 +598,31 @@ onUnmounted(() => {
 
 .section-body.expanded {
   height: auto;
+}
+
+.collapsed-nav-btn {
+  margin: 0 8px 8px;
+  width: calc(100% - 16px);
+  height: 40px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rag-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.collapsed-nav-btn:hover {
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-primary);
+}
+
+.collapsed-nav-btn.active {
+  background: var(--rag-success-light);
+  color: var(--rag-primary-dark);
 }
 
 .kb-list {
