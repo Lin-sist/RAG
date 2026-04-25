@@ -42,7 +42,7 @@ public class PromptBuilder {
             ## Instructions
             - Answer the question based ONLY on the provided context
             - If the context doesn't contain enough information, say so
-            - Do not include raw source headers, chunk numbers, relevance scores, or bracketed markers such as [Source 1: ...] in the final answer
+            - Do not include raw source headers, chunk numbers, relevance scores, or any internal source markers in the final answer
             - Citations are handled separately by the system, so keep the answer body clean and user-facing
             - Use complete and fluent sentences; avoid broken words or truncated phrases
             - Preserve original terms, numbers, and definitions from the context whenever possible

@@ -41,7 +41,7 @@ class RAGServiceImplTest {
 
         when(answerGenerator.getModelName()).thenReturn("mock-model");
         when(redisUtil.getString(any())).thenReturn(null);
-        when(queryEngine.retrieve(any(), any(RetrieveOptions.class))).thenReturn(List.of());
+        when(queryEngine.retrieve(any(), org.mockito.ArgumentMatchers.<RetrieveOptions>any())).thenReturn(List.of());
         when(answerGenerator.generate(any(), any())).thenReturn(
                 GeneratedAnswer.of("RAG 的工作原理是先检索再生成。", List.of(), Map.of("model", "mock-model")));
 
@@ -56,9 +56,9 @@ class RAGServiceImplTest {
                 0.28f,
                 Map.of("title", "RAG 原理"));
 
-        when(queryEngine.retrieve(eq("你认为RAG是如何运作的？"), any(RetrieveOptions.class)))
+        when(queryEngine.retrieve(eq("你认为RAG是如何运作的？"), org.mockito.ArgumentMatchers.<RetrieveOptions>any()))
                 .thenReturn(List.of());
-        when(queryEngine.retrieve(eq("RAG 工作原理"), any(RetrieveOptions.class)))
+        when(queryEngine.retrieve(eq("RAG 工作原理"), org.mockito.ArgumentMatchers.<RetrieveOptions>any()))
                 .thenReturn(List.of(fallbackContext));
 
         QAResponse response = ragService.ask(QARequest.of("你认为RAG是如何运作的？", "kb_rag"));
@@ -66,16 +66,17 @@ class RAGServiceImplTest {
         assertTrue(response.hasResult());
         assertEquals(1, response.contexts().size());
         assertEquals("rag-doc", response.contexts().get(0).source());
-        verify(queryEngine).retrieve(eq("RAG 工作原理"), argThat(options -> options.minScore() <= 0.15f));
+        verify(queryEngine).retrieve(eq("RAG 工作原理"),
+                argThat((RetrieveOptions options) -> options.minScore() <= 0.15f));
     }
 
     @Test
     void shouldNotRetryNonExplanatoryQuestionWhenInitialRetrievalIsEmpty() {
-        when(queryEngine.retrieve(eq("RAG"), any(RetrieveOptions.class))).thenReturn(List.of());
+        when(queryEngine.retrieve(eq("RAG"), org.mockito.ArgumentMatchers.<RetrieveOptions>any())).thenReturn(List.of());
 
         QAResponse response = ragService.ask(QARequest.of("RAG", "kb_rag"));
 
         assertTrue(!response.hasResult());
-        verify(queryEngine, never()).retrieve(eq("RAG 工作原理"), any(RetrieveOptions.class));
+        verify(queryEngine, never()).retrieve(eq("RAG 工作原理"), org.mockito.ArgumentMatchers.<RetrieveOptions>any());
     }
 }

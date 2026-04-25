@@ -369,6 +369,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         String sanitized = RAW_SOURCE_MARKER_PATTERN.matcher(answer).replaceAll("");
         sanitized = INLINE_SOURCE_MARKER_PATTERN.matcher(sanitized).replaceAll("");
         sanitized = sanitized.replaceAll("([。！？.!?])\\s*中指出", "$1");
+        sanitized = sanitized.replaceAll("([。！？.!?])[，,]", "$1");
         sanitized = sanitized.replaceAll("\\s{2,}", " ")
                 .replaceAll("\\s+([，。！？；：,!.?;:])", "$1")
                 .trim();
@@ -503,12 +504,26 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                     break;
                 }
 
-                int safeLength = Math.max(0, pending.length() - (SOURCE_MARKER_PREFIX.length() - 1));
-                if (safeLength == 0) {
+                int lastBracket = pending.lastIndexOf("[");
+                if (lastBracket < 0) {
+                    emitted.add(pending.toString());
+                    pending.setLength(0);
                     break;
                 }
-                emitted.add(pending.substring(0, safeLength));
-                pending.delete(0, safeLength);
+
+                String suffix = pending.substring(lastBracket);
+                if (SOURCE_MARKER_PREFIX.startsWith(suffix)) {
+                    if (lastBracket == 0) {
+                        break;
+                    }
+                    emitted.add(pending.substring(0, lastBracket));
+                    pending.delete(0, lastBracket);
+                    break;
+                }
+
+                emitted.add(pending.toString());
+                pending.setLength(0);
+                break;
             }
 
             return emitted.stream()

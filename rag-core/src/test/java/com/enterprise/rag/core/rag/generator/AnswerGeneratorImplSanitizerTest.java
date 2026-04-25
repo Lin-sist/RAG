@@ -15,7 +15,7 @@ class AnswerGeneratorImplSanitizerTest {
 
         String sanitized = AnswerGeneratorImpl.sanitizeAnswerText(rawAnswer);
 
-        assertEquals("RAG 是一种检索增强生成架构。中指出，它先检索再生成。", sanitized);
+        assertEquals("RAG 是一种检索增强生成架构。它先检索再生成。", sanitized);
     }
 
     @Test
