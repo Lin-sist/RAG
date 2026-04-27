@@ -2,6 +2,7 @@ target/
 **/target/
 .idea/
 .vscode/
+.vite/
 *.iml
 *.log
 .DS_Store
