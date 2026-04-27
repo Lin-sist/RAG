@@ -77,6 +77,7 @@
                     </div>
                     <div class="cite-info">
                       <span class="cite-filename">{{ cite.source }}</span>
+                      <span v-if="cite.snippet" class="cite-snippet">{{ cite.snippet }}</span>
                       <span class="cite-score">{{ Math.round(cite.score * 100) }}% Match</span>
                     </div>
                   </div>
@@ -185,7 +186,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   Sparkles,
@@ -200,9 +202,11 @@ import {
   Plus,
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
+import { getHistoryById } from '@/api/history'
 import { useSSE } from '@/composables/useSSE'
 import { useChatStore } from '@/stores/chat'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
+import type { QAHistoryDTO } from '@/types/history'
 import type { KnowledgeBaseDTO } from '@/types/knowledgeBase'
 
 interface Citation {
@@ -226,6 +230,10 @@ const scrollAnchor = ref<HTMLElement>()
 const kbDropdownRoot = ref<HTMLElement>()
 const kbDropdownOpen = ref(false)
 const selectedKbId = ref<number | null>(null)
+const route = useRoute()
+const historyLoading = ref(false)
+const historyLoadError = ref('')
+let historyLoadSeq = 0
 const sse = useSSE()
 const chatStore = useChatStore()
 const kbStore = useKnowledgeBaseStore()
@@ -255,6 +263,101 @@ async function loadKbListIfNeeded() {
   } catch {
     // keep panel usable even if dropdown list loading fails
   }
+}
+
+function parseRouteHistoryId(): number | null {
+  const raw = route.params.id
+
+  if (Array.isArray(raw)) {
+    return null
+  }
+
+  const id = Number(raw)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+function normalizeCitations(citations: QAHistoryDTO['citations'] | null | undefined = []): Citation[] {
+  return (citations ?? []).map((cite) => {
+    const citeWithScore = cite as unknown as { score?: number; relevanceScore?: number }
+    const rawScore = citeWithScore.score ?? citeWithScore.relevanceScore
+
+    return {
+      source: cite.source || '未知来源',
+      snippet: cite.snippet || '',
+      score: typeof rawScore === 'number' && Number.isFinite(rawScore) ? rawScore : 1,
+    }
+  })
+}
+
+function buildMessagesFromHistory(record: QAHistoryDTO): Message[] {
+  return [
+    {
+      id: `history_${record.id}_user`,
+      role: 'user',
+      content: record.question || '历史问题为空',
+    },
+    {
+      id: `history_${record.id}_assistant`,
+      role: 'assistant',
+      content: record.answer || '历史回答为空',
+      loading: false,
+      citations: normalizeCitations(record.citations),
+    },
+  ]
+}
+
+async function loadHistorySession(id: number) {
+  const seq = ++historyLoadSeq
+
+  historyLoading.value = true
+  historyLoadError.value = ''
+
+  messages.value = [
+    {
+      id: `history_${id}_loading`,
+      role: 'assistant',
+      content: '',
+      loading: true,
+    },
+  ]
+
+  try {
+    const res = await getHistoryById(id)
+    const record = res.data.data
+
+    if (seq !== historyLoadSeq) return
+
+    messages.value = buildMessagesFromHistory(record)
+    selectedKbId.value = record.kbId ?? null
+
+    await loadKbListIfNeeded()
+    scrollToBottom()
+  } catch {
+    if (seq !== historyLoadSeq) return
+
+    historyLoadError.value = '历史记录加载失败'
+    messages.value = [
+      {
+        id: `history_${id}_error`,
+        role: 'assistant',
+        content: '历史记录加载失败，请返回历史记录页重试。',
+        loading: false,
+      },
+    ]
+    ElMessage.error('历史记录加载失败')
+  } finally {
+    if (seq === historyLoadSeq) {
+      historyLoading.value = false
+    }
+  }
+}
+
+function resetNewChat() {
+  historyLoadSeq += 1
+  historyLoading.value = false
+  historyLoadError.value = ''
+  messages.value = []
+  selectedKbId.value = null
 }
 
 function toggleKbDropdown() {
@@ -297,6 +400,10 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 function handleSend() {
+  if (historyLoading.value) return
+  if (historyLoadError.value) {
+    historyLoadError.value = ''
+  }
   if (!canSend.value) return
   sendMessage(inputText.value.trim())
   inputText.value = ''
@@ -377,6 +484,28 @@ function thumbUp(id: string) {
 function thumbDown(id: string) {
   console.log('Thumb down:', id)
 }
+
+watch(
+  () => route.fullPath,
+  async () => {
+    const historyId = parseRouteHistoryId()
+
+    if (route.name === 'ChatSession' && historyId) {
+      await loadHistorySession(historyId)
+      return
+    }
+
+    if (route.name === 'ChatSession') {
+      resetNewChat()
+      return
+    }
+
+    if (route.name === 'Chat' || route.name === 'ChatV2') {
+      resetNewChat()
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   await loadKbListIfNeeded()
@@ -711,6 +840,16 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.cite-snippet {
+  font-size: 12px;
+  color: var(--rag-text-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .cite-score {

@@ -54,6 +54,7 @@
             v-for="item in group.items"
             :key="item.id"
             class="history-item"
+            @click="openHistoryItem(item)"
             @mouseenter="hoveredItemId = item.id"
             @mouseleave="hoveredItemId = null"
           >
@@ -91,6 +92,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   Clock,
@@ -121,6 +123,7 @@ interface HistoryGroup {
 const HISTORY_PAGE_SIZE = 100
 const GROUP_LABELS: DateGroupLabel[] = ['今天', '昨天', '更早']
 const HISTORY_UPDATED_EVENT = 'rag-history-updated'
+const router = useRouter()
 
 // Theme state
 const isDark = ref(false)
@@ -233,6 +236,10 @@ function getAllHistoryIds(): number[] {
 
 function notifyHistoryUpdated() {
   window.dispatchEvent(new Event(HISTORY_UPDATED_EVENT))
+}
+
+function openHistoryItem(item: HistoryItem) {
+  router.push(`/chat/${item.id}`)
 }
 
 // Filtered groups based on search query
