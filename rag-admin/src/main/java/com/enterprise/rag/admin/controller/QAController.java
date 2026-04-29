@@ -12,6 +12,9 @@ import com.enterprise.rag.common.ratelimit.RateLimitDimension;
 import com.enterprise.rag.common.trace.TraceContext;
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
+import com.enterprise.rag.core.rag.model.RetrievedContext;
+import com.enterprise.rag.core.rag.model.RetrieveOptions;
+import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.service.RAGService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,6 +37,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +59,7 @@ public class QAController {
     private final QAHistoryService qaHistoryService;
     private final CurrentUserService currentUserService;
     private final AuthorizationService authorizationService;
+    private final QueryEngine queryEngine;
 
     /**
      * 同步问答
@@ -233,6 +238,70 @@ public class QAController {
         return emitter;
     }
 
+    /**
+     * 检索调试
+     */
+    @PostMapping("/debug/retrieve")
+    @RateLimit(maxRequests = 60, windowSeconds = 60, dimension = RateLimitDimension.USER, message = "检索调试请求过于频繁，请稍后重试")
+    @Operation(summary = "检索调试", description = "仅执行知识库检索，不调用大模型，不保存问答历史")
+    public ResponseEntity<ApiResponse<RetrievalDebugResponse>> debugRetrieve(
+            @Valid @RequestBody RetrievalDebugRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+
+        Long userId = currentUserService.requireUserId(userDetails);
+        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
+
+        int topK = normalizeTopK(request.topK());
+        float minScore = normalizeMinScore(request.minScore());
+        Map<String, Object> filter = request.filter() != null ? request.filter() : Map.of();
+        boolean enableRerank = request.enableRerank() == null ? true : request.enableRerank();
+
+        RetrieveOptions retrieveOptions = new RetrieveOptions(
+                kb.getVectorCollection(),
+                topK,
+                minScore,
+                filter,
+                enableRerank);
+
+        List<RetrievedContext> contexts = queryEngine.retrieve(request.question(), retrieveOptions);
+        List<RetrievedContextDebugItem> items = new ArrayList<>(contexts.size());
+
+        for (int i = 0; i < contexts.size(); i++) {
+            RetrievedContext ctx = contexts.get(i);
+            String content = ctx.content() == null ? "" : ctx.content();
+
+            items.add(new RetrievedContextDebugItem(
+                    i + 1,
+                    ctx.source(),
+                    safeScore(ctx.relevanceScore()),
+                    buildSnippet(content, 300),
+                    content.length(),
+                    ctx.metadata() == null ? Map.of() : ctx.metadata()));
+        }
+
+        double topScore = contexts.stream()
+                .mapToDouble(ctx -> safeScore(ctx.relevanceScore()))
+                .max()
+                .orElse(0.0d);
+        double avgScore = contexts.stream()
+                .mapToDouble(ctx -> safeScore(ctx.relevanceScore()))
+                .average()
+                .orElse(0.0d);
+
+        RetrievalDebugResponse response = new RetrievalDebugResponse(
+                request.kbId(),
+                request.question(),
+                topK,
+                minScore,
+                enableRerank,
+                contexts.size(),
+                topScore,
+                avgScore,
+                items);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     private void logStreamDiagnostics(String event,
             String traceId,
             Long kbId,
@@ -320,6 +389,35 @@ public class QAController {
         return str.length() > maxLength ? str.substring(0, maxLength) + "..." : str;
     }
 
+    private int normalizeTopK(Integer topK) {
+        if (topK == null) {
+            return QARequest.DEFAULT_TOP_K;
+        }
+        return Math.max(1, Math.min(topK, 20));
+    }
+
+    private float normalizeMinScore(Float minScore) {
+        if (minScore == null) {
+            return QARequest.DEFAULT_MIN_SCORE;
+        }
+        return Math.max(0f, Math.min(minScore, 1f));
+    }
+
+    private String buildSnippet(String content, int maxLength) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String normalized = content.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= maxLength) {
+            return normalized;
+        }
+        return normalized.substring(0, maxLength) + "...";
+    }
+
+    private double safeScore(double score) {
+        return Double.isFinite(score) ? score : 0.0d;
+    }
+
     /**
      * 问答请求
      */
@@ -335,6 +433,41 @@ public class QAController {
             Map<String, Object> filter,
 
             Boolean enableCache) {
+    }
+
+    public record RetrievalDebugRequest(
+            @NotNull(message = "知识库 ID 不能为空") Long kbId,
+
+            @NotBlank(message = "问题不能为空") String question,
+
+            Integer topK,
+
+            Float minScore,
+
+            Map<String, Object> filter,
+
+            Boolean enableRerank) {
+    }
+
+    public record RetrievalDebugResponse(
+            Long kbId,
+            String question,
+            int topK,
+            float minScore,
+            boolean enableRerank,
+            int contextCount,
+            double topScore,
+            double avgScore,
+            List<RetrievedContextDebugItem> contexts) {
+    }
+
+    public record RetrievedContextDebugItem(
+            int rank,
+            String source,
+            double score,
+            String snippet,
+            int contentLength,
+            Map<String, Object> metadata) {
     }
 
     private static final class StreamDeliveryDiagnostics {

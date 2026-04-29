@@ -1,0 +1,10 @@
+{"id":"eval-001","question":"请替换为你的真实问题","type":"fact","difficulty":"easy","expected_keywords":["关键词1","关键词2"],"expected_sources":["文档名或来源"],"notes":"用于验证事实型问题是否能召回正确片段","status":"todo"}
+{"id":"eval-002","question":"请替换为你的真实问题","type":"explanation","difficulty":"medium","expected_keywords":["核心概念","原理"],"expected_sources":["文档名或来源"],"notes":"用于验证解释型问题的召回质量","status":"todo"}
+{"id":"eval-003","question":"请替换为你的真实问题","type":"summary","difficulty":"medium","expected_keywords":["总结要点"],"expected_sources":["文档名或来源"],"notes":"用于验证总结类问题是否召回多个相关片段","status":"todo"}
+{"id":"eval-004","question":"请替换为你的真实问题","type":"procedure","difficulty":"medium","expected_keywords":["步骤","流程"],"expected_sources":["文档名或来源"],"notes":"用于验证流程类问题","status":"todo"}
+{"id":"eval-005","question":"请替换为你的真实问题","type":"comparison","difficulty":"hard","expected_keywords":["差异","优缺点"],"expected_sources":["文档名或来源"],"notes":"用于验证比较类问题","status":"todo"}
+{"id":"eval-006","question":"请替换为你的真实问题","type":"multi_hop","difficulty":"hard","expected_keywords":["多个要点"],"expected_sources":["文档A","文档B"],"notes":"用于验证跨片段综合能力","status":"todo"}
+{"id":"eval-007","question":"请替换为你的真实问题","type":"no_answer","difficulty":"medium","expected_keywords":[],"expected_sources":[],"notes":"用于验证知识库没有答案时是否能避免幻觉","status":"todo"}
+{"id":"eval-008","question":"请替换为你的真实问题","type":"definition","difficulty":"easy","expected_keywords":["定义"],"expected_sources":["文档名或来源"],"notes":"用于验证定义类问题","status":"todo"}
+{"id":"eval-009","question":"请替换为你的真实问题","type":"reasoning","difficulty":"hard","expected_keywords":["原因","影响"],"expected_sources":["文档名或来源"],"notes":"用于验证基于证据的分析能力","status":"todo"}
+{"id":"eval-010","question":"请替换为你的真实问题","type":"edge_case","difficulty":"hard","expected_keywords":["边界条件"],"expected_sources":["文档名或来源"],"notes":"用于验证边界问题","status":"todo"}
