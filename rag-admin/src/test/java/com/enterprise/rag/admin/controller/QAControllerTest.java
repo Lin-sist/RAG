@@ -19,6 +19,7 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -42,6 +43,7 @@ class QAControllerTest {
         private QAController qaController;
         private UserDetails userDetails;
         private AtomicBoolean queryEngineCalled;
+        private AtomicReference<Float> expectedMinScore;
 
         @BeforeEach
         void setUp() {
@@ -51,6 +53,7 @@ class QAControllerTest {
                 currentUserService = mock(CurrentUserService.class);
                 authorizationService = mock(AuthorizationService.class);
                 queryEngineCalled = new AtomicBoolean(false);
+                expectedMinScore = new AtomicReference<>(1.0f);
                 queryEngine = new QueryEngine() {
                         @Override
                         public List<RetrievedContext> retrieve(String query, RetrieveOptions options) {
@@ -58,7 +61,7 @@ class QAControllerTest {
                                 assertEquals("什么是RAG", query);
                                 assertEquals("kb_test_vector", options.collectionName());
                                 assertEquals(20, options.topK());
-                                assertEquals(1.0f, options.minScore());
+                                assertEquals(expectedMinScore.get(), options.minScore());
                                 assertEquals(Map.of(), options.filter());
                                 assertEquals(true, options.enableRerank());
                                 return List.of(
@@ -170,5 +173,25 @@ class QAControllerTest {
                 verify(qaHistoryService, times(0)).save(any());
                 verify(ragService, times(0)).ask(any());
                 verify(ragService, times(0)).askStream(any());
+        }
+
+        @Test
+        void debugRetrieveShouldDefaultNonFiniteMinScore() {
+                expectedMinScore.set(QARequest.DEFAULT_MIN_SCORE);
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                Float.NaN,
+                                null,
+                                null);
+
+                var responseEntity = qaController.debugRetrieve(request, userDetails);
+
+                assertEquals(200, responseEntity.getStatusCode().value());
+                assertNotNull(responseEntity.getBody());
+                assertNotNull(responseEntity.getBody().getData());
+                assertEquals(QARequest.DEFAULT_MIN_SCORE, responseEntity.getBody().getData().minScore());
+                assertEquals(true, queryEngineCalled.get());
         }
 }

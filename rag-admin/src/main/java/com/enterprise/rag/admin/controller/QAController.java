@@ -397,7 +397,7 @@ public class QAController {
     }
 
     private float normalizeMinScore(Float minScore) {
-        if (minScore == null) {
+        if (minScore == null || !Float.isFinite(minScore)) {
             return QARequest.DEFAULT_MIN_SCORE;
         }
         return Math.max(0f, Math.min(minScore, 1f));
