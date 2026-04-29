@@ -21,3 +21,4 @@ docker-compose.local.yml
 rag-frontend/tsconfig.tsbuildinfo
 application-dev.yml
 .jqwik-database
+rag-document/.jqwik-database
