@@ -1,5 +1,7 @@
 package com.enterprise.rag.admin.controller;
 
+import com.enterprise.rag.admin.kb.entity.Document;
+import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.qa.dto.SaveQAHistoryRequest;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
@@ -38,6 +40,7 @@ import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +63,7 @@ public class QAController {
     private final CurrentUserService currentUserService;
     private final AuthorizationService authorizationService;
     private final QueryEngine queryEngine;
+    private final DocumentService documentService;
 
     /**
      * 同步问答
@@ -265,18 +269,31 @@ public class QAController {
 
         List<RetrievedContext> contexts = queryEngine.retrieve(request.question(), retrieveOptions);
         List<RetrievedContextDebugItem> items = new ArrayList<>(contexts.size());
+        Map<Long, String> documentTitleCache = new HashMap<>();
 
         for (int i = 0; i < contexts.size(); i++) {
             RetrievedContext ctx = contexts.get(i);
+            Map<String, Object> metadata = ctx.metadata() == null ? Map.of() : ctx.metadata();
             String content = ctx.content() == null ? "" : ctx.content();
+            Long documentId = extractLongMetadata(metadata, "documentId");
+            Integer chunkIndex = extractIntegerMetadata(metadata, "chunkIndex");
+            Integer startIndex = extractIntegerMetadata(metadata, "startIndex");
+            Integer endIndex = extractIntegerMetadata(metadata, "endIndex");
+            String rawSource = ctx.source();
+            String displaySource = resolveDisplaySource(request.kbId(), rawSource, documentId, documentTitleCache);
 
             items.add(new RetrievedContextDebugItem(
                     i + 1,
-                    ctx.source(),
+                    rawSource,
+                    displaySource,
+                    documentId,
+                    chunkIndex,
+                    startIndex,
+                    endIndex,
                     safeScore(ctx.relevanceScore()),
                     buildSnippet(content, 300),
                     content.length(),
-                    ctx.metadata() == null ? Map.of() : ctx.metadata()));
+                    metadata));
         }
 
         double topScore = contexts.stream()
@@ -418,6 +435,69 @@ public class QAController {
         return Double.isFinite(score) ? score : 0.0d;
     }
 
+    private Long extractLongMetadata(Map<String, Object> metadata, String key) {
+        if (metadata == null || !metadata.containsKey(key)) {
+            return null;
+        }
+
+        Object value = metadata.get(key);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+
+        if (value instanceof String text) {
+            try {
+                return Long.parseLong(text.trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private Integer extractIntegerMetadata(Map<String, Object> metadata, String key) {
+        Long value = extractLongMetadata(metadata, key);
+        if (value == null) {
+            return null;
+        }
+        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+            return null;
+        }
+        return value.intValue();
+    }
+
+    private String resolveDisplaySource(Long kbId, String rawSource, Long documentId,
+            Map<Long, String> documentTitleCache) {
+        if (documentId != null) {
+            String cachedTitle = documentTitleCache.get(documentId);
+            if (cachedTitle != null && !cachedTitle.isBlank()) {
+                return cachedTitle;
+            }
+
+            try {
+                documentService.getById(documentId)
+                        .filter(document -> document.getKbId() != null && document.getKbId().equals(kbId))
+                        .map(Document::getTitle)
+                        .filter(title -> title != null && !title.isBlank())
+                        .ifPresent(title -> documentTitleCache.put(documentId, title));
+            } catch (Exception e) {
+                log.warn("检索调试来源解析失败: documentId={}, error={}", documentId, e.getMessage());
+            }
+
+            String loadedTitle = documentTitleCache.get(documentId);
+            if (loadedTitle != null && !loadedTitle.isBlank()) {
+                return loadedTitle;
+            }
+        }
+
+        if (rawSource != null && !rawSource.isBlank()) {
+            return rawSource;
+        }
+
+        return "未知来源";
+    }
+
     /**
      * 问答请求
      */
@@ -464,6 +544,11 @@ public class QAController {
     public record RetrievedContextDebugItem(
             int rank,
             String source,
+            String displaySource,
+            Long documentId,
+            Integer chunkIndex,
+            Integer startIndex,
+            Integer endIndex,
             double score,
             String snippet,
             int contentLength,

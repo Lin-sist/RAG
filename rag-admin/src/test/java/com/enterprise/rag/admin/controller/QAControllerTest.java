@@ -1,6 +1,8 @@
 package com.enterprise.rag.admin.controller;
 
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
+import com.enterprise.rag.admin.kb.entity.Document;
+import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
 import com.enterprise.rag.admin.security.AuthorizationService;
@@ -18,6 +20,7 @@ import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -40,6 +43,7 @@ class QAControllerTest {
         private QAHistoryService qaHistoryService;
         private CurrentUserService currentUserService;
         private AuthorizationService authorizationService;
+        private DocumentService documentService;
         private QAController qaController;
         private UserDetails userDetails;
         private AtomicBoolean queryEngineCalled;
@@ -52,6 +56,7 @@ class QAControllerTest {
                 qaHistoryService = mock(QAHistoryService.class);
                 currentUserService = mock(CurrentUserService.class);
                 authorizationService = mock(AuthorizationService.class);
+                documentService = mock(DocumentService.class);
                 queryEngineCalled = new AtomicBoolean(false);
                 expectedMinScore = new AtomicReference<>(1.0f);
                 queryEngine = new QueryEngine() {
@@ -65,12 +70,22 @@ class QAControllerTest {
                                 assertEquals(Map.of(), options.filter());
                                 assertEquals(true, options.enableRerank());
                                 return List.of(
-                                                new RetrievedContext("第一段内容\n包含 空格", "doc-a", 0.91f,
-                                                                Map.of("title", "Doc A")),
+                                                new RetrievedContext("第一段内容\n包含 空格", "0", 0.91f,
+                                                                Map.of(
+                                                                                "title", "Doc A",
+                                                                                "documentId", 4L,
+                                                                                "chunkIndex", 0,
+                                                                                "startIndex", 0,
+                                                                                "endIndex", 155)),
                                                 new RetrievedContext("第二段内容", "doc-b", 0.67f, Map.of()));
                         }
                 };
                 userDetails = mock(UserDetails.class);
+
+                Document doc = new Document();
+                doc.setKbId(10L);
+                doc.setTitle("Spring Boot 入门测试文档.md");
+                when(documentService.getById(4L)).thenReturn(Optional.of(doc));
 
                 qaController = new QAController(
                                 ragService,
@@ -78,7 +93,8 @@ class QAControllerTest {
                                 qaHistoryService,
                                 currentUserService,
                                 authorizationService,
-                                queryEngine);
+                                queryEngine,
+                                documentService);
 
                 when(currentUserService.requireUserId(any())).thenReturn(1001L);
                 doReturn(KnowledgeBaseDTO.builder()
@@ -163,16 +179,69 @@ class QAControllerTest {
                 assertEquals((0.91d + 0.67d) / 2.0d, data.avgScore(), 0.0001d);
                 assertEquals(2, data.contexts().size());
                 assertEquals(1, data.contexts().get(0).rank());
-                assertEquals("doc-a", data.contexts().get(0).source());
+                assertEquals("0", data.contexts().get(0).source());
+                assertEquals("Spring Boot 入门测试文档.md", data.contexts().get(0).displaySource());
+                assertEquals(4L, data.contexts().get(0).documentId());
+                assertEquals(0, data.contexts().get(0).chunkIndex());
+                assertEquals(0, data.contexts().get(0).startIndex());
+                assertEquals(155, data.contexts().get(0).endIndex());
                 assertEquals(0.91d, data.contexts().get(0).score(), 0.0001d);
                 assertEquals("第一段内容 包含 空格", data.contexts().get(0).snippet());
                 assertEquals(11, data.contexts().get(0).contentLength());
                 assertEquals("Doc A", data.contexts().get(0).metadata().get("title"));
                 assertEquals(true, queryEngineCalled.get());
+                verify(documentService, times(1)).getById(4L);
                 verify(knowledgeBaseService, times(0)).incrementQueryCount(anyLong());
                 verify(qaHistoryService, times(0)).save(any());
                 verify(ragService, times(0)).ask(any());
                 verify(ragService, times(0)).askStream(any());
+        }
+
+        @Test
+        void debugRetrieveShouldNotLeakDocumentTitleFromOtherKnowledgeBase() {
+                Document doc = new Document();
+                doc.setKbId(999L);
+                doc.setTitle("不应泄露的标题.md");
+                when(documentService.getById(4L)).thenReturn(Optional.of(doc));
+
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                1.5f,
+                                null,
+                                true);
+
+                var responseEntity = qaController.debugRetrieve(request, userDetails);
+
+                assertEquals(200, responseEntity.getStatusCode().value());
+                assertNotNull(responseEntity.getBody());
+                assertNotNull(responseEntity.getBody().getData());
+                assertEquals("0", responseEntity.getBody().getData().contexts().get(0).source());
+                assertEquals("0", responseEntity.getBody().getData().contexts().get(0).displaySource());
+                verify(documentService, times(1)).getById(4L);
+        }
+
+        @Test
+        void debugRetrieveShouldFallbackWhenDocumentLookupFails() {
+                when(documentService.getById(4L)).thenThrow(new IllegalStateException("db down"));
+
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                1.5f,
+                                null,
+                                true);
+
+                var responseEntity = qaController.debugRetrieve(request, userDetails);
+
+                assertEquals(200, responseEntity.getStatusCode().value());
+                assertNotNull(responseEntity.getBody());
+                assertNotNull(responseEntity.getBody().getData());
+                assertEquals("0", responseEntity.getBody().getData().contexts().get(0).source());
+                assertEquals("0", responseEntity.getBody().getData().contexts().get(0).displaySource());
+                verify(documentService, times(1)).getById(4L);
         }
 
         @Test
