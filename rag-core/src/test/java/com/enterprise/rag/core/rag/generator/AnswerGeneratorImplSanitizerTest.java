@@ -48,6 +48,7 @@ class AnswerGeneratorImplSanitizerTest {
     private static final class TestAnswerGenerator extends AnswerGeneratorImpl {
         private TestAnswerGenerator() {
             super(new LLMProperties(), new com.enterprise.rag.core.rag.prompt.PromptBuilder(),
+                    new com.enterprise.rag.core.rag.citation.CitationValidator(),
                     org.springframework.web.reactive.function.client.WebClient.builder());
         }
     }

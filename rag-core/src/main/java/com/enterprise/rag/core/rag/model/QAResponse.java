@@ -42,7 +42,12 @@ public record QAResponse(
                 "抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。",
                 List.of(),
                 List.of(),
-                Map.of("status", "no_result")
+                Map.of(
+                        "status", "no_result",
+                        "citationValidation", Map.of(
+                                "validCitations", 0,
+                                "droppedCitations", 0,
+                                "citationCoverage", 1.0d))
         );
     }
 
@@ -74,5 +79,15 @@ public record QAResponse(
     @JsonIgnore
     public boolean hasResult() {
         return !"no_result".equals(metadata.get("status"));
+    }
+
+    @JsonIgnore
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> citationValidation() {
+        Object value = metadata == null ? null : metadata.get("citationValidation");
+        if (value instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        return Map.of();
     }
 }

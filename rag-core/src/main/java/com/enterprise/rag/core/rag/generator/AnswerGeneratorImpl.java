@@ -1,5 +1,7 @@
 package com.enterprise.rag.core.rag.generator;
 
+import com.enterprise.rag.core.rag.citation.CitationValidationResult;
+import com.enterprise.rag.core.rag.citation.CitationValidator;
 import com.enterprise.rag.core.rag.model.Citation;
 import com.enterprise.rag.core.rag.model.GeneratedAnswer;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
@@ -36,13 +38,15 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
 
     private final LLMProperties properties;
     private final PromptBuilder promptBuilder;
+    private final CitationValidator citationValidator;
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
 
     public AnswerGeneratorImpl(LLMProperties properties, PromptBuilder promptBuilder,
-            WebClient.Builder proxyWebClientBuilder) {
+            CitationValidator citationValidator, WebClient.Builder proxyWebClientBuilder) {
         this.properties = properties;
         this.promptBuilder = promptBuilder;
+        this.citationValidator = citationValidator;
         this.objectMapper = new ObjectMapper();
         this.webClient = proxyWebClientBuilder.clone()
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
@@ -70,7 +74,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         String answer = sanitizeAnswerText(callLLM(prompt));
 
         // 提取引用来源
-        List<Citation> citations = extractCitations(answer, effectiveContexts);
+        List<Citation> extractedCitations = extractCitations(answer, effectiveContexts);
+        CitationValidationResult citationValidation = citationValidator.validate(
+                extractedCitations,
+                effectiveContexts,
+                isNoAnswerText(answer));
 
         // 构建元数据
         Map<String, Object> metadata = new HashMap<>();
@@ -80,8 +88,9 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         metadata.put("estimatedContextTokens", buildResult.estimatedContextTokens());
         metadata.put("removedByDedup", buildResult.removedByDedup());
         metadata.put("removedByBudget", buildResult.removedByBudget());
+        metadata.put("citationValidation", citationValidation.metadata());
 
-        return GeneratedAnswer.of(answer, citations, metadata);
+        return GeneratedAnswer.of(answer, citationValidation.citations(), metadata);
     }
 
     @Override
@@ -445,7 +454,14 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                     }
                     // 如果超过50%的词匹配，认为是引用
                     if (words.length > 0 && (float) matchCount / words.length > 0.5) {
-                        citations.add(Citation.of(context.source(), sentenceTrimmed));
+                        citations.add(Citation.grounded(
+                                context.source(),
+                                extractLongMetadata(context.metadata(), "documentId"),
+                                context.source(),
+                                (double) context.relevanceScore(),
+                                sentenceTrimmed,
+                                -1,
+                                -1));
                         break;
                     }
                 }
@@ -453,6 +469,38 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         }
 
         return citations;
+    }
+
+    private Long extractLongMetadata(Map<String, Object> metadata, String key) {
+        if (metadata == null || !metadata.containsKey(key)) {
+            return null;
+        }
+        Object value = metadata.get(key);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String text) {
+            try {
+                return Long.parseLong(text.trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private boolean isNoAnswerText(String answer) {
+        if (answer == null || answer.isBlank()) {
+            return true;
+        }
+        String normalized = answer.toLowerCase(Locale.ROOT);
+        return normalized.contains("未能找到")
+                || normalized.contains("没有足够")
+                || normalized.contains("无法回答")
+                || normalized.contains("知识库中没有")
+                || normalized.contains("context doesn't contain")
+                || normalized.contains("not enough information")
+                || normalized.contains("cannot answer");
     }
 
     /**

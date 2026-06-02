@@ -104,6 +104,7 @@ public class RAGServiceImpl implements RAGService {
             Map<String, Object> metadata = new HashMap<>(generatedAnswer.metadata());
             metadata.put("cached", false);
             metadata.putIfAbsent("contextCount", contexts.size());
+            copyCitationValidationSummary(metadata);
             metadata.put("retrievedContextCount", contexts.size());
             metadata.put("retrievedTopScore", contexts.stream()
                     .mapToDouble(RetrievedContext::relevanceScore)
@@ -208,6 +209,27 @@ public class RAGServiceImpl implements RAGService {
             return "模型服务响应超时，请稍后重试";
         }
         return message;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void copyCitationValidationSummary(Map<String, Object> metadata) {
+        Object value = metadata.get("citationValidation");
+        if (!(value instanceof Map<?, ?> validation)) {
+            return;
+        }
+
+        Object validCitations = validation.get("validCitations");
+        Object droppedCitations = validation.get("droppedCitations");
+        Object citationCoverage = validation.get("citationCoverage");
+        if (validCitations != null) {
+            metadata.put("validCitations", validCitations);
+        }
+        if (droppedCitations != null) {
+            metadata.put("droppedCitations", droppedCitations);
+        }
+        if (citationCoverage != null) {
+            metadata.put("citationCoverage", citationCoverage);
+        }
     }
 
     private List<RetrievedContext> retryExplanatoryRetrieval(String question, QARequest request, String collectionName) {
