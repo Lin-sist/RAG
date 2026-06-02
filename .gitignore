@@ -11,6 +11,8 @@ target/
 data/
 *m2repo/
 *scripts/
+!scripts/
+!scripts/run_rag_eval.py
 *test-data/
 *diagnostics/
 

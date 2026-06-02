@@ -86,6 +86,13 @@ public class QueryEngineImpl implements QueryEngine {
                 .toList();
     }
 
+    @Override
+    public List<QueryVariantInfo> explainQueryVariants(String query) {
+        return buildQueryVariants(query).stream()
+                .map(variant -> new QueryVariantInfo(variant.query(), variant.weight()))
+                .toList();
+    }
+
     /**
      * 将搜索结果转换为检索上下文
      */

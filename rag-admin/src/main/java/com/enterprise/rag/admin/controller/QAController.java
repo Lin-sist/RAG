@@ -18,6 +18,8 @@ import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.service.RAGService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -41,6 +43,7 @@ import reactor.core.publisher.Flux;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +59,10 @@ import java.util.Map;
 @Tag(name = "问答服务", description = "RAG 问答接口：同步问答、流式问答")
 public class QAController {
     private static final long STREAM_GAP_WARN_THRESHOLD_MS = 1500L;
+    private static final int DEBUG_CONTENT_PREVIEW_LENGTH = 300;
+    private static final ObjectMapper DEBUG_OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<Map<String, Object>> STRING_OBJECT_MAP = new TypeReference<>() {
+    };
 
     private final RAGService ragService;
     private final KnowledgeBaseService knowledgeBaseService;
@@ -267,31 +274,84 @@ public class QAController {
                 filter,
                 enableRerank);
 
-        List<RetrievedContext> contexts = queryEngine.retrieve(request.question(), retrieveOptions);
+        List<String> warnings = new ArrayList<>();
+        List<QueryVariantDebugItem> queryVariants = safeExplainQueryVariants(request.question(), warnings);
+        List<RetrievedContext> contexts;
+        try {
+            contexts = queryEngine.retrieve(request.question(), retrieveOptions);
+            if (contexts == null) {
+                warnings.add("QueryEngine returned null contexts; treated as empty result.");
+                contexts = List.of();
+            }
+        } catch (Exception e) {
+            String message = toDebugRetrieveErrorMessage(e);
+            log.error("检索调试执行失败: traceId={}, kbId={}, userId={}, collection={}, question={}, error={}",
+                    TraceContext.getTraceId(), request.kbId(), userId, kb.getVectorCollection(),
+                    truncate(request.question(), 80), e.getMessage(), e);
+
+            RetrievalDebugResponse response = new RetrievalDebugResponse(
+                    request.kbId(),
+                    request.question(),
+                    topK,
+                    minScore,
+                    enableRerank,
+                    queryVariants,
+                    0,
+                    0.0d,
+                    0.0d,
+                    "retrieve_failed",
+                    message,
+                    warnings,
+                    List.of());
+
+            return ResponseEntity.ok(ApiResponse.success(response, "debug retrieve failed"));
+        }
+
         List<RetrievedContextDebugItem> items = new ArrayList<>(contexts.size());
         Map<Long, String> documentTitleCache = new HashMap<>();
 
         for (int i = 0; i < contexts.size(); i++) {
             RetrievedContext ctx = contexts.get(i);
-            Map<String, Object> metadata = ctx.metadata() == null ? Map.of() : ctx.metadata();
+            if (ctx == null) {
+                warnings.add("QueryEngine returned a null context at rank " + (i + 1) + "; skipped.");
+                continue;
+            }
+
+            Map<String, Object> metadata = sanitizeMetadata(ctx.metadata());
             String content = ctx.content() == null ? "" : ctx.content();
-            Long documentId = extractLongMetadata(metadata, "documentId");
-            Integer chunkIndex = extractIntegerMetadata(metadata, "chunkIndex");
-            Integer startIndex = extractIntegerMetadata(metadata, "startIndex");
-            Integer endIndex = extractIntegerMetadata(metadata, "endIndex");
-            String rawSource = ctx.source();
-            String displaySource = resolveDisplaySource(request.kbId(), rawSource, documentId, documentTitleCache);
+            Long documentId = extractLongMetadata(metadata, "documentId", "document_id", "docId", "doc_id");
+            Integer chunkIndex = extractIntegerMetadata(metadata, "chunkIndex", "chunk_index");
+            Integer startIndex = extractIntegerMetadata(metadata, "startIndex", "start_index");
+            Integer endIndex = extractIntegerMetadata(metadata, "endIndex", "end_index");
+            String source = firstNonBlank(
+                    ctx.source(),
+                    extractStringMetadata(metadata, "source"),
+                    extractStringMetadata(metadata, "fileName"),
+                    extractStringMetadata(metadata, "filename"),
+                    extractStringMetadata(metadata, "documentTitle"),
+                    extractStringMetadata(metadata, "title"),
+                    "unknown");
+            String chunkId = firstNonBlank(
+                    extractStringMetadata(metadata, "chunkId"),
+                    extractStringMetadata(metadata, "chunk_id"),
+                    ctx.source(),
+                    extractStringMetadata(metadata, "id"),
+                    source);
+            String displaySource = resolveDisplaySource(request.kbId(), source, documentId, documentTitleCache);
+            String contentPreview = buildSnippet(content, DEBUG_CONTENT_PREVIEW_LENGTH);
 
             items.add(new RetrievedContextDebugItem(
                     i + 1,
-                    rawSource,
+                    source,
                     displaySource,
+                    chunkId,
                     documentId,
                     chunkIndex,
                     startIndex,
                     endIndex,
                     safeScore(ctx.relevanceScore()),
-                    buildSnippet(content, 300),
+                    contentPreview,
+                    contentPreview,
                     content.length(),
                     metadata));
         }
@@ -311,9 +371,13 @@ public class QAController {
                 topK,
                 minScore,
                 enableRerank,
+                queryVariants,
                 contexts.size(),
                 topScore,
                 avgScore,
+                "ok",
+                null,
+                warnings,
                 items);
 
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -435,19 +499,170 @@ public class QAController {
         return Double.isFinite(score) ? score : 0.0d;
     }
 
-    private Long extractLongMetadata(Map<String, Object> metadata, String key) {
-        if (metadata == null || !metadata.containsKey(key)) {
+    private List<QueryVariantDebugItem> safeExplainQueryVariants(String question, List<String> warnings) {
+        try {
+            List<?> variants = queryEngine.explainQueryVariants(question);
+            if (variants == null) {
+                return List.of();
+            }
+            return variants.stream()
+                    .map(this::toQueryVariantDebugItem)
+                    .toList();
+        } catch (Exception e) {
+            String message = "queryVariants generation failed: " + e.getClass().getSimpleName();
+            warnings.add(message);
+            log.warn("检索调试 queryVariants 生成失败: question={}, error={}",
+                    truncate(question, 80), e.getMessage(), e);
+            return List.of();
+        }
+    }
+
+    private QueryVariantDebugItem toQueryVariantDebugItem(Object variant) {
+        if (variant == null) {
+            return new QueryVariantDebugItem("", 0.0f);
+        }
+        if (variant instanceof Map<?, ?> variantMap) {
+            Map<String, Object> metadata = sanitizeMetadata(variantMap);
+            return new QueryVariantDebugItem(
+                    firstNonBlank(extractStringMetadata(metadata, "query"), ""),
+                    extractFloatMetadata(metadata, 0.0f, "weight"));
+        }
+        try {
+            Object query = variant.getClass().getMethod("query").invoke(variant);
+            Object weight = variant.getClass().getMethod("weight").invoke(variant);
+            return new QueryVariantDebugItem(
+                    firstNonBlank(stringValue(query), ""),
+                    floatValue(weight, 0.0f));
+        } catch (Exception e) {
+            log.warn("检索调试 queryVariant DTO 转换失败: variantType={}, error={}",
+                    variant.getClass().getName(), e.toString());
+            return new QueryVariantDebugItem(String.valueOf(variant), 0.0f);
+        }
+    }
+
+    private Map<String, Object> sanitizeMetadata(Object rawMetadata) {
+        if (rawMetadata == null) {
+            return Map.of();
+        }
+
+        if (rawMetadata instanceof String text) {
+            return parseMetadataJson(text);
+        }
+
+        if (!(rawMetadata instanceof Map<?, ?> rawMap)) {
+            return Map.of("rawMetadata", String.valueOf(rawMetadata));
+        }
+
+        Map<String, Object> sanitized = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+            if (entry.getKey() == null) {
+                continue;
+            }
+            String key = String.valueOf(entry.getKey());
+            Object value = entry.getValue();
+            if (("metadata".equals(key) || "payload".equals(key)) && value instanceof String text) {
+                sanitized.put(key, parseMetadataJson(text));
+            } else {
+                sanitized.put(key, sanitizeMetadataValue(value));
+            }
+        }
+
+        mergeEmbeddedMetadata(sanitized, "metadata");
+        mergeEmbeddedMetadata(sanitized, "payload");
+        return sanitized;
+    }
+
+    private void mergeEmbeddedMetadata(Map<String, Object> metadata, String key) {
+        Object embedded = metadata.get(key);
+        if (embedded instanceof Map<?, ?> embeddedMap) {
+            for (Map.Entry<?, ?> entry : embeddedMap.entrySet()) {
+                if (entry.getKey() != null) {
+                    metadata.putIfAbsent(String.valueOf(entry.getKey()), sanitizeMetadataValue(entry.getValue()));
+                }
+            }
+        }
+    }
+
+    private Object sanitizeMetadataValue(Object value) {
+        if (value == null
+                || value instanceof String
+                || value instanceof Number
+                || value instanceof Boolean) {
+            return value;
+        }
+
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> sanitized = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() != null) {
+                    sanitized.put(String.valueOf(entry.getKey()), sanitizeMetadataValue(entry.getValue()));
+                }
+            }
+            return sanitized;
+        }
+
+        if (value instanceof Iterable<?> iterable) {
+            List<Object> sanitized = new ArrayList<>();
+            for (Object item : iterable) {
+                sanitized.add(sanitizeMetadataValue(item));
+            }
+            return sanitized;
+        }
+
+        if (value instanceof String text) {
+            return text;
+        }
+
+        return String.valueOf(value);
+    }
+
+    private Map<String, Object> parseMetadataJson(String text) {
+        if (text == null || text.isBlank()) {
+            return Map.of();
+        }
+
+        String trimmed = text.trim();
+        if (!trimmed.startsWith("{")) {
+            return Map.of("rawMetadata", trimmed);
+        }
+
+        try {
+            Map<String, Object> parsed = DEBUG_OBJECT_MAPPER.readValue(trimmed, STRING_OBJECT_MAP);
+            return sanitizeMetadata(parsed);
+        } catch (Exception e) {
+            log.warn("检索调试 metadata JSON 解析失败: error={}", e.getMessage());
+            return Map.of("rawMetadata", trimmed);
+        }
+    }
+
+    private Long extractLongMetadata(Map<String, Object> metadata, String... keys) {
+        if (metadata == null || keys == null) {
             return null;
         }
 
-        Object value = metadata.get(key);
+        Object value = null;
+        for (String key : keys) {
+            if (metadata.containsKey(key)) {
+                value = metadata.get(key);
+                break;
+            }
+        }
+
+        if (value == null) {
+            return null;
+        }
+
         if (value instanceof Number number) {
             return number.longValue();
         }
 
         if (value instanceof String text) {
             try {
-                return Long.parseLong(text.trim());
+                String trimmed = text.trim();
+                if (trimmed.contains(".")) {
+                    return (long) Double.parseDouble(trimmed);
+                }
+                return Long.parseLong(trimmed);
             } catch (NumberFormatException ignored) {
                 return null;
             }
@@ -456,8 +671,8 @@ public class QAController {
         return null;
     }
 
-    private Integer extractIntegerMetadata(Map<String, Object> metadata, String key) {
-        Long value = extractLongMetadata(metadata, key);
+    private Integer extractIntegerMetadata(Map<String, Object> metadata, String... keys) {
+        Long value = extractLongMetadata(metadata, keys);
         if (value == null) {
             return null;
         }
@@ -465,6 +680,81 @@ public class QAController {
             return null;
         }
         return value.intValue();
+    }
+
+    private float extractFloatMetadata(Map<String, Object> metadata, float fallback, String... keys) {
+        if (metadata == null || keys == null) {
+            return fallback;
+        }
+
+        Object value = null;
+        for (String key : keys) {
+            if (metadata.containsKey(key)) {
+                value = metadata.get(key);
+                break;
+            }
+        }
+        return floatValue(value, fallback);
+    }
+
+    private String extractStringMetadata(Map<String, Object> metadata, String key) {
+        if (metadata == null || !metadata.containsKey(key)) {
+            return null;
+        }
+        Object value = metadata.get(key);
+        return stringValue(value);
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private float floatValue(Object value, float fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        if (value instanceof Number number) {
+            return number.floatValue();
+        }
+        if (value instanceof String text) {
+            try {
+                return Float.parseFloat(text.trim());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private String firstNonBlank(String... candidates) {
+        if (candidates == null) {
+            return null;
+        }
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.isBlank()) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private String toDebugRetrieveErrorMessage(Throwable error) {
+        String message = error != null ? error.getMessage() : null;
+        String lowered = message == null ? "" : message.toLowerCase();
+        if (lowered.contains("collection not found")) {
+            return "检索失败：知识库向量集合不存在，请确认文档已上传并完成索引";
+        }
+        if (lowered.contains("no embedding provider is available")) {
+            return "检索失败：未配置可用的向量化服务，请检查模型 API key 或本地 embedding 服务";
+        }
+        if (lowered.contains("timeout")) {
+            return "检索失败：向量化服务或向量库响应超时";
+        }
+        if (lowered.contains("milvus") || lowered.contains("qdrant") || lowered.contains("vector")) {
+            return "检索失败：向量库查询异常，请查看后端日志中的完整异常栈";
+        }
+        return "检索失败：" + (error == null ? "unknown error" : error.getClass().getSimpleName())
+                + (message == null || message.isBlank() ? "" : " - " + truncate(message, 180));
     }
 
     private String resolveDisplaySource(Long kbId, String rawSource, Long documentId,
@@ -535,9 +825,13 @@ public class QAController {
             int topK,
             float minScore,
             boolean enableRerank,
+            List<QueryVariantDebugItem> queryVariants,
             int contextCount,
             double topScore,
             double avgScore,
+            String status,
+            String message,
+            List<String> warnings,
             List<RetrievedContextDebugItem> contexts) {
     }
 
@@ -545,14 +839,21 @@ public class QAController {
             int rank,
             String source,
             String displaySource,
+            String chunkId,
             Long documentId,
             Integer chunkIndex,
             Integer startIndex,
             Integer endIndex,
             double score,
+            String contentPreview,
             String snippet,
             int contentLength,
             Map<String, Object> metadata) {
+    }
+
+    public record QueryVariantDebugItem(
+            String query,
+            float weight) {
     }
 
     private static final class StreamDeliveryDiagnostics {

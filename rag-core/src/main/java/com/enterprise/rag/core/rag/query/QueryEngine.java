@@ -11,6 +11,9 @@ import java.util.List;
  */
 public interface QueryEngine {
 
+    record QueryVariantInfo(String query, float weight) {
+    }
+
     /**
      * 检索与查询相关的文档上下文
      *
@@ -19,6 +22,19 @@ public interface QueryEngine {
      * @return 检索到的上下文列表，按相关性降序排列
      */
     List<RetrievedContext> retrieve(String query, RetrieveOptions options);
+
+    /**
+     * Explain query variants generated for retrieval debugging and offline eval.
+     * This method must not execute embedding or vector search.
+     *
+     * @param query user query
+     * @return query variants in generation order
+     */
+    default List<QueryVariantInfo> explainQueryVariants(String query) {
+        return query == null || query.isBlank()
+                ? List.of()
+                : List.of(new QueryVariantInfo(query, 1.0f));
+    }
 
     /**
      * 使用默认选项检索文档

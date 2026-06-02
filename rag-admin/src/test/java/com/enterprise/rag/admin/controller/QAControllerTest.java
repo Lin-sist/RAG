@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.core.userdetails.UserDetails;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,6 +28,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -48,6 +52,10 @@ class QAControllerTest {
         private UserDetails userDetails;
         private AtomicBoolean queryEngineCalled;
         private AtomicReference<Float> expectedMinScore;
+        private List<RetrievedContext> debugContexts;
+        private List<QueryEngine.QueryVariantInfo> debugQueryVariants;
+        private RuntimeException retrieveFailure;
+        private RuntimeException queryVariantsFailure;
 
         @BeforeEach
         void setUp() {
@@ -59,9 +67,24 @@ class QAControllerTest {
                 documentService = mock(DocumentService.class);
                 queryEngineCalled = new AtomicBoolean(false);
                 expectedMinScore = new AtomicReference<>(1.0f);
+                debugContexts = List.of(
+                                new RetrievedContext("第一段内容\n包含 空格", "0", 0.91f,
+                                                Map.of(
+                                                                "title", "Doc A",
+                                                                "documentId", 4L,
+                                                                "chunkIndex", 0,
+                                                                "startIndex", 0,
+                                                                "endIndex", 155)),
+                                new RetrievedContext("第二段内容", "doc-b", 0.67f, Map.of()));
+                debugQueryVariants = List.of(new QueryEngine.QueryVariantInfo("什么是RAG", 1.0f));
+                retrieveFailure = null;
+                queryVariantsFailure = null;
                 queryEngine = new QueryEngine() {
                         @Override
                         public List<RetrievedContext> retrieve(String query, RetrieveOptions options) {
+                                if (retrieveFailure != null) {
+                                        throw retrieveFailure;
+                                }
                                 queryEngineCalled.set(true);
                                 assertEquals("什么是RAG", query);
                                 assertEquals("kb_test_vector", options.collectionName());
@@ -69,15 +92,15 @@ class QAControllerTest {
                                 assertEquals(expectedMinScore.get(), options.minScore());
                                 assertEquals(Map.of(), options.filter());
                                 assertEquals(true, options.enableRerank());
-                                return List.of(
-                                                new RetrievedContext("第一段内容\n包含 空格", "0", 0.91f,
-                                                                Map.of(
-                                                                                "title", "Doc A",
-                                                                                "documentId", 4L,
-                                                                                "chunkIndex", 0,
-                                                                                "startIndex", 0,
-                                                                                "endIndex", 155)),
-                                                new RetrievedContext("第二段内容", "doc-b", 0.67f, Map.of()));
+                                return debugContexts;
+                        }
+
+                        @Override
+                        public List<QueryEngine.QueryVariantInfo> explainQueryVariants(String query) {
+                                if (queryVariantsFailure != null) {
+                                        throw queryVariantsFailure;
+                                }
+                                return debugQueryVariants;
                         }
                 };
                 userDetails = mock(UserDetails.class);
@@ -195,6 +218,7 @@ class QAControllerTest {
                 verify(qaHistoryService, times(0)).save(any());
                 verify(ragService, times(0)).ask(any());
                 verify(ragService, times(0)).askStream(any());
+                assertEquals("ok", data.status());
         }
 
         @Test
@@ -262,5 +286,144 @@ class QAControllerTest {
                 assertNotNull(responseEntity.getBody().getData());
                 assertEquals(QARequest.DEFAULT_MIN_SCORE, responseEntity.getBody().getData().minScore());
                 assertEquals(true, queryEngineCalled.get());
+        }
+
+        @Test
+        void debugRetrieveShouldHandleNullMetadataAndBlankContent() {
+                debugContexts = new ArrayList<>();
+                debugContexts.add(new RetrievedContext(null, null, Float.NaN, null));
+                debugContexts.add(new RetrievedContext("", "", 0.5f, new HashMap<>()));
+
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                1.5f,
+                                null,
+                                null);
+
+                var responseEntity = qaController.debugRetrieve(request, userDetails);
+
+                assertEquals(200, responseEntity.getStatusCode().value());
+                var data = responseEntity.getBody().getData();
+                assertEquals("ok", data.status());
+                assertEquals(2, data.contexts().size());
+                assertEquals("unknown", data.contexts().get(0).source());
+                assertEquals("unknown", data.contexts().get(0).chunkId());
+                assertEquals("", data.contexts().get(0).contentPreview());
+                assertEquals(0, data.contexts().get(0).contentLength());
+                assertEquals(0.0d, data.contexts().get(0).score(), 0.0001d);
+                assertTrue(data.contexts().get(0).metadata().isEmpty());
+        }
+
+        @Test
+        void debugRetrieveShouldExtractDocumentAndChunkIdsFromLongIntegerAndStringMetadata() {
+                debugContexts = List.of(
+                                new RetrievedContext("Long metadata", null, 0.9f,
+                                                Map.of("documentId", 11L, "chunkId", 21L)),
+                                new RetrievedContext("Integer metadata", null, 0.8f,
+                                                Map.of("documentId", 12, "chunkId", 22)),
+                                new RetrievedContext("String metadata", null, 0.7f,
+                                                Map.of("documentId", "13", "chunkId", "23")));
+
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                1.5f,
+                                null,
+                                null);
+
+                var data = qaController.debugRetrieve(request, userDetails).getBody().getData();
+
+                assertEquals(11L, data.contexts().get(0).documentId());
+                assertEquals("21", data.contexts().get(0).chunkId());
+                assertEquals(12L, data.contexts().get(1).documentId());
+                assertEquals("22", data.contexts().get(1).chunkId());
+                assertEquals(13L, data.contexts().get(2).documentId());
+                assertEquals("23", data.contexts().get(2).chunkId());
+        }
+
+        @Test
+        void debugRetrieveShouldFlattenJsonStringMetadataPayload() {
+                debugContexts = List.of(new RetrievedContext(
+                                "json metadata",
+                                null,
+                                0.8f,
+                                Map.of("metadata", "{\"source\":\"springboot-basics.md\",\"documentId\":\"44\",\"chunkId\":\"44-2\"}")));
+
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                1.5f,
+                                null,
+                                null);
+
+                var item = qaController.debugRetrieve(request, userDetails).getBody().getData().contexts().get(0);
+
+                assertEquals("springboot-basics.md", item.source());
+                assertEquals(44L, item.documentId());
+                assertEquals("44-2", item.chunkId());
+        }
+
+        @Test
+        void debugRetrieveShouldAllowEmptyQueryVariants() {
+                debugQueryVariants = List.of();
+
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                1.5f,
+                                null,
+                                null);
+
+                var data = qaController.debugRetrieve(request, userDetails).getBody().getData();
+
+                assertTrue(data.queryVariants().isEmpty());
+                assertEquals("ok", data.status());
+        }
+
+        @Test
+        void debugRetrieveShouldKeepWorkingWhenQueryVariantExplanationFails() {
+                queryVariantsFailure = new IllegalStateException("variant boom");
+
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                1.5f,
+                                null,
+                                null);
+
+                var data = qaController.debugRetrieve(request, userDetails).getBody().getData();
+
+                assertTrue(data.queryVariants().isEmpty());
+                assertEquals("ok", data.status());
+                assertEquals(1, data.warnings().size());
+                assertTrue(data.warnings().get(0).contains("queryVariants"));
+        }
+
+        @Test
+        void debugRetrieveShouldReturnDebugMessageWhenRetrieveFails() {
+                retrieveFailure = new IllegalStateException("collection not found: kb_test_vector");
+
+                QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
+                                10L,
+                                "什么是RAG",
+                                99,
+                                1.5f,
+                                null,
+                                null);
+
+                var responseEntity = qaController.debugRetrieve(request, userDetails);
+
+                assertEquals(200, responseEntity.getStatusCode().value());
+                var data = responseEntity.getBody().getData();
+                assertEquals("retrieve_failed", data.status());
+                assertTrue(data.contexts().isEmpty());
+                assertTrue(data.message().contains("向量集合不存在"));
+                assertNull(data.contexts().stream().findFirst().orElse(null));
         }
 }
