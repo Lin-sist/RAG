@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -63,6 +64,7 @@ class SampleResult:
     no_answer_ok: bool | None
     debug_response: dict[str, Any] | None
     ask_response: dict[str, Any] | None
+    details: dict[str, Any]
 
 
 def parse_args() -> argparse.Namespace:
@@ -79,6 +81,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-rerank", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--timeout", type=float, default=float(os.getenv("RAG_EVAL_TIMEOUT", "60")))
     parser.add_argument("--skip-ask", action="store_true", help="Only run debug retrieve metrics.")
+    parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", ""))
     return parser.parse_args()
 
 
@@ -237,6 +240,69 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
     if ask_error is None and ask_response is not None and ask_response.get("metadata", {}).get("status") == "error":
         ask_error = f"QA returned error status: {ask_response.get('answer')}"
 
+    normalized_sources = {
+        "expected_sources": [
+            {
+                "raw": source,
+                "normalized": sorted(normalized_source_forms(str(source))),
+            }
+            for source in sample.get("expected_sources") or []
+        ],
+        "retrieved_candidates": [
+            {
+                "rank": ctx.get("rank", index),
+                "sourceCandidates": source_candidates(ctx),
+                "normalizedCandidates": sorted(normalized_source_candidates(ctx)),
+            }
+            for index, ctx in enumerate(contexts or [], start=1)
+        ],
+        "citation_candidates": [
+            {
+                "sourceCandidates": source_candidates(citation),
+                "normalizedCandidates": sorted(normalized_source_candidates(citation)),
+            }
+            for citation in citations or []
+        ],
+    }
+    details = {
+        "id": sample.get("id"),
+        "question": question,
+        "type": sample.get("type"),
+        "should_answer": should_answer,
+        "expected": {
+            "sources": sample.get("expected_sources") or [],
+            "contexts": sample.get("expected_contexts") or [],
+            "keywords": sample.get("expected_keywords") or [],
+            "answer_points": sample.get("expected_answer_points") or [],
+        },
+        "debugRetrieveRawResponse": debug_response,
+        "normalizedSources": normalized_sources,
+        "askRawResponse": ask_response,
+        "returnedCitations": citations or [],
+        "metricCalculationDetails": {
+            "retrieveHitRatio": f"{recall5_hits}/{recall_total}" if recall_total else "-",
+            "recall3Hits": recall3_hits,
+            "recall5Hits": recall5_hits,
+            "recallTotal": recall_total,
+            "firstMatchRank": first_rank,
+            "top1SourceHit": top1_hit,
+            "keywordHits": keyword_hits,
+            "keywordTotal": keyword_total,
+            "citationHits": citation_hits,
+            "citationTotal": citation_total,
+            "citationSnippetHits": citation_snippet_hits,
+            "citationSnippetTotal": citation_snippet_total,
+            "unsupportedCitationCount": unsupported_citation_count,
+            "noAnswerCitationViolationCount": no_answer_citation_violation_count,
+            "noAnswerOk": no_answer_ok,
+            "citationValidation": citation_validation_metadata(ask_response),
+        },
+        "errors": {
+            "retrieval": retrieval_error,
+            "ask": ask_error,
+        },
+    }
+
     return SampleResult(
         sample=sample,
         retrieve_ok=retrieval_error is None,
@@ -259,6 +325,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         no_answer_ok=no_answer_ok,
         debug_response=debug_response,
         ask_response=ask_response,
+        details=details,
     )
 
 
@@ -304,13 +371,10 @@ def context_matches(expected: dict[str, Any], ctx: dict[str, Any]) -> bool:
 
 
 def source_matches(expected_source: str, ctx: dict[str, Any]) -> bool:
-    source_blob = normalize(" ".join([
-        str(ctx.get("source") or ""),
-        str(ctx.get("displaySource") or ""),
-        str(ctx.get("chunkId") or ""),
-        json.dumps(ctx.get("metadata") or {}, ensure_ascii=False),
-    ]))
-    return normalize(expected_source) in source_blob
+    expected_forms = normalized_source_forms(expected_source)
+    if not expected_forms:
+        return False
+    return bool(expected_forms & normalized_source_candidates(ctx))
 
 
 def contains_matches(expected_text: str, ctx: dict[str, Any]) -> bool:
@@ -332,8 +396,11 @@ def count_citation_hits(sample: dict[str, Any], citations: list[dict[str, Any]])
     expected_sources = sample.get("expected_sources") or []
     if not expected_sources:
         return 0, 0
-    citation_blob = normalize(json.dumps(citations or [], ensure_ascii=False))
-    hits = sum(1 for source in expected_sources if normalize(str(source)) in citation_blob)
+    hits = sum(
+        1
+        for source in expected_sources
+        if any(source_matches(str(source), citation) for citation in citations or [])
+    )
     return hits, len(expected_sources)
 
 
@@ -370,9 +437,7 @@ def citation_identity_matches(citation: dict[str, Any], context: dict[str, Any])
     if citation_document_id is not None:
         return str(citation_document_id) == str(context_document_id)
 
-    citation_source = normalize(str(citation.get("source") or ""))
-    context_source = normalize(str(context.get("source") or ""))
-    return bool(citation_source and citation_source == context_source)
+    return bool(normalized_source_candidates(citation) & normalized_source_candidates(context))
 
 
 def text_contains_or_overlaps(snippet: str, content: str) -> bool:
@@ -423,6 +488,78 @@ def is_no_answer(ask_response: dict[str, Any] | None, answer: str) -> bool:
 
 def normalize(text: str) -> str:
     return " ".join(text.casefold().split())
+
+
+def normalize_source(text: str) -> str:
+    value = str(text or "").replace("\\", "/").strip().casefold()
+    if not value:
+        return ""
+    value = value.rsplit("/", 1)[-1]
+    value = re.sub(r"\.md$", "", value)
+    value = re.sub(r"[-_\s]+", " ", value)
+    value = re.sub(r"[^\w\u4e00-\u9fff. ]+", " ", value)
+    return " ".join(value.split())
+
+
+def normalized_source_forms(text: str) -> set[str]:
+    normalized = normalize_source(text)
+    if not normalized:
+        return set()
+    forms = {normalized}
+    forms.add(normalized.replace(" ", ""))
+    forms.add(normalized.replace(".", " "))
+    compact = normalized.replace(".", " ")
+    forms.add(" ".join(compact.split()))
+    return {form for form in forms if form}
+
+
+SOURCE_METADATA_KEYS = (
+    "source",
+    "sourceFileName",
+    "displaySource",
+    "documentTitle",
+    "originalFilename",
+    "originalFileName",
+    "fileName",
+    "filename",
+    "title",
+)
+
+
+def source_candidates(item: dict[str, Any] | None) -> list[str]:
+    if not isinstance(item, dict):
+        return []
+    candidates: list[str] = []
+    for key in ("source", "sourceFileName", "displaySource", "documentTitle"):
+        append_string_candidate(candidates, item.get(key))
+
+    metadata = item.get("metadata") or {}
+    if isinstance(metadata, dict):
+        for key in SOURCE_METADATA_KEYS:
+            append_string_candidate(candidates, metadata.get(key))
+
+    deduped: list[str] = []
+    seen = set()
+    for candidate in candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            deduped.append(candidate)
+    return deduped
+
+
+def append_string_candidate(candidates: list[str], value: Any) -> None:
+    if value is None:
+        return
+    text = str(value).strip()
+    if text:
+        candidates.append(text)
+
+
+def normalized_source_candidates(item: dict[str, Any] | None) -> set[str]:
+    forms: set[str] = set()
+    for candidate in source_candidates(item):
+        forms.update(normalized_source_forms(candidate))
+    return forms
 
 
 def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
@@ -487,7 +624,7 @@ def write_report(
     path.parent.mkdir(parents=True, exist_ok=True)
     finished = time.time()
     lines: list[str] = []
-    lines.append("# RAG Eval Baseline 002 Local")
+    lines.append("# RAG Eval Report")
     lines.append("")
     lines.append(f"- Generated at: {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- Base URL: `{args.base_url}`")
@@ -510,6 +647,12 @@ def write_report(
         lines.append("")
         lines.append("The eval set and runner are still ready to use after the backend, database, Redis, Milvus, and model credentials are available.")
         lines.append("")
+        append_case_section(lines, "Failed Retrieval Cases", [])
+        append_case_section(lines, "Failed Citation Cases", [])
+        append_case_section(lines, "Low Answer Keyword Hit Cases", [])
+        append_case_section(lines, "No-answer Cases", [])
+        append_source_normalization_diagnostics(lines, [])
+        append_citation_diagnostics(lines, [])
         path.write_text("\n".join(lines), encoding="utf-8")
         return
 
@@ -569,7 +712,196 @@ def write_report(
     lines.append("- Metrics assume the three `test-data/*.md` files were uploaded with recognizable file names or document titles.")
     lines.append("")
 
+    append_failed_retrieval_cases(lines, results)
+    append_failed_citation_cases(lines, results)
+    append_low_keyword_cases(lines, results)
+    append_no_answer_cases(lines, results)
+    append_source_normalization_diagnostics(lines, results)
+    append_citation_diagnostics(lines, results)
+
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def append_failed_retrieval_cases(lines: list[str], results: list[SampleResult]) -> None:
+    cases = [
+        result
+        for result in results
+        if result.sample.get("should_answer", True)
+        and result.recall_total > 0
+        and result.recall5_hits < result.recall_total
+    ]
+    append_case_section(lines, "Failed Retrieval Cases", cases)
+
+
+def append_failed_citation_cases(lines: list[str], results: list[SampleResult]) -> None:
+    cases = [
+        result
+        for result in results
+        if result.sample.get("should_answer", True)
+        and result.citation_total > 0
+        and result.citation_hits < result.citation_total
+    ]
+    append_case_section(lines, "Failed Citation Cases", cases)
+
+
+def append_low_keyword_cases(lines: list[str], results: list[SampleResult]) -> None:
+    cases = [
+        result
+        for result in results
+        if result.sample.get("should_answer", True)
+        and result.keyword_total > 0
+        and ratio(result.keyword_hits, result.keyword_total) < 0.8
+    ]
+    append_case_section(lines, "Low Answer Keyword Hit Cases", cases)
+
+
+def append_no_answer_cases(lines: list[str], results: list[SampleResult]) -> None:
+    cases = [result for result in results if not result.sample.get("should_answer", True)]
+    append_case_section(lines, "No-answer Cases", cases)
+
+
+def append_source_normalization_diagnostics(lines: list[str], results: list[SampleResult]) -> None:
+    lines.append("## Source Normalization Diagnostics")
+    lines.append("")
+    lines.append("| ID | Expected normalized | Retrieved candidate normalized | Citation candidate normalized |")
+    lines.append("|---|---|---|---|")
+    for result in results:
+        normalized = result.details.get("normalizedSources", {})
+        expected = [
+            f"{item.get('raw')} => {', '.join(item.get('normalized') or [])}"
+            for item in normalized.get("expected_sources") or []
+        ]
+        retrieved = [
+            f"r{item.get('rank')}: {', '.join(item.get('normalizedCandidates') or [])}"
+            for item in (normalized.get("retrieved_candidates") or [])[:5]
+        ]
+        citations = [
+            ", ".join(item.get("normalizedCandidates") or [])
+            for item in normalized.get("citation_candidates") or []
+        ]
+        lines.append(
+            f"| {result.sample.get('id')} | {escape_table('; '.join(expected))} | "
+            f"{escape_table('; '.join(retrieved))} | {escape_table('; '.join(citations))} |"
+        )
+    lines.append("")
+
+
+def append_citation_diagnostics(lines: list[str], results: list[SampleResult]) -> None:
+    lines.append("## Citation Diagnostics")
+    lines.append("")
+    lines.append("| ID | Returned | Source Hits | Snippet Hits | Validation | Unsupported |")
+    lines.append("|---|---:|---:|---:|---|---:|")
+    for result in results:
+        citations = result.ask_response.get("citations", []) if result.ask_response else []
+        validation = citation_validation_metadata(result.ask_response)
+        validation_text = (
+            f"valid={validation.get('validCitations')}, "
+            f"dropped={validation.get('droppedCitations')}, "
+            f"coverage={validation.get('citationCoverage')}"
+        )
+        source_hit = f"{result.citation_hits}/{result.citation_total}" if result.citation_total else "-"
+        snippet_hit = (
+            f"{result.citation_snippet_hits}/{result.citation_snippet_total}"
+            if result.citation_snippet_total else "-"
+        )
+        lines.append(
+            f"| {result.sample.get('id')} | {len(citations or [])} | {source_hit} | {snippet_hit} | "
+            f"{escape_table(validation_text)} | {result.unsupported_citation_count} |"
+        )
+    lines.append("")
+
+
+def append_case_section(lines: list[str], title: str, cases: list[SampleResult]) -> None:
+    lines.append(f"## {title}")
+    lines.append("")
+    if not cases:
+        lines.append("No cases.")
+        lines.append("")
+        return
+
+    for result in cases:
+        append_case(lines, result)
+
+
+def append_case(lines: list[str], result: SampleResult) -> None:
+    sample = result.sample
+    ask_response = result.ask_response or {}
+    contexts = result.debug_response.get("contexts", []) if result.debug_response else []
+    citations = ask_response.get("citations", []) or []
+    validation = citation_validation_metadata(ask_response)
+
+    lines.append(f"### {sample.get('id')} ({sample.get('type')})")
+    lines.append("")
+    lines.append(f"- id: `{sample.get('id')}`")
+    lines.append(f"- type: `{sample.get('type')}`")
+    lines.append(f"- question: {sample.get('question')}")
+    lines.append(f"- expected_sources: `{json.dumps(sample.get('expected_sources') or [], ensure_ascii=False)}`")
+    contains = [item.get("contains") for item in sample.get("expected_contexts") or []]
+    lines.append(f"- expected_contexts.contains: `{json.dumps(contains, ensure_ascii=False)}`")
+    lines.append(f"- retrieve hit ratio: `{result.recall5_hits}/{result.recall_total}`")
+    lines.append(f"- first_match_rank: `{result.first_match_rank if result.first_match_rank is not None else '-'}`")
+    lines.append(f"- answer: {ask_response.get('answer', '')}")
+    lines.append(f"- expected_keywords: `{json.dumps(sample.get('expected_keywords') or [], ensure_ascii=False)}`")
+    lines.append(f"- keyword_hit: `{result.keyword_hits}/{result.keyword_total}`")
+    lines.append("- top5 retrieved results:")
+    append_json_block(lines, [format_retrieved_context(ctx, index) for index, ctx in enumerate(contexts[:5], start=1)])
+    lines.append("- returned citations:")
+    append_json_block(lines, [format_citation(citation) for citation in citations])
+    lines.append("- citation validation metadata:")
+    append_json_block(lines, {
+        "validCitations": validation.get("validCitations"),
+        "droppedCitations": validation.get("droppedCitations"),
+        "citationCoverage": validation.get("citationCoverage"),
+        "unsupportedCitationCount": result.unsupported_citation_count,
+    })
+    if result.retrieval_error or result.ask_error:
+        lines.append(f"- errors: `{escape_table('; '.join(error for error in [result.retrieval_error, result.ask_error] if error))}`")
+    lines.append("")
+
+
+def format_retrieved_context(ctx: dict[str, Any], fallback_rank: int) -> dict[str, Any]:
+    metadata = ctx.get("metadata") if isinstance(ctx.get("metadata"), dict) else {}
+    return {
+        "rank": ctx.get("rank", fallback_rank),
+        "score": ctx.get("score"),
+        "source": ctx.get("source"),
+        "sourceFileName": ctx.get("sourceFileName") or metadata.get("sourceFileName") or metadata.get("fileName"),
+        "documentTitle": ctx.get("documentTitle") or metadata.get("documentTitle") or metadata.get("title"),
+        "documentId": ctx.get("documentId") or metadata.get("documentId"),
+        "chunkId": ctx.get("chunkId") or metadata.get("chunkId"),
+        "contentPreview": ctx.get("contentPreview") or ctx.get("snippet"),
+        "metadata": metadata,
+    }
+
+
+def format_citation(citation: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source": citation.get("source"),
+        "sourceFileName": citation.get("sourceFileName"),
+        "documentTitle": citation.get("documentTitle"),
+        "documentId": citation.get("documentId"),
+        "chunkId": citation.get("chunkId"),
+        "score": citation.get("score"),
+        "snippet": citation.get("snippet"),
+    }
+
+
+def append_json_block(lines: list[str], value: Any) -> None:
+    lines.append("```json")
+    lines.append(json.dumps(value, ensure_ascii=False, indent=2))
+    lines.append("```")
+
+
+def citation_validation_metadata(ask_response: dict[str, Any] | None) -> dict[str, Any]:
+    metadata = ask_response.get("metadata", {}) if ask_response else {}
+    validation = metadata.get("citationValidation") if isinstance(metadata, dict) else {}
+    if not isinstance(validation, dict):
+        validation = {}
+    return {
+        "validCitations": metadata.get("validCitations", validation.get("validCitations")) if isinstance(metadata, dict) else validation.get("validCitations"),
+        "droppedCitations": metadata.get("droppedCitations", validation.get("droppedCitations")) if isinstance(metadata, dict) else validation.get("droppedCitations"),
+        "citationCoverage": metadata.get("citationCoverage", validation.get("citationCoverage")) if isinstance(metadata, dict) else validation.get("citationCoverage"),
+    }
 
 
 def format_bool(value: bool | None) -> str:
@@ -582,6 +914,50 @@ def escape_table(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", " ")
 
 
+SENSITIVE_KEY_PATTERN = re.compile(r"(token|password|secret|api[_-]?key|authorization)", re.IGNORECASE)
+
+
+def sanitize_sensitive(value: Any) -> Any:
+    if isinstance(value, dict):
+        sanitized: dict[str, Any] = {}
+        for key, item in value.items():
+            key_text = str(key)
+            if SENSITIVE_KEY_PATTERN.search(key_text):
+                sanitized[key_text] = "[REDACTED]"
+            else:
+                sanitized[key_text] = sanitize_sensitive(item)
+        return sanitized
+    if isinstance(value, list):
+        return [sanitize_sensitive(item) for item in value]
+    return value
+
+
+def write_details_json(
+    path: Path,
+    args: argparse.Namespace,
+    samples: list[dict[str, Any]],
+    results: list[SampleResult],
+    login_error: str | None,
+    started_at: float,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "baseUrl": args.base_url,
+        "kbId": args.kb_id,
+        "evalSet": args.eval_set,
+        "topK": args.top_k,
+        "minScore": args.min_score,
+        "enableRerank": args.enable_rerank,
+        "durationSeconds": round(time.time() - started_at, 4),
+        "metrics": aggregate(results) if not login_error else None,
+        "loginError": login_error,
+        "sampleCount": len(samples),
+        "samples": [result.details for result in results],
+    }
+    path.write_text(json.dumps(sanitize_sensitive(payload), ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def main() -> int:
     started_at = time.time()
     args = parse_args()
@@ -589,6 +965,7 @@ def main() -> int:
     eval_path = Path(args.eval_set)
     report_path = Path(args.report)
     after_report_path = Path(args.after_report) if args.after_report else None
+    details_json_path = Path(args.details_json) if args.details_json else None
 
     if args.kb_id is None:
         print("Missing --kb-id or RAG_EVAL_KB_ID. Create an eval knowledge base first, then pass its id.", file=sys.stderr)
@@ -612,6 +989,8 @@ def main() -> int:
     write_report(report_path, args, samples, results, login_error, started_at)
     if after_report_path is not None:
         write_report(after_report_path, args, samples, results, login_error, started_at)
+    if details_json_path is not None:
+        write_details_json(details_json_path, args, samples, results, login_error, started_at)
 
     if login_error:
         print(f"Eval could not run: {login_error}", file=sys.stderr)
@@ -619,6 +998,8 @@ def main() -> int:
         print(f"Wrote report: {report_path}")
         if after_report_path is not None:
             print(f"Wrote report: {after_report_path}")
+        if details_json_path is not None:
+            print(f"Wrote details JSON: {details_json_path}")
         return 1
 
     metrics = aggregate(results)
@@ -637,6 +1018,8 @@ def main() -> int:
     print(f"Wrote report: {report_path}")
     if after_report_path is not None:
         print(f"Wrote report: {after_report_path}")
+    if details_json_path is not None:
+        print(f"Wrote details JSON: {details_json_path}")
     return 0
 
 

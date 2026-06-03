@@ -5,6 +5,8 @@ package com.enterprise.rag.core.rag.model;
  * 表示答案中引用的文档来源
  *
  * @param source     来源标识（文档ID或向量 chunk ID）
+ * @param sourceFileName 原始文件名
+ * @param documentTitle  文档标题
  * @param documentId 业务文档 ID
  * @param chunkId    向量库中的 chunk ID
  * @param score      检索分数
@@ -14,6 +16,8 @@ package com.enterprise.rag.core.rag.model;
  */
 public record Citation(
         String source,
+        String sourceFileName,
+        String documentTitle,
         Long documentId,
         String chunkId,
         Double score,
@@ -25,14 +29,14 @@ public record Citation(
      * 创建简单引用（不带位置信息）
      */
     public static Citation of(String source, String snippet) {
-        return new Citation(source, null, null, null, snippet, -1, -1);
+        return new Citation(source, null, null, null, null, null, snippet, -1, -1);
     }
 
     /**
      * 创建带位置信息的引用
      */
     public static Citation of(String source, String snippet, int startIndex, int endIndex) {
-        return new Citation(source, null, null, null, snippet, startIndex, endIndex);
+        return new Citation(source, null, null, null, null, null, snippet, startIndex, endIndex);
     }
 
     /**
@@ -40,6 +44,15 @@ public record Citation(
      */
     public static Citation grounded(String source, Long documentId, String chunkId, Double score, String snippet,
             int startIndex, int endIndex) {
-        return new Citation(source, documentId, chunkId, score, snippet, startIndex, endIndex);
+        return grounded(source, null, null, documentId, chunkId, score, snippet, startIndex, endIndex);
+    }
+
+    /**
+     * 创建包含文档展示来源的已绑定引用。
+     */
+    public static Citation grounded(String source, String sourceFileName, String documentTitle, Long documentId,
+            String chunkId, Double score, String snippet, int startIndex, int endIndex) {
+        return new Citation(source, sourceFileName, documentTitle, documentId, chunkId, score, snippet, startIndex,
+                endIndex);
     }
 }

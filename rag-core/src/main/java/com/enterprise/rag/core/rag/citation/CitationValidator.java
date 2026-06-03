@@ -56,6 +56,8 @@ public class CitationValidator {
 
             Citation groundedCitation = Citation.grounded(
                     match.source(),
+                    match.sourceFileName(),
+                    match.documentTitle(),
                     match.documentId(),
                     match.chunkId(),
                     match.score(),
@@ -83,6 +85,8 @@ public class CitationValidator {
 
             return new EvidenceMatch(
                     context.source(),
+                    firstMetadataText(context.metadata(), "sourceFileName", "originalFilename", "fileName", "filename"),
+                    firstMetadataText(context.metadata(), "documentTitle", "title"),
                     metadataLong(context.metadata(), "documentId"),
                     chunkId(context),
                     (double) context.relevanceScore(),
@@ -107,7 +111,17 @@ public class CitationValidator {
         }
 
         String citationSource = normalize(citation.source());
-        return !citationSource.isBlank() && citationSource.equals(normalize(context.source()));
+        if (!citationSource.isBlank() && sourceCandidates(context).contains(citationSource)) {
+            return true;
+        }
+
+        String citationSourceFileName = normalize(citation.sourceFileName());
+        if (!citationSourceFileName.isBlank() && sourceCandidates(context).contains(citationSourceFileName)) {
+            return true;
+        }
+
+        String citationDocumentTitle = normalize(citation.documentTitle());
+        return !citationDocumentTitle.isBlank() && sourceCandidates(context).contains(citationDocumentTitle);
     }
 
     private SnippetMatch matchSnippet(String snippet, String content) {
@@ -155,6 +169,48 @@ public class CitationValidator {
             }
         }
         return null;
+    }
+
+    private String firstMetadataText(Map<String, Object> metadata, String... keys) {
+        if (metadata == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Object value = metadata.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) {
+                return String.valueOf(value);
+            }
+        }
+        return null;
+    }
+
+    private Set<String> sourceCandidates(RetrievedContext context) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+        addCandidate(candidates, context == null ? null : context.source());
+        if (context != null) {
+            addMetadataCandidates(candidates, context.metadata(), "source", "sourceFileName",
+                    "originalFilename", "fileName", "filename", "documentTitle", "title");
+        }
+        return candidates;
+    }
+
+    private void addMetadataCandidates(Set<String> candidates, Map<String, Object> metadata, String... keys) {
+        if (metadata == null || keys == null) {
+            return;
+        }
+        for (String key : keys) {
+            Object value = metadata.get(key);
+            if (value != null) {
+                addCandidate(candidates, String.valueOf(value));
+            }
+        }
+    }
+
+    private void addCandidate(Set<String> candidates, String value) {
+        String normalized = normalize(value);
+        if (!normalized.isBlank()) {
+            candidates.add(normalized);
+        }
     }
 
     private Set<String> tokens(String text) {

@@ -456,6 +456,9 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                     if (words.length > 0 && (float) matchCount / words.length > 0.5) {
                         citations.add(Citation.grounded(
                                 context.source(),
+                                extractStringMetadata(context.metadata(), "sourceFileName", "originalFilename",
+                                        "fileName", "filename"),
+                                extractStringMetadata(context.metadata(), "documentTitle", "title"),
                                 extractLongMetadata(context.metadata(), "documentId"),
                                 context.source(),
                                 (double) context.relevanceScore(),
@@ -484,6 +487,19 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 return Long.parseLong(text.trim());
             } catch (NumberFormatException ignored) {
                 return null;
+            }
+        }
+        return null;
+    }
+
+    private String extractStringMetadata(Map<String, Object> metadata, String... keys) {
+        if (metadata == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Object value = metadata.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) {
+                return String.valueOf(value);
             }
         }
         return null;

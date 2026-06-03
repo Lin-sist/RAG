@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -86,12 +87,14 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         document = documentService.create(document);
 
         final Long documentId = document.getId();
+        final String documentTitle = document.getTitle();
 
         // 提交异步索引任务
         TaskHandle<ProcessResult> taskHandle = asyncTaskManager.submit(
                 "DOCUMENT_INDEX",
                 uploaderId,
-                progressCallback -> doIndex(kbId, documentId, fileName, fileType, tempFilePath, progressCallback));
+                progressCallback -> doIndex(kbId, documentId, fileName, documentTitle, fileType, tempFilePath,
+                        progressCallback));
 
         log.info("文档索引任务已提交: documentId={}, taskId={}", documentId, taskHandle.taskId());
 
@@ -106,7 +109,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     /**
      * 异步索引核心逻辑（解析 → 去重 → 向量化 → 持久化）
      */
-    private ProcessResult doIndex(Long kbId, Long documentId, String fileName, String fileType,
+    private ProcessResult doIndex(Long kbId, Long documentId, String fileName, String documentTitle, String fileType,
             Path tempFilePath,
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
         try {
@@ -116,7 +119,12 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 DocumentInput input = DocumentInput.of(
                         inputStream,
                         fileName,
-                        Map.of("kbId", kbId, "documentId", documentId));
+                        Map.of("kbId", kbId, "documentId", documentId,
+                                "sourceFileName", fileName,
+                                "originalFilename", fileName,
+                                "fileName", fileName,
+                                "documentTitle", documentTitle,
+                                "title", documentTitle));
 
                 progressCallback.accept(AsyncTask.TaskProgress.of(30, "文档解析中"));
                 ProcessResult result = documentProcessor.process(input);
@@ -168,10 +176,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                             chunk.id(),
                             vectors.get(i),
                             chunk.content(),
-                            Map.of("documentId", documentId, "kbId", kbId,
-                                    "chunkIndex", i,
-                                    "startIndex", chunk.startIndex(),
-                                    "endIndex", chunk.endIndex())));
+                            buildVectorMetadata(kbId, documentId, fileName, documentTitle, i, chunk)));
 
                     // DOC-02: 构建 DB Chunk 实体，包含 vectorId
                     com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk = new com.enterprise.rag.admin.kb.entity.DocumentChunk();
@@ -223,6 +228,22 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         return DocumentStatus.COMPLETED.name().equalsIgnoreCase(document.getStatus())
                 && chunkCount != null
                 && chunkCount > 0;
+    }
+
+    private Map<String, Object> buildVectorMetadata(Long kbId, Long documentId, String fileName, String documentTitle,
+            int chunkIndex, DocumentChunk chunk) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("documentId", documentId);
+        metadata.put("kbId", kbId);
+        metadata.put("chunkIndex", chunkIndex);
+        metadata.put("startIndex", chunk.startIndex());
+        metadata.put("endIndex", chunk.endIndex());
+        metadata.put("sourceFileName", fileName);
+        metadata.put("originalFilename", fileName);
+        metadata.put("fileName", fileName);
+        metadata.put("documentTitle", documentTitle);
+        metadata.put("title", documentTitle);
+        return metadata;
     }
 
     private Path createTempFile(MultipartFile file, String fileType) {

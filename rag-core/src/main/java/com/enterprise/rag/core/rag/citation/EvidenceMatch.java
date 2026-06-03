@@ -5,6 +5,8 @@ package com.enterprise.rag.core.rag.citation;
  */
 public record EvidenceMatch(
         String source,
+        String sourceFileName,
+        String documentTitle,
         Long documentId,
         String chunkId,
         Double score,

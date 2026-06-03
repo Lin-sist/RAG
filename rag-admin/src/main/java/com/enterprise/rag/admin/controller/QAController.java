@@ -12,6 +12,7 @@ import com.enterprise.rag.common.model.ApiResponse;
 import com.enterprise.rag.common.ratelimit.RateLimit;
 import com.enterprise.rag.common.ratelimit.RateLimitDimension;
 import com.enterprise.rag.common.trace.TraceContext;
+import com.enterprise.rag.core.rag.model.Citation;
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
@@ -108,6 +109,7 @@ public class QAController {
 
         // 执行问答
         QAResponse response = ragService.ask(qaRequest);
+        response = enrichResponseSources(request.kbId(), response);
 
         // RAG-04: 问答入口计入知识库查询次数
         knowledgeBaseService.incrementQueryCount(request.kbId());
@@ -331,18 +333,32 @@ public class QAController {
                     extractStringMetadata(metadata, "documentTitle"),
                     extractStringMetadata(metadata, "title"),
                     "unknown");
+            String sourceFileName = firstNonBlank(
+                    extractStringMetadata(metadata, "sourceFileName"),
+                    extractStringMetadata(metadata, "originalFilename"),
+                    extractStringMetadata(metadata, "originalFileName"),
+                    extractStringMetadata(metadata, "fileName"),
+                    extractStringMetadata(metadata, "filename"));
             String chunkId = firstNonBlank(
                     extractStringMetadata(metadata, "chunkId"),
                     extractStringMetadata(metadata, "chunk_id"),
                     ctx.source(),
                     extractStringMetadata(metadata, "id"),
                     source);
-            String displaySource = resolveDisplaySource(request.kbId(), source, documentId, documentTitleCache);
+            String documentTitle = resolveDocumentTitle(request.kbId(), documentId, documentTitleCache);
+            if ((documentTitle == null || documentTitle.isBlank()) && documentId == null) {
+                documentTitle = firstNonBlank(
+                        extractStringMetadata(metadata, "documentTitle"),
+                        extractStringMetadata(metadata, "title"));
+            }
+            String displaySource = firstNonBlank(documentTitle, sourceFileName, source, "未知来源");
             String contentPreview = buildSnippet(content, DEBUG_CONTENT_PREVIEW_LENGTH);
 
             items.add(new RetrievedContextDebugItem(
                     i + 1,
                     source,
+                    sourceFileName,
+                    documentTitle,
                     displaySource,
                     chunkId,
                     documentId,
@@ -757,7 +773,7 @@ public class QAController {
                 + (message == null || message.isBlank() ? "" : " - " + truncate(message, 180));
     }
 
-    private String resolveDisplaySource(Long kbId, String rawSource, Long documentId,
+    private String resolveDocumentTitle(Long kbId, Long documentId,
             Map<Long, String> documentTitleCache) {
         if (documentId != null) {
             String cachedTitle = documentTitleCache.get(documentId);
@@ -781,11 +797,166 @@ public class QAController {
             }
         }
 
-        if (rawSource != null && !rawSource.isBlank()) {
-            return rawSource;
+        return null;
+    }
+
+    private QAResponse enrichResponseSources(Long kbId, QAResponse response) {
+        if (response == null) {
+            return null;
         }
 
-        return "未知来源";
+        Map<Long, String> documentTitleCache = new HashMap<>();
+        List<RetrievedContext> contexts = enrichContextSources(kbId, response.contexts(), documentTitleCache);
+        List<Citation> citations = enrichCitationSources(kbId, response.citations(), contexts, documentTitleCache);
+        return new QAResponse(
+                response.question(),
+                response.answer(),
+                citations,
+                contexts,
+                response.metadata());
+    }
+
+    private List<RetrievedContext> enrichContextSources(Long kbId,
+            List<RetrievedContext> contexts,
+            Map<Long, String> documentTitleCache) {
+        if (contexts == null || contexts.isEmpty()) {
+            return contexts;
+        }
+
+        List<RetrievedContext> enriched = new ArrayList<>(contexts.size());
+        for (RetrievedContext context : contexts) {
+            if (context == null) {
+                enriched.add(null);
+                continue;
+            }
+
+            Map<String, Object> metadata = context.metadata() == null
+                    ? new LinkedHashMap<>()
+                    : new LinkedHashMap<>(context.metadata());
+            Long documentId = extractLongMetadata(metadata, "documentId", "document_id", "docId", "doc_id");
+            String documentTitle = firstNonBlank(
+                    extractStringMetadata(metadata, "documentTitle"),
+                    extractStringMetadata(metadata, "title"),
+                    resolveDocumentTitle(kbId, documentId, documentTitleCache));
+            String sourceFileName = firstNonBlank(
+                    extractStringMetadata(metadata, "sourceFileName"),
+                    extractStringMetadata(metadata, "originalFilename"),
+                    extractStringMetadata(metadata, "originalFileName"),
+                    extractStringMetadata(metadata, "fileName"),
+                    extractStringMetadata(metadata, "filename"),
+                    documentTitle);
+
+            if (sourceFileName != null && !sourceFileName.isBlank()) {
+                metadata.putIfAbsent("sourceFileName", sourceFileName);
+                metadata.putIfAbsent("fileName", sourceFileName);
+            }
+            if (documentTitle != null && !documentTitle.isBlank()) {
+                metadata.putIfAbsent("documentTitle", documentTitle);
+                metadata.putIfAbsent("title", documentTitle);
+            }
+
+            enriched.add(new RetrievedContext(
+                    context.content(),
+                    context.source(),
+                    context.relevanceScore(),
+                    metadata));
+        }
+
+        return enriched;
+    }
+
+    private List<Citation> enrichCitationSources(Long kbId,
+            List<Citation> citations,
+            List<RetrievedContext> contexts,
+            Map<Long, String> documentTitleCache) {
+        if (citations == null || citations.isEmpty()) {
+            return citations;
+        }
+
+        List<Citation> enriched = new ArrayList<>(citations.size());
+        for (Citation citation : citations) {
+            if (citation == null) {
+                enriched.add(null);
+                continue;
+            }
+
+            RetrievedContext context = findContextForCitation(citation, contexts);
+            Map<String, Object> metadata = context == null || context.metadata() == null
+                    ? Map.of()
+                    : context.metadata();
+            String contextSourceFileName = firstNonBlank(
+                    extractStringMetadata(metadata, "sourceFileName"),
+                    extractStringMetadata(metadata, "originalFilename"),
+                    extractStringMetadata(metadata, "originalFileName"),
+                    extractStringMetadata(metadata, "fileName"),
+                    extractStringMetadata(metadata, "filename"));
+            String contextDocumentTitle = firstNonBlank(
+                    extractStringMetadata(metadata, "documentTitle"),
+                    extractStringMetadata(metadata, "title"));
+            String resolvedTitle = resolveDocumentTitle(kbId, citation.documentId(), documentTitleCache);
+            String documentTitle = firstNonBlank(citation.documentTitle(), contextDocumentTitle, resolvedTitle);
+            String sourceFileName = firstNonBlank(citation.sourceFileName(), contextSourceFileName, documentTitle);
+
+            enriched.add(new Citation(
+                    citation.source(),
+                    sourceFileName,
+                    documentTitle,
+                    citation.documentId(),
+                    citation.chunkId(),
+                    citation.score(),
+                    citation.snippet(),
+                    citation.startIndex(),
+                    citation.endIndex()));
+        }
+
+        return enriched;
+    }
+
+    private RetrievedContext findContextForCitation(Citation citation, List<RetrievedContext> contexts) {
+        if (citation == null || contexts == null || contexts.isEmpty()) {
+            return null;
+        }
+
+        for (RetrievedContext context : contexts) {
+            if (context == null) {
+                continue;
+            }
+            Map<String, Object> metadata = context.metadata() == null ? Map.of() : context.metadata();
+            Long contextDocumentId = extractLongMetadata(metadata, "documentId", "document_id", "docId", "doc_id");
+            if (citation.documentId() != null && citation.documentId().equals(contextDocumentId)) {
+                return context;
+            }
+        }
+
+        String citationChunkId = citation.chunkId();
+        if (citationChunkId != null && !citationChunkId.isBlank()) {
+            for (RetrievedContext context : contexts) {
+                if (context == null) {
+                    continue;
+                }
+                Map<String, Object> metadata = context.metadata() == null ? Map.of() : context.metadata();
+                String contextChunkId = firstNonBlank(
+                        extractStringMetadata(metadata, "chunkId"),
+                        extractStringMetadata(metadata, "chunk_id"),
+                        extractStringMetadata(metadata, "chunkIndex"),
+                        extractStringMetadata(metadata, "chunk_index"),
+                        context.source());
+                if (citationChunkId.equals(contextChunkId)) {
+                    return context;
+                }
+            }
+        }
+
+        String citationSource = citation.source();
+        if (citationSource != null && !citationSource.isBlank()) {
+            for (RetrievedContext context : contexts) {
+                if (context != null && citationSource.equals(context.source())) {
+                    return context;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -838,6 +1009,8 @@ public class QAController {
     public record RetrievedContextDebugItem(
             int rank,
             String source,
+            String sourceFileName,
+            String documentTitle,
             String displaySource,
             String chunkId,
             Long documentId,
