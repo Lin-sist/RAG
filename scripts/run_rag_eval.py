@@ -65,6 +65,25 @@ class SampleResult:
     debug_response: dict[str, Any] | None
     ask_response: dict[str, Any] | None
     details: dict[str, Any]
+    skipped_ask: bool
+    ask_attempts: int
+    ask_retry_count: int
+    rate_limit_errors: int
+
+
+class ApiCallError(RuntimeError):
+    def __init__(self, message: str, http_status: int | None = None):
+        super().__init__(message)
+        self.http_status = http_status
+
+
+class AskRetryError(RuntimeError):
+    def __init__(self, error: Exception, attempts: int, retries: int, rate_limit_errors: int):
+        super().__init__(str(error))
+        self.error = error
+        self.attempts = attempts
+        self.retries = retries
+        self.rate_limit_errors = rate_limit_errors
 
 
 def parse_args() -> argparse.Namespace:
@@ -81,6 +100,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-rerank", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--timeout", type=float, default=float(os.getenv("RAG_EVAL_TIMEOUT", "60")))
     parser.add_argument("--skip-ask", action="store_true", help="Only run debug retrieve metrics.")
+    parser.add_argument("--ask-delay-seconds", type=float, default=float(os.getenv("RAG_EVAL_ASK_DELAY_SECONDS", "0")))
+    parser.add_argument("--max-ask-retries", type=int, default=int(os.getenv("RAG_EVAL_MAX_ASK_RETRIES", "0")))
+    parser.add_argument("--retry-backoff-seconds", type=float, default=float(os.getenv("RAG_EVAL_RETRY_BACKOFF_SECONDS", "0")))
+    parser.add_argument("--fail-on-ask-errors", action="store_true")
+    parser.add_argument("--no-overwrite", action="store_true")
     parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", ""))
     return parser.parse_args()
 
@@ -129,9 +153,9 @@ def call_json(
             return json.loads(text) if text else {}
     except urllib.error.HTTPError as exc:
         text = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"HTTP {exc.code} {url}: {text}") from exc
+        raise ApiCallError(f"HTTP {exc.code} {url}: {text}", exc.code) from exc
     except urllib.error.URLError as exc:
-        raise RuntimeError(f"Cannot connect to {url}: {exc.reason}") from exc
+        raise ApiCallError(f"Cannot connect to {url}: {exc.reason}") from exc
 
 
 def api_data(response: dict[str, Any]) -> dict[str, Any]:
@@ -175,6 +199,10 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
     ask_response: dict[str, Any] | None = None
     retrieval_error = None
     ask_error = None
+    skipped_ask = bool(args.skip_ask)
+    ask_attempts = 0
+    ask_retry_count = 0
+    rate_limit_errors = 0
 
     try:
         debug_response = api_data(call_json(
@@ -195,21 +223,20 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
 
     if not args.skip_ask:
         try:
-            ask_response = api_data(call_json(
-                "POST",
-                f"{args.base_url}/api/qa/ask",
-                {
-                    "kbId": args.kb_id,
-                    "question": question,
-                    "topK": args.top_k,
-                    "minScore": args.min_score,
-                    "enableCache": False,
-                },
-                token,
-                args.timeout,
-            ))
+            ask_response, ask_meta = call_ask_with_retries(question, args, token)
+            ask_attempts = ask_meta["attempts"]
+            ask_retry_count = ask_meta["retries"]
+            rate_limit_errors = ask_meta["rateLimitErrors"]
         except Exception as exc:  # noqa: BLE001
             ask_error = str(exc)
+            if isinstance(exc, AskRetryError):
+                ask_attempts = exc.attempts
+                ask_retry_count = exc.retries
+                rate_limit_errors = exc.rate_limit_errors
+            if isinstance(exc, ApiCallError) and exc.http_status == 429:
+                rate_limit_errors += 1
+            if "HTTP 429" in ask_error and not isinstance(exc, AskRetryError):
+                rate_limit_errors += 1
 
     contexts = debug_response.get("contexts", []) if debug_response else []
     if retrieval_error is None and debug_response is not None:
@@ -220,20 +247,21 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
     ask_answer = str(ask_response.get("answer", "")) if ask_response else ""
     citations = ask_response.get("citations", []) if ask_response else []
     should_answer = bool(sample.get("should_answer", True))
+    ask_evaluable = not skipped_ask and ask_response is not None
 
     recall_total = expected_context_total(sample)
     recall3_hits = count_expected_matches(sample, contexts, 3)
     recall5_hits = count_expected_matches(sample, contexts, 5)
     first_rank = first_match_rank(sample, contexts)
     top1_hit = top1_source_hit(sample, contexts) if should_answer else None
-    keyword_hits, keyword_total = count_keyword_hits(sample, ask_answer) if should_answer else (0, 0)
-    citation_hits, citation_total = count_citation_hits(sample, citations) if should_answer else (0, 0)
+    keyword_hits, keyword_total = count_keyword_hits(sample, ask_answer) if should_answer and ask_evaluable else (0, 0)
+    citation_hits, citation_total = count_citation_hits(sample, citations) if should_answer and ask_evaluable else (0, 0)
     citation_snippet_hits, citation_snippet_total, unsupported_citation_count = count_citation_snippet_support(
         citations,
         ask_response.get("contexts", []) if ask_response else [],
-    )
-    no_answer_citation_violation_count = 1 if (not should_answer and len(citations or []) > 0) else 0
-    no_answer_ok = is_no_answer(ask_response, ask_answer) if not should_answer and ask_response is not None else None
+    ) if ask_evaluable else (0, 0, 0)
+    no_answer_citation_violation_count = 1 if (ask_evaluable and not should_answer and len(citations or []) > 0) else 0
+    no_answer_ok = is_no_answer(ask_response, ask_answer) if not should_answer and ask_evaluable else None
 
     if retrieval_error is None and should_answer and not contexts:
         retrieval_error = "No contexts returned; knowledge base may not exist, documents may still be indexing, or minScore is too high."
@@ -296,6 +324,10 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             "noAnswerCitationViolationCount": no_answer_citation_violation_count,
             "noAnswerOk": no_answer_ok,
             "citationValidation": citation_validation_metadata(ask_response),
+            "askSkipped": skipped_ask,
+            "askAttempts": ask_attempts,
+            "askRetries": ask_retry_count,
+            "rateLimitErrors": rate_limit_errors,
         },
         "errors": {
             "retrieval": retrieval_error,
@@ -326,7 +358,99 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         debug_response=debug_response,
         ask_response=ask_response,
         details=details,
+        skipped_ask=skipped_ask,
+        ask_attempts=ask_attempts,
+        ask_retry_count=ask_retry_count,
+        rate_limit_errors=rate_limit_errors,
     )
+
+
+def call_ask_with_retries(
+    question: str,
+    args: argparse.Namespace,
+    token: str,
+) -> tuple[dict[str, Any], dict[str, int]]:
+    max_retries = max(0, args.max_ask_retries)
+    attempts = 0
+    retries = 0
+    rate_limit_errors = 0
+    last_error: Exception | None = None
+
+    for attempt in range(max_retries + 1):
+        attempts += 1
+        if args.ask_delay_seconds > 0:
+            time.sleep(args.ask_delay_seconds)
+        try:
+            response = api_data(call_json(
+                "POST",
+                f"{args.base_url}/api/qa/ask",
+                {
+                    "kbId": args.kb_id,
+                    "question": question,
+                    "topK": args.top_k,
+                    "minScore": args.min_score,
+                    "enableCache": False,
+                },
+                token,
+                args.timeout,
+            ))
+            metadata = response.get("metadata") if isinstance(response.get("metadata"), dict) else {}
+            if metadata.get("status") == "error":
+                message = str(response.get("answer") or metadata.get("message") or "QA returned error status")
+                raise ApiCallError(f"QA returned error status: {message}", infer_http_status(message))
+            if args.ask_delay_seconds > 0:
+                time.sleep(args.ask_delay_seconds)
+            return response, {
+                "attempts": attempts,
+                "retries": retries,
+                "rateLimitErrors": rate_limit_errors,
+            }
+        except Exception as exc:  # noqa: BLE001 - retry classification is explicit below
+            last_error = exc
+            if isinstance(exc, ApiCallError) and exc.http_status == 429:
+                rate_limit_errors += 1
+            if args.ask_delay_seconds > 0:
+                time.sleep(args.ask_delay_seconds)
+            if attempt >= max_retries or not should_retry_ask_error(exc):
+                break
+            retries += 1
+            backoff = retry_wait_seconds(args.retry_backoff_seconds, retries)
+            if backoff > 0:
+                time.sleep(backoff)
+
+    if last_error is None:
+        raise RuntimeError("ask failed without an exception")
+    raise AskRetryError(last_error, attempts, retries, rate_limit_errors)
+
+
+def should_retry_ask_error(error: Exception) -> bool:
+    if isinstance(error, ApiCallError):
+        if error.http_status == 429:
+            return True
+        if error.http_status is not None:
+            return 500 <= error.http_status <= 599
+        return True
+    text = str(error).lower()
+    if "http 429" in text or "too many requests" in text:
+        return True
+    if "timeout" in text or "timed out" in text:
+        return True
+    return bool(re.search(r"http 5\d\d", text) or re.search(r"code=5\d\d", text))
+
+
+def infer_http_status(text: str) -> int | None:
+    match = re.search(r"\bHTTP\s+(\d{3})\b", text, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    if "too many requests" in text.lower() or "rate limit" in text.lower():
+        return 429
+    return None
+
+
+def retry_wait_seconds(base_seconds: float, retry_number: int) -> float:
+    if base_seconds <= 0:
+        return 0.0
+    return base_seconds * retry_number
 
 
 def expected_context_total(sample: dict[str, Any]) -> int:
@@ -565,6 +689,14 @@ def normalized_source_candidates(item: dict[str, Any] | None) -> set[str]:
 def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
     answerable = [result for result in results if result.sample.get("should_answer", True)]
     no_answer = [result for result in results if not result.sample.get("should_answer", True)]
+    ask_success = [
+        result
+        for result in results
+        if not result.skipped_ask and result.ask_error is None and result.ask_response is not None
+    ]
+    answerable_ask_success = [result for result in ask_success if result.sample.get("should_answer", True)]
+    no_answer_ask_success = [result for result in ask_success if not result.sample.get("should_answer", True)]
+    ask_skipped = sum(1 for result in results if result.skipped_ask)
 
     recall_total = sum(result.recall_total for result in answerable)
     recall3_hits = sum(result.recall3_hits for result in answerable)
@@ -575,15 +707,17 @@ def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
         if result.first_match_rank is not None and result.first_match_rank > 0
     ]
     top1_values = [result.top1_source_hit for result in answerable if result.top1_source_hit is not None]
-    keyword_hits = sum(result.keyword_hits for result in answerable)
-    keyword_total = sum(result.keyword_total for result in answerable)
-    citation_hits = sum(result.citation_hits for result in answerable)
-    citation_total = sum(result.citation_total for result in answerable)
-    citation_snippet_hits = sum(result.citation_snippet_hits for result in results)
-    citation_snippet_total = sum(result.citation_snippet_total for result in results)
-    unsupported_citation_count = sum(result.unsupported_citation_count for result in results)
-    no_answer_citation_violation_count = sum(result.no_answer_citation_violation_count for result in results)
-    no_answer_values = [result.no_answer_ok for result in no_answer if result.no_answer_ok is not None]
+    keyword_hits = sum(result.keyword_hits for result in answerable_ask_success)
+    keyword_total = sum(result.keyword_total for result in answerable_ask_success)
+    citation_hits = sum(result.citation_hits for result in answerable_ask_success)
+    citation_total = sum(result.citation_total for result in answerable_ask_success)
+    citation_snippet_hits = sum(result.citation_snippet_hits for result in ask_success)
+    citation_snippet_total = sum(result.citation_snippet_total for result in ask_success)
+    unsupported_citation_count = sum(result.unsupported_citation_count for result in ask_success)
+    no_answer_citation_violation_count = sum(result.no_answer_citation_violation_count for result in no_answer_ask_success)
+    no_answer_values = [result.no_answer_ok for result in no_answer_ask_success if result.no_answer_ok is not None]
+    generation_skipped = ask_skipped == len(results) if results else False
+    no_answer_ok_count = sum(1 for value in no_answer_values if value)
 
     return {
         "samples": len(results),
@@ -593,13 +727,24 @@ def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
         "recall_at_5": ratio(recall5_hits, recall_total),
         "mrr": sum(reciprocal_ranks) / len(answerable) if answerable else 0.0,
         "top1_source_accuracy": ratio(sum(1 for value in top1_values if value), len(top1_values)),
-        "answer_keyword_hit_rate": ratio(keyword_hits, keyword_total),
-        "citation_hit_rate": ratio(citation_hits, citation_total),
-        "citation_source_hit_rate": ratio(citation_hits, citation_total),
-        "citation_snippet_hit_rate": ratio(citation_snippet_hits, citation_snippet_total),
+        "answer_keyword_hit_rate": metric_ratio(keyword_hits, keyword_total, generation_skipped),
+        "citation_hit_rate": metric_ratio(citation_hits, citation_total, generation_skipped),
+        "citation_source_hit_rate": metric_ratio(citation_hits, citation_total, generation_skipped),
+        "citation_snippet_hit_rate": metric_ratio(citation_snippet_hits, citation_snippet_total, generation_skipped),
         "unsupported_citation_count": unsupported_citation_count,
         "no_answer_citation_violation_count": no_answer_citation_violation_count,
-        "no_answer_accuracy": ratio(sum(1 for value in no_answer_values if value), len(no_answer_values)),
+        "no_answer_accuracy": metric_ratio(no_answer_ok_count, len(no_answer_values), generation_skipped),
+        "ask_success_samples": len(ask_success),
+        "answerable_ask_success_samples": len(answerable_ask_success),
+        "no_answer_ask_success_samples": len(no_answer_ask_success),
+        "answer_keyword_hits": keyword_hits,
+        "answer_keyword_total": keyword_total,
+        "citation_source_hits": citation_hits,
+        "citation_source_total": citation_total,
+        "citation_snippet_hits": citation_snippet_hits,
+        "citation_snippet_total": citation_snippet_total,
+        "no_answer_ok_count": no_answer_ok_count,
+        "no_answer_evaluable_total": len(no_answer_values),
     }
 
 
@@ -607,10 +752,52 @@ def ratio(numerator: int | float, denominator: int | float) -> float:
     return 0.0 if denominator == 0 else float(numerator) / float(denominator)
 
 
+def metric_ratio(numerator: int, denominator: int, skipped: bool) -> float | str:
+    if skipped:
+        return "skipped"
+    if denominator == 0:
+        return "N/A"
+    return ratio(numerator, denominator)
+
+
 def pct(value: float | int | str) -> str:
     if isinstance(value, str):
         return value
     return f"{float(value) * 100:.2f}%"
+
+
+def run_counts(results: list[SampleResult]) -> dict[str, int]:
+    return {
+        "askErrors": sum(1 for result in results if result.ask_error is not None),
+        "retrieveErrors": sum(1 for result in results if result.retrieval_error is not None),
+        "skippedAsk": sum(1 for result in results if result.skipped_ask),
+        "rateLimitErrors": sum(result.rate_limit_errors for result in results),
+        "retryCount": sum(result.ask_retry_count for result in results),
+    }
+
+
+def report_status(args: argparse.Namespace, results: list[SampleResult], login_error: str | None) -> str:
+    if login_error:
+        return "FAILED"
+    counts = run_counts(results)
+    retrieve_errors = counts["retrieveErrors"]
+    if results and retrieve_errors >= max(1, len(results) // 2):
+        return "FAILED"
+    if args.skip_ask:
+        return "RETRIEVAL_ONLY"
+    if retrieve_errors == 0 and counts["askErrors"] == 0:
+        return "CLEAN"
+    return "PARTIAL"
+
+
+def metrics_safe_for_comparison(status: str, counts: dict[str, int]) -> str:
+    if status == "CLEAN":
+        return "yes"
+    if status == "RETRIEVAL_ONLY":
+        return "retrieval metrics only" if counts["retrieveErrors"] == 0 else "no"
+    if status == "PARTIAL" and counts["retrieveErrors"] == 0:
+        return "retrieval metrics only; generation/citation metrics are partial"
+    return "no"
 
 
 def write_report(
@@ -623,16 +810,29 @@ def write_report(
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     finished = time.time()
+    status = report_status(args, results, login_error)
+    counts = run_counts(results)
     lines: list[str] = []
     lines.append("# RAG Eval Report")
     lines.append("")
     lines.append(f"- Generated at: {datetime.now(timezone.utc).isoformat()}")
+    lines.append(f"- Report status: `{status}`")
+    lines.append(f"- askErrors count: `{counts['askErrors']}`")
+    lines.append(f"- retrieveErrors count: `{counts['retrieveErrors']}`")
+    lines.append(f"- skippedAsk count: `{counts['skippedAsk']}`")
+    lines.append(f"- rateLimitErrors count: `{counts['rateLimitErrors']}`")
+    lines.append(f"- retry count: `{counts['retryCount']}`")
+    lines.append(f"- Metrics safe for comparison: `{metrics_safe_for_comparison(status, counts)}`")
     lines.append(f"- Base URL: `{args.base_url}`")
     lines.append(f"- Knowledge base ID: `{args.kb_id}`")
     lines.append(f"- Eval set: `{args.eval_set}`")
     lines.append(f"- topK: `{args.top_k}`")
     lines.append(f"- minScore: `{args.min_score}`")
     lines.append(f"- enableRerank: `{args.enable_rerank}`")
+    lines.append(f"- skipAsk: `{args.skip_ask}`")
+    lines.append(f"- askDelaySeconds: `{args.ask_delay_seconds}`")
+    lines.append(f"- maxAskRetries: `{args.max_ask_retries}`")
+    lines.append(f"- retryBackoffSeconds: `{args.retry_backoff_seconds}`")
     lines.append(f"- Duration: `{finished - started_at:.2f}s`")
     lines.append("")
 
@@ -668,29 +868,33 @@ def write_report(
     lines.append(f"| Recall@5 | {pct(metrics['recall_at_5'])} |")
     lines.append(f"| MRR | {float(metrics['mrr']):.4f} |")
     lines.append(f"| Top1 source accuracy | {pct(metrics['top1_source_accuracy'])} |")
-    lines.append(f"| Answer keyword hit rate | {pct(metrics['answer_keyword_hit_rate'])} |")
-    lines.append(f"| Citation hit rate | {pct(metrics['citation_hit_rate'])} |")
-    lines.append(f"| Citation source hit rate | {pct(metrics['citation_source_hit_rate'])} |")
-    lines.append(f"| Citation snippet hit rate | {pct(metrics['citation_snippet_hit_rate'])} |")
+    lines.append(f"| Ask successful samples | {metrics['ask_success_samples']} |")
+    lines.append(f"| Answerable ask successful samples | {metrics['answerable_ask_success_samples']} |")
+    lines.append(f"| No-answer ask successful samples | {metrics['no_answer_ask_success_samples']} |")
+    lines.append(f"| Answer keyword hit rate on successful ask samples | {pct(metrics['answer_keyword_hit_rate'])} ({metrics['answer_keyword_hits']}/{metrics['answer_keyword_total']}) |")
+    lines.append(f"| Citation hit rate on successful ask samples | {pct(metrics['citation_hit_rate'])} ({metrics['citation_source_hits']}/{metrics['citation_source_total']}) |")
+    lines.append(f"| Citation source hit rate on successful ask samples | {pct(metrics['citation_source_hit_rate'])} ({metrics['citation_source_hits']}/{metrics['citation_source_total']}) |")
+    lines.append(f"| Citation snippet hit rate on successful ask samples | {pct(metrics['citation_snippet_hit_rate'])} ({metrics['citation_snippet_hits']}/{metrics['citation_snippet_total']}) |")
     lines.append(f"| Unsupported citation count | {metrics['unsupported_citation_count']} |")
     lines.append(f"| No-answer citation violation count | {metrics['no_answer_citation_violation_count']} |")
-    lines.append(f"| No-answer accuracy | {pct(metrics['no_answer_accuracy'])} |")
+    lines.append(f"| No-answer accuracy on successful ask samples | {pct(metrics['no_answer_accuracy'])} ({metrics['no_answer_ok_count']}/{metrics['no_answer_evaluable_total']}) |")
     lines.append("")
 
     lines.append("## Sample Results")
     lines.append("")
-    lines.append("| ID | Type | Retrieve | First Match | Keyword Hit | Citation Source | Citation Snippet | Unsupported Citations | No-answer OK | Errors |")
-    lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---|")
+    lines.append("| ID | Type | Retrieve | First Match | Ask | Keyword Hit | Citation Source | Citation Snippet | Unsupported Citations | No-answer OK | Errors |")
+    lines.append("|---|---|---:|---:|---|---:|---:|---:|---:|---:|---|")
     for result in results:
         retrieve = f"{result.recall5_hits}/{result.recall_total}" if result.recall_total else "-"
         first = result.first_match_rank if result.first_match_rank is not None else "-"
-        keyword = f"{result.keyword_hits}/{result.keyword_total}" if result.keyword_total else "-"
-        citation = f"{result.citation_hits}/{result.citation_total}" if result.citation_total else "-"
-        citation_snippet = f"{result.citation_snippet_hits}/{result.citation_snippet_total}" if result.citation_snippet_total else "-"
+        ask_state = "skipped" if result.skipped_ask else ("ok" if result.ask_error is None else "error")
+        keyword = "skipped" if result.skipped_ask else (f"{result.keyword_hits}/{result.keyword_total}" if result.keyword_total else "-")
+        citation = "skipped" if result.skipped_ask else (f"{result.citation_hits}/{result.citation_total}" if result.citation_total else "-")
+        citation_snippet = "skipped" if result.skipped_ask else (f"{result.citation_snippet_hits}/{result.citation_snippet_total}" if result.citation_snippet_total else "-")
         no_answer = format_bool(result.no_answer_ok)
         errors = "; ".join(error for error in [result.retrieval_error, result.ask_error] if error) or ""
         lines.append(
-            f"| {result.sample.get('id')} | {result.sample.get('type')} | {retrieve} | {first} | "
+            f"| {result.sample.get('id')} | {result.sample.get('type')} | {retrieve} | {first} | {ask_state} | "
             f"{keyword} | {citation} | {citation_snippet} | {result.unsupported_citation_count} | "
             f"{no_answer} | {escape_table(errors)} |"
         )
@@ -700,6 +904,8 @@ def write_report(
     lines.append("")
     lines.append("- `debug/retrieve` is used for Recall@3, Recall@5, MRR, and Top1 source accuracy.")
     lines.append("- `ask` is used for answer keyword hit rate, citation hit rate, and no-answer accuracy.")
+    lines.append("- When `--skip-ask` is enabled, generation/citation/no-answer metrics are marked as skipped instead of being counted as zero.")
+    lines.append("- When ask errors occur, generation/citation/no-answer metrics are calculated only on successful ask samples and the report status becomes PARTIAL.")
     lines.append("- `queryVariants`, `rank`, `score`, `source`, `documentId`, `chunkId`, `contentPreview`, and `metadata` are expected in debug output.")
     lines.append("")
 
@@ -941,14 +1147,23 @@ def write_details_json(
     started_at: float,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    status = report_status(args, results, login_error)
+    counts = run_counts(results)
     payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "reportStatus": status,
+        "runCounts": counts,
+        "metricsSafeForComparison": metrics_safe_for_comparison(status, counts),
         "baseUrl": args.base_url,
         "kbId": args.kb_id,
         "evalSet": args.eval_set,
         "topK": args.top_k,
         "minScore": args.min_score,
         "enableRerank": args.enable_rerank,
+        "skipAsk": args.skip_ask,
+        "askDelaySeconds": args.ask_delay_seconds,
+        "maxAskRetries": args.max_ask_retries,
+        "retryBackoffSeconds": args.retry_backoff_seconds,
         "durationSeconds": round(time.time() - started_at, 4),
         "metrics": aggregate(results) if not login_error else None,
         "loginError": login_error,
@@ -956,6 +1171,16 @@ def write_details_json(
         "samples": [result.details for result in results],
     }
     path.write_text(json.dumps(sanitize_sensitive(payload), ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def ensure_no_overwrite(paths: list[Path]) -> bool:
+    existing = [path for path in paths if path.exists()]
+    if not existing:
+        return True
+    print("--no-overwrite refused to overwrite existing output file(s):", file=sys.stderr)
+    for path in existing:
+        print(f"- {path}", file=sys.stderr)
+    return False
 
 
 def main() -> int:
@@ -966,6 +1191,15 @@ def main() -> int:
     report_path = Path(args.report)
     after_report_path = Path(args.after_report) if args.after_report else None
     details_json_path = Path(args.details_json) if args.details_json else None
+
+    if args.no_overwrite:
+        output_paths = [report_path]
+        if after_report_path is not None:
+            output_paths.append(after_report_path)
+        if details_json_path is not None:
+            output_paths.append(details_json_path)
+        if not ensure_no_overwrite(output_paths):
+            return 2
 
     if args.kb_id is None:
         print("Missing --kb-id or RAG_EVAL_KB_ID. Create an eval knowledge base first, then pass its id.", file=sys.stderr)
@@ -1003,15 +1237,24 @@ def main() -> int:
         return 1
 
     metrics = aggregate(results)
+    status = report_status(args, results, login_error)
+    counts = run_counts(results)
     print("\nRAG eval complete")
+    print(f"Report status: {status}")
+    print(f"askErrors: {counts['askErrors']}")
+    print(f"retrieveErrors: {counts['retrieveErrors']}")
+    print(f"skippedAsk: {counts['skippedAsk']}")
+    print(f"rateLimitErrors: {counts['rateLimitErrors']}")
+    print(f"retry count: {counts['retryCount']}")
+    print(f"Metrics safe for comparison: {metrics_safe_for_comparison(status, counts)}")
     print(f"Recall@3: {pct(metrics['recall_at_3'])}")
     print(f"Recall@5: {pct(metrics['recall_at_5'])}")
     print(f"MRR: {float(metrics['mrr']):.4f}")
     print(f"Top1 source accuracy: {pct(metrics['top1_source_accuracy'])}")
-    print(f"Answer keyword hit rate: {pct(metrics['answer_keyword_hit_rate'])}")
-    print(f"Citation hit rate: {pct(metrics['citation_hit_rate'])}")
-    print(f"Citation source hit rate: {pct(metrics['citation_source_hit_rate'])}")
-    print(f"Citation snippet hit rate: {pct(metrics['citation_snippet_hit_rate'])}")
+    print(f"Answer keyword hit rate on successful ask samples: {pct(metrics['answer_keyword_hit_rate'])}")
+    print(f"Citation hit rate on successful ask samples: {pct(metrics['citation_hit_rate'])}")
+    print(f"Citation source hit rate on successful ask samples: {pct(metrics['citation_source_hit_rate'])}")
+    print(f"Citation snippet hit rate on successful ask samples: {pct(metrics['citation_snippet_hit_rate'])}")
     print(f"Unsupported citation count: {metrics['unsupported_citation_count']}")
     print(f"No-answer citation violation count: {metrics['no_answer_citation_violation_count']}")
     print(f"No-answer accuracy: {pct(metrics['no_answer_accuracy'])}")
@@ -1020,6 +1263,9 @@ def main() -> int:
         print(f"Wrote report: {after_report_path}")
     if details_json_path is not None:
         print(f"Wrote details JSON: {details_json_path}")
+    if args.fail_on_ask_errors and counts["askErrors"] > 0:
+        print("--fail-on-ask-errors enabled and askErrors > 0.", file=sys.stderr)
+        return 1
     return 0
 
 

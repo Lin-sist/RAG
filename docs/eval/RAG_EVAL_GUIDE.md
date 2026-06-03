@@ -287,6 +287,57 @@ python scripts/run_rag_eval.py \
   --after-report docs/eval/reports/after-citation-validator.md
 ```
 
+为了避免 LLM API 限流污染干净 baseline，建议把 live eval 拆成两步。
+
+先跑 retrieval-only clean baseline，只调用 `/api/qa/debug/retrieve`，不调用 `/api/qa/ask`：
+
+```powershell
+python scripts\run_rag_eval.py --kb-id 6 `
+  --skip-ask `
+  --report docs\eval\reports\baseline-004-retrieval-only.md `
+  --details-json docs\eval\reports\baseline-004-retrieval-details.json `
+  --no-overwrite
+```
+
+再跑 slow ask baseline，用延迟和 retry 降低 NVIDIA/Qwen/OpenAI-compatible API 的 429 风险：
+
+```powershell
+python scripts\run_rag_eval.py --kb-id 6 `
+  --ask-delay-seconds 8 `
+  --max-ask-retries 3 `
+  --retry-backoff-seconds 10 `
+  --report docs\eval\reports\baseline-004-generation-clean.md `
+  --details-json docs\eval\reports\baseline-004-generation-details.json `
+  --no-overwrite
+```
+
+新增可靠性参数：
+
+- `--skip-ask`：只跑检索评测，generation/citation/no-answer 指标在报告中显示为 `skipped`，不会误算成 0。
+- `--ask-delay-seconds`：每次调用 `/api/qa/ask` 前后等待指定秒数，默认 `0`。
+- `--max-ask-retries`：`/api/qa/ask` 对 429、timeout、5xx 的最大重试次数，默认 `0`。
+- `--retry-backoff-seconds`：重试基础等待秒数，当前使用简单线性退避。
+- `--fail-on-ask-errors`：报告和 details JSON 仍然写出，但只要 `askErrors > 0`，进程以非 0 code 退出。
+- `--no-overwrite`：目标 report、after-report 或 details JSON 已存在时拒绝覆盖，避免污染已经确认干净的 baseline。
+
+报告顶部会标记：
+
+- `Report status: CLEAN / PARTIAL / RETRIEVAL_ONLY / FAILED`
+- `askErrors count`
+- `retrieveErrors count`
+- `skippedAsk count`
+- `rateLimitErrors count`
+- `retry count`
+- `Metrics safe for comparison`
+
+判断报告是否被 429 污染时，优先看报告顶部：
+
+- `CLEAN`：没有 retrieve error，也没有 ask error，retrieval 和 generation/citation 指标都适合对比。
+- `RETRIEVAL_ONLY`：只适合比较 Recall@3、Recall@5、MRR、Top1 source accuracy。
+- `PARTIAL`：通常说明 ask 有失败；retrieval 完整时仍可比较 retrieval 指标，但 generation/citation 指标只基于 ask 成功样本。
+- `FAILED`：retrieve 大面积失败或登录失败，本次结果不适合作为 baseline。
+- `rateLimitErrors count > 0` 或 `askErrors count > 0`：不要把本次 generation/citation 指标当作干净 baseline。
+
 也可以使用环境变量：
 
 ```bash
