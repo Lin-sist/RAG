@@ -4,8 +4,9 @@ import com.enterprise.rag.common.constant.RedisKeyConstants;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -15,6 +16,8 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -29,15 +32,24 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
+    private final Executor asyncTaskExecutor;
 
     /**
      * 内存中的任务句柄缓存，用于取消任务
      */
     private final Map<String, CompletableFuture<?>> taskFutures = new ConcurrentHashMap<>();
 
-    public RedisAsyncTaskManager(StringRedisTemplate stringRedisTemplate, ObjectMapper objectMapper) {
+    @Autowired
+    public RedisAsyncTaskManager(StringRedisTemplate stringRedisTemplate,
+            ObjectMapper objectMapper,
+            @Qualifier("asyncTaskExecutor") Executor asyncTaskExecutor) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
+        this.asyncTaskExecutor = asyncTaskExecutor;
+    }
+
+    RedisAsyncTaskManager(StringRedisTemplate stringRedisTemplate, ObjectMapper objectMapper) {
+        this(stringRedisTemplate, objectMapper, ForkJoinPool.commonPool());
     }
 
     @Override
@@ -205,7 +217,6 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
     /**
      * 异步执行任务
      */
-    @Async
     protected <T> CompletableFuture<T> executeAsync(String taskId, String taskType, Long ownerId, AsyncTask<T> task) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -230,7 +241,7 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
                 saveStatus(taskId, TaskStatus.failed(taskId, taskType, e.getMessage(), ownerId));
                 throw new RuntimeException(e);
             }
-        });
+        }, asyncTaskExecutor);
     }
 
     /**
