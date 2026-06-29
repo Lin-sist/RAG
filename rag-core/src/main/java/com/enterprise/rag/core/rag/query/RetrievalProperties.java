@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 public class RetrievalProperties {
     private Hybrid hybrid = new Hybrid();
     private Keyword keyword = new Keyword();
+    private Rerank rerank = new Rerank();
 
     @Data
     public static class Hybrid {
@@ -21,5 +22,21 @@ public class RetrievalProperties {
     @Data
     public static class Keyword {
         private boolean enabled = true;
+    }
+
+    @Data
+    public static class Rerank {
+        private String provider = "heuristic";
+        private int topN = 20;
+        private int topK = 5;
+        private ModelReranker model = new ModelReranker();
+    }
+
+    @Data
+    public static class ModelReranker {
+        private boolean enabled = false;
+        private String baseUrl = "";
+        private String apiKey = "";
+        private String model = "";
     }
 }

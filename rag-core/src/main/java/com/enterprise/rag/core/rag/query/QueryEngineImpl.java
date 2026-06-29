@@ -5,6 +5,9 @@ import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
+import com.enterprise.rag.core.rag.rerank.HeuristicReranker;
+import com.enterprise.rag.core.rag.rerank.ModelReranker;
+import com.enterprise.rag.core.rag.rerank.RerankerRegistry;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.SearchResult;
 import com.enterprise.rag.core.vectorstore.VectorStore;
@@ -32,7 +35,6 @@ import java.util.regex.Pattern;
 public class QueryEngineImpl implements QueryEngine {
 
     private static final Pattern LATIN_TOKEN_PATTERN = Pattern.compile("[\\p{Alnum}]+");
-    private static final Pattern CJK_SEGMENT_PATTERN = Pattern.compile("[\\p{IsHan}]+");
     private static final Pattern TRAILING_PUNCTUATION_PATTERN = Pattern.compile("[\\s？?！!。,.，；;：:]+$");
     private static final Pattern LEADING_POLITE_PATTERN = Pattern.compile(
             "^(请问|请教一下|请教|想问一下|想问|麻烦问下|麻烦问一下|帮我|请你|请|你认为|你觉得|你看|可以说说|说说|聊聊|分析一下|分析下|帮忙分析一下|帮忙分析下)\\s*");
@@ -56,20 +58,33 @@ public class QueryEngineImpl implements QueryEngine {
     private final VectorStore vectorStore;
     private final KeywordIndex keywordIndex;
     private final RetrievalProperties retrievalProperties;
+    private final RerankerRegistry rerankerRegistry;
 
     @Autowired
     public QueryEngineImpl(EmbeddingService embeddingService,
             VectorStore vectorStore,
             KeywordIndex keywordIndex,
-            RetrievalProperties retrievalProperties) {
+            RetrievalProperties retrievalProperties,
+            RerankerRegistry rerankerRegistry) {
         this.embeddingService = embeddingService;
         this.vectorStore = vectorStore;
         this.keywordIndex = keywordIndex;
         this.retrievalProperties = retrievalProperties;
+        this.rerankerRegistry = rerankerRegistry;
     }
 
     QueryEngineImpl(EmbeddingService embeddingService, VectorStore vectorStore) {
         this(embeddingService, vectorStore, new NoOpKeywordIndex(), new RetrievalProperties());
+    }
+
+    QueryEngineImpl(EmbeddingService embeddingService,
+            VectorStore vectorStore,
+            KeywordIndex keywordIndex,
+            RetrievalProperties retrievalProperties) {
+        this(embeddingService, vectorStore, keywordIndex, retrievalProperties,
+                new RerankerRegistry(
+                        List.of(new HeuristicReranker(), new ModelReranker(retrievalProperties)),
+                        retrievalProperties));
     }
 
     @Override
@@ -107,12 +122,14 @@ public class QueryEngineImpl implements QueryEngine {
 
         // 3. 如果启用重排序，执行重排序
         if (options.enableRerank() && !contexts.isEmpty()) {
-            contexts = rerank(query, contexts);
+            contexts = rerankerRegistry.activeReranker().rerank(query, contexts.stream()
+                    .limit(rerankTopN())
+                    .toList());
             log.debug("Reranked {} contexts", contexts.size());
         }
 
         return contexts.stream()
-                .limit(options.topK())
+                .limit(finalTopK(options.topK()))
                 .toList();
     }
 
@@ -127,6 +144,15 @@ public class QueryEngineImpl implements QueryEngine {
 
     private int rrfK() {
         return Math.max(1, retrievalProperties.getHybrid().getRrfK());
+    }
+
+    private int rerankTopN() {
+        return Math.max(1, retrievalProperties.getRerank().getTopN());
+    }
+
+    private int finalTopK(int requestedTopK) {
+        int configuredTopK = Math.max(1, retrievalProperties.getRerank().getTopK());
+        return Math.max(1, Math.min(requestedTopK, configuredTopK));
     }
 
     @Override
@@ -219,55 +245,6 @@ public class QueryEngineImpl implements QueryEngine {
                 return existing.add(context, contribution, routeName);
             });
         }
-    }
-
-    /**
-     * 重排序检索结果
-     * 使用简单的基于关键词匹配的重排序策略
-     * 可以扩展为使用专门的重排序模型（如 BGE-Reranker）
-     */
-    private List<RetrievedContext> rerank(String query, List<RetrievedContext> contexts) {
-        if (contexts.size() <= 1) {
-            return contexts;
-        }
-
-        // 提取查询关键词：同时兼容英文词和中文连续文本
-        List<String> queryTerms = extractQueryTerms(query);
-
-        // 计算每个上下文的重排序分数
-        List<ScoredContext> scoredContexts = new ArrayList<>();
-        for (RetrievedContext context : contexts) {
-            float rerankScore = calculateRerankScore(context, queryTerms);
-            scoredContexts.add(new ScoredContext(context, rerankScore));
-        }
-
-        // 按重排序分数降序排列
-        return scoredContexts.stream()
-                .sorted(Comparator.comparingDouble(ScoredContext::score).reversed())
-                .map(ScoredContext::context)
-                .toList();
-    }
-
-    /**
-     * 计算重排序分数
-     * 综合考虑原始相似度分数和关键词匹配度
-     */
-    private float calculateRerankScore(RetrievedContext context, List<String> queryTerms) {
-        String contentLower = context.content() == null ? "" : context.content().toLowerCase();
-
-        // 计算关键词匹配度
-        int matchCount = 0;
-        for (String term : queryTerms) {
-            if (!term.isBlank() && contentLower.contains(term)) {
-                matchCount++;
-            }
-        }
-        float keywordScore = !queryTerms.isEmpty()
-                ? (float) matchCount / queryTerms.size()
-                : 0f;
-
-        // 综合分数 = 原始分数 * 0.7 + 关键词分数 * 0.3
-        return context.relevanceScore() * 0.7f + keywordScore * 0.3f;
     }
 
     /**
@@ -444,78 +421,6 @@ public class QueryEngineImpl implements QueryEngine {
             return "source:" + context.source();
         }
         return "content:" + (context.content() == null ? "" : context.content().trim().toLowerCase(Locale.ROOT));
-    }
-
-    /**
-     * 查询分词：
-     * 1) 英文/数字按词提取（长度 >= 2）
-     * 2) 中文按连续片段提取，并补充 2-gram，增强中文短词命中率
-     */
-    private List<String> extractQueryTerms(String query) {
-        Set<String> terms = new LinkedHashSet<>();
-        String normalized = stripConversationalNoise(query == null ? "" : query).toLowerCase(Locale.ROOT);
-
-        Matcher latinMatcher = LATIN_TOKEN_PATTERN.matcher(normalized);
-        while (latinMatcher.find()) {
-            String token = latinMatcher.group().trim();
-            if (token.length() >= 2) {
-                terms.add(token);
-            }
-        }
-
-        Matcher cjkMatcher = CJK_SEGMENT_PATTERN.matcher(normalized);
-        while (cjkMatcher.find()) {
-            String segment = cjkMatcher.group().trim();
-            if (segment.isEmpty()) {
-                continue;
-            }
-
-            if (segment.length() >= 2) {
-                terms.add(segment);
-                for (int i = 0; i < segment.length() - 1; i++) {
-                    terms.add(segment.substring(i, i + 2));
-                }
-            } else {
-                terms.add(segment);
-            }
-        }
-
-        ExplanationIntent intent = parseExplanationIntent(normalized);
-        if (intent != null) {
-            addExplanationTerms(terms, intent);
-        }
-
-        return new ArrayList<>(terms);
-    }
-
-    private void addExplanationTerms(Set<String> terms, ExplanationIntent intent) {
-        String subject = intent.subject().toLowerCase(Locale.ROOT);
-        if (!subject.isBlank()) {
-            terms.add(subject);
-        }
-
-        switch (intent.type()) {
-            case HOW -> {
-                terms.add("原理");
-                terms.add("流程");
-                terms.add("机制");
-            }
-            case WHY -> {
-                terms.add("作用");
-                terms.add("目的");
-                terms.add("原因");
-            }
-            case GENERAL -> {
-                terms.add("原理");
-                terms.add("机制");
-            }
-        }
-    }
-
-    /**
-     * 带分数的上下文记录
-     */
-    private record ScoredContext(RetrievedContext context, float score) {
     }
 
     private record RrfContext(RetrievedContext context, double score, Set<String> routes) {

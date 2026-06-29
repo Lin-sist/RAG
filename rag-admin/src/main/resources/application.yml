@@ -149,3 +149,12 @@ retrieval:
     keyword-top-k-multiplier: 2
   keyword:
     enabled: true
+  rerank:
+    provider: heuristic
+    top-n: 20
+    top-k: 5
+    model:
+      enabled: false
+      base-url: ""
+      api-key: ""
+      model: ""

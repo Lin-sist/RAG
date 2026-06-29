@@ -4,6 +4,9 @@ import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
+import com.enterprise.rag.core.rag.rerank.HeuristicReranker;
+import com.enterprise.rag.core.rag.rerank.ModelReranker;
+import com.enterprise.rag.core.rag.rerank.RerankerRegistry;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.SearchResult;
 import com.enterprise.rag.core.vectorstore.VectorStore;
@@ -204,5 +207,27 @@ class QueryEngineImplTest {
         assertEquals(2, contexts.size());
         assertEquals("shared", contexts.get(0).source());
         verify(keywordIndex).search(eq("kb_test"), eq("缓存穿透"), eq(4), eq(Map.of()));
+    }
+
+    @Test
+    void shouldFallbackToHeuristicRerankerWhenModelProviderUnavailable() {
+        RetrievalProperties properties = new RetrievalProperties();
+        properties.getRerank().setProvider("model");
+        properties.getHybrid().setEnabled(false);
+        RerankerRegistry registry = new RerankerRegistry(
+                List.of(new HeuristicReranker(), new ModelReranker(properties)),
+                properties);
+        queryEngine = new QueryEngineImpl(embeddingService, vectorStore, new com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex(),
+                properties, registry);
+
+        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenReturn(List.of(
+                new SearchResult("a", "mysql index tuning guide", 0.88f, Map.of()),
+                new SearchResult("b", "spring security authentication best practices", 0.72f, Map.of())));
+
+        List<RetrievedContext> contexts = queryEngine.retrieve(
+                "spring security auth",
+                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+
+        assertEquals("b", contexts.get(0).source());
     }
 }
