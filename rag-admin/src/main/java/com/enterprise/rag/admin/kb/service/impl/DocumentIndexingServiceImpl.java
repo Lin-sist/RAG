@@ -52,6 +52,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class DocumentIndexingServiceImpl implements DocumentIndexingService {
 
+    private static final int MAX_INDEX_ATTEMPTS = 3;
+    private static final long INITIAL_RETRY_BACKOFF_MS = 500L;
+
     private final DocumentService documentService;
     private final KnowledgeBaseService knowledgeBaseService;
     private final DocumentProcessor documentProcessor;
@@ -163,52 +166,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                         .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
                         .getVectorCollection();
 
-                List<String> chunkTexts = chunks.stream().map(DocumentChunk::content).toList();
-
-                progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
-                List<float[]> vectors = embeddingService.embedBatch(chunkTexts);
-
-                // 构造向量文档列表及对应的 DB Chunk 实体
-                List<VectorDocument> vectorDocs = new ArrayList<>(chunks.size());
-                List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks = new ArrayList<>(
-                        chunks.size());
-
-                for (int i = 0; i < chunks.size(); i++) {
-                    DocumentChunk chunk = chunks.get(i);
-                    vectorDocs.add(new VectorDocument(
-                            chunk.id(),
-                            vectors.get(i),
-                            chunk.content(),
-                            buildVectorMetadata(kbId, documentId, fileName, documentTitle, i, chunk)));
-
-                    // DOC-02: 构建 DB Chunk 实体，包含 vectorId
-                    com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk = new com.enterprise.rag.admin.kb.entity.DocumentChunk();
-                    entityChunk.setDocumentId(documentId);
-                    entityChunk.setVectorId(chunk.id());
-                    entityChunk.setContent(chunk.content());
-                    entityChunk.setChunkIndex(i);
-                    entityChunk.setStartPos(chunk.startIndex());
-                    entityChunk.setEndPos(chunk.endIndex());
-                    entityChunks.add(entityChunk);
-                }
-
-                progressCallback.accept(AsyncTask.TaskProgress.of(70, "写入向量数据库"));
-                vectorStore.upsert(collectionName, vectorDocs);
-                log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
-
-                // DOC-02: 持久化分块记录和 contentHash
-                progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
-                documentService.saveChunks(entityChunks);
-                documentService.updateContentHash(documentId, result.contentHash());
-                upsertKeywordIndex(collectionName, vectorDocs);
-
-                progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
-                documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
-                documentService.updateChunkCount(documentId, chunks == null ? 0 : chunks.size());
-                knowledgeBaseService.updateDocumentCount(kbId, 1);
-
-                progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档处理完成"));
-                return result;
+                return indexWithRetry(kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
+                        progressCallback);
             }
 
         } catch (Exception e) {
@@ -221,6 +180,111 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             } catch (IOException e) {
                 log.warn("清理临时上传文件失败: documentId={}, path={}, error={}", documentId, tempFilePath, e.getMessage());
             }
+        }
+    }
+
+    private ProcessResult indexWithRetry(Long kbId,
+            Long documentId,
+            String fileName,
+            String documentTitle,
+            ProcessResult result,
+            List<DocumentChunk> chunks,
+            String collectionName,
+            java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
+        RuntimeException lastException = null;
+
+        for (int attempt = 1; attempt <= MAX_INDEX_ATTEMPTS; attempt++) {
+            try {
+                if (attempt > 1) {
+                    progressCallback.accept(AsyncTask.TaskProgress.of(45, "文档入库重试中，第 " + attempt + " 次"));
+                }
+                return indexOnce(kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
+                        progressCallback);
+            } catch (RuntimeException e) {
+                lastException = e;
+                if (attempt >= MAX_INDEX_ATTEMPTS) {
+                    break;
+                }
+                long backoffMs = INITIAL_RETRY_BACKOFF_MS * (1L << (attempt - 1));
+                log.warn("文档入库失败，准备重试: documentId={}, attempt={}/{}, backoffMs={}, error={}",
+                        documentId, attempt, MAX_INDEX_ATTEMPTS, backoffMs, e.getMessage());
+                sleepBeforeRetry(documentId, backoffMs);
+            }
+        }
+
+        throw lastException == null ? new RuntimeException("文档入库失败") : lastException;
+    }
+
+    private ProcessResult indexOnce(Long kbId,
+            Long documentId,
+            String fileName,
+            String documentTitle,
+            ProcessResult result,
+            List<DocumentChunk> chunks,
+            String collectionName,
+            java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
+        List<String> chunkTexts = chunks.stream().map(DocumentChunk::content).toList();
+
+        progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
+        List<float[]> vectors = embeddingService.embedBatch(chunkTexts);
+
+        // 构造向量文档列表及对应的 DB Chunk 实体
+        List<VectorDocument> vectorDocs = new ArrayList<>(chunks.size());
+        List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks = new ArrayList<>(
+                chunks.size());
+
+        for (int i = 0; i < chunks.size(); i++) {
+            DocumentChunk chunk = chunks.get(i);
+            vectorDocs.add(new VectorDocument(
+                    chunk.id(),
+                    vectors.get(i),
+                    chunk.content(),
+                    buildVectorMetadata(kbId, documentId, fileName, documentTitle, i, chunk)));
+
+            // DOC-02: 构建 DB Chunk 实体，包含 vectorId
+            com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk = new com.enterprise.rag.admin.kb.entity.DocumentChunk();
+            entityChunk.setDocumentId(documentId);
+            entityChunk.setVectorId(chunk.id());
+            entityChunk.setContent(chunk.content());
+            entityChunk.setChunkIndex(i);
+            entityChunk.setStartPos(chunk.startIndex());
+            entityChunk.setEndPos(chunk.endIndex());
+            entityChunks.add(entityChunk);
+        }
+
+        progressCallback.accept(AsyncTask.TaskProgress.of(70, "写入向量数据库"));
+        vectorStore.upsert(collectionName, vectorDocs);
+        log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
+
+        // DOC-02: 持久化分块记录和 contentHash
+        progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
+        saveChunksIfAbsent(documentId, entityChunks);
+        documentService.updateContentHash(documentId, result.contentHash());
+        upsertKeywordIndex(collectionName, vectorDocs);
+
+        progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
+        documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
+        documentService.updateChunkCount(documentId, chunks.size());
+        knowledgeBaseService.updateDocumentCount(kbId, 1);
+
+        progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档处理完成"));
+        return result;
+    }
+
+    private void saveChunksIfAbsent(Long documentId, List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks) {
+        if (!documentService.getChunksByDocumentId(documentId).isEmpty()) {
+            log.info("文档分块已存在，跳过重复持久化: documentId={}", documentId);
+            return;
+        }
+        documentService.saveChunks(entityChunks);
+    }
+
+    private void sleepBeforeRetry(Long documentId, long backoffMs) {
+        try {
+            Thread.sleep(backoffMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("文档入库重试等待被中断: documentId=" + documentId, e);
         }
     }
 

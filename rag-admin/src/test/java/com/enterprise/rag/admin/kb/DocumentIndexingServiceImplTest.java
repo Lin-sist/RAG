@@ -1,7 +1,9 @@
 package com.enterprise.rag.admin.kb;
 
 import com.enterprise.rag.admin.kb.dto.DocumentUploadResponse;
+import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
 import com.enterprise.rag.admin.kb.entity.Document;
+import com.enterprise.rag.admin.kb.entity.DocumentStatus;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.kb.service.impl.DocumentIndexingServiceImpl;
@@ -17,10 +19,13 @@ import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentProcessor;
 import com.enterprise.rag.document.processor.ProcessResult;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -29,6 +34,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -133,5 +142,51 @@ class DocumentIndexingServiceImplTest {
         assertEquals(12, metadata.get("tokenCount"));
         assertEquals("rag.md", metadata.get("sourceFileName"));
         assertEquals("RAG Guide", metadata.get("documentTitle"));
+    }
+
+    @Test
+    void indexingRetryShouldNotPersistDuplicateChunks() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "retry.md",
+                "text/markdown",
+                "# Retry\n\ncontent".getBytes());
+        Document created = new Document();
+        created.setId(99L);
+        created.setTitle("retry.md");
+        KnowledgeBaseDTO kb = new KnowledgeBaseDTO();
+        kb.setVectorCollection("kb_retry");
+        DocumentChunk chunk = new DocumentChunk("chunk-1", "content", 0, 7, Map.of("tokenCount", 7));
+        ProcessResult result = ProcessResult.newDocument("doc-1", "hash-1", "content", List.of(chunk));
+        com.enterprise.rag.admin.kb.entity.DocumentChunk savedChunk = new com.enterprise.rag.admin.kb.entity.DocumentChunk();
+        savedChunk.setDocumentId(99L);
+        savedChunk.setVectorId("chunk-1");
+
+        when(documentParserFactory.isSupported("md")).thenReturn(true);
+        when(documentService.create(any(Document.class))).thenReturn(created);
+        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
+                .thenReturn(new TaskHandle<>("task-99", CompletableFuture.completedFuture(result)));
+        when(documentProcessor.process(any())).thenReturn(result);
+        when(documentService.getByKnowledgeBaseAndContentHash(10L, "hash-1")).thenReturn(Optional.empty());
+        when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
+        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] { 0.1f, 0.2f }));
+        when(documentService.getChunksByDocumentId(99L)).thenReturn(List.of(), List.of(savedChunk));
+        doThrow(new RuntimeException("db glitch"))
+                .doNothing()
+                .when(documentService).updateContentHash(99L, "hash-1");
+
+        service.submitIndexing(10L, 20L, file, "retry.md");
+
+        ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
+        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+        taskCaptor.getValue().execute(progress -> {
+        });
+
+        verify(vectorStore, times(2)).upsert(eq("kb_retry"), anyList());
+        verify(documentService, times(1)).saveChunks(anyList());
+        verify(documentService, times(1)).updateStatus(99L, DocumentStatus.COMPLETED.name());
+        verify(documentService, never()).updateStatus(99L, DocumentStatus.FAILED.name());
+        verify(knowledgeBaseService, times(1)).updateDocumentCount(10L, 1);
     }
 }
