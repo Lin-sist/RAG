@@ -9,6 +9,7 @@ import com.enterprise.rag.admin.kb.mapper.DocumentChunkMapper;
 import com.enterprise.rag.admin.kb.mapper.DocumentMapper;
 import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
+import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentChunkMapper chunkMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final VectorStore vectorStore;
+    private final KeywordIndex keywordIndex;
 
     @Override
     @Transactional
@@ -113,6 +115,7 @@ public class DocumentServiceImpl implements DocumentService {
                 KnowledgeBase kb = knowledgeBaseMapper.selectById(document.getKbId());
                 if (kb != null && kb.getVectorCollection() != null) {
                     vectorStore.delete(kb.getVectorCollection(), vectorIds);
+                    keywordIndex.delete(kb.getVectorCollection(), vectorIds);
                     log.info("Deleted {} vectors for document {} from collection {}",
                             vectorIds.size(), id, kb.getVectorCollection());
                 } else {

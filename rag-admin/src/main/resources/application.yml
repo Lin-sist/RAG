@@ -140,3 +140,12 @@ rag:
       metric-type: COSINE
       nlist: 1024
       nprobe: 16
+
+# Retrieval quality controls
+retrieval:
+  hybrid:
+    enabled: true
+    rrf-k: 60
+    keyword-top-k-multiplier: 2
+  keyword:
+    enabled: true

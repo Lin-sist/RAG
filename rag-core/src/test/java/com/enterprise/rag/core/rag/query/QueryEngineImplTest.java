@@ -1,6 +1,7 @@
 package com.enterprise.rag.core.rag.query;
 
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -181,5 +183,26 @@ class QueryEngineImplTest {
         verify(embeddingService, times(1)).embed("RAG");
         verify(embeddingService, times(1)).embed("RAG 工作原理");
         verify(embeddingService, times(1)).embed("RAG 运行流程");
+    }
+
+    @Test
+    void shouldFuseVectorAndKeywordRoutesWithRrfWhenHybridEnabled() {
+        KeywordIndex keywordIndex = mock(KeywordIndex.class);
+        RetrievalProperties properties = new RetrievalProperties();
+        queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties);
+
+        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenReturn(List.of(
+                new SearchResult("vector-only", "向量召回靠前但不是关键词最佳证据", 0.95f, Map.of()),
+                new SearchResult("shared", "缓存穿透 是指查询不存在的数据导致请求打到数据库", 0.70f, Map.of())));
+        when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any())).thenReturn(List.of(
+                new RetrievedContext("缓存穿透 是指查询不存在的数据导致请求打到数据库", "shared", 1.0f, Map.of())));
+
+        List<RetrievedContext> contexts = queryEngine.retrieve(
+                "缓存穿透",
+                new RetrieveOptions("kb_test", 2, 0.0f, Map.of(), false));
+
+        assertEquals(2, contexts.size());
+        assertEquals("shared", contexts.get(0).source());
+        verify(keywordIndex).search(eq("kb_test"), eq("缓存穿透"), eq(4), eq(Map.of()));
     }
 }

@@ -1,13 +1,15 @@
 package com.enterprise.rag.core.rag.query;
 
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.rag.keyword.KeywordIndex;
+import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.SearchResult;
 import com.enterprise.rag.core.vectorstore.VectorStore;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -27,7 +29,6 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class QueryEngineImpl implements QueryEngine {
 
     private static final Pattern LATIN_TOKEN_PATTERN = Pattern.compile("[\\p{Alnum}]+");
@@ -53,6 +54,23 @@ public class QueryEngineImpl implements QueryEngine {
 
     private final EmbeddingService embeddingService;
     private final VectorStore vectorStore;
+    private final KeywordIndex keywordIndex;
+    private final RetrievalProperties retrievalProperties;
+
+    @Autowired
+    public QueryEngineImpl(EmbeddingService embeddingService,
+            VectorStore vectorStore,
+            KeywordIndex keywordIndex,
+            RetrievalProperties retrievalProperties) {
+        this.embeddingService = embeddingService;
+        this.vectorStore = vectorStore;
+        this.keywordIndex = keywordIndex;
+        this.retrievalProperties = retrievalProperties;
+    }
+
+    QueryEngineImpl(EmbeddingService embeddingService, VectorStore vectorStore) {
+        this(embeddingService, vectorStore, new NoOpKeywordIndex(), new RetrievalProperties());
+    }
 
     @Override
     public List<RetrievedContext> retrieve(String query, RetrieveOptions options) {
@@ -72,8 +90,20 @@ public class QueryEngineImpl implements QueryEngine {
 
         // 2. 对口语化/缩写问题生成少量检索变体，并合并多路召回结果
         List<QueryVariant> queryVariants = buildQueryVariants(query);
-        List<RetrievedContext> contexts = mergeRetrievedContexts(queryVariants, options.collectionName(), searchOptions);
-        log.debug("Merged {} contexts from {} query variants", contexts.size(), queryVariants.size());
+        List<RetrievedContext> vectorContexts = mergeRetrievedContexts(queryVariants, options.collectionName(), searchOptions);
+        log.debug("Vector route merged {} contexts from {} query variants", vectorContexts.size(), queryVariants.size());
+
+        List<RetrievedContext> contexts = vectorContexts;
+        if (isHybridEnabled()) {
+            List<RetrievedContext> keywordContexts = keywordIndex.search(
+                    options.collectionName(),
+                    query,
+                    keywordTopK(options.topK()),
+                    options.filter());
+            contexts = fuseByRrf(vectorContexts, keywordContexts, rrfK());
+            log.debug("Hybrid retrieval fused vectorContexts={}, keywordContexts={}, fused={}",
+                    vectorContexts.size(), keywordContexts.size(), contexts.size());
+        }
 
         // 3. 如果启用重排序，执行重排序
         if (options.enableRerank() && !contexts.isEmpty()) {
@@ -84,6 +114,19 @@ public class QueryEngineImpl implements QueryEngine {
         return contexts.stream()
                 .limit(options.topK())
                 .toList();
+    }
+
+    private boolean isHybridEnabled() {
+        return retrievalProperties.getHybrid().isEnabled() && retrievalProperties.getKeyword().isEnabled();
+    }
+
+    private int keywordTopK(int topK) {
+        int multiplier = Math.max(1, retrievalProperties.getHybrid().getKeywordTopKMultiplier());
+        return Math.max(topK, topK * multiplier);
+    }
+
+    private int rrfK() {
+        return Math.max(1, retrievalProperties.getHybrid().getRrfK());
     }
 
     @Override
@@ -136,6 +179,46 @@ public class QueryEngineImpl implements QueryEngine {
         return merged.values().stream()
                 .sorted(Comparator.comparingDouble(RetrievedContext::relevanceScore).reversed())
                 .toList();
+    }
+
+    private List<RetrievedContext> fuseByRrf(List<RetrievedContext> vectorContexts,
+            List<RetrievedContext> keywordContexts,
+            int rrfK) {
+        if ((keywordContexts == null || keywordContexts.isEmpty())) {
+            return vectorContexts;
+        }
+        if (vectorContexts == null || vectorContexts.isEmpty()) {
+            return keywordContexts;
+        }
+
+        Map<String, RrfContext> fused = new LinkedHashMap<>();
+        addRrfRoute(fused, vectorContexts, rrfK, "vector");
+        addRrfRoute(fused, keywordContexts, rrfK, "keyword");
+
+        return fused.values().stream()
+                .sorted(Comparator.comparingDouble(RrfContext::score).reversed())
+                .map(RrfContext::toRetrievedContext)
+                .toList();
+    }
+
+    private void addRrfRoute(Map<String, RrfContext> fused,
+            List<RetrievedContext> contexts,
+            int rrfK,
+            String routeName) {
+        if (contexts == null) {
+            return;
+        }
+        for (int i = 0; i < contexts.size(); i++) {
+            RetrievedContext context = contexts.get(i);
+            String key = buildResultKey(context);
+            double contribution = 1.0d / (rrfK + i + 1);
+            fused.compute(key, (ignored, existing) -> {
+                if (existing == null) {
+                    return new RrfContext(context, contribution, routeName);
+                }
+                return existing.add(context, contribution, routeName);
+            });
+        }
     }
 
     /**
@@ -433,6 +516,26 @@ public class QueryEngineImpl implements QueryEngine {
      * 带分数的上下文记录
      */
     private record ScoredContext(RetrievedContext context, float score) {
+    }
+
+    private record RrfContext(RetrievedContext context, double score, Set<String> routes) {
+        private RrfContext(RetrievedContext context, double score, String route) {
+            this(context, score, new LinkedHashSet<>(List.of(route)));
+        }
+
+        private RrfContext add(RetrievedContext candidate, double contribution, String route) {
+            RetrievedContext chosen = candidate.relevanceScore() > context.relevanceScore() ? candidate : context;
+            LinkedHashSet<String> nextRoutes = new LinkedHashSet<>(routes);
+            nextRoutes.add(route);
+            return new RrfContext(chosen, score + contribution, nextRoutes);
+        }
+
+        private RetrievedContext toRetrievedContext() {
+            Map<String, Object> metadata = new LinkedHashMap<>(context.metadata() == null ? Map.of() : context.metadata());
+            metadata.put("retrievalRoutes", List.copyOf(routes));
+            metadata.put("rrfScore", score);
+            return new RetrievedContext(context.content(), context.source(), (float) score, metadata);
+        }
     }
 
     private record QueryVariant(String query, float weight) {

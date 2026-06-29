@@ -10,6 +10,7 @@ import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentProcessor;
@@ -47,7 +48,8 @@ class DocumentIndexingServiceImplTest {
             documentParserFactory,
             asyncTaskManager,
             embeddingService,
-            vectorStore);
+            vectorStore,
+            new NoOpKeywordIndex());
 
     @Test
     void submitIndexingShouldRejectLegacyDocFiles() {

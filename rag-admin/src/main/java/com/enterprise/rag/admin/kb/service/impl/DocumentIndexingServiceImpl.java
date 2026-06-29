@@ -12,6 +12,8 @@ import com.enterprise.rag.common.async.TaskHandle;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.idempotency.Idempotent;
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.rag.keyword.KeywordDocument;
+import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorDocument;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.document.chunker.DocumentChunk;
@@ -57,6 +59,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     private final AsyncTaskManager asyncTaskManager;
     private final EmbeddingService embeddingService;
     private final VectorStore vectorStore;
+    private final KeywordIndex keywordIndex;
 
     @Override
     @Idempotent(keyPrefix = "kb:upload", required = false, ttlSeconds = 3600)
@@ -197,6 +200,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
                 documentService.saveChunks(entityChunks);
                 documentService.updateContentHash(documentId, result.contentHash());
+                upsertKeywordIndex(collectionName, vectorDocs);
 
                 progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
                 documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
@@ -217,6 +221,17 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             } catch (IOException e) {
                 log.warn("清理临时上传文件失败: documentId={}, path={}, error={}", documentId, tempFilePath, e.getMessage());
             }
+        }
+    }
+
+    private void upsertKeywordIndex(String collectionName, List<VectorDocument> vectorDocs) {
+        try {
+            List<KeywordDocument> keywordDocuments = vectorDocs.stream()
+                    .map(doc -> new KeywordDocument(doc.id(), doc.content(), doc.metadata()))
+                    .toList();
+            keywordIndex.upsert(collectionName, keywordDocuments);
+        } catch (Exception e) {
+            log.warn("关键词索引写入失败，保留向量主链路: collection={}, error={}", collectionName, e.getMessage());
         }
     }
 
