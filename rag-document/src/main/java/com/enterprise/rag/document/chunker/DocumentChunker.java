@@ -3,9 +3,11 @@ package com.enterprise.rag.document.chunker;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -23,6 +25,23 @@ public class DocumentChunker {
     private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile(
             "(?=\\n(?:public|private|protected|class|interface|def|function|func|fn)\\s)"
     );
+    private static final Pattern MARKDOWN_HEADING_PATTERN = Pattern.compile("(?m)^(#{1,6})\\s+(.+)$");
+
+    private final TokenCounter tokenCounter;
+    private final TokenChunker tokenChunker;
+
+    public DocumentChunker() {
+        this(new ConservativeTokenCounter());
+    }
+
+    public DocumentChunker(TokenCounter tokenCounter) {
+        this(tokenCounter, new ConservativeTokenChunker(tokenCounter));
+    }
+
+    public DocumentChunker(TokenCounter tokenCounter, TokenChunker tokenChunker) {
+        this.tokenCounter = tokenCounter;
+        this.tokenChunker = tokenChunker;
+    }
     
     /**
      * 将文档内容分块
@@ -36,11 +55,12 @@ public class DocumentChunker {
             return List.of();
         }
         
-        return switch (config.strategy()) {
+        List<DocumentChunk> chunks = switch (config.strategy()) {
             case FIXED_SIZE -> chunkByFixedSize(content, config);
             case SEMANTIC -> chunkBySemantic(content, config);
             case CODE -> chunkByCode(content, config);
         };
+        return enrichChunkMetadata(content, chunks);
     }
     
     /**
@@ -55,29 +75,19 @@ public class DocumentChunker {
      */
     private List<DocumentChunk> chunkByFixedSize(String content, ChunkConfig config) {
         List<DocumentChunk> chunks = new ArrayList<>();
-        int chunkSize = config.chunkSize();
-        int overlap = config.chunkOverlap();
-        int step = chunkSize - overlap;
-        
-        int index = 0;
-        int position = 0;
-        
-        while (position < content.length()) {
-            int endPos = Math.min(position + chunkSize, content.length());
-            String chunkContent = content.substring(position, endPos);
-            
+        List<TokenChunker.TokenSpan> spans = tokenChunker.split(content, 0, config.chunkSize(), config.chunkOverlap());
+
+        for (int index = 0; index < spans.size(); index++) {
+            TokenChunker.TokenSpan span = spans.get(index);
             chunks.add(new DocumentChunk(
                     generateChunkId(),
-                    chunkContent,
-                    position,
-                    endPos,
-                    Map.of("chunkIndex", index)
+                    span.content(),
+                    span.startIndex(),
+                    span.endIndex(),
+                    baseMetadata(index, span.tokenCount())
             ));
-            
-            position += step;
-            index++;
         }
-        
+
         return chunks;
     }
     
@@ -105,7 +115,7 @@ public class DocumentChunker {
             }
             
             // 如果当前块加上新段落超过大小限制
-            if (currentChunk.length() + paragraph.length() + 1 > chunkSize && currentChunk.length() > 0) {
+            if (exceedsTokenBudget(currentChunk, paragraph, chunkSize) && currentChunk.length() > 0) {
                 // 保存当前块
                 chunks.add(createChunk(currentChunk.toString().trim(), currentStart, position, index++));
                 
@@ -116,7 +126,7 @@ public class DocumentChunker {
             }
             
             // 如果单个段落超过大小限制，按句子分割
-            if (paragraph.length() > chunkSize) {
+            if (tokenCounter.count(paragraph) > chunkSize) {
                 if (currentChunk.length() > 0) {
                     chunks.add(createChunk(currentChunk.toString().trim(), currentStart, position, index++));
                     currentChunk = new StringBuilder();
@@ -164,7 +174,7 @@ public class DocumentChunker {
 
             // Markdown 里的长表格行、长代码行或无标点大段文本，可能整个段落都被视为一个“句子”。
             // 这时退回固定大小切分，避免生成超大 chunk 拖垮后续 embedding / 向量写入。
-            if (sentence.length() > config.chunkSize()) {
+            if (tokenCounter.count(sentence) > config.chunkSize()) {
                 if (currentChunk.length() > 0) {
                     chunks.add(createChunk(currentChunk.toString().trim(), currentStart, position, index++));
                     currentChunk = new StringBuilder();
@@ -178,7 +188,7 @@ public class DocumentChunker {
                 continue;
             }
             
-            if (currentChunk.length() + sentence.length() + 1 > config.chunkSize() && currentChunk.length() > 0) {
+            if (exceedsTokenBudget(currentChunk, sentence, config.chunkSize()) && currentChunk.length() > 0) {
                 chunks.add(createChunk(currentChunk.toString().trim(), currentStart, position, index++));
                 
                 String overlapText = getOverlapText(currentChunk.toString(), config.chunkOverlap());
@@ -204,17 +214,17 @@ public class DocumentChunker {
      * 将超长文本回退为固定大小分块，并保留语义分块中的基准位置信息。
      */
     private List<DocumentChunk> splitOversizedText(String text, int basePosition, ChunkConfig config, int startIndex) {
-        List<DocumentChunk> fixedChunks = chunkByFixedSize(text, ChunkConfig.fixedSize(config.chunkSize(), config.chunkOverlap()));
-        List<DocumentChunk> rebasedChunks = new ArrayList<>(fixedChunks.size());
+        List<TokenChunker.TokenSpan> spans = tokenChunker.split(text, basePosition, config.chunkSize(), config.chunkOverlap());
+        List<DocumentChunk> rebasedChunks = new ArrayList<>(spans.size());
 
-        for (int i = 0; i < fixedChunks.size(); i++) {
-            DocumentChunk fixedChunk = fixedChunks.get(i);
+        for (int i = 0; i < spans.size(); i++) {
+            TokenChunker.TokenSpan span = spans.get(i);
             rebasedChunks.add(new DocumentChunk(
-                    fixedChunk.id(),
-                    fixedChunk.content(),
-                    basePosition + fixedChunk.startIndex(),
-                    basePosition + fixedChunk.endIndex(),
-                    Map.of("chunkIndex", startIndex + i)
+                    generateChunkId(),
+                    span.content(),
+                    span.startIndex(),
+                    span.endIndex(),
+                    baseMetadata(startIndex + i, span.tokenCount())
             ));
         }
 
@@ -238,7 +248,7 @@ public class DocumentChunker {
                 continue;
             }
             
-            if (currentChunk.length() + block.length() > config.chunkSize() && currentChunk.length() > 0) {
+            if (tokenCounter.count(currentChunk + block) > config.chunkSize() && currentChunk.length() > 0) {
                 chunks.add(createChunk(currentChunk.toString().trim(), currentStart, position, index++));
                 
                 String overlapText = getOverlapText(currentChunk.toString(), config.chunkOverlap());
@@ -247,20 +257,20 @@ public class DocumentChunker {
             }
             
             // 如果单个代码块超过大小限制，使用固定大小分块
-            if (block.length() > config.chunkSize()) {
+            if (tokenCounter.count(block) > config.chunkSize()) {
                 if (currentChunk.length() > 0) {
                     chunks.add(createChunk(currentChunk.toString().trim(), currentStart, position, index++));
                     currentChunk = new StringBuilder();
                 }
                 
-                List<DocumentChunk> subChunks = chunkByFixedSize(block, config);
-                for (DocumentChunk subChunk : subChunks) {
+                List<TokenChunker.TokenSpan> subChunks = tokenChunker.split(block, position, config.chunkSize(), config.chunkOverlap());
+                for (TokenChunker.TokenSpan subChunk : subChunks) {
                     chunks.add(new DocumentChunk(
-                            subChunk.id(),
+                            generateChunkId(),
                             subChunk.content(),
-                            position + subChunk.startIndex(),
-                            position + subChunk.endIndex(),
-                            Map.of("chunkIndex", index++)
+                            subChunk.startIndex(),
+                            subChunk.endIndex(),
+                            baseMetadata(index++, subChunk.tokenCount())
                     ));
                 }
                 currentStart = position + block.length();
@@ -282,10 +292,15 @@ public class DocumentChunker {
      * 获取重叠文本
      */
     private String getOverlapText(String text, int overlapSize) {
-        if (text.length() <= overlapSize) {
+        if (tokenCounter.count(text) <= overlapSize) {
             return text;
         }
-        return text.substring(text.length() - overlapSize);
+        List<TokenChunker.TokenSpan> spans = tokenChunker.split(text, 0, Math.max(1, overlapSize), 0);
+        if (spans.isEmpty()) {
+            return "";
+        }
+        TokenChunker.TokenSpan last = spans.get(spans.size() - 1);
+        return text.substring(last.startIndex(), last.endIndex());
     }
     
     /**
@@ -297,8 +312,78 @@ public class DocumentChunker {
                 content,
                 startIndex,
                 endIndex,
-                Map.of("chunkIndex", chunkIndex)
+                baseMetadata(chunkIndex, tokenCounter.count(content))
         );
+    }
+
+    private boolean exceedsTokenBudget(StringBuilder currentChunk, String nextText, int tokenBudget) {
+        String separator = currentChunk.length() > 0 ? "\n\n" : "";
+        return tokenCounter.count(currentChunk + separator + nextText) > tokenBudget;
+    }
+
+    private Map<String, Object> baseMetadata(int chunkIndex, int tokenCount) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("chunkIndex", chunkIndex);
+        metadata.put("tokenCount", tokenCount);
+        return metadata;
+    }
+
+    private List<DocumentChunk> enrichChunkMetadata(String source, List<DocumentChunk> chunks) {
+        if (chunks.isEmpty()) {
+            return chunks;
+        }
+
+        List<HeadingContext> headings = extractHeadings(source);
+        List<DocumentChunk> enriched = new ArrayList<>(chunks.size());
+        for (DocumentChunk chunk : chunks) {
+            HeadingContext heading = headingFor(headings, chunk.startIndex());
+            Map<String, Object> metadata = new LinkedHashMap<>(chunk.metadata());
+            metadata.putIfAbsent("tokenCount", tokenCounter.count(chunk.content()));
+            metadata.putIfAbsent("headingPath", heading.path());
+            metadata.putIfAbsent("headingLevel", heading.level() == 0 ? null : heading.level());
+            metadata.putIfAbsent("sourceFileName", "");
+            enriched.add(new DocumentChunk(
+                    chunk.id(),
+                    chunk.content(),
+                    chunk.startIndex(),
+                    chunk.endIndex(),
+                    metadata));
+        }
+        return enriched;
+    }
+
+    private List<HeadingContext> extractHeadings(String source) {
+        List<HeadingContext> headings = new ArrayList<>();
+        String[] stack = new String[6];
+        Matcher matcher = MARKDOWN_HEADING_PATTERN.matcher(source);
+        while (matcher.find()) {
+            int level = matcher.group(1).length();
+            String title = matcher.group(2).trim();
+            stack[level - 1] = title;
+            for (int i = level; i < stack.length; i++) {
+                stack[i] = null;
+            }
+
+            List<String> path = new ArrayList<>();
+            for (int i = 0; i < level; i++) {
+                if (stack[i] != null && !stack[i].isBlank()) {
+                    path.add(stack[i]);
+                }
+            }
+            headings.add(new HeadingContext(matcher.start(), level, String.join(" > ", path)));
+        }
+        return headings;
+    }
+
+    private HeadingContext headingFor(List<HeadingContext> headings, int startIndex) {
+        HeadingContext current = HeadingContext.empty();
+        for (HeadingContext heading : headings) {
+            if (heading.position() > startIndex) {
+                break;
+            }
+            current = heading;
+        }
+        return current;
     }
     
     /**
@@ -306,5 +391,11 @@ public class DocumentChunker {
      */
     private String generateChunkId() {
         return UUID.randomUUID().toString();
+    }
+
+    private record HeadingContext(int position, int level, String path) {
+        private static HeadingContext empty() {
+            return new HeadingContext(-1, 0, "");
+        }
     }
 }

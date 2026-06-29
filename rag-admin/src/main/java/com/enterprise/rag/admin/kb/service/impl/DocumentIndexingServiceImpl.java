@@ -247,7 +247,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
 
     private Map<String, Object> buildVectorMetadata(Long kbId, Long documentId, String fileName, String documentTitle,
             int chunkIndex, DocumentChunk chunk) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
+        Map<String, Object> metadata = new LinkedHashMap<>(chunk.metadata());
         metadata.put("documentId", documentId);
         metadata.put("kbId", kbId);
         metadata.put("chunkIndex", chunkIndex);
@@ -258,7 +258,17 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         metadata.put("fileName", fileName);
         metadata.put("documentTitle", documentTitle);
         metadata.put("title", documentTitle);
+        metadata.putIfAbsent("headingPath", "");
+        metadata.putIfAbsent("headingLevel", null);
+        metadata.putIfAbsent("tokenCount", estimateTokenCount(chunk.content()));
         return metadata;
+    }
+
+    private int estimateTokenCount(String text) {
+        if (text == null || text.isEmpty()) {
+            return 0;
+        }
+        return text.length();
     }
 
     private Path createTempFile(MultipartFile file, String fileType) {

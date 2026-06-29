@@ -12,12 +12,15 @@ import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.document.chunker.DocumentChunk;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentProcessor;
 import com.enterprise.rag.document.processor.ProcessResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -99,5 +102,36 @@ class DocumentIndexingServiceImplTest {
         verify(documentService).create(any(Document.class));
         verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void buildVectorMetadataShouldPreserveChunkMetadataAndFillSourceFileName() {
+        DocumentChunk chunk = new DocumentChunk(
+                "chunk-1",
+                "RAG overview",
+                0,
+                12,
+                Map.of(
+                        "headingPath", "RAG > Retrieval",
+                        "headingLevel", 2,
+                        "tokenCount", 12,
+                        "sourceFileName", ""));
+
+        Map<String, Object> metadata = (Map<String, Object>) ReflectionTestUtils.invokeMethod(
+                service,
+                "buildVectorMetadata",
+                10L,
+                99L,
+                "rag.md",
+                "RAG Guide",
+                0,
+                chunk);
+
+        assertEquals("RAG > Retrieval", metadata.get("headingPath"));
+        assertEquals(2, metadata.get("headingLevel"));
+        assertEquals(12, metadata.get("tokenCount"));
+        assertEquals("rag.md", metadata.get("sourceFileName"));
+        assertEquals("RAG Guide", metadata.get("documentTitle"));
     }
 }

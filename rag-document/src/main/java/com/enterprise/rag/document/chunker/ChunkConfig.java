@@ -3,8 +3,8 @@ package com.enterprise.rag.document.chunker;
 /**
  * 文档分块配置
  *
- * @param chunkSize    块大小（字符数）
- * @param chunkOverlap 块重叠大小（字符数）
+ * @param chunkSize    块大小（token 预算，由 TokenCounter 估算）
+ * @param chunkOverlap 块重叠大小（token 预算，由 TokenCounter 估算）
  * @param strategy     分块策略
  */
 public record ChunkConfig(

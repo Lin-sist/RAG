@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DocumentChunkerRegressionTest {
@@ -63,5 +64,27 @@ class DocumentChunkerRegressionTest {
         assertFalse(chunks.isEmpty());
         assertTrue(chunks.size() > 1);
         assertTrue(chunks.stream().allMatch(chunk -> chunk.content().length() <= config.chunkSize()));
+    }
+
+    @Test
+    void chunksShouldCarryTokenAndHeadingMetadata() {
+        String markdown = """
+                # RAG
+
+                RAG overview.
+
+                ## Retrieval
+
+                Vector search and keyword search.
+                """;
+
+        List<DocumentChunk> chunks = chunker.chunk(markdown, ChunkConfig.semantic(80, 10));
+
+        assertFalse(chunks.isEmpty());
+        DocumentChunk first = chunks.get(0);
+        assertEquals("RAG", first.metadata().get("headingPath"));
+        assertEquals(1, first.metadata().get("headingLevel"));
+        assertNotNull(first.metadata().get("tokenCount"));
+        assertTrue((Integer) first.metadata().get("tokenCount") > 0);
     }
 }
