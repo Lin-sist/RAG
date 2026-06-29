@@ -23,6 +23,7 @@ import java.net.ConnectException;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -33,8 +34,13 @@ import java.util.regex.Pattern;
 @Service
 public class AnswerGeneratorImpl implements AnswerGenerator {
     static final String SOURCE_MARKER_PREFIX = "[Source";
+    private static final int MAX_FALLBACK_CITATIONS = 3;
+    private static final int FALLBACK_SNIPPET_MAX_LENGTH = 180;
     private static final Pattern RAW_SOURCE_MARKER_PATTERN = Pattern.compile("\\[Source\\s+\\d+:[^\\]]*]");
     private static final Pattern INLINE_SOURCE_MARKER_PATTERN = Pattern.compile("\\[Source\\s+\\d+]");
+    private static final Pattern SENTENCE_BOUNDARY_PATTERN = Pattern.compile("(?<=[.。!！?？;；])|\\R+");
+    private static final Pattern LATIN_TOKEN_PATTERN = Pattern.compile("[\\p{Alnum}]+");
+    private static final Pattern CJK_SEGMENT_PATTERN = Pattern.compile("[\\p{IsHan}]+");
 
     private final LLMProperties properties;
     private final PromptBuilder promptBuilder;
@@ -74,11 +80,8 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         String answer = sanitizeAnswerText(callLLM(prompt));
 
         // 提取引用来源
-        List<Citation> extractedCitations = extractCitations(answer, effectiveContexts);
-        CitationValidationResult citationValidation = citationValidator.validate(
-                extractedCitations,
-                effectiveContexts,
-                isNoAnswerText(answer));
+        CitationResolution citationResolution = resolveCitations(query, answer, effectiveContexts);
+        CitationValidationResult citationValidation = citationResolution.validation();
 
         // 构建元数据
         Map<String, Object> metadata = new HashMap<>();
@@ -88,7 +91,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         metadata.put("estimatedContextTokens", buildResult.estimatedContextTokens());
         metadata.put("removedByDedup", buildResult.removedByDedup());
         metadata.put("removedByBudget", buildResult.removedByBudget());
-        metadata.put("citationValidation", citationValidation.metadata());
+        Map<String, Object> citationMetadata = citationValidation.metadata();
+        metadata.put("citationValidation", citationMetadata);
+        metadata.put("citationFallbackUsed", citationResolution.fallbackUsed());
+        metadata.put("citationFallbackCount", citationResolution.fallbackCount());
+        metadata.putAll(citationMetadata);
 
         return GeneratedAnswer.of(answer, citationValidation.citations(), metadata);
     }
@@ -430,15 +437,41 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     /**
      * 从答案中提取引用来源
      */
+    CitationResolution resolveCitations(String query, String answer, List<RetrievedContext> contexts) {
+        boolean noAnswer = isNoAnswerText(answer);
+        List<Citation> extractedCitations = extractCitations(answer, contexts);
+        CitationValidationResult originalValidation = citationValidator.validate(
+                extractedCitations,
+                contexts,
+                noAnswer);
+
+        if (!originalValidation.citations().isEmpty() || !shouldUseCitationFallback(answer, contexts, noAnswer)) {
+            return new CitationResolution(originalValidation, false, 0);
+        }
+
+        List<Citation> fallbackCitations = buildFallbackCitations(query, answer, contexts);
+        CitationValidationResult fallbackValidation = citationValidator.validate(
+                fallbackCitations,
+                contexts,
+                false);
+        return new CitationResolution(
+                fallbackValidation,
+                !fallbackValidation.citations().isEmpty(),
+                fallbackValidation.citations().size());
+    }
+
     private List<Citation> extractCitations(String answer, List<RetrievedContext> contexts) {
         if (contexts == null || contexts.isEmpty()) {
             return List.of();
         }
 
         List<Citation> citations = new ArrayList<>();
-        String answerLower = answer.toLowerCase();
+        String answerLower = answer == null ? "" : answer.toLowerCase(Locale.ROOT);
 
         for (RetrievedContext context : contexts) {
+            if (context == null || context.content() == null || context.content().isBlank()) {
+                continue;
+            }
             // 检查答案是否引用了该上下文的内容
             String[] sentences = context.content().split("[.。!！?？]");
             for (String sentence : sentences) {
@@ -472,6 +505,141 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         }
 
         return citations;
+    }
+
+    private boolean shouldUseCitationFallback(String answer, List<RetrievedContext> contexts, boolean noAnswer) {
+        return answer != null
+                && !answer.isBlank()
+                && !noAnswer
+                && contexts != null
+                && !contexts.isEmpty();
+    }
+
+    private List<Citation> buildFallbackCitations(String query, String answer, List<RetrievedContext> contexts) {
+        if (contexts == null || contexts.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> seenContexts = new LinkedHashSet<>();
+        List<Citation> citations = new ArrayList<>();
+        List<RetrievedContext> topContexts = contexts.stream()
+                .filter(context -> context != null && context.content() != null && !context.content().isBlank())
+                .sorted(Comparator.comparingDouble(RetrievedContext::relevanceScore).reversed())
+                .toList();
+
+        for (RetrievedContext context : topContexts) {
+            String dedupKey = normalizeForCitationDedup(context.source()) + "|"
+                    + normalizeTextForCitationDedup(context.content());
+            if (!seenContexts.add(dedupKey)) {
+                continue;
+            }
+
+            String snippet = selectFallbackSnippet(query, answer, context.content());
+            if (snippet.isBlank()) {
+                continue;
+            }
+
+            citations.add(Citation.grounded(
+                    context.source(),
+                    extractStringMetadata(context.metadata(), "sourceFileName", "originalFilename", "fileName",
+                            "filename"),
+                    extractStringMetadata(context.metadata(), "documentTitle", "title"),
+                    extractLongMetadata(context.metadata(), "documentId"),
+                    context.source(),
+                    (double) context.relevanceScore(),
+                    snippet,
+                    -1,
+                    -1));
+
+            if (citations.size() >= MAX_FALLBACK_CITATIONS) {
+                break;
+            }
+        }
+
+        return citations;
+    }
+
+    private String selectFallbackSnippet(String query, String answer, String content) {
+        String normalizedContent = content == null ? "" : content.trim();
+        if (normalizedContent.isBlank()) {
+            return "";
+        }
+
+        Set<String> queryAnswerTokens = citationTokens((query == null ? "" : query) + " " + (answer == null ? "" : answer));
+        String bestSentence = "";
+        int bestOverlap = 0;
+
+        for (String sentence : SENTENCE_BOUNDARY_PATTERN.split(normalizedContent)) {
+            String candidate = sentence == null ? "" : sentence.trim();
+            if (candidate.isBlank()) {
+                continue;
+            }
+
+            Set<String> sentenceTokens = citationTokens(candidate);
+            int overlap = countOverlap(queryAnswerTokens, sentenceTokens);
+            if (overlap > bestOverlap) {
+                bestOverlap = overlap;
+                bestSentence = candidate;
+            }
+        }
+
+        if (bestOverlap > 0 && !bestSentence.isBlank()) {
+            return truncateSnippet(bestSentence);
+        }
+        return truncateSnippet(normalizedContent);
+    }
+
+    private int countOverlap(Set<String> left, Set<String> right) {
+        if (left == null || right == null || left.isEmpty() || right.isEmpty()) {
+            return 0;
+        }
+        int overlap = 0;
+        for (String token : left) {
+            if (right.contains(token)) {
+                overlap++;
+            }
+        }
+        return overlap;
+    }
+
+    private Set<String> citationTokens(String text) {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        if (text == null || text.isBlank()) {
+            return result;
+        }
+
+        Matcher latinMatcher = LATIN_TOKEN_PATTERN.matcher(text.toLowerCase(Locale.ROOT));
+        while (latinMatcher.find()) {
+            String token = latinMatcher.group();
+            if (token.length() >= 2) {
+                result.add(token);
+            }
+        }
+
+        Matcher cjkMatcher = CJK_SEGMENT_PATTERN.matcher(text);
+        while (cjkMatcher.find()) {
+            String segment = cjkMatcher.group();
+            if (segment.length() == 1) {
+                result.add(segment);
+                continue;
+            }
+            for (int i = 0; i < segment.length() - 1; i++) {
+                result.add(segment.substring(i, i + 2));
+            }
+        }
+
+        return result;
+    }
+
+    private String truncateSnippet(String text) {
+        if (text == null) {
+            return "";
+        }
+        String trimmed = text.trim();
+        if (trimmed.length() <= FALLBACK_SNIPPET_MAX_LENGTH) {
+            return trimmed;
+        }
+        return trimmed.substring(0, FALLBACK_SNIPPET_MAX_LENGTH).trim();
     }
 
     private Long extractLongMetadata(Map<String, Object> metadata, String key) {
@@ -517,6 +685,14 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 || normalized.contains("context doesn't contain")
                 || normalized.contains("not enough information")
                 || normalized.contains("cannot answer");
+    }
+
+    private String normalizeForCitationDedup(String text) {
+        return text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeTextForCitationDedup(String text) {
+        return text == null ? "" : text.replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -595,5 +771,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                     .filter(text -> text != null && !text.isEmpty())
                     .toList();
         }
+    }
+
+    record CitationResolution(
+            CitationValidationResult validation,
+            boolean fallbackUsed,
+            int fallbackCount) {
     }
 }

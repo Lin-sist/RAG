@@ -44,6 +44,11 @@ public record QAResponse(
                 List.of(),
                 Map.of(
                         "status", "no_result",
+                        "citationFallbackUsed", false,
+                        "citationFallbackCount", 0,
+                        "validCitations", 0,
+                        "droppedCitations", 0,
+                        "citationCoverage", 1.0d,
                         "citationValidation", Map.of(
                                 "validCitations", 0,
                                 "droppedCitations", 0,
