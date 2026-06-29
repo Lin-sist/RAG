@@ -291,12 +291,26 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     private void upsertKeywordIndex(String collectionName, List<VectorDocument> vectorDocs) {
         try {
             List<KeywordDocument> keywordDocuments = vectorDocs.stream()
-                    .map(doc -> new KeywordDocument(doc.id(), doc.content(), doc.metadata()))
+                    .map(doc -> new KeywordDocument(doc.id(), doc.content(), compactMetadata(doc.metadata())))
                     .toList();
             keywordIndex.upsert(collectionName, keywordDocuments);
         } catch (Exception e) {
-            log.warn("关键词索引写入失败，保留向量主链路: collection={}, error={}", collectionName, e.getMessage());
+            log.warn("关键词索引写入失败，保留向量主链路: collection={}, errorType={}, error={}",
+                    collectionName, e.getClass().getSimpleName(), e.getMessage());
         }
+    }
+
+    private Map<String, Object> compactMetadata(Map<String, Object> metadata) {
+        if (metadata == null || metadata.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> compacted = new LinkedHashMap<>();
+        metadata.forEach((key, value) -> {
+            if (key != null && value != null) {
+                compacted.put(key, value);
+            }
+        });
+        return compacted;
     }
 
     private boolean isIndexReady(Document document) {

@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -142,6 +143,24 @@ class DocumentIndexingServiceImplTest {
         assertEquals(12, metadata.get("tokenCount"));
         assertEquals("rag.md", metadata.get("sourceFileName"));
         assertEquals("RAG Guide", metadata.get("documentTitle"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void compactMetadataShouldRemoveNullValuesForKeywordIndex() {
+        Map<String, Object> metadata = new java.util.LinkedHashMap<>();
+        metadata.put("headingPath", "RAG");
+        metadata.put("headingLevel", null);
+        metadata.put("tokenCount", 12);
+
+        Map<String, Object> compacted = (Map<String, Object>) ReflectionTestUtils.invokeMethod(
+                service,
+                "compactMetadata",
+                metadata);
+
+        assertEquals("RAG", compacted.get("headingPath"));
+        assertEquals(12, compacted.get("tokenCount"));
+        assertFalse(compacted.containsKey("headingLevel"));
     }
 
     @Test
