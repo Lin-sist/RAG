@@ -156,8 +156,13 @@ retrieval:
     model:
       enabled: false
       base-url: ""
+      endpoint-path: /rerank
       api-key: ""
       model: ""
+      timeout-millis: 3000
+      health-check-enabled: true
+      health-path: /health
+      health-cache-millis: 60000
 
 # Document indexing chunking controls
 document:

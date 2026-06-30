@@ -122,7 +122,7 @@ public class QueryEngineImpl implements QueryEngine {
 
         // 3. 如果启用重排序，执行重排序
         if (options.enableRerank() && !contexts.isEmpty()) {
-            contexts = rerankerRegistry.activeReranker().rerank(query, contexts.stream()
+            contexts = rerankerRegistry.rerank(query, contexts.stream()
                     .limit(rerankTopN())
                     .toList());
             log.debug("Reranked {} contexts", contexts.size());

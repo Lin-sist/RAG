@@ -36,7 +36,12 @@ public class RetrievalProperties {
     public static class ModelReranker {
         private boolean enabled = false;
         private String baseUrl = "";
+        private String endpointPath = "/rerank";
         private String apiKey = "";
         private String model = "";
+        private int timeoutMillis = 3000;
+        private boolean healthCheckEnabled = true;
+        private String healthPath = "/health";
+        private long healthCacheMillis = 60000;
     }
 }

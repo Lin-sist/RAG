@@ -1,5 +1,6 @@
 package com.enterprise.rag.core.rag.rerank;
 
+import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.query.RetrievalProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,24 @@ public class RerankerRegistry {
             log.warn("Reranker provider '{}' is unavailable; falling back to heuristic", provider);
         }
         return find("heuristic");
+    }
+
+    public List<RetrievedContext> rerank(
+            String query,
+            List<RetrievedContext> contexts) {
+        Reranker requested = activeReranker();
+        Reranker heuristic = find("heuristic");
+
+        try {
+            return requested.rerank(query, contexts);
+        } catch (Exception e) {
+            if (!"heuristic".equalsIgnoreCase(requested.provider())) {
+                log.warn("Reranker provider '{}' failed; falling back to heuristic: {}",
+                        requested.provider(), e.getMessage());
+                return heuristic.rerank(query, contexts);
+            }
+            throw e;
+        }
     }
 
     private Reranker find(String provider) {
