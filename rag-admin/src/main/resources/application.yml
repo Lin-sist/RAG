@@ -158,3 +158,10 @@ retrieval:
       base-url: ""
       api-key: ""
       model: ""
+
+# Document indexing chunking controls
+document:
+  chunking:
+    chunk-size: 420
+    chunk-overlap: 80
+    strategy: semantic

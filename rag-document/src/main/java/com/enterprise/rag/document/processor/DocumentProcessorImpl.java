@@ -1,11 +1,13 @@
 package com.enterprise.rag.document.processor;
 
 import com.enterprise.rag.document.chunker.ChunkConfig;
+import com.enterprise.rag.document.chunker.DocumentChunkingProperties;
 import com.enterprise.rag.document.chunker.DocumentChunk;
 import com.enterprise.rag.document.chunker.DocumentChunker;
 import com.enterprise.rag.document.parser.DocumentParseException;
 import com.enterprise.rag.document.parser.DocumentParser;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -32,18 +34,28 @@ public class DocumentProcessorImpl implements DocumentProcessor {
 
     private final DocumentParserFactory parserFactory;
     private final DocumentChunker chunker;
+    private final DocumentChunkingProperties chunkingProperties;
 
     // 内存存储已处理文档的哈希（按知识库作用域隔离，生产环境应使用 Redis 或数据库）
     private final Map<String, String> processedHashes = new ConcurrentHashMap<>();
 
     public DocumentProcessorImpl(DocumentParserFactory parserFactory, DocumentChunker chunker) {
+        this(parserFactory, chunker, new DocumentChunkingProperties());
+    }
+
+    @Autowired
+    public DocumentProcessorImpl(
+            DocumentParserFactory parserFactory,
+            DocumentChunker chunker,
+            DocumentChunkingProperties chunkingProperties) {
         this.parserFactory = parserFactory;
         this.chunker = chunker;
+        this.chunkingProperties = chunkingProperties;
     }
 
     @Override
     public ProcessResult process(DocumentInput input) {
-        return process(input, ChunkConfig.DEFAULT);
+        return process(input, chunkingProperties.toChunkConfig());
     }
 
     @Override

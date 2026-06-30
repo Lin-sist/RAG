@@ -63,8 +63,11 @@ try {
 		Select-Object -First 1
 	if ($listener) {
 		$ownerPid = $listener.OwningProcess
-		$proc = Get-Process -Id $ownerPid -ErrorAction Stop
-		if ($proc.ProcessName -in @('java', 'javaw')) {
+		$proc = Get-Process -Id $ownerPid -ErrorAction SilentlyContinue
+		if (-not $proc) {
+			Write-Host "[start-backend] Port 8080 listener process PID=$ownerPid already exited. Waiting for port release..."
+			Start-Sleep -Seconds 1
+		} elseif ($proc.ProcessName -in @('java', 'javaw')) {
 			Write-Host "[start-backend] Port 8080 is used by $($proc.ProcessName) (PID=$ownerPid). Stopping it..."
 			Stop-Process -Id $ownerPid -Force
 			Start-Sleep -Seconds 1
@@ -75,6 +78,9 @@ try {
 } catch {
 	throw "[start-backend] Port check failed: $($_.Exception.Message)"
 }
+
+Write-Host '[start-backend] Installing internal module dependencies for a fresh local run...'
+mvn -f pom.xml -pl rag-common,rag-auth,rag-document,rag-core -DskipTests install
 
 Write-Host '[start-backend] Starting rag-admin with local env mapping on port 8080...'
 mvn -f rag-admin/pom.xml spring-boot:run -DskipTests
