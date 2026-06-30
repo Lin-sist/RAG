@@ -106,6 +106,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fail-on-ask-errors", action="store_true")
     parser.add_argument("--no-overwrite", action="store_true")
     parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", ""))
+    parser.add_argument(
+        "--run-metadata-json",
+        default=os.getenv("RAG_EVAL_RUN_METADATA_JSON", ""),
+        help="Optional JSON metadata to include in the report header and details JSON.",
+    )
     return parser.parse_args()
 
 
@@ -766,6 +771,17 @@ def pct(value: float | int | str) -> str:
     return f"{float(value) * 100:.2f}%"
 
 
+def load_run_metadata(path_value: str) -> dict[str, Any]:
+    if not path_value:
+        return {}
+    path = Path(path_value)
+    with path.open("r", encoding="utf-8") as file:
+        value = json.load(file)
+    if not isinstance(value, dict):
+        raise ValueError(f"Run metadata must be a JSON object: {path}")
+    return value
+
+
 def run_counts(results: list[SampleResult]) -> dict[str, int]:
     return {
         "askErrors": sum(1 for result in results if result.ask_error is not None),
@@ -807,6 +823,7 @@ def write_report(
     results: list[SampleResult],
     login_error: str | None,
     started_at: float,
+    run_metadata: dict[str, Any],
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     finished = time.time()
@@ -830,6 +847,8 @@ def write_report(
     lines.append(f"- minScore: `{args.min_score}`")
     lines.append(f"- enableRerank: `{args.enable_rerank}`")
     lines.append(f"- skipAsk: `{args.skip_ask}`")
+    if run_metadata:
+        append_header_metadata(lines, run_metadata)
     lines.append(f"- askDelaySeconds: `{args.ask_delay_seconds}`")
     lines.append(f"- maxAskRetries: `{args.max_ask_retries}`")
     lines.append(f"- retryBackoffSeconds: `{args.retry_backoff_seconds}`")
@@ -926,6 +945,35 @@ def write_report(
     append_citation_diagnostics(lines, results)
 
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def append_header_metadata(lines: list[str], metadata: dict[str, Any]) -> None:
+    kb = metadata.get("knowledgeBase")
+    if isinstance(kb, dict):
+        lines.append(f"- Eval KB name: `{kb.get('name', '')}`")
+        lines.append(f"- Eval KB vector collection: `{kb.get('vectorCollection', '')}`")
+        lines.append(f"- Eval KB document count: `{kb.get('documentCount', '')}`")
+        lines.append(f"- Eval KB chunk count: `{kb.get('chunkCount', '')}`")
+    fixtures = metadata.get("fixtures")
+    if isinstance(fixtures, list) and fixtures:
+        fixture_bits = []
+        for fixture in fixtures:
+            if not isinstance(fixture, dict):
+                continue
+            fixture_bits.append(f"{fixture.get('name')} sha256={fixture.get('sha256')}")
+        if fixture_bits:
+            lines.append(f"- Fixture files: `{'; '.join(fixture_bits)}`")
+    config = metadata.get("configSnapshot")
+    if isinstance(config, dict):
+        snapshot_bits = []
+        for name, item in config.items():
+            if isinstance(item, dict):
+                snapshot_bits.append(f"{name} sha256={item.get('sha256')}")
+        if snapshot_bits:
+            lines.append(f"- Config snapshot: `{'; '.join(snapshot_bits)}`")
+    git = metadata.get("git")
+    if isinstance(git, dict):
+        lines.append(f"- Git HEAD: `{git.get('head', '')}`")
 
 
 def append_failed_retrieval_cases(lines: list[str], results: list[SampleResult]) -> None:
@@ -1145,6 +1193,7 @@ def write_details_json(
     results: list[SampleResult],
     login_error: str | None,
     started_at: float,
+    run_metadata: dict[str, Any],
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     status = report_status(args, results, login_error)
@@ -1165,6 +1214,7 @@ def write_details_json(
         "maxAskRetries": args.max_ask_retries,
         "retryBackoffSeconds": args.retry_backoff_seconds,
         "durationSeconds": round(time.time() - started_at, 4),
+        "runMetadata": run_metadata,
         "metrics": aggregate(results) if not login_error else None,
         "loginError": login_error,
         "sampleCount": len(samples),
@@ -1191,6 +1241,7 @@ def main() -> int:
     report_path = Path(args.report)
     after_report_path = Path(args.after_report) if args.after_report else None
     details_json_path = Path(args.details_json) if args.details_json else None
+    run_metadata = load_run_metadata(args.run_metadata_json)
 
     if args.no_overwrite:
         output_paths = [report_path]
@@ -1220,11 +1271,11 @@ def main() -> int:
             print(f"[{index}/{len(samples)}] {sample['id']} {sample['question']}")
             results.append(run_sample(sample, args, token))
 
-    write_report(report_path, args, samples, results, login_error, started_at)
+    write_report(report_path, args, samples, results, login_error, started_at, run_metadata)
     if after_report_path is not None:
-        write_report(after_report_path, args, samples, results, login_error, started_at)
+        write_report(after_report_path, args, samples, results, login_error, started_at, run_metadata)
     if details_json_path is not None:
-        write_details_json(details_json_path, args, samples, results, login_error, started_at)
+        write_details_json(details_json_path, args, samples, results, login_error, started_at, run_metadata)
 
     if login_error:
         print(f"Eval could not run: {login_error}", file=sys.stderr)

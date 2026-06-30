@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-06-30T00:58:05.036322+00:00",
+  "baseUrl": "http://localhost:8080",
+  "evalSet": "docs\\eval\\rag_eval_set.jsonl",
+  "topK": 5,
+  "minScore": 0.3,
+  "enableRerank": true,
+  "knowledgeBase": {
+    "id": 7,
+    "name": "codex-stage1-repro-eval",
+    "description": "codex reproducible retrieval-only eval fixture",
+    "vectorCollection": "kb_b336dd162e314e30",
+    "documentCount": 3,
+    "chunkCount": 40,
+    "documents": [
+      {
+        "id": 34,
+        "title": "java-interview-guide.md",
+        "status": "COMPLETED",
+        "chunkCount": 10,
+        "contentHash": "d55666ad243084017372d6ce6c3de2ddec4729678b50ee1929c964290ace8599"
+      },
+      {
+        "id": 35,
+        "title": "rag-technology-guide.md",
+        "status": "COMPLETED",
+        "chunkCount": 11,
+        "contentHash": "0f3ee9e456c59729d2a0c612959ec8252a944407f0521cef67bb5f234ef5a5e2"
+      },
+      {
+        "id": 33,
+        "title": "springboot-basics.md",
+        "status": "COMPLETED",
+        "chunkCount": 19,
+        "contentHash": "c0520edff334e450596109ccf9905fedb7be59c05d93136da6a8533afcbffcdc"
+      }
+    ]
+  },
+  "fixtures": [
+    {
+      "path": "test-data\\springboot-basics.md",
+      "name": "springboot-basics.md",
+      "sha256": "c51df5761d510aa4c8a5fd610c90454b12973e2999138c3b57ba83768a296521",
+      "bytes": 7975
+    },
+    {
+      "path": "test-data\\java-interview-guide.md",
+      "name": "java-interview-guide.md",
+      "sha256": "a33f16e91025e9a8d92274c4221d1c172bb4f68c03790db53b8e20157ef4faa0",
+      "bytes": 6946
+    },
+    {
+      "path": "test-data\\rag-technology-guide.md",
+      "name": "rag-technology-guide.md",
+      "sha256": "59ad5d66a59be2ce4e517ca81e37fde06b7673f3da7f798a4c76b01cc6f348a9",
+      "bytes": 7392
+    }
+  ],
+  "configSnapshot": {
+    "rag-admin\\src\\main\\resources\\application.yml": {
+      "sha256": "477188fb3a259adfe25805eb3cda5594a195b8af1038e77deff072c733c9fe52",
+      "bytes": 3985
+    },
+    "rag-core\\src\\main\\java\\com\\enterprise\\rag\\core\\rag\\query\\RetrievalProperties.java": {
+      "sha256": "f4d49e1ed6eeee0dc5c358df16bec0ec7424dd97b7dd03afeb1ca4f201e391e6",
+      "bytes": 1102
+    },
+    "rag-document\\src\\main\\java\\com\\enterprise\\rag\\document\\chunker\\ChunkConfig.java": {
+      "sha256": "01b17712c8974055d15a30034e396d5074ba37ad8ea637fa7bca895a0c8a8554",
+      "bytes": 1607
+    }
+  },
+  "git": {
+    "head": "89ae7fb99c3ce21eb3250eb5bf711f5fa8795659"
+  },
+  "repeat": {
+    "index": 2,
+    "total": 2
+  }
+}
