@@ -80,6 +80,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repeat", type=int, default=1, help="Run retrieval-only eval repeatedly against the same prepared KB.")
     parser.add_argument("--keep-existing", action="store_true", help="Reuse a matching KB instead of deleting and recreating it.")
     parser.add_argument("--no-overwrite", action="store_true")
+    parser.add_argument("--plan-only", action="store_true", help="Print planned files, sample selection, and eval command shape without contacting the backend.")
     parser.add_argument("--python", default=sys.executable)
     return parser.parse_args()
 
@@ -430,6 +431,30 @@ def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, 
     subprocess.run(command, check=True, env=env)
 
 
+def build_plan(args: argparse.Namespace, fixtures: list[Path]) -> dict[str, Any]:
+    repeat = max(1, args.repeat)
+    return {
+        "mode": "generation/citation" if args.include_ask else "retrieval-only",
+        "baseUrl": args.base_url,
+        "kbName": args.kb_name,
+        "evalSet": args.eval_set,
+        "fixtures": [str(path) for path in fixtures],
+        "sampleIds": args.sample_ids or [],
+        "sampleLimit": args.sample_limit,
+        "includeAsk": args.include_ask,
+        "judgeMode": args.judge_mode,
+        "repeat": args.repeat,
+        "reports": [str(repeat_path(args.report, repeat, index)) for index in range(1, repeat + 1)],
+        "detailsJson": [str(repeat_path(args.details_json, repeat, index)) for index in range(1, repeat + 1)],
+        "metadataJson": str(Path(args.metadata_json)),
+        "childCommandShape": build_eval_command(args, 0, Path(args.report), Path(args.details_json), Path(args.metadata_json)),
+    }
+
+
+def print_plan(plan: dict[str, Any]) -> None:
+    print(json.dumps(plan, ensure_ascii=False, indent=2))
+
+
 def main() -> int:
     args = parse_args()
     args.base_url = args.base_url.rstrip("/")
@@ -441,6 +466,9 @@ def main() -> int:
     if args.repeat < 1:
         print("--repeat must be >= 1", file=sys.stderr)
         return 2
+    if args.plan_only:
+        print_plan(build_plan(args, fixtures))
+        return 0
 
     token = login(args)
     kb = get_or_create_kb(args, token)

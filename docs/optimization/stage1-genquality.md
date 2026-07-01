@@ -36,6 +36,20 @@ python -B scripts\test_run_rag_eval.py
 
 小样本 smoke 示例：
 
+先做无网络 plan 预检：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --plan-only `
+  --include-ask `
+  --sample-id fact-001 `
+  --sample-id no-answer-001 `
+  --report docs\eval\reports\stage1-genquality-smoke.md `
+  --details-json docs\eval\reports\stage1-genquality-smoke-details.json
+```
+
+用户确认后再执行实际 smoke：
+
 ```powershell
 python -B scripts\run_reproducible_rag_eval.py `
   --include-ask `

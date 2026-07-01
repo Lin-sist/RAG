@@ -119,12 +119,28 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertIn("fact-001", command)
         self.assertIn("definition-001", command)
 
+    def test_build_plan_includes_command_shape_without_api_key(self) -> None:
+        plan = runner.build_plan(
+            self.eval_command_args(include_ask=True),
+            [Path("test-data/springboot-basics.md")],
+        )
+
+        self.assertEqual("generation/citation", plan["mode"])
+        self.assertEqual(["fact-001", "definition-001"], plan["sampleIds"])
+        self.assertEqual(2, plan["sampleLimit"])
+        self.assertIn("--sample-id", plan["childCommandShape"])
+        self.assertNotIn("--judge-api-key", plan["childCommandShape"])
+
     @staticmethod
     def eval_command_args(include_ask: bool) -> argparse.Namespace:
         return argparse.Namespace(
             python="python",
             base_url="http://localhost:8080",
+            kb_name="codex-stage1-repro-eval",
             eval_set="docs/eval/rag_eval_set.jsonl",
+            report="docs/eval/reports/stage1.md",
+            details_json="docs/eval/reports/stage1-details.json",
+            metadata_json="docs/eval/reports/stage1-metadata.json",
             username="admin",
             password="admin123",
             top_k=5,
@@ -133,6 +149,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             no_overwrite=False,
             sample_ids=["fact-001", "definition-001"],
             sample_limit=2,
+            repeat=1,
             include_ask=include_ask,
             ask_delay_seconds=1.0,
             max_ask_retries=2,

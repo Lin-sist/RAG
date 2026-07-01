@@ -114,6 +114,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", ""))
     parser.add_argument("--sample-id", action="append", dest="sample_ids", help="Run only the given eval sample id. Repeatable.")
     parser.add_argument("--sample-limit", type=int, default=int(os.getenv("RAG_EVAL_SAMPLE_LIMIT", "0")), help="Run only the first N selected samples. 0 means no limit.")
+    parser.add_argument("--plan-only", action="store_true", help="Print selected samples and estimated live calls without logging in or calling backend/model APIs.")
     parser.add_argument("--judge-mode", choices=("off", "llm"), default=os.getenv("RAG_EVAL_JUDGE_MODE", "off"))
     parser.add_argument("--judge-base-url", default=os.getenv("RAG_EVAL_JUDGE_BASE_URL", os.getenv("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")))
     parser.add_argument("--judge-api-key", default=os.getenv("RAG_EVAL_JUDGE_API_KEY", os.getenv("NVIDIA_API_KEY", "")))
@@ -160,6 +161,37 @@ def select_samples(samples: list[dict[str, Any]], sample_ids: list[str] | None, 
     if sample_limit > 0:
         selected = selected[:sample_limit]
     return selected
+
+
+def eval_plan(samples: list[dict[str, Any]], args: argparse.Namespace) -> dict[str, Any]:
+    answerable = [sample for sample in samples if sample.get("should_answer", True)]
+    no_answer = [sample for sample in samples if not sample.get("should_answer", True)]
+    ask_calls = 0 if args.skip_ask else len(samples)
+    judge_calls = 0
+    if args.judge_mode == "llm" and not args.skip_ask:
+        judge_calls = len(answerable)
+    return {
+        "sampleCount": len(samples),
+        "answerableCount": len(answerable),
+        "noAnswerCount": len(no_answer),
+        "sampleIds": [sample.get("id") for sample in samples],
+        "skipAsk": args.skip_ask,
+        "judgeMode": args.judge_mode,
+        "estimatedBackendCalls": {
+            "debugRetrieve": len(samples),
+            "ask": ask_calls,
+            "llmJudge": judge_calls,
+        },
+        "outputs": {
+            "report": args.report,
+            "afterReport": args.after_report,
+            "detailsJson": args.details_json,
+        },
+    }
+
+
+def print_eval_plan(plan: dict[str, Any]) -> None:
+    print(json.dumps(plan, ensure_ascii=False, indent=2))
 
 
 def call_json(
@@ -1515,6 +1547,9 @@ def main() -> int:
     if not samples:
         print("No eval samples selected. Check --sample-id/--sample-limit.", file=sys.stderr)
         return 2
+    if args.plan_only:
+        print_eval_plan(eval_plan(samples, args))
+        return 0
     token = ""
     login_error = None
     results: list[SampleResult] = []

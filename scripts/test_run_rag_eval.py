@@ -46,6 +46,25 @@ class RunRagEvalJudgeTest(unittest.TestCase):
 
         self.assertEqual([{"id": "definition-001"}], selected)
 
+    def test_eval_plan_estimates_ask_and_judge_calls(self) -> None:
+        args = argparse.Namespace(
+            skip_ask=False,
+            judge_mode="llm",
+            report="report.md",
+            after_report="",
+            details_json="details.json",
+        )
+        samples = [
+            {"id": "fact-001", "should_answer": True},
+            {"id": "no-answer-001", "should_answer": False},
+        ]
+
+        plan = runner.eval_plan(samples, args)
+
+        self.assertEqual(2, plan["estimatedBackendCalls"]["debugRetrieve"])
+        self.assertEqual(2, plan["estimatedBackendCalls"]["ask"])
+        self.assertEqual(1, plan["estimatedBackendCalls"]["llmJudge"])
+
 
 if __name__ == "__main__":
     unittest.main()
