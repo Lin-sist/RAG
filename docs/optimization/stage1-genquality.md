@@ -16,6 +16,20 @@
 
 因此当前还没有宣称首份生成/引用质量 baseline 已完成；Stage 1 的 live baseline 仍待用户确认后执行。
 
+## 安全闸预检结果
+
+无网络 plan-only 预检已完成，当前评测集共有 30 条样本：27 条 answerable、3 条 no-answer。
+
+完整 Stage 1 baseline 如保持 `--judge-mode off`：
+
+- 预计 `/api/qa/debug/retrieve` 调用：30 次。
+- 预计 `/api/qa/ask` 调用：30 次。
+- 预计外部 LLM judge 调用：0 次。
+- 预计报告：`docs/eval/reports/stage1-genquality-objective.md`。
+- 预计明细：`docs/eval/reports/stage1-genquality-objective-details.json`。
+
+如显式开启 `--judge-mode llm`，同一批样本预计额外产生 27 次 OpenAI-compatible judge 调用；模型、base URL、API key 必须由用户确认后再执行。当前未启用 judge，因此不会产生外部 judge 成本。
+
 ## 已验证项
 
 ```powershell
@@ -29,6 +43,8 @@ python -B scripts\test_run_rag_eval.py
 - Python 编译通过。
 - `run_rag_eval.py --help` 已展示 `--judge-mode`、`--judge-base-url`、`--judge-model`、`--judge-temperature`、`--fail-on-judge-errors` 等参数。
 - `scripts/test_run_rag_eval.py` 通过，覆盖 judge JSON 解析、分数裁剪、judge 开关条件。
+- `run_rag_eval.py --plan-only` 已验证完整基线预计调用量：30 次 debug retrieve、30 次 ask、judge off 时 0 次 LLM judge、judge llm 时 27 次 LLM judge。
+- `run_reproducible_rag_eval.py --plan-only --include-ask` 已验证可在不登录、不建库、不上传、不调用后端的情况下输出完整执行计划。
 
 ## 后续 live baseline 建议
 
