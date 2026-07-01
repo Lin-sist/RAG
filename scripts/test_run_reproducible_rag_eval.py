@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import run_reproducible_rag_eval as runner
@@ -147,6 +148,28 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual({"debugRetrieve": 2, "ask": 2, "llmJudge": 2}, plan["estimatedLiveCalls"])
         self.assertIn("--sample-id", plan["childCommandShape"])
         self.assertNotIn("--judge-api-key", plan["childCommandShape"])
+
+    def test_main_refuses_empty_sample_selection_before_backend_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            eval_set = tmp / "eval.jsonl"
+            fixture = tmp / "fixture.md"
+            eval_set.write_text('{"id":"fact-001","should_answer":true}\n', encoding="utf-8")
+            fixture.write_text("# Fixture\n", encoding="utf-8")
+            argv = [
+                "run_reproducible_rag_eval.py",
+                "--eval-set",
+                str(eval_set),
+                "--fixture",
+                str(fixture),
+                "--sample-id",
+                "missing-001",
+            ]
+
+            with mock.patch("sys.argv", argv), mock.patch.object(runner, "login") as login:
+                self.assertEqual(2, runner.main())
+
+            login.assert_not_called()
 
     @staticmethod
     def eval_command_args(include_ask: bool) -> argparse.Namespace:

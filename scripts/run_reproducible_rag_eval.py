@@ -474,9 +474,14 @@ def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, 
     subprocess.run(command, check=True, env=env)
 
 
-def build_plan(args: argparse.Namespace, fixtures: list[Path]) -> dict[str, Any]:
+def build_plan(
+    args: argparse.Namespace,
+    fixtures: list[Path],
+    selected_samples: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     repeat = max(1, args.repeat)
-    selected_samples = select_eval_samples(read_eval_samples(Path(args.eval_set)), args.sample_ids, args.sample_limit)
+    if selected_samples is None:
+        selected_samples = select_eval_samples(read_eval_samples(Path(args.eval_set)), args.sample_ids, args.sample_limit)
     answerable_count = sum(1 for sample in selected_samples if sample.get("should_answer", True))
     no_answer_count = len(selected_samples) - answerable_count
     return {
@@ -517,8 +522,12 @@ def main() -> int:
     if args.repeat < 1:
         print("--repeat must be >= 1", file=sys.stderr)
         return 2
+    selected_samples = select_eval_samples(read_eval_samples(Path(args.eval_set)), args.sample_ids, args.sample_limit)
+    if not selected_samples:
+        print("No eval samples selected. Check --sample-id/--sample-limit.", file=sys.stderr)
+        return 2
     if args.plan_only:
-        print_plan(build_plan(args, fixtures))
+        print_plan(build_plan(args, fixtures, selected_samples))
         return 0
 
     token = login(args)
