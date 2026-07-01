@@ -120,14 +120,31 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertIn("definition-001", command)
 
     def test_build_plan_includes_command_shape_without_api_key(self) -> None:
-        plan = runner.build_plan(
-            self.eval_command_args(include_ask=True),
-            [Path("test-data/springboot-basics.md")],
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            eval_set = Path(tmp_dir) / "eval.jsonl"
+            eval_set.write_text(
+                "\n".join([
+                    '{"id":"fact-001","should_answer":true}',
+                    '{"id":"definition-001","should_answer":true}',
+                    '{"id":"no-answer-001","should_answer":false}',
+                ]),
+                encoding="utf-8",
+            )
+            args = self.eval_command_args(include_ask=True)
+            args.eval_set = str(eval_set)
+
+            plan = runner.build_plan(
+                args,
+                [Path("test-data/springboot-basics.md")],
+            )
 
         self.assertEqual("generation/citation", plan["mode"])
         self.assertEqual(["fact-001", "definition-001"], plan["sampleIds"])
         self.assertEqual(2, plan["sampleLimit"])
+        self.assertEqual(2, plan["selectedSampleCount"])
+        self.assertEqual(2, plan["answerableCount"])
+        self.assertEqual(0, plan["noAnswerCount"])
+        self.assertEqual({"debugRetrieve": 2, "ask": 2, "llmJudge": 2}, plan["estimatedLiveCalls"])
         self.assertIn("--sample-id", plan["childCommandShape"])
         self.assertNotIn("--judge-api-key", plan["childCommandShape"])
 

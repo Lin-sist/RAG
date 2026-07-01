@@ -422,6 +422,49 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
     return command
 
 
+def read_eval_samples(path: Path) -> list[dict[str, Any]]:
+    samples: list[dict[str, Any]] = []
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            for line_number, line in enumerate(file, start=1):
+                if not line.strip():
+                    continue
+                item = json.loads(line)
+                if not isinstance(item, dict):
+                    raise ApiError(f"Eval sample at {path}:{line_number} is not an object")
+                samples.append(item)
+    except FileNotFoundError as exc:
+        raise ApiError(f"Eval set not found: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ApiError(f"Eval set JSONL parse failed at {path}:{exc.lineno}: {exc.msg}") from exc
+    return samples
+
+
+def select_eval_samples(
+    samples: list[dict[str, Any]],
+    sample_ids: list[str] | None,
+    sample_limit: int,
+) -> list[dict[str, Any]]:
+    selected = samples
+    if sample_ids:
+        requested = set(sample_ids)
+        selected = [sample for sample in selected if str(sample.get("id")) in requested]
+    if sample_limit > 0:
+        selected = selected[:sample_limit]
+    return selected
+
+
+def estimate_live_calls(args: argparse.Namespace, samples: list[dict[str, Any]], repeat: int) -> dict[str, int]:
+    answerable_count = sum(1 for sample in samples if sample.get("should_answer", True))
+    ask_calls = len(samples) * repeat if args.include_ask else 0
+    judge_calls = answerable_count * repeat if args.include_ask and args.judge_mode == "llm" else 0
+    return {
+        "debugRetrieve": len(samples) * repeat,
+        "ask": ask_calls,
+        "llmJudge": judge_calls,
+    }
+
+
 def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, metadata: Path) -> None:
     command = build_eval_command(args, kb_id, report, details, metadata)
     env = os.environ.copy()
@@ -433,6 +476,9 @@ def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, 
 
 def build_plan(args: argparse.Namespace, fixtures: list[Path]) -> dict[str, Any]:
     repeat = max(1, args.repeat)
+    selected_samples = select_eval_samples(read_eval_samples(Path(args.eval_set)), args.sample_ids, args.sample_limit)
+    answerable_count = sum(1 for sample in selected_samples if sample.get("should_answer", True))
+    no_answer_count = len(selected_samples) - answerable_count
     return {
         "mode": "generation/citation" if args.include_ask else "retrieval-only",
         "baseUrl": args.base_url,
@@ -441,9 +487,14 @@ def build_plan(args: argparse.Namespace, fixtures: list[Path]) -> dict[str, Any]
         "fixtures": [str(path) for path in fixtures],
         "sampleIds": args.sample_ids or [],
         "sampleLimit": args.sample_limit,
+        "selectedSampleCount": len(selected_samples),
+        "answerableCount": answerable_count,
+        "noAnswerCount": no_answer_count,
+        "selectedSampleIds": [sample.get("id") for sample in selected_samples],
         "includeAsk": args.include_ask,
         "judgeMode": args.judge_mode,
         "repeat": args.repeat,
+        "estimatedLiveCalls": estimate_live_calls(args, selected_samples, repeat),
         "reports": [str(repeat_path(args.report, repeat, index)) for index in range(1, repeat + 1)],
         "detailsJson": [str(repeat_path(args.details_json, repeat, index)) for index in range(1, repeat + 1)],
         "metadataJson": str(Path(args.metadata_json)),
