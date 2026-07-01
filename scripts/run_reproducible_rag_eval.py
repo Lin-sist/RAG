@@ -47,7 +47,7 @@ class ApiError(RuntimeError):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare and run a reproducible RAG retrieval eval.")
+    parser = argparse.ArgumentParser(description="Prepare and run a reproducible RAG eval.")
     parser.add_argument("--base-url", default=os.getenv("RAG_BASE_URL", DEFAULT_BASE_URL))
     parser.add_argument("--username", default=os.getenv("RAG_EVAL_USERNAME", "admin"))
     parser.add_argument("--password", default=os.getenv("RAG_EVAL_PASSWORD", "admin123"))
@@ -62,6 +62,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-score", type=float, default=float(os.getenv("RAG_EVAL_MIN_SCORE", "0.3")))
     parser.add_argument("--enable-rerank", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--timeout", type=float, default=float(os.getenv("RAG_EVAL_TIMEOUT", "60")))
+    parser.add_argument("--include-ask", action="store_true", help="Also call /api/qa/ask for generation/citation metrics. Default remains retrieval-only.")
+    parser.add_argument("--ask-delay-seconds", type=float, default=float(os.getenv("RAG_EVAL_ASK_DELAY_SECONDS", "0")))
+    parser.add_argument("--max-ask-retries", type=int, default=int(os.getenv("RAG_EVAL_MAX_ASK_RETRIES", "0")))
+    parser.add_argument("--retry-backoff-seconds", type=float, default=float(os.getenv("RAG_EVAL_RETRY_BACKOFF_SECONDS", "0")))
+    parser.add_argument("--judge-mode", choices=("off", "llm"), default=os.getenv("RAG_EVAL_JUDGE_MODE", "off"))
+    parser.add_argument("--judge-base-url", default=os.getenv("RAG_EVAL_JUDGE_BASE_URL", os.getenv("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")))
+    parser.add_argument("--judge-api-key", default=os.getenv("RAG_EVAL_JUDGE_API_KEY", os.getenv("NVIDIA_API_KEY", "")))
+    parser.add_argument("--judge-model", default=os.getenv("RAG_EVAL_JUDGE_MODEL", ""))
+    parser.add_argument("--judge-temperature", type=float, default=float(os.getenv("RAG_EVAL_JUDGE_TEMPERATURE", "0")))
+    parser.add_argument("--judge-timeout", type=float, default=float(os.getenv("RAG_EVAL_JUDGE_TIMEOUT", "60")))
+    parser.add_argument("--judge-max-context-chars", type=int, default=int(os.getenv("RAG_EVAL_JUDGE_MAX_CONTEXT_CHARS", "6000")))
     parser.add_argument("--poll-interval-seconds", type=float, default=2.0)
     parser.add_argument("--index-timeout-seconds", type=float, default=180.0)
     parser.add_argument("--repeat", type=int, default=1, help="Run retrieval-only eval repeatedly against the same prepared KB.")
@@ -346,7 +357,7 @@ def write_json(path: Path, payload: dict[str, Any], no_overwrite: bool) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, metadata: Path) -> None:
+def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, details: Path, metadata: Path) -> list[str]:
     command = [
         args.python,
         "-B",
@@ -365,7 +376,6 @@ def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, 
         str(args.top_k),
         "--min-score",
         str(args.min_score),
-        "--skip-ask",
         "--report",
         str(report),
         "--details-json",
@@ -373,14 +383,45 @@ def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, 
         "--run-metadata-json",
         str(metadata),
     ]
+    if args.include_ask:
+        command.extend([
+            "--ask-delay-seconds",
+            str(args.ask_delay_seconds),
+            "--max-ask-retries",
+            str(args.max_ask_retries),
+            "--retry-backoff-seconds",
+            str(args.retry_backoff_seconds),
+            "--judge-mode",
+            args.judge_mode,
+            "--judge-base-url",
+            args.judge_base_url,
+            "--judge-model",
+            args.judge_model,
+            "--judge-temperature",
+            str(args.judge_temperature),
+            "--judge-timeout",
+            str(args.judge_timeout),
+            "--judge-max-context-chars",
+            str(args.judge_max_context_chars),
+        ])
+    else:
+        command.append("--skip-ask")
     if args.enable_rerank:
         command.append("--enable-rerank")
     else:
         command.append("--no-enable-rerank")
     if args.no_overwrite:
         command.append("--no-overwrite")
+    return command
+
+
+def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, metadata: Path) -> None:
+    command = build_eval_command(args, kb_id, report, details, metadata)
+    env = os.environ.copy()
+    if args.judge_api_key:
+        env["RAG_EVAL_JUDGE_API_KEY"] = args.judge_api_key
     print("Running:", " ".join(command))
-    subprocess.run(command, check=True)
+    subprocess.run(command, check=True, env=env)
 
 
 def main() -> int:

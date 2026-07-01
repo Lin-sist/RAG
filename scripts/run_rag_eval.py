@@ -62,6 +62,12 @@ class SampleResult:
     unsupported_citation_count: int
     no_answer_citation_violation_count: int
     no_answer_ok: bool | None
+    faithfulness_score: float | None
+    relevance_score: float | None
+    judge_pass: bool | None
+    judge_error: str | None
+    judge_response: dict[str, Any] | None
+    skipped_judge: bool
     debug_response: dict[str, Any] | None
     ask_response: dict[str, Any] | None
     details: dict[str, Any]
@@ -106,6 +112,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fail-on-ask-errors", action="store_true")
     parser.add_argument("--no-overwrite", action="store_true")
     parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", ""))
+    parser.add_argument("--judge-mode", choices=("off", "llm"), default=os.getenv("RAG_EVAL_JUDGE_MODE", "off"))
+    parser.add_argument("--judge-base-url", default=os.getenv("RAG_EVAL_JUDGE_BASE_URL", os.getenv("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")))
+    parser.add_argument("--judge-api-key", default=os.getenv("RAG_EVAL_JUDGE_API_KEY", os.getenv("NVIDIA_API_KEY", "")))
+    parser.add_argument("--judge-model", default=os.getenv("RAG_EVAL_JUDGE_MODEL", ""))
+    parser.add_argument("--judge-temperature", type=float, default=float(os.getenv("RAG_EVAL_JUDGE_TEMPERATURE", "0")))
+    parser.add_argument("--judge-timeout", type=float, default=float(os.getenv("RAG_EVAL_JUDGE_TIMEOUT", "60")))
+    parser.add_argument("--judge-max-context-chars", type=int, default=int(os.getenv("RAG_EVAL_JUDGE_MAX_CONTEXT_CHARS", "6000")))
+    parser.add_argument("--fail-on-judge-errors", action="store_true")
     parser.add_argument(
         "--run-metadata-json",
         default=os.getenv("RAG_EVAL_RUN_METADATA_JSON", ""),
@@ -198,6 +212,154 @@ def login(base_url: str, username: str, password: str, timeout: float) -> str:
     return str(token)
 
 
+def should_run_judge(args: argparse.Namespace, ask_evaluable: bool, should_answer: bool) -> bool:
+    return args.judge_mode == "llm" and ask_evaluable and should_answer
+
+
+def call_llm_judge(
+    sample: dict[str, Any],
+    answer: str,
+    ask_response: dict[str, Any],
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    if not args.judge_model:
+        raise RuntimeError("LLM judge is enabled but --judge-model/RAG_EVAL_JUDGE_MODEL is empty")
+    if not args.judge_api_key:
+        raise RuntimeError("LLM judge is enabled but --judge-api-key/RAG_EVAL_JUDGE_API_KEY is empty")
+
+    payload = {
+        "model": args.judge_model,
+        "temperature": args.judge_temperature,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a strict RAG answer evaluator. Judge only from the provided retrieved contexts. "
+                    "Return JSON only, with fields: faithfulnessScore, relevanceScore, pass, reason. "
+                    "Scores must be numbers between 0 and 1. pass is true only when the answer is both faithful and relevant."
+                ),
+            },
+            {
+                "role": "user",
+                "content": build_judge_prompt(sample, answer, ask_response, args.judge_max_context_chars),
+            },
+        ],
+    }
+    response = call_json(
+        "POST",
+        f"{args.judge_base_url.rstrip('/')}/chat/completions",
+        payload,
+        args.judge_api_key,
+        args.judge_timeout,
+    )
+    content = extract_openai_message_content(response)
+    parsed = parse_judge_content(content)
+    parsed["rawContent"] = content
+    return parsed
+
+
+def build_judge_prompt(
+    sample: dict[str, Any],
+    answer: str,
+    ask_response: dict[str, Any],
+    max_context_chars: int,
+) -> str:
+    contexts = ask_response.get("contexts", []) if isinstance(ask_response, dict) else []
+    context_lines: list[str] = []
+    remaining = max(0, max_context_chars)
+    for index, context in enumerate(contexts or [], start=1):
+        source = context.get("source") or context.get("sourceFileName") or context.get("documentTitle") or ""
+        content = str(context.get("content") or context.get("contentPreview") or "")
+        if remaining <= 0:
+            break
+        clipped = content[:remaining]
+        remaining -= len(clipped)
+        context_lines.append(f"[{index}] source={source}\n{clipped}")
+
+    expected_points = sample.get("expected_answer_points") or []
+    expected_keywords = sample.get("expected_keywords") or []
+    return "\n\n".join([
+        f"Question:\n{sample.get('question', '')}",
+        f"Expected answer points for reference, not as hidden context:\n{json.dumps(expected_points, ensure_ascii=False)}",
+        f"Expected keywords for reference:\n{json.dumps(expected_keywords, ensure_ascii=False)}",
+        "Retrieved contexts:\n" + ("\n\n".join(context_lines) if context_lines else "(none)"),
+        f"Answer to judge:\n{answer}",
+    ])
+
+
+def extract_openai_message_content(response: dict[str, Any]) -> str:
+    choices = response.get("choices")
+    if not isinstance(choices, list) or not choices:
+        raise RuntimeError("Judge response did not contain choices")
+    message = choices[0].get("message") if isinstance(choices[0], dict) else None
+    content = message.get("content") if isinstance(message, dict) else None
+    if not isinstance(content, str) or not content.strip():
+        raise RuntimeError("Judge response did not contain message.content")
+    return content
+
+
+def parse_judge_content(content: str) -> dict[str, Any]:
+    payload = parse_json_object_from_text(content)
+    faithfulness = clamp_score(first_present(payload, "faithfulnessScore", "faithfulness", "faithfulness_score"))
+    relevance = clamp_score(first_present(payload, "relevanceScore", "relevance", "relevance_score"))
+    passed = parse_bool(first_present(payload, "pass", "passed", "ok"))
+    if passed is None and faithfulness is not None and relevance is not None:
+        passed = faithfulness >= 0.7 and relevance >= 0.7
+    return {
+        "faithfulnessScore": faithfulness,
+        "relevanceScore": relevance,
+        "pass": passed,
+        "reason": str(payload.get("reason") or payload.get("rationale") or "").strip(),
+    }
+
+
+def parse_json_object_from_text(text: str) -> dict[str, Any]:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.IGNORECASE)
+        stripped = re.sub(r"\s*```$", "", stripped)
+    try:
+        value = json.loads(stripped)
+    except json.JSONDecodeError:
+        start = stripped.find("{")
+        end = stripped.rfind("}")
+        if start < 0 or end <= start:
+            raise RuntimeError("Judge response was not JSON") from None
+        value = json.loads(stripped[start:end + 1])
+    if not isinstance(value, dict):
+        raise RuntimeError("Judge response JSON must be an object")
+    return value
+
+
+def first_present(payload: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in payload:
+            return payload[key]
+    return None
+
+
+def clamp_score(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    return min(1.0, max(0.0, score))
+
+
+def parse_bool(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "yes", "pass", "passed", "1"}:
+            return True
+        if lowered in {"false", "no", "fail", "failed", "0"}:
+            return False
+    return None
+
+
 def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> SampleResult:
     question = sample["question"]
     debug_response: dict[str, Any] | None = None
@@ -205,9 +367,15 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
     retrieval_error = None
     ask_error = None
     skipped_ask = bool(args.skip_ask)
+    skipped_judge = True
     ask_attempts = 0
     ask_retry_count = 0
     rate_limit_errors = 0
+    judge_error = None
+    judge_response = None
+    faithfulness_score = None
+    relevance_score = None
+    judge_pass = None
 
     try:
         debug_response = api_data(call_json(
@@ -267,6 +435,15 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
     ) if ask_evaluable else (0, 0, 0)
     no_answer_citation_violation_count = 1 if (ask_evaluable and not should_answer and len(citations or []) > 0) else 0
     no_answer_ok = is_no_answer(ask_response, ask_answer) if not should_answer and ask_evaluable else None
+    if should_run_judge(args, ask_evaluable, should_answer):
+        skipped_judge = False
+        try:
+            judge_response = call_llm_judge(sample, ask_answer, ask_response or {}, args)
+            faithfulness_score = judge_response.get("faithfulnessScore")
+            relevance_score = judge_response.get("relevanceScore")
+            judge_pass = judge_response.get("pass")
+        except Exception as exc:  # noqa: BLE001 - judge must not poison objective metrics
+            judge_error = str(exc)
 
     if retrieval_error is None and should_answer and not contexts:
         retrieval_error = "No contexts returned; knowledge base may not exist, documents may still be indexing, or minScore is too high."
@@ -311,6 +488,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         "debugRetrieveRawResponse": debug_response,
         "normalizedSources": normalized_sources,
         "askRawResponse": ask_response,
+        "judgeRawResponse": judge_response,
         "returnedCitations": citations or [],
         "metricCalculationDetails": {
             "retrieveHitRatio": f"{recall5_hits}/{recall_total}" if recall_total else "-",
@@ -328,6 +506,11 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             "unsupportedCitationCount": unsupported_citation_count,
             "noAnswerCitationViolationCount": no_answer_citation_violation_count,
             "noAnswerOk": no_answer_ok,
+            "faithfulnessScore": faithfulness_score,
+            "relevanceScore": relevance_score,
+            "judgePass": judge_pass,
+            "judgeSkipped": skipped_judge,
+            "judgeError": judge_error,
             "citationValidation": citation_validation_metadata(ask_response),
             "askSkipped": skipped_ask,
             "askAttempts": ask_attempts,
@@ -360,6 +543,12 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         unsupported_citation_count=unsupported_citation_count,
         no_answer_citation_violation_count=no_answer_citation_violation_count,
         no_answer_ok=no_answer_ok,
+        faithfulness_score=faithfulness_score,
+        relevance_score=relevance_score,
+        judge_pass=judge_pass,
+        judge_error=judge_error,
+        judge_response=judge_response,
+        skipped_judge=skipped_judge,
         debug_response=debug_response,
         ask_response=ask_response,
         details=details,
@@ -701,6 +890,10 @@ def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
     ]
     answerable_ask_success = [result for result in ask_success if result.sample.get("should_answer", True)]
     no_answer_ask_success = [result for result in ask_success if not result.sample.get("should_answer", True)]
+    judge_evaluable = [
+        result for result in answerable_ask_success
+        if not result.skipped_judge and result.judge_error is None and result.judge_pass is not None
+    ]
     ask_skipped = sum(1 for result in results if result.skipped_ask)
 
     recall_total = sum(result.recall_total for result in answerable)
@@ -721,7 +914,15 @@ def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
     unsupported_citation_count = sum(result.unsupported_citation_count for result in ask_success)
     no_answer_citation_violation_count = sum(result.no_answer_citation_violation_count for result in no_answer_ask_success)
     no_answer_values = [result.no_answer_ok for result in no_answer_ask_success if result.no_answer_ok is not None]
+    judge_pass_values = [result.judge_pass for result in judge_evaluable if result.judge_pass is not None]
+    faithfulness_scores = [
+        result.faithfulness_score for result in judge_evaluable if result.faithfulness_score is not None
+    ]
+    relevance_scores = [
+        result.relevance_score for result in judge_evaluable if result.relevance_score is not None
+    ]
     generation_skipped = ask_skipped == len(results) if results else False
+    judge_skipped = sum(1 for result in results if result.skipped_judge) == len(results) if results else False
     no_answer_ok_count = sum(1 for value in no_answer_values if value)
 
     return {
@@ -739,9 +940,13 @@ def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
         "unsupported_citation_count": unsupported_citation_count,
         "no_answer_citation_violation_count": no_answer_citation_violation_count,
         "no_answer_accuracy": metric_ratio(no_answer_ok_count, len(no_answer_values), generation_skipped),
+        "judge_pass_rate": metric_ratio(sum(1 for value in judge_pass_values if value), len(judge_pass_values), judge_skipped),
+        "faithfulness_avg": metric_average(faithfulness_scores, judge_skipped),
+        "relevance_avg": metric_average(relevance_scores, judge_skipped),
         "ask_success_samples": len(ask_success),
         "answerable_ask_success_samples": len(answerable_ask_success),
         "no_answer_ask_success_samples": len(no_answer_ask_success),
+        "judge_evaluable_samples": len(judge_evaluable),
         "answer_keyword_hits": keyword_hits,
         "answer_keyword_total": keyword_total,
         "citation_source_hits": citation_hits,
@@ -750,6 +955,8 @@ def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
         "citation_snippet_total": citation_snippet_total,
         "no_answer_ok_count": no_answer_ok_count,
         "no_answer_evaluable_total": len(no_answer_values),
+        "judge_pass_count": sum(1 for value in judge_pass_values if value),
+        "judge_pass_total": len(judge_pass_values),
     }
 
 
@@ -763,6 +970,14 @@ def metric_ratio(numerator: int, denominator: int, skipped: bool) -> float | str
     if denominator == 0:
         return "N/A"
     return ratio(numerator, denominator)
+
+
+def metric_average(values: list[float], skipped: bool) -> float | str:
+    if skipped:
+        return "skipped"
+    if not values:
+        return "N/A"
+    return sum(values) / len(values)
 
 
 def pct(value: float | int | str) -> str:
@@ -787,6 +1002,8 @@ def run_counts(results: list[SampleResult]) -> dict[str, int]:
         "askErrors": sum(1 for result in results if result.ask_error is not None),
         "retrieveErrors": sum(1 for result in results if result.retrieval_error is not None),
         "skippedAsk": sum(1 for result in results if result.skipped_ask),
+        "judgeErrors": sum(1 for result in results if result.judge_error is not None),
+        "skippedJudge": sum(1 for result in results if result.skipped_judge),
         "rateLimitErrors": sum(result.rate_limit_errors for result in results),
         "retryCount": sum(result.ask_retry_count for result in results),
     }
@@ -837,6 +1054,8 @@ def write_report(
     lines.append(f"- askErrors count: `{counts['askErrors']}`")
     lines.append(f"- retrieveErrors count: `{counts['retrieveErrors']}`")
     lines.append(f"- skippedAsk count: `{counts['skippedAsk']}`")
+    lines.append(f"- judgeErrors count: `{counts['judgeErrors']}`")
+    lines.append(f"- skippedJudge count: `{counts['skippedJudge']}`")
     lines.append(f"- rateLimitErrors count: `{counts['rateLimitErrors']}`")
     lines.append(f"- retry count: `{counts['retryCount']}`")
     lines.append(f"- Metrics safe for comparison: `{metrics_safe_for_comparison(status, counts)}`")
@@ -847,6 +1066,10 @@ def write_report(
     lines.append(f"- minScore: `{args.min_score}`")
     lines.append(f"- enableRerank: `{args.enable_rerank}`")
     lines.append(f"- skipAsk: `{args.skip_ask}`")
+    lines.append(f"- judgeMode: `{args.judge_mode}`")
+    lines.append(f"- judgeModel: `{args.judge_model or ''}`")
+    lines.append(f"- judgeBaseUrl: `{args.judge_base_url}`")
+    lines.append(f"- judgeTemperature: `{args.judge_temperature}`")
     if run_metadata:
         append_header_metadata(lines, run_metadata)
     lines.append(f"- askDelaySeconds: `{args.ask_delay_seconds}`")
@@ -897,12 +1120,16 @@ def write_report(
     lines.append(f"| Unsupported citation count | {metrics['unsupported_citation_count']} |")
     lines.append(f"| No-answer citation violation count | {metrics['no_answer_citation_violation_count']} |")
     lines.append(f"| No-answer accuracy on successful ask samples | {pct(metrics['no_answer_accuracy'])} ({metrics['no_answer_ok_count']}/{metrics['no_answer_evaluable_total']}) |")
+    lines.append(f"| Judge evaluable samples | {metrics['judge_evaluable_samples']} |")
+    lines.append(f"| LLM judge pass rate | {pct(metrics['judge_pass_rate'])} ({metrics['judge_pass_count']}/{metrics['judge_pass_total']}) |")
+    lines.append(f"| Faithfulness average | {pct(metrics['faithfulness_avg'])} |")
+    lines.append(f"| Relevance average | {pct(metrics['relevance_avg'])} |")
     lines.append("")
 
     lines.append("## Sample Results")
     lines.append("")
-    lines.append("| ID | Type | Retrieve | First Match | Ask | Keyword Hit | Citation Source | Citation Snippet | Unsupported Citations | No-answer OK | Errors |")
-    lines.append("|---|---|---:|---:|---|---:|---:|---:|---:|---:|---|")
+    lines.append("| ID | Type | Retrieve | First Match | Ask | Keyword Hit | Citation Source | Citation Snippet | Unsupported Citations | No-answer OK | Judge | Errors |")
+    lines.append("|---|---|---:|---:|---|---:|---:|---:|---:|---:|---|---|")
     for result in results:
         retrieve = f"{result.recall5_hits}/{result.recall_total}" if result.recall_total else "-"
         first = result.first_match_rank if result.first_match_rank is not None else "-"
@@ -911,11 +1138,12 @@ def write_report(
         citation = "skipped" if result.skipped_ask else (f"{result.citation_hits}/{result.citation_total}" if result.citation_total else "-")
         citation_snippet = "skipped" if result.skipped_ask else (f"{result.citation_snippet_hits}/{result.citation_snippet_total}" if result.citation_snippet_total else "-")
         no_answer = format_bool(result.no_answer_ok)
-        errors = "; ".join(error for error in [result.retrieval_error, result.ask_error] if error) or ""
+        judge = "skipped" if result.skipped_judge else ("error" if result.judge_error else format_bool(result.judge_pass))
+        errors = "; ".join(error for error in [result.retrieval_error, result.ask_error, result.judge_error] if error) or ""
         lines.append(
             f"| {result.sample.get('id')} | {result.sample.get('type')} | {retrieve} | {first} | {ask_state} | "
             f"{keyword} | {citation} | {citation_snippet} | {result.unsupported_citation_count} | "
-            f"{no_answer} | {escape_table(errors)} |"
+            f"{no_answer} | {judge} | {escape_table(errors)} |"
         )
     lines.append("")
 
@@ -923,8 +1151,10 @@ def write_report(
     lines.append("")
     lines.append("- `debug/retrieve` is used for Recall@3, Recall@5, MRR, and Top1 source accuracy.")
     lines.append("- `ask` is used for answer keyword hit rate, citation hit rate, and no-answer accuracy.")
+    lines.append("- `LLM judge` is optional and only runs when `--judge-mode llm` is explicitly enabled with judge credentials.")
     lines.append("- When `--skip-ask` is enabled, generation/citation/no-answer metrics are marked as skipped instead of being counted as zero.")
     lines.append("- When ask errors occur, generation/citation/no-answer metrics are calculated only on successful ask samples and the report status becomes PARTIAL.")
+    lines.append("- When judge is disabled or unavailable, faithfulness/relevance metrics are marked as skipped or partial; objective citation/no-answer metrics remain reportable.")
     lines.append("- `queryVariants`, `rank`, `score`, `source`, `documentId`, `chunkId`, `contentPreview`, and `metadata` are expected in debug output.")
     lines.append("")
 
@@ -933,7 +1163,7 @@ def write_report(
     lines.append("- `contentPreview` is a preview, not the full chunk, so long expected snippets may undercount recall.")
     lines.append("- Citation source hit rate checks expected source names in returned citations.")
     lines.append("- Citation snippet hit rate verifies each returned citation against the `contexts` returned by `/api/qa/ask` using exact match or token overlap.")
-    lines.append("- Answer scoring is keyword based and does not use an LLM judge.")
+    lines.append("- Answer keyword scoring is lexical; optional LLM judge metrics are reported separately when explicitly enabled.")
     lines.append("- Metrics assume the three `test-data/*.md` files were uploaded with recognizable file names or document titles.")
     lines.append("")
 
@@ -1210,6 +1440,14 @@ def write_details_json(
         "minScore": args.min_score,
         "enableRerank": args.enable_rerank,
         "skipAsk": args.skip_ask,
+        "judge": {
+            "mode": args.judge_mode,
+            "baseUrl": args.judge_base_url,
+            "model": args.judge_model,
+            "temperature": args.judge_temperature,
+            "timeout": args.judge_timeout,
+            "maxContextChars": args.judge_max_context_chars,
+        },
         "askDelaySeconds": args.ask_delay_seconds,
         "maxAskRetries": args.max_ask_retries,
         "retryBackoffSeconds": args.retry_backoff_seconds,
@@ -1295,6 +1533,8 @@ def main() -> int:
     print(f"askErrors: {counts['askErrors']}")
     print(f"retrieveErrors: {counts['retrieveErrors']}")
     print(f"skippedAsk: {counts['skippedAsk']}")
+    print(f"judgeErrors: {counts['judgeErrors']}")
+    print(f"skippedJudge: {counts['skippedJudge']}")
     print(f"rateLimitErrors: {counts['rateLimitErrors']}")
     print(f"retry count: {counts['retryCount']}")
     print(f"Metrics safe for comparison: {metrics_safe_for_comparison(status, counts)}")
@@ -1309,6 +1549,9 @@ def main() -> int:
     print(f"Unsupported citation count: {metrics['unsupported_citation_count']}")
     print(f"No-answer citation violation count: {metrics['no_answer_citation_violation_count']}")
     print(f"No-answer accuracy: {pct(metrics['no_answer_accuracy'])}")
+    print(f"LLM judge pass rate: {pct(metrics['judge_pass_rate'])}")
+    print(f"Faithfulness average: {pct(metrics['faithfulness_avg'])}")
+    print(f"Relevance average: {pct(metrics['relevance_avg'])}")
     print(f"Wrote report: {report_path}")
     if after_report_path is not None:
         print(f"Wrote report: {after_report_path}")
@@ -1316,6 +1559,9 @@ def main() -> int:
         print(f"Wrote details JSON: {details_json_path}")
     if args.fail_on_ask_errors and counts["askErrors"] > 0:
         print("--fail-on-ask-errors enabled and askErrors > 0.", file=sys.stderr)
+        return 1
+    if args.fail_on_judge_errors and counts["judgeErrors"] > 0:
+        print("--fail-on-judge-errors enabled and judgeErrors > 0.", file=sys.stderr)
         return 1
     return 0
 
