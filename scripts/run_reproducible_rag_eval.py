@@ -58,6 +58,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", str(DEFAULT_DETAILS_JSON)))
     parser.add_argument("--metadata-json", default=os.getenv("RAG_EVAL_METADATA_JSON", str(DEFAULT_METADATA_JSON)))
     parser.add_argument("--fixture", action="append", dest="fixtures", help="Fixture file to upload. Repeatable.")
+    parser.add_argument("--sample-id", action="append", dest="sample_ids", help="Run only the given eval sample id. Repeatable.")
+    parser.add_argument("--sample-limit", type=int, default=int(os.getenv("RAG_EVAL_SAMPLE_LIMIT", "0")), help="Run only the first N selected samples. 0 means no limit.")
     parser.add_argument("--top-k", type=int, default=int(os.getenv("RAG_EVAL_TOP_K", "5")))
     parser.add_argument("--min-score", type=float, default=float(os.getenv("RAG_EVAL_MIN_SCORE", "0.3")))
     parser.add_argument("--enable-rerank", action=argparse.BooleanOptionalAction, default=True)
@@ -368,6 +370,8 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
         args.eval_set,
         "--kb-id",
         str(kb_id),
+        "--sample-limit",
+        str(args.sample_limit),
         "--username",
         args.username,
         "--password",
@@ -406,6 +410,8 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
         ])
     else:
         command.append("--skip-ask")
+    for sample_id in args.sample_ids or []:
+        command.extend(["--sample-id", sample_id])
     if args.enable_rerank:
         command.append("--enable-rerank")
     else:

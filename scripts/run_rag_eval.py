@@ -112,6 +112,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fail-on-ask-errors", action="store_true")
     parser.add_argument("--no-overwrite", action="store_true")
     parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", ""))
+    parser.add_argument("--sample-id", action="append", dest="sample_ids", help="Run only the given eval sample id. Repeatable.")
+    parser.add_argument("--sample-limit", type=int, default=int(os.getenv("RAG_EVAL_SAMPLE_LIMIT", "0")), help="Run only the first N selected samples. 0 means no limit.")
     parser.add_argument("--judge-mode", choices=("off", "llm"), default=os.getenv("RAG_EVAL_JUDGE_MODE", "off"))
     parser.add_argument("--judge-base-url", default=os.getenv("RAG_EVAL_JUDGE_BASE_URL", os.getenv("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")))
     parser.add_argument("--judge-api-key", default=os.getenv("RAG_EVAL_JUDGE_API_KEY", os.getenv("NVIDIA_API_KEY", "")))
@@ -148,6 +150,16 @@ def load_eval_set(path: Path) -> list[dict[str, Any]]:
                 raise ValueError(f"{path}:{line_no} is not valid JSON: {exc}") from exc
             samples.append(sample)
     return samples
+
+
+def select_samples(samples: list[dict[str, Any]], sample_ids: list[str] | None, sample_limit: int) -> list[dict[str, Any]]:
+    selected = samples
+    if sample_ids:
+        wanted = set(sample_ids)
+        selected = [sample for sample in selected if str(sample.get("id")) in wanted]
+    if sample_limit > 0:
+        selected = selected[:sample_limit]
+    return selected
 
 
 def call_json(
@@ -1062,6 +1074,8 @@ def write_report(
     lines.append(f"- Base URL: `{args.base_url}`")
     lines.append(f"- Knowledge base ID: `{args.kb_id}`")
     lines.append(f"- Eval set: `{args.eval_set}`")
+    lines.append(f"- sampleIds: `{','.join(args.sample_ids or [])}`")
+    lines.append(f"- sampleLimit: `{args.sample_limit}`")
     lines.append(f"- topK: `{args.top_k}`")
     lines.append(f"- minScore: `{args.min_score}`")
     lines.append(f"- enableRerank: `{args.enable_rerank}`")
@@ -1436,6 +1450,8 @@ def write_details_json(
         "baseUrl": args.base_url,
         "kbId": args.kb_id,
         "evalSet": args.eval_set,
+        "sampleIds": args.sample_ids or [],
+        "sampleLimit": args.sample_limit,
         "topK": args.top_k,
         "minScore": args.min_score,
         "enableRerank": args.enable_rerank,
@@ -1494,7 +1510,11 @@ def main() -> int:
         print("Missing --kb-id or RAG_EVAL_KB_ID. Create an eval knowledge base first, then pass its id.", file=sys.stderr)
         return 2
 
-    samples = load_eval_set(eval_path)
+    all_samples = load_eval_set(eval_path)
+    samples = select_samples(all_samples, args.sample_ids, args.sample_limit)
+    if not samples:
+        print("No eval samples selected. Check --sample-id/--sample-limit.", file=sys.stderr)
+        return 2
     token = ""
     login_error = None
     results: list[SampleResult] = []

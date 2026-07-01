@@ -32,7 +32,23 @@ python -B scripts\test_run_rag_eval.py
 
 ## 后续 live baseline 建议
 
-在用户确认外部调用后，建议先跑小样本 smoke，再跑完整 Stage 1 baseline：
+在用户确认外部调用后，建议先跑小样本 smoke，再跑完整 Stage 1 baseline。
+
+小样本 smoke 示例：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --include-ask `
+  --sample-id fact-001 `
+  --sample-id no-answer-001 `
+  --ask-delay-seconds 2 `
+  --max-ask-retries 2 `
+  --retry-backoff-seconds 10 `
+  --report docs\eval\reports\stage1-genquality-smoke.md `
+  --details-json docs\eval\reports\stage1-genquality-smoke-details.json
+```
+
+完整 Stage 1 baseline 示例：
 
 ```powershell
 python -B scripts\run_reproducible_rag_eval.py `

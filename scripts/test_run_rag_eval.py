@@ -35,6 +35,17 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         args.judge_mode = "off"
         self.assertFalse(runner.should_run_judge(args, ask_evaluable=True, should_answer=True))
 
+    def test_select_samples_filters_ids_then_applies_limit(self) -> None:
+        samples = [
+            {"id": "fact-001"},
+            {"id": "definition-001"},
+            {"id": "reasoning-001"},
+        ]
+
+        selected = runner.select_samples(samples, ["definition-001", "reasoning-001"], 1)
+
+        self.assertEqual([{"id": "definition-001"}], selected)
+
 
 if __name__ == "__main__":
     unittest.main()
