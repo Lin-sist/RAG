@@ -30,6 +30,22 @@
 
 如显式开启 `--judge-mode llm`，同一批样本预计额外产生 27 次 OpenAI-compatible judge 调用；模型、base URL、API key 必须由用户确认后再执行。当前未启用 judge，因此不会产生外部 judge 成本。
 
+## 2026-07-02 小样本 smoke 状态
+
+用户已确认先跑 `fact-001 + no-answer-001` 小样本 smoke，计划调用量为 2 次 debug retrieve、2 次 `/api/qa/ask`、0 次 LLM judge；随后用户明确允许将本地评测样本和 `test-data` 文档内容发送到当前配置的外部 LLM/Embedding provider。
+
+执行记录：
+
+- 首次执行真实 smoke 时，后端未启动，登录阶段失败：`Cannot connect to http://localhost:8080/auth/login`。
+- 随后启动 Docker Desktop，并执行 `docker compose --env-file .env.local up -d`；`rag-mysql`、`rag-redis`、`rag-milvus`、`rag-etcd`、`rag-minio` 均为 healthy。
+- 后端通过 `start-backend.ps1` 启动，日志 `logs/stage1-v4-smoke-backend.out.log` 显示 Tomcat started on port 8080，且 `/auth/login` 探测成功。
+- 用户明确批准外部数据出站后，执行真实 smoke；索引完成并生成 `docs/eval/reports/stage1-reproducible-eval-metadata.json`，本次评测 KB 为 id=14，vector collection=`kb_3dab7e9b88ea4888`，3 个文档、50 个 chunk。
+- smoke 报告已生成：`docs/eval/reports/stage1-genquality-smoke.md` 与 `docs/eval/reports/stage1-genquality-smoke-details.json`。报告状态为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=4`、`rateLimitErrors=0`、`skippedJudge=2`。
+- 小样本 retrieval 指标可比较：Recall@3=100.00%、Recall@5=100.00%、MRR=1.0000、Top1 source accuracy=100.00%。
+- generation/citation 指标仍不可比较：两个样本 `/api/qa/ask` 均为 `timed out`，ask successful samples=0；后端日志显示当前 OpenAI-compatible provider 调用 `/chat/completions` 多次 timeout，并出现一次 NVIDIA endpoint `503 Service Unavailable`。
+
+因此当前小样本 smoke 已验证检索链路与可复现 KB 准备链路，但未产出可用的生成/引用质量基线；剩余问题是当前外部 LLM provider 不稳定或超时，需要先处理 provider 可用性/超时策略，再继续完整 Stage 1 baseline。
+
 ## 已验证项
 
 ```powershell
