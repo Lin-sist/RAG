@@ -175,11 +175,28 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual(2, plan["selectedSampleCount"])
         self.assertEqual(2, plan["answerableCount"])
         self.assertEqual(0, plan["noAnswerCount"])
+        self.assertFalse(plan["keepExisting"])
+        self.assertTrue(plan["willUploadFixtures"])
+        self.assertEqual(1, plan["expectedFixtureUploads"])
         self.assertEqual({"debugRetrieve": 2, "ask": 2, "llmJudge": 2}, plan["estimatedLiveCalls"])
         self.assertEqual(60, plan["askTimeout"])
         self.assertTrue(plan["retryAskTimeouts"])
         self.assertIn("--sample-id", plan["childCommandShape"])
         self.assertNotIn("--judge-api-key", plan["childCommandShape"])
+
+    def test_build_plan_marks_keep_existing_as_no_fixture_uploads(self) -> None:
+        args = self.eval_command_args(include_ask=True)
+        args.keep_existing = True
+
+        plan = runner.build_plan(
+            args,
+            [Path("test-data/springboot-basics.md"), Path("test-data/java-interview-guide.md")],
+            [{"id": "fact-001", "should_answer": True}],
+        )
+
+        self.assertTrue(plan["keepExisting"])
+        self.assertFalse(plan["willUploadFixtures"])
+        self.assertEqual(0, plan["expectedFixtureUploads"])
 
     def test_main_refuses_empty_sample_selection_before_backend_calls(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -222,6 +239,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             sample_ids=["fact-001", "definition-001"],
             sample_limit=2,
             repeat=1,
+            keep_existing=False,
             include_ask=include_ask,
             ask_timeout=60,
             ask_delay_seconds=1.0,

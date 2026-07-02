@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-02T02:56:27.437367+00:00",
+  "generatedAt": "2026-07-02T03:03:38.195919+00:00",
   "baseUrl": "http://localhost:8080",
   "evalSet": "docs\\eval\\rag_eval_set.jsonl",
   "topK": 5,
@@ -71,7 +71,7 @@
     }
   },
   "git": {
-    "head": "eb5482dac4148af50c0e66b9cc8c5248fb6da0d0"
+    "head": "e28bc9a3568713b3f83033a522b3df8f9ee6746a"
   },
   "repeat": {
     "index": 1,

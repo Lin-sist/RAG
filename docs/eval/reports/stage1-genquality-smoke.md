@@ -1,6 +1,6 @@
 # RAG Eval Report
 
-- Generated at: 2026-07-02T02:57:16.412093+00:00
+- Generated at: 2026-07-02T03:04:27.113143+00:00
 - Report status: `PARTIAL`
 - askErrors count: `2`
 - retrieveErrors count: `0`
@@ -29,13 +29,13 @@
 - Eval KB chunk count: `50`
 - Fixture files: `springboot-basics.md sha256=c51df5761d510aa4c8a5fd610c90454b12973e2999138c3b57ba83768a296521; java-interview-guide.md sha256=a33f16e91025e9a8d92274c4221d1c172bb4f68c03790db53b8e20157ef4faa0; rag-technology-guide.md sha256=59ad5d66a59be2ce4e517ca81e37fde06b7673f3da7f798a4c76b01cc6f348a9`
 - Config snapshot: `rag-admin\src\main\resources\application.yml sha256=12c403bfe01b4746c8a816e5b1f58d5c295fc826db58eeabc2716062f57793bf; rag-core\src\main\java\com\enterprise\rag\core\rag\query\RetrievalProperties.java sha256=0303394e8d11a2a88e39cdcb970323437145a6c3468f51d1f424d169399f4636; rag-document\src\main\java\com\enterprise\rag\document\chunker\ChunkConfig.java sha256=01b17712c8974055d15a30034e396d5074ba37ad8ea637fa7bca895a0c8a8554`
-- Git HEAD: `eb5482dac4148af50c0e66b9cc8c5248fb6da0d0`
+- Git HEAD: `e28bc9a3568713b3f83033a522b3df8f9ee6746a`
 - askTimeout: `20.0`
 - askDelaySeconds: `2.0`
 - maxAskRetries: `0`
 - retryBackoffSeconds: `10.0`
 - retryAskTimeouts: `False`
-- Duration: `48.72s`
+- Duration: `48.80s`
 
 ## Summary Metrics
 
