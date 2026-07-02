@@ -65,6 +65,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-rerank", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--timeout", type=float, default=float(os.getenv("RAG_EVAL_TIMEOUT", "60")))
     parser.add_argument("--include-ask", action="store_true", help="Also call /api/qa/ask for generation/citation metrics. Default remains retrieval-only.")
+    parser.add_argument("--ask-timeout", type=float, default=parse_float_env("RAG_EVAL_ASK_TIMEOUT"), help="Timeout for child /api/qa/ask calls. Defaults to --timeout.")
     parser.add_argument("--ask-delay-seconds", type=float, default=float(os.getenv("RAG_EVAL_ASK_DELAY_SECONDS", "0")))
     parser.add_argument("--max-ask-retries", type=int, default=int(os.getenv("RAG_EVAL_MAX_ASK_RETRIES", "0")))
     parser.add_argument("--retry-backoff-seconds", type=float, default=float(os.getenv("RAG_EVAL_RETRY_BACKOFF_SECONDS", "0")))
@@ -83,7 +84,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-overwrite", action="store_true")
     parser.add_argument("--plan-only", action="store_true", help="Print planned files, sample selection, and eval command shape without contacting the backend.")
     parser.add_argument("--python", default=sys.executable)
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.ask_timeout is None:
+        args.ask_timeout = args.timeout
+    return args
+
+
+def parse_float_env(name: str) -> float | None:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return None
+    return float(value)
 
 
 def parse_bool_env(name: str, default: bool) -> bool:
@@ -404,6 +415,8 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
             str(args.max_ask_retries),
             "--retry-backoff-seconds",
             str(args.retry_backoff_seconds),
+            "--ask-timeout",
+            str(args.ask_timeout),
             "--retry-ask-timeouts" if args.retry_ask_timeouts else "--no-retry-ask-timeouts",
             "--judge-mode",
             args.judge_mode,
@@ -507,6 +520,7 @@ def build_plan(
         "selectedSampleIds": [sample.get("id") for sample in selected_samples],
         "includeAsk": args.include_ask,
         "judgeMode": args.judge_mode,
+        "askTimeout": args.ask_timeout,
         "retryAskTimeouts": args.retry_ask_timeouts,
         "repeat": args.repeat,
         "estimatedLiveCalls": estimate_live_calls(args, selected_samples, repeat),

@@ -106,6 +106,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-rerank", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--timeout", type=float, default=float(os.getenv("RAG_EVAL_TIMEOUT", "60")))
     parser.add_argument("--skip-ask", action="store_true", help="Only run debug retrieve metrics.")
+    parser.add_argument("--ask-timeout", type=float, default=parse_float_env("RAG_EVAL_ASK_TIMEOUT"), help="Timeout for /api/qa/ask calls. Defaults to --timeout.")
     parser.add_argument("--ask-delay-seconds", type=float, default=float(os.getenv("RAG_EVAL_ASK_DELAY_SECONDS", "0")))
     parser.add_argument("--max-ask-retries", type=int, default=int(os.getenv("RAG_EVAL_MAX_ASK_RETRIES", "0")))
     parser.add_argument("--retry-backoff-seconds", type=float, default=float(os.getenv("RAG_EVAL_RETRY_BACKOFF_SECONDS", "0")))
@@ -129,7 +130,10 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("RAG_EVAL_RUN_METADATA_JSON", ""),
         help="Optional JSON metadata to include in the report header and details JSON.",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.ask_timeout is None:
+        args.ask_timeout = args.timeout
+    return args
 
 
 def parse_int_env(name: str) -> int | None:
@@ -137,6 +141,13 @@ def parse_int_env(name: str) -> int | None:
     if value is None or value.strip() == "":
         return None
     return int(value)
+
+
+def parse_float_env(name: str) -> float | None:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return None
+    return float(value)
 
 
 def parse_bool_env(name: str, default: bool) -> bool:
@@ -185,6 +196,7 @@ def eval_plan(samples: list[dict[str, Any]], args: argparse.Namespace) -> dict[s
         "sampleIds": [sample.get("id") for sample in samples],
         "skipAsk": args.skip_ask,
         "judgeMode": args.judge_mode,
+        "askTimeout": args.ask_timeout,
         "retryAskTimeouts": args.retry_ask_timeouts,
         "estimatedBackendCalls": {
             "debugRetrieve": len(samples),
@@ -639,7 +651,7 @@ def call_ask_with_retries(
                     "enableCache": False,
                 },
                 token,
-                args.timeout,
+                args.ask_timeout,
             ))
             metadata = response.get("metadata") if isinstance(response.get("metadata"), dict) else {}
             if metadata.get("status") == "error":
@@ -1127,6 +1139,7 @@ def write_report(
     lines.append(f"- judgeTemperature: `{args.judge_temperature}`")
     if run_metadata:
         append_header_metadata(lines, run_metadata)
+    lines.append(f"- askTimeout: `{args.ask_timeout}`")
     lines.append(f"- askDelaySeconds: `{args.ask_delay_seconds}`")
     lines.append(f"- maxAskRetries: `{args.max_ask_retries}`")
     lines.append(f"- retryBackoffSeconds: `{args.retry_backoff_seconds}`")
@@ -1380,7 +1393,8 @@ def append_case(lines: list[str], result: SampleResult) -> None:
     lines.append(f"- expected_contexts.contains: `{json.dumps(contains, ensure_ascii=False)}`")
     lines.append(f"- retrieve hit ratio: `{result.recall5_hits}/{result.recall_total}`")
     lines.append(f"- first_match_rank: `{result.first_match_rank if result.first_match_rank is not None else '-'}`")
-    lines.append(f"- answer: {ask_response.get('answer', '')}")
+    answer = str(ask_response.get("answer", ""))
+    lines.append("- answer:" if answer == "" else f"- answer: {answer}")
     lines.append(f"- expected_keywords: `{json.dumps(sample.get('expected_keywords') or [], ensure_ascii=False)}`")
     lines.append(f"- keyword_hit: `{result.keyword_hits}/{result.keyword_total}`")
     lines.append("- top5 retrieved results:")
@@ -1498,6 +1512,7 @@ def write_details_json(
         "minScore": args.min_score,
         "enableRerank": args.enable_rerank,
         "skipAsk": args.skip_ask,
+        "askTimeout": args.ask_timeout,
         "judge": {
             "mode": args.judge_mode,
             "baseUrl": args.judge_base_url,

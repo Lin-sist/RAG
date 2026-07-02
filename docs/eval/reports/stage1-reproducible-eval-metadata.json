@@ -1,34 +1,34 @@
 {
-  "generatedAt": "2026-07-02T02:33:08.286185+00:00",
+  "generatedAt": "2026-07-02T02:56:27.437367+00:00",
   "baseUrl": "http://localhost:8080",
   "evalSet": "docs\\eval\\rag_eval_set.jsonl",
   "topK": 5,
   "minScore": 0.3,
   "enableRerank": true,
   "knowledgeBase": {
-    "id": 14,
+    "id": 15,
     "name": "codex-stage1-repro-eval",
     "description": "codex reproducible retrieval-only eval fixture",
-    "vectorCollection": "kb_3dab7e9b88ea4888",
+    "vectorCollection": "kb_ff06e2ea3de24fb4",
     "documentCount": 3,
     "chunkCount": 50,
     "documents": [
       {
-        "id": 52,
+        "id": 55,
         "title": "java-interview-guide.md",
         "status": "COMPLETED",
         "chunkCount": 11,
         "contentHash": "d55666ad243084017372d6ce6c3de2ddec4729678b50ee1929c964290ace8599"
       },
       {
-        "id": 53,
+        "id": 56,
         "title": "rag-technology-guide.md",
         "status": "COMPLETED",
         "chunkCount": 14,
         "contentHash": "0f3ee9e456c59729d2a0c612959ec8252a944407f0521cef67bb5f234ef5a5e2"
       },
       {
-        "id": 51,
+        "id": 54,
         "title": "springboot-basics.md",
         "status": "COMPLETED",
         "chunkCount": 25,
@@ -71,7 +71,7 @@
     }
   },
   "git": {
-    "head": "433cb9b9bedd64e3abcd77e617304be6e6d3d883"
+    "head": "eb5482dac4148af50c0e66b9cc8c5248fb6da0d0"
   },
   "repeat": {
     "index": 1,

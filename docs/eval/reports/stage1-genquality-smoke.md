@@ -1,6 +1,6 @@
 # RAG Eval Report
 
-- Generated at: 2026-07-02T02:40:34.883637+00:00
+- Generated at: 2026-07-02T02:57:16.412093+00:00
 - Report status: `PARTIAL`
 - askErrors count: `2`
 - retrieveErrors count: `0`
@@ -8,10 +8,10 @@
 - judgeErrors count: `0`
 - skippedJudge count: `2`
 - rateLimitErrors count: `0`
-- retry count: `4`
+- retry count: `0`
 - Metrics safe for comparison: `retrieval metrics only; generation/citation metrics are partial`
 - Base URL: `http://localhost:8080`
-- Knowledge base ID: `14`
+- Knowledge base ID: `15`
 - Eval set: `docs\eval\rag_eval_set.jsonl`
 - sampleIds: `fact-001,no-answer-001`
 - sampleLimit: `0`
@@ -24,16 +24,18 @@
 - judgeBaseUrl: `https://integrate.api.nvidia.com/v1`
 - judgeTemperature: `0.0`
 - Eval KB name: `codex-stage1-repro-eval`
-- Eval KB vector collection: `kb_3dab7e9b88ea4888`
+- Eval KB vector collection: `kb_ff06e2ea3de24fb4`
 - Eval KB document count: `3`
 - Eval KB chunk count: `50`
 - Fixture files: `springboot-basics.md sha256=c51df5761d510aa4c8a5fd610c90454b12973e2999138c3b57ba83768a296521; java-interview-guide.md sha256=a33f16e91025e9a8d92274c4221d1c172bb4f68c03790db53b8e20157ef4faa0; rag-technology-guide.md sha256=59ad5d66a59be2ce4e517ca81e37fde06b7673f3da7f798a4c76b01cc6f348a9`
 - Config snapshot: `rag-admin\src\main\resources\application.yml sha256=12c403bfe01b4746c8a816e5b1f58d5c295fc826db58eeabc2716062f57793bf; rag-core\src\main\java\com\enterprise\rag\core\rag\query\RetrievalProperties.java sha256=0303394e8d11a2a88e39cdcb970323437145a6c3468f51d1f424d169399f4636; rag-document\src\main\java\com\enterprise\rag\document\chunker\ChunkConfig.java sha256=01b17712c8974055d15a30034e396d5074ba37ad8ea637fa7bca895a0c8a8554`
-- Git HEAD: `433cb9b9bedd64e3abcd77e617304be6e6d3d883`
+- Git HEAD: `eb5482dac4148af50c0e66b9cc8c5248fb6da0d0`
+- askTimeout: `20.0`
 - askDelaySeconds: `2.0`
-- maxAskRetries: `2`
+- maxAskRetries: `0`
 - retryBackoffSeconds: `10.0`
-- Duration: `446.41s`
+- retryAskTimeouts: `False`
+- Duration: `48.72s`
 
 ## Summary Metrics
 
@@ -118,15 +120,15 @@ No cases.
   {
     "rank": 1,
     "score": 1.0,
-    "source": "8abab1db-8c6e-447b-985d-2d894a079051",
+    "source": "7ae47b81-30e4-4a02-a17d-416ff33f1411",
     "sourceFileName": "rag-technology-guide.md",
     "documentTitle": "rag-technology-guide.md",
-    "documentId": 53,
-    "chunkId": "8abab1db-8c6e-447b-985d-2d894a079051",
+    "documentId": 56,
+    "chunkId": "7ae47b81-30e4-4a02-a17d-416ff33f1411",
     "contentPreview": "RAG（检索增强生成）技术详解 1. 什么是 RAG？ RAG（Retrieval-Augmented Generation，检索增强生成）是一种结合了 信息检索 和 文本生成 的 AI 技术架构。 1.1 核心思想 传统的大语言模型（LLM）依赖于训练时学到的知识，但存在以下问题： 知识截止 ：只知道训练时的数据 幻觉问题 ：可能生成不准确的内容 缺乏专业知识 ：无法回答企业内部或专业领域问题 RAG 的解决方案 ： 先从知识库中 检索 相关信息 将检索到的信息作为 上下文 提供给 LLM LLM 基于上下文生成 准确的答案 2.",
     "metadata": {
       "sourceFileName": "rag-technology-guide.md",
-      "kbId": 14,
+      "kbId": 15,
       "fileName": "rag-technology-guide.md",
       "startIndex": 0,
       "title": "rag-technology-guide.md",
@@ -136,21 +138,21 @@ No cases.
       "endIndex": 270,
       "originalFilename": "rag-technology-guide.md",
       "documentTitle": "rag-technology-guide.md",
-      "documentId": 53
+      "documentId": 56
     }
   },
   {
     "rank": 2,
     "score": 0.7920469045639038,
-    "source": "19a728b2-c7a3-4af7-b417-8caebf9e8386",
+    "source": "0c09d312-344a-4746-9fde-9ebfdb145b0c",
     "sourceFileName": "rag-technology-guide.md",
     "documentTitle": "rag-technology-guide.md",
-    "documentId": 53,
-    "chunkId": "19a728b2-c7a3-4af7-b417-8caebf9e8386",
+    "documentId": 56,
+    "chunkId": "0c09d312-344a-4746-9fde-9ebfdb145b0c",
     "contentPreview": "索相关法条 8. 技术栈示例（本项目） 前端：用户提问 ↓ Spring Boot 后端 ↓ 文档处理层：解析、分块 ↓ Embedding 服务：向量化（通义千问 API） ↓ Milvus 向量数据库：存储和检索 ↓ LLM 服务：生成答案（通义千问 Qwen-Turbo） ↓ 返回答案 + 引用来源 9. 面试常见问题 Q1: 为什么需要向量化？ A : 传统的关键词匹配无法理解语义。例如： 问题：\"如何学习 Java？\" 文档：\"Java 学习指南\" 关键词匹配：匹配到\"Java\"和\"学习\" 向量匹配：理解\"如何学习\"和\"学习指南\"语义相似 Q2: Chunk 大小如何选择？",
     "metadata": {
       "sourceFileName": "rag-technology-guide.md",
-      "kbId": 14,
+      "kbId": 15,
       "fileName": "rag-technology-guide.md",
       "startIndex": 2640,
       "title": "rag-technology-guide.md",
@@ -160,21 +162,21 @@ No cases.
       "endIndex": 2959,
       "originalFilename": "rag-technology-guide.md",
       "documentTitle": "rag-technology-guide.md",
-      "documentId": 53
+      "documentId": 56
     }
   },
   {
     "rank": 3,
     "score": 0.4335298240184784,
-    "source": "210471f5-1495-4500-a335-41724f9b7c2c",
+    "source": "8b9c2406-6e0b-4c21-bc1c-7c7e98abb4d4",
     "sourceFileName": "rag-technology-guide.md",
     "documentTitle": "rag-technology-guide.md",
-    "documentId": 53,
-    "chunkId": "210471f5-1495-4500-a335-41724f9b7c2c",
+    "documentId": 56,
+    "chunkId": "8b9c2406-6e0b-4c21-bc1c-7c7e98abb4d4",
     "contentPreview": "文档：\"Java 学习指南\" 关键词匹配：匹配到\"Java\"和\"学习\" 向量匹配：理解\"如何学习\"和\"学习指南\"语义相似 Q2: Chunk 大小如何选择？ A : 太小 （< 200 字符）：语义不完整 太大 （> 2000 字符）：检索不精准，耗费 Token 推荐 ：500-1000 字符，根据文档类型调整 技术文档 ：按段落或章节分块 代码文档 ：按函数或类分块 Q3: 如何评估 RAG 系统效果？ A : 离线评估 ：准备测试问答对，计算准确率 在线评估 ：A/B 测试，收集用户反馈 关键指标 ： 检索召回率：Top-K 包含正确答案的比例 答案准确率：生成答案的正确性 用户满意度：...",
     "metadata": {
       "sourceFileName": "rag-technology-guide.md",
-      "kbId": 14,
+      "kbId": 15,
       "fileName": "rag-technology-guide.md",
       "startIndex": 2880,
       "title": "rag-technology-guide.md",
@@ -184,21 +186,21 @@ No cases.
       "endIndex": 3227,
       "originalFilename": "rag-technology-guide.md",
       "documentTitle": "rag-technology-guide.md",
-      "documentId": 53
+      "documentId": 56
     }
   },
   {
     "rank": 4,
     "score": 0.33610081672668457,
-    "source": "53dc18f2-f3f6-4b80-b158-d3b8cb9610d3",
+    "source": "0da3b551-7182-4a29-9650-25c7da40f95f",
     "sourceFileName": "rag-technology-guide.md",
     "documentTitle": "rag-technology-guide.md",
-    "documentId": 53,
-    "chunkId": "53dc18f2-f3f6-4b80-b158-d3b8cb9610d3",
+    "documentId": 56,
+    "chunkId": "0da3b551-7182-4a29-9650-25c7da40f95f",
     "contentPreview": ".., 0.12] (相似度低) 3.2 向量数据库 专门存储和检索向量的数据库，支持高效的相似度搜索。 常用数据库 ： Milvus ：开源，性能强，本项目使用 Pinecone ：托管服务 Weaviate ：支持混合搜索 Qdrant ：Rust 实现 检索算法 ： HNSW （层次化可导航小世界图）：召回率高，速度快 IVF （倒排索引）：适合大规模数据 FLAT （暴力搜索）：精度最高但速度慢 3.3 文本分块策略 为什么需要分块？",
     "metadata": {
       "sourceFileName": "rag-technology-guide.md",
-      "kbId": 14,
+      "kbId": 15,
       "fileName": "rag-technology-guide.md",
       "startIndex": 961,
       "title": "rag-technology-guide.md",
@@ -208,21 +210,21 @@ No cases.
       "endIndex": 1193,
       "originalFilename": "rag-technology-guide.md",
       "documentTitle": "rag-technology-guide.md",
-      "documentId": 53
+      "documentId": 56
     }
   },
   {
     "rank": 5,
     "score": 0.2595656216144562,
-    "source": "32e42f50-cbab-403c-aa08-d897431fc748",
+    "source": "969cdcde-c573-4278-b539-2d3dcbcc919c",
     "sourceFileName": "rag-technology-guide.md",
     "documentTitle": "rag-technology-guide.md",
-    "documentId": 53,
-    "chunkId": "32e42f50-cbab-403c-aa08-d897431fc748",
+    "documentId": 56,
+    "chunkId": "969cdcde-c573-4278-b539-2d3dcbcc919c",
     "contentPreview": "界图）：召回率高，速度快 IVF （倒排索引）：适合大规模数据 FLAT （暴力搜索）：精度最高但速度慢 3.3 文本分块策略 为什么需要分块？ LLM 有 Token 限制（GPT-3.5 是 4096，GPT-4 是 8192/32768） 小块检索更精准 提高检索效率 分块方法 ： 固定长度分块 ：每 500 字符一块 句子/段落分块 ：自然语言边界 滑动窗口 ：重叠分块，避免语义割裂 语义分块 ：使用 NLP 技术识别语义边界 示例 ： 原文档（2000 字） ↓ 分块 Chunk 1（500 字）：介绍部分 Chunk 2（500 字）：技术原理 Chunk 3（500 字）：应用场...",
     "metadata": {
       "sourceFileName": "rag-technology-guide.md",
-      "kbId": 14,
+      "kbId": 15,
       "fileName": "rag-technology-guide.md",
       "startIndex": 1121,
       "title": "rag-technology-guide.md",
@@ -232,7 +234,7 @@ No cases.
       "endIndex": 1504,
       "originalFilename": "rag-technology-guide.md",
       "documentTitle": "rag-technology-guide.md",
-      "documentId": 53
+      "documentId": 56
     }
   }
 ]
@@ -256,8 +258,8 @@ No cases.
 
 | ID | Expected normalized | Retrieved candidate normalized | Citation candidate normalized |
 |---|---|---|---|
-| fact-001 | springboot-basics.md => springboot basics, springbootbasics | r1: 0, springboot basics, springbootbasics; r2: 3f65469b 2480 4927 93a8 a0e73d32b8da, 3f65469b2480492793a8a0e73d32b8da, springboot basics, springbootbasics; r3: 0f8ad432 0a0e 4bac b00d 23ca13b28d16, 0f8ad4320a0e4bacb00d23ca13b28d16, springboot basics, springbootbasics; r4: 935f30d0 1284 455d a736 4c4603f59a87, 935f30d01284455da7364c4603f59a87, java interview guide, javainterviewguide; r5: 6bcfdb24 9cf0 4b35 a10b 2e0f385085d5, 6bcfdb249cf04b35a10b2e0f385085d5, java interview guide, javainterviewguide |  |
-| no-answer-001 |  | r1: 8abab1db 8c6e 447b 985d 2d894a079051, 8abab1db8c6e447b985d2d894a079051, rag technology guide, ragtechnologyguide; r2: 19a728b2 c7a3 4af7 b417 8caebf9e8386, 19a728b2c7a34af7b4178caebf9e8386, rag technology guide, ragtechnologyguide; r3: 210471f5 1495 4500 a335 41724f9b7c2c, 210471f514954500a33541724f9b7c2c, rag technology guide, ragtechnologyguide; r4: 53dc18f2 f3f6 4b80 b158 d3b8cb9610d3, 53dc18f2f3f64b80b158d3b8cb9610d3, rag technology guide, ragtechnologyguide; r5: 32e42f50 cbab 403c aa08 d897431fc748, 32e42f50cbab403caa08d897431fc748, rag technology guide, ragtechnologyguide |  |
+| fact-001 | springboot-basics.md => springboot basics, springbootbasics | r1: 0, springboot basics, springbootbasics; r2: 36eeee8e 993b 4938 8c50 e8d92533af60, 36eeee8e993b49388c50e8d92533af60, springboot basics, springbootbasics; r3: 9a1b6e57 69c8 4427 ba11 3ab5b43e682d, 9a1b6e5769c84427ba113ab5b43e682d, springboot basics, springbootbasics; r4: 9173c97a f3ff 4993 a556 471af90429e4, 9173c97af3ff4993a556471af90429e4, java interview guide, javainterviewguide; r5: 127cc8d8 1d8f 4846 903c 3322fd95ffed, 127cc8d81d8f4846903c3322fd95ffed, java interview guide, javainterviewguide |  |
+| no-answer-001 |  | r1: 7ae47b81 30e4 4a02 a17d 416ff33f1411, 7ae47b8130e44a02a17d416ff33f1411, rag technology guide, ragtechnologyguide; r2: 0c09d312 344a 4746 9fde 9ebfdb145b0c, 0c09d312344a47469fde9ebfdb145b0c, rag technology guide, ragtechnologyguide; r3: 8b9c2406 6e0b 4c21 bc1c 7c7e98abb4d4, 8b9c24066e0b4c21bc1c7c7e98abb4d4, rag technology guide, ragtechnologyguide; r4: 0da3b551 7182 4a29 9650 25c7da40f95f, 0da3b55171824a29965025c7da40f95f, rag technology guide, ragtechnologyguide; r5: 969cdcde c573 4278 b539 2d3dcbcc919c, 969cdcdec5734278b5392d3dcbcc919c, rag technology guide, ragtechnologyguide |  |
 
 ## Citation Diagnostics
 

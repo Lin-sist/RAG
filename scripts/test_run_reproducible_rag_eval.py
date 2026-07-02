@@ -120,6 +120,21 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertIn("fact-001", command)
         self.assertIn("definition-001", command)
 
+    def test_build_eval_command_passes_ask_timeout(self) -> None:
+        args = self.eval_command_args(include_ask=True)
+        args.ask_timeout = 12.0
+
+        command = runner.build_eval_command(
+            args,
+            7,
+            Path("report.md"),
+            Path("details.json"),
+            Path("metadata.json"),
+        )
+
+        self.assertIn("--ask-timeout", command)
+        self.assertEqual("12.0", command[command.index("--ask-timeout") + 1])
+
     def test_build_eval_command_can_disable_timeout_retries(self) -> None:
         args = self.eval_command_args(include_ask=True)
         args.retry_ask_timeouts = False
@@ -161,6 +176,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual(2, plan["answerableCount"])
         self.assertEqual(0, plan["noAnswerCount"])
         self.assertEqual({"debugRetrieve": 2, "ask": 2, "llmJudge": 2}, plan["estimatedLiveCalls"])
+        self.assertEqual(60, plan["askTimeout"])
         self.assertTrue(plan["retryAskTimeouts"])
         self.assertIn("--sample-id", plan["childCommandShape"])
         self.assertNotIn("--judge-api-key", plan["childCommandShape"])
@@ -207,6 +223,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             sample_limit=2,
             repeat=1,
             include_ask=include_ask,
+            ask_timeout=60,
             ask_delay_seconds=1.0,
             max_ask_retries=2,
             retry_backoff_seconds=3.0,

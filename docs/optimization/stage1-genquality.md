@@ -39,14 +39,15 @@
 - 首次执行真实 smoke 时，后端未启动，登录阶段失败：`Cannot connect to http://localhost:8080/auth/login`。
 - 随后启动 Docker Desktop，并执行 `docker compose --env-file .env.local up -d`；`rag-mysql`、`rag-redis`、`rag-milvus`、`rag-etcd`、`rag-minio` 均为 healthy。
 - 后端通过 `start-backend.ps1` 启动，日志 `logs/stage1-v4-smoke-backend.out.log` 显示 Tomcat started on port 8080，且 `/auth/login` 探测成功。
-- 用户明确批准外部数据出站后，执行真实 smoke；索引完成并生成 `docs/eval/reports/stage1-reproducible-eval-metadata.json`，本次评测 KB 为 id=14，vector collection=`kb_3dab7e9b88ea4888`，3 个文档、50 个 chunk。
-- smoke 报告已生成：`docs/eval/reports/stage1-genquality-smoke.md` 与 `docs/eval/reports/stage1-genquality-smoke-details.json`。报告状态为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=4`、`rateLimitErrors=0`、`skippedJudge=2`。
+- 用户明确批准外部数据出站后，首次真实 smoke 完成索引并生成 `docs/eval/reports/stage1-reproducible-eval-metadata.json`；该轮评测 KB 为 id=14，vector collection=`kb_3dab7e9b88ea4888`，3 个文档、50 个 chunk。报告状态为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=4`、`rateLimitErrors=0`、`skippedJudge=2`。
+- 新增 `--ask-timeout` 与 `--no-retry-ask-timeouts` 后，使用 `--ask-timeout 20 --max-ask-retries 0 --no-retry-ask-timeouts` 复跑同一小样本；runner 删除旧 KB id=14 并重建评测 KB id=15，vector collection=`kb_ff06e2ea3de24fb4`，3 个文档、50 个 chunk。
+- 最新 smoke 报告已更新：`docs/eval/reports/stage1-genquality-smoke.md` 与 `docs/eval/reports/stage1-genquality-smoke-details.json`。报告状态仍为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=0`、`rateLimitErrors=0`、`skippedJudge=2`，Duration=`48.72s`。
 - 小样本 retrieval 指标可比较：Recall@3=100.00%、Recall@5=100.00%、MRR=1.0000、Top1 source accuracy=100.00%。
 - generation/citation 指标仍不可比较：两个样本 `/api/qa/ask` 均为 `timed out`，ask successful samples=0；后端日志显示当前 OpenAI-compatible provider 调用 `/chat/completions` 多次 timeout，并出现一次 NVIDIA endpoint `503 Service Unavailable`。
 
 因此当前小样本 smoke 已验证检索链路与可复现 KB 准备链路，但未产出可用的生成/引用质量基线；剩余问题是当前外部 LLM provider 不稳定或超时，需要先处理 provider 可用性/超时策略，再继续完整 Stage 1 baseline。
 
-后续排查 provider 可用性时，建议先用 `--no-retry-ask-timeouts --max-ask-retries 0` 做单次快速诊断，避免在 provider 超时时重复触发外部调用；provider 恢复稳定后再恢复正式 baseline 的重试配置。
+后续排查 provider 可用性时，建议先用 `--ask-timeout 20 --no-retry-ask-timeouts --max-ask-retries 0` 做单次快速诊断，避免在 provider 超时时重复触发外部调用或长时间等待；provider 恢复稳定后再恢复正式 baseline 的重试配置。
 
 ## 已验证项
 
@@ -64,6 +65,8 @@ python -B scripts\test_run_rag_eval.py
 - `run_rag_eval.py --plan-only` 已验证完整基线预计调用量：30 次 debug retrieve、30 次 ask、judge off 时 0 次 LLM judge、judge llm 时 27 次 LLM judge。
 - `run_reproducible_rag_eval.py --plan-only --include-ask` 已验证可在不登录、不建库、不上传、不调用后端的情况下输出完整执行计划，并直接列出 selectedSampleCount / estimatedLiveCalls。
 - `run_reproducible_rag_eval.py` 已前置校验样本选择；若 `--sample-id`/`--sample-limit` 导致 0 条样本，会在登录、建库、上传前失败。
+- `--ask-timeout` 已接入 `run_rag_eval.py` 与 `run_reproducible_rag_eval.py`；默认继承全局 `--timeout`，仅在显式传参或设置 `RAG_EVAL_ASK_TIMEOUT` 时改变 `/api/qa/ask` 等待上限。
+- 复跑 `fact-001 + no-answer-001` 小样本 smoke 时，`--ask-timeout 20 --max-ask-retries 0 --no-retry-ask-timeouts` 已进入报告头与 details JSON；本地后端、索引和检索成功，当前外部 LLM provider 仍 timeout。
 
 ## 后续 live baseline 建议
 
@@ -90,6 +93,7 @@ python -B scripts\run_reproducible_rag_eval.py `
   --include-ask `
   --sample-id fact-001 `
   --sample-id no-answer-001 `
+  --ask-timeout 20 `
   --ask-delay-seconds 2 `
   --max-ask-retries 0 `
   --no-retry-ask-timeouts `
