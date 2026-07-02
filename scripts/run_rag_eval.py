@@ -109,6 +109,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ask-delay-seconds", type=float, default=float(os.getenv("RAG_EVAL_ASK_DELAY_SECONDS", "0")))
     parser.add_argument("--max-ask-retries", type=int, default=int(os.getenv("RAG_EVAL_MAX_ASK_RETRIES", "0")))
     parser.add_argument("--retry-backoff-seconds", type=float, default=float(os.getenv("RAG_EVAL_RETRY_BACKOFF_SECONDS", "0")))
+    parser.add_argument("--retry-ask-timeouts", action=argparse.BooleanOptionalAction, default=parse_bool_env("RAG_EVAL_RETRY_ASK_TIMEOUTS", True), help="Retry /api/qa/ask timeout errors when --max-ask-retries is positive.")
     parser.add_argument("--fail-on-ask-errors", action="store_true")
     parser.add_argument("--no-overwrite", action="store_true")
     parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", ""))
@@ -136,6 +137,13 @@ def parse_int_env(name: str) -> int | None:
     if value is None or value.strip() == "":
         return None
     return int(value)
+
+
+def parse_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 def load_eval_set(path: Path) -> list[dict[str, Any]]:
@@ -177,6 +185,7 @@ def eval_plan(samples: list[dict[str, Any]], args: argparse.Namespace) -> dict[s
         "sampleIds": [sample.get("id") for sample in samples],
         "skipAsk": args.skip_ask,
         "judgeMode": args.judge_mode,
+        "retryAskTimeouts": args.retry_ask_timeouts,
         "estimatedBackendCalls": {
             "debugRetrieve": len(samples),
             "ask": ask_calls,
@@ -649,7 +658,7 @@ def call_ask_with_retries(
                 rate_limit_errors += 1
             if args.ask_delay_seconds > 0:
                 time.sleep(args.ask_delay_seconds)
-            if attempt >= max_retries or not should_retry_ask_error(exc):
+            if attempt >= max_retries or not should_retry_ask_error(exc, args.retry_ask_timeouts):
                 break
             retries += 1
             backoff = retry_wait_seconds(args.retry_backoff_seconds, retries)
@@ -661,7 +670,7 @@ def call_ask_with_retries(
     raise AskRetryError(last_error, attempts, retries, rate_limit_errors)
 
 
-def should_retry_ask_error(error: Exception) -> bool:
+def should_retry_ask_error(error: Exception, retry_timeouts: bool = True) -> bool:
     if isinstance(error, ApiCallError):
         if error.http_status == 429:
             return True
@@ -672,7 +681,7 @@ def should_retry_ask_error(error: Exception) -> bool:
     if "http 429" in text or "too many requests" in text:
         return True
     if "timeout" in text or "timed out" in text:
-        return True
+        return retry_timeouts
     return bool(re.search(r"http 5\d\d", text) or re.search(r"code=5\d\d", text))
 
 
@@ -1121,6 +1130,7 @@ def write_report(
     lines.append(f"- askDelaySeconds: `{args.ask_delay_seconds}`")
     lines.append(f"- maxAskRetries: `{args.max_ask_retries}`")
     lines.append(f"- retryBackoffSeconds: `{args.retry_backoff_seconds}`")
+    lines.append(f"- retryAskTimeouts: `{args.retry_ask_timeouts}`")
     lines.append(f"- Duration: `{finished - started_at:.2f}s`")
     lines.append("")
 
@@ -1499,6 +1509,7 @@ def write_details_json(
         "askDelaySeconds": args.ask_delay_seconds,
         "maxAskRetries": args.max_ask_retries,
         "retryBackoffSeconds": args.retry_backoff_seconds,
+        "retryAskTimeouts": args.retry_ask_timeouts,
         "durationSeconds": round(time.time() - started_at, 4),
         "runMetadata": run_metadata,
         "metrics": aggregate(results) if not login_error else None,

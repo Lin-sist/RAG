@@ -50,6 +50,7 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         args = argparse.Namespace(
             skip_ask=False,
             judge_mode="llm",
+            retry_ask_timeouts=True,
             report="report.md",
             after_report="",
             details_json="details.json",
@@ -64,6 +65,13 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         self.assertEqual(2, plan["estimatedBackendCalls"]["debugRetrieve"])
         self.assertEqual(2, plan["estimatedBackendCalls"]["ask"])
         self.assertEqual(1, plan["estimatedBackendCalls"]["llmJudge"])
+        self.assertTrue(plan["retryAskTimeouts"])
+
+    def test_should_retry_ask_timeout_can_be_disabled(self) -> None:
+        error = TimeoutError("timed out")
+
+        self.assertTrue(runner.should_retry_ask_error(error, retry_timeouts=True))
+        self.assertFalse(runner.should_retry_ask_error(error, retry_timeouts=False))
 
 
 if __name__ == "__main__":

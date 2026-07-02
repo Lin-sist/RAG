@@ -68,6 +68,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ask-delay-seconds", type=float, default=float(os.getenv("RAG_EVAL_ASK_DELAY_SECONDS", "0")))
     parser.add_argument("--max-ask-retries", type=int, default=int(os.getenv("RAG_EVAL_MAX_ASK_RETRIES", "0")))
     parser.add_argument("--retry-backoff-seconds", type=float, default=float(os.getenv("RAG_EVAL_RETRY_BACKOFF_SECONDS", "0")))
+    parser.add_argument("--retry-ask-timeouts", action=argparse.BooleanOptionalAction, default=parse_bool_env("RAG_EVAL_RETRY_ASK_TIMEOUTS", True), help="Retry /api/qa/ask timeout errors when --max-ask-retries is positive.")
     parser.add_argument("--judge-mode", choices=("off", "llm"), default=os.getenv("RAG_EVAL_JUDGE_MODE", "off"))
     parser.add_argument("--judge-base-url", default=os.getenv("RAG_EVAL_JUDGE_BASE_URL", os.getenv("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")))
     parser.add_argument("--judge-api-key", default=os.getenv("RAG_EVAL_JUDGE_API_KEY", os.getenv("NVIDIA_API_KEY", "")))
@@ -83,6 +84,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plan-only", action="store_true", help="Print planned files, sample selection, and eval command shape without contacting the backend.")
     parser.add_argument("--python", default=sys.executable)
     return parser.parse_args()
+
+
+def parse_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 def call_json(
@@ -396,6 +404,7 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
             str(args.max_ask_retries),
             "--retry-backoff-seconds",
             str(args.retry_backoff_seconds),
+            "--retry-ask-timeouts" if args.retry_ask_timeouts else "--no-retry-ask-timeouts",
             "--judge-mode",
             args.judge_mode,
             "--judge-base-url",
@@ -498,6 +507,7 @@ def build_plan(
         "selectedSampleIds": [sample.get("id") for sample in selected_samples],
         "includeAsk": args.include_ask,
         "judgeMode": args.judge_mode,
+        "retryAskTimeouts": args.retry_ask_timeouts,
         "repeat": args.repeat,
         "estimatedLiveCalls": estimate_live_calls(args, selected_samples, repeat),
         "reports": [str(repeat_path(args.report, repeat, index)) for index in range(1, repeat + 1)],

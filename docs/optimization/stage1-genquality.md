@@ -46,6 +46,8 @@
 
 因此当前小样本 smoke 已验证检索链路与可复现 KB 准备链路，但未产出可用的生成/引用质量基线；剩余问题是当前外部 LLM provider 不稳定或超时，需要先处理 provider 可用性/超时策略，再继续完整 Stage 1 baseline。
 
+后续排查 provider 可用性时，建议先用 `--no-retry-ask-timeouts --max-ask-retries 0` 做单次快速诊断，避免在 provider 超时时重复触发外部调用；provider 恢复稳定后再恢复正式 baseline 的重试配置。
+
 ## 已验证项
 
 ```powershell
@@ -89,7 +91,8 @@ python -B scripts\run_reproducible_rag_eval.py `
   --sample-id fact-001 `
   --sample-id no-answer-001 `
   --ask-delay-seconds 2 `
-  --max-ask-retries 2 `
+  --max-ask-retries 0 `
+  --no-retry-ask-timeouts `
   --retry-backoff-seconds 10 `
   --report docs\eval\reports\stage1-genquality-smoke.md `
   --details-json docs\eval\reports\stage1-genquality-smoke-details.json
