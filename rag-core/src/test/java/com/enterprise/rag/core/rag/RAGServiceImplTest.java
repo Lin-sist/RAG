@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag;
 
 import com.enterprise.rag.common.util.RedisUtil;
 import com.enterprise.rag.core.rag.generator.AnswerGenerator;
+import com.enterprise.rag.core.rag.generator.LLMException;
 import com.enterprise.rag.core.rag.model.GeneratedAnswer;
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
@@ -78,5 +79,35 @@ class RAGServiceImplTest {
 
         assertTrue(!response.hasResult());
         verify(queryEngine, never()).retrieve(eq("RAG 工作原理"), org.mockito.ArgumentMatchers.<RetrieveOptions>any());
+    }
+
+    @Test
+    void shouldExposeLlmDiagnosticsOnGenerationFailure() {
+        RetrievedContext context = new RetrievedContext(
+                "Spring Boot 提供自动配置、起步依赖和 Actuator。",
+                "springboot-basics.md",
+                0.91f,
+                Map.of("title", "Spring Boot"));
+        when(queryEngine.retrieve(eq("Spring Boot 的核心特性有哪些？"), org.mockito.ArgumentMatchers.<RetrieveOptions>any()))
+                .thenReturn(List.of(context));
+        when(answerGenerator.generate(eq("Spring Boot 的核心特性有哪些？"), org.mockito.ArgumentMatchers.anyList()))
+                .thenThrow(new LLMException(
+                        "LLM API call failed: timed out",
+                        Map.of(
+                                "provider", "openai",
+                                "endpoint", "/chat/completions",
+                                "model", "nvidia/test",
+                                "timeoutSeconds", 120,
+                                "maxRetries", 3,
+                                "errorType", "TimeoutException",
+                                "errorCategory", "timeout")));
+
+        QAResponse response = ragService.ask(QARequest.of("Spring Boot 的核心特性有哪些？", "kb_rag"));
+
+        assertEquals("error", response.metadata().get("status"));
+        assertEquals("openai", response.metadata().get("llmProvider"));
+        assertEquals("/chat/completions", response.metadata().get("llmEndpoint"));
+        assertEquals(120, response.metadata().get("llmTimeoutSeconds"));
+        assertEquals("timeout", response.metadata().get("llmErrorCategory"));
     }
 }

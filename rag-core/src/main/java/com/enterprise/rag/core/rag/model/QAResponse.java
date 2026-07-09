@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -60,12 +61,25 @@ public record QAResponse(
      * 创建错误响应
      */
     public static QAResponse error(String question, String errorMessage) {
+        return error(question, errorMessage, Map.of());
+    }
+
+    /**
+     * 创建带诊断元数据的错误响应
+     */
+    public static QAResponse error(String question, String errorMessage, Map<String, Object> diagnostics) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("status", "error");
+        metadata.put("error", errorMessage);
+        if (diagnostics != null) {
+            metadata.putAll(diagnostics);
+        }
         return new QAResponse(
                 question,
                 "抱歉，处理您的问题时发生错误：" + errorMessage,
                 List.of(),
                 List.of(),
-                Map.of("status", "error", "error", errorMessage)
+                metadata
         );
     }
 

@@ -656,6 +656,9 @@ def call_ask_with_retries(
             metadata = response.get("metadata") if isinstance(response.get("metadata"), dict) else {}
             if metadata.get("status") == "error":
                 message = str(response.get("answer") or metadata.get("message") or "QA returned error status")
+                diagnostics = format_error_metadata(metadata)
+                if diagnostics:
+                    message = f"{message} [{diagnostics}]"
                 raise ApiCallError(f"QA returned error status: {message}", infer_http_status(message))
             if args.ask_delay_seconds > 0:
                 time.sleep(args.ask_delay_seconds)
@@ -704,6 +707,28 @@ def infer_http_status(text: str) -> int | None:
     if "too many requests" in text.lower() or "rate limit" in text.lower():
         return 429
     return None
+
+
+def format_error_metadata(metadata: dict[str, Any]) -> str:
+    fields = [
+        ("errorCategory", "category"),
+        ("errorType", "type"),
+        ("llmProvider", "provider"),
+        ("llmEndpoint", "endpoint"),
+        ("llmModel", "model"),
+        ("llmTimeoutSeconds", "timeoutSeconds"),
+        ("llmMaxRetries", "maxRetries"),
+        ("llmErrorType", "llmErrorType"),
+        ("llmErrorCategory", "llmErrorCategory"),
+        ("llmHttpStatus", "httpStatus"),
+    ]
+    parts: list[str] = []
+    for key, label in fields:
+        value = metadata.get(key)
+        if value is None or value == "":
+            continue
+        parts.append(f"{label}={value}")
+    return ", ".join(parts)
 
 
 def retry_wait_seconds(base_seconds: float, retry_number: int) -> float:

@@ -3,6 +3,7 @@ package com.enterprise.rag.core.rag.service;
 import com.enterprise.rag.common.constant.RedisKeyConstants;
 import com.enterprise.rag.common.util.RedisUtil;
 import com.enterprise.rag.core.rag.generator.AnswerGenerator;
+import com.enterprise.rag.core.rag.generator.LLMException;
 import com.enterprise.rag.core.rag.model.*;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -132,7 +133,7 @@ public class RAGServiceImpl implements RAGService {
 
         } catch (Exception e) {
             log.error("Failed to process QA request", e);
-            return QAResponse.error(question, toClientErrorMessage(e));
+            return QAResponse.error(question, toClientErrorMessage(e), errorMetadata(e));
         }
     }
 
@@ -209,6 +210,67 @@ public class RAGServiceImpl implements RAGService {
             return "模型服务响应超时，请稍后重试";
         }
         return message;
+    }
+
+    private Map<String, Object> errorMetadata(Exception e) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("errorType", e.getClass().getSimpleName());
+        metadata.put("errorCategory", classifyClientError(e));
+
+        LLMException llmException = findLlmException(e);
+        if (llmException != null && !llmException.diagnostics().isEmpty()) {
+            Map<String, Object> diagnostics = llmException.diagnostics();
+            metadata.put("llmDiagnostics", diagnostics);
+            copyDiagnostic(metadata, diagnostics, "provider", "llmProvider");
+            copyDiagnostic(metadata, diagnostics, "endpoint", "llmEndpoint");
+            copyDiagnostic(metadata, diagnostics, "model", "llmModel");
+            copyDiagnostic(metadata, diagnostics, "timeoutSeconds", "llmTimeoutSeconds");
+            copyDiagnostic(metadata, diagnostics, "maxRetries", "llmMaxRetries");
+            copyDiagnostic(metadata, diagnostics, "errorType", "llmErrorType");
+            copyDiagnostic(metadata, diagnostics, "errorCategory", "llmErrorCategory");
+            copyDiagnostic(metadata, diagnostics, "httpStatus", "llmHttpStatus");
+        }
+
+        return metadata;
+    }
+
+    private void copyDiagnostic(
+            Map<String, Object> target,
+            Map<String, Object> source,
+            String sourceKey,
+            String targetKey) {
+        Object value = source.get(sourceKey);
+        if (value != null) {
+            target.put(targetKey, value);
+        }
+    }
+
+    private LLMException findLlmException(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof LLMException llmException) {
+                return llmException;
+            }
+            current = current.getCause();
+        }
+        return null;
+    }
+
+    private String classifyClientError(Exception e) {
+        String message = e != null ? String.valueOf(e.getMessage()).toLowerCase() : "";
+        if (findLlmException(e) != null) {
+            return "llm";
+        }
+        if (message.contains("collection not found")) {
+            return "vector_index";
+        }
+        if (message.contains("too many requests") || message.contains(" 429 ") || message.startsWith("429")) {
+            return "rate_limit";
+        }
+        if (message.contains("timeout")) {
+            return "timeout";
+        }
+        return "unknown";
     }
 
     @SuppressWarnings("unchecked")

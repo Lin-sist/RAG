@@ -75,6 +75,27 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         self.assertTrue(runner.should_retry_ask_error(error, retry_timeouts=True))
         self.assertFalse(runner.should_retry_ask_error(error, retry_timeouts=False))
 
+    def test_format_error_metadata_includes_llm_diagnostics(self) -> None:
+        metadata = {
+            "status": "error",
+            "errorCategory": "llm",
+            "llmProvider": "openai",
+            "llmEndpoint": "/chat/completions",
+            "llmModel": "nvidia/test",
+            "llmTimeoutSeconds": 120,
+            "llmMaxRetries": 3,
+            "llmErrorType": "TimeoutException",
+            "llmErrorCategory": "timeout",
+        }
+
+        summary = runner.format_error_metadata(metadata)
+
+        self.assertIn("category=llm", summary)
+        self.assertIn("provider=openai", summary)
+        self.assertIn("endpoint=/chat/completions", summary)
+        self.assertIn("timeoutSeconds=120", summary)
+        self.assertIn("llmErrorCategory=timeout", summary)
+
 
 if __name__ == "__main__":
     unittest.main()

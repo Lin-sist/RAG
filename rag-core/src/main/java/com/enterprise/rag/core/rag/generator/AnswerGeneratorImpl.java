@@ -142,6 +142,8 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             } else {
                 return callQwen(prompt);
             }
+        } catch (LLMException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to call LLM API", e);
             throw new LLMException("Failed to generate answer: " + e.getMessage(), e);
@@ -170,11 +172,15 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(properties.getTimeout()));
 
-        String response = applyRetryPolicy(responseMono, "openai", "/chat/completions")
-                .doOnError(error -> logLlmError("openai", "/chat/completions", error))
-                .block();
+        try {
+            String response = applyRetryPolicy(responseMono, "openai", "/chat/completions")
+                    .doOnError(error -> logLlmError("openai", "/chat/completions", error))
+                    .block();
 
-        return parseOpenAIResponse(response);
+            return parseOpenAIResponse(response);
+        } catch (Exception e) {
+            throw buildLlmException("openai", "/chat/completions", config.getModel(), e);
+        }
     }
 
     /**
@@ -201,11 +207,15 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(properties.getTimeout()));
 
-        String response = applyRetryPolicy(responseMono, "qwen", "/services/aigc/text-generation/generation")
-                .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation", error))
-                .block();
+        try {
+            String response = applyRetryPolicy(responseMono, "qwen", "/services/aigc/text-generation/generation")
+                    .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation", error))
+                    .block();
 
-        return parseQwenResponse(response);
+            return parseQwenResponse(response);
+        } catch (Exception e) {
+            throw buildLlmException("qwen", "/services/aigc/text-generation/generation", config.getModel(), e);
+        }
     }
 
     /**
@@ -349,6 +359,42 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             current = current.getCause();
         }
         return current;
+    }
+
+    private LLMException buildLlmException(String provider, String endpoint, String model, Throwable error) {
+        Throwable cause = unwrap(error);
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("provider", provider);
+        diagnostics.put("endpoint", endpoint);
+        diagnostics.put("model", model);
+        diagnostics.put("timeoutSeconds", properties.getTimeout());
+        diagnostics.put("maxRetries", properties.getMaxRetries());
+        diagnostics.put("errorType", cause.getClass().getSimpleName());
+        diagnostics.put("errorCategory", classifyLlmError(cause));
+        if (cause instanceof WebClientResponseException ex) {
+            diagnostics.put("httpStatus", ex.getStatusCode().value());
+        }
+        return new LLMException("LLM API call failed: " + cause.getMessage(), cause, diagnostics);
+    }
+
+    private String classifyLlmError(Throwable cause) {
+        if (cause instanceof WebClientResponseException ex) {
+            int statusCode = ex.getStatusCode().value();
+            if (statusCode == 429) {
+                return "rate_limit";
+            }
+            if (statusCode >= 500) {
+                return "provider_5xx";
+            }
+            return "provider_http_error";
+        }
+        if (cause instanceof TimeoutException || String.valueOf(cause.getMessage()).toLowerCase(Locale.ROOT).contains("timeout")) {
+            return "timeout";
+        }
+        if (cause instanceof IOException || cause instanceof ConnectException) {
+            return "network";
+        }
+        return "unknown";
     }
 
     /**

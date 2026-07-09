@@ -1,6 +1,6 @@
 # RAG Eval Report
 
-- Generated at: 2026-07-02T03:04:27.113143+00:00
+- Generated at: 2026-07-02T03:16:11.324406+00:00
 - Report status: `PARTIAL`
 - askErrors count: `2`
 - retrieveErrors count: `0`
@@ -29,13 +29,13 @@
 - Eval KB chunk count: `50`
 - Fixture files: `springboot-basics.md sha256=c51df5761d510aa4c8a5fd610c90454b12973e2999138c3b57ba83768a296521; java-interview-guide.md sha256=a33f16e91025e9a8d92274c4221d1c172bb4f68c03790db53b8e20157ef4faa0; rag-technology-guide.md sha256=59ad5d66a59be2ce4e517ca81e37fde06b7673f3da7f798a4c76b01cc6f348a9`
 - Config snapshot: `rag-admin\src\main\resources\application.yml sha256=12c403bfe01b4746c8a816e5b1f58d5c295fc826db58eeabc2716062f57793bf; rag-core\src\main\java\com\enterprise\rag\core\rag\query\RetrievalProperties.java sha256=0303394e8d11a2a88e39cdcb970323437145a6c3468f51d1f424d169399f4636; rag-document\src\main\java\com\enterprise\rag\document\chunker\ChunkConfig.java sha256=01b17712c8974055d15a30034e396d5074ba37ad8ea637fa7bca895a0c8a8554`
-- Git HEAD: `e28bc9a3568713b3f83033a522b3df8f9ee6746a`
+- Git HEAD: `8a4edc330d8ddda3ddab1e6641a1d8b7063116e1`
 - askTimeout: `20.0`
 - askDelaySeconds: `2.0`
 - maxAskRetries: `0`
 - retryBackoffSeconds: `10.0`
 - retryAskTimeouts: `False`
-- Duration: `48.80s`
+- Duration: `25.78s`
 
 ## Summary Metrics
 
@@ -67,8 +67,8 @@
 
 | ID | Type | Retrieve | First Match | Ask | Keyword Hit | Citation Source | Citation Snippet | Unsupported Citations | No-answer OK | Judge | Errors |
 |---|---|---:|---:|---|---:|---:|---:|---:|---:|---|---|
-| fact-001 | fact | 2/2 | 1 | error | - | - | - | 0 | - | skipped | timed out |
-| no-answer-001 | no_answer | - | - | error | - | - | - | 0 | - | skipped | timed out |
+| fact-001 | fact | 2/2 | 1 | error | - | - | - | 0 | - | skipped | QA returned error status: 抱歉，处理您的问题时发生错误：LLM API call failed: Did not observe any item or terminal signal within 8000ms in 'flatMap' (and no fallback has been configured) [category=llm, type=LLMException, provider=openai, endpoint=/chat/completions, model=meta/llama-3.3-70b-instruct, timeoutSeconds=8, maxRetries=0, llmErrorType=TimeoutException, llmErrorCategory=timeout] |
+| no-answer-001 | no_answer | - | - | error | - | - | - | 0 | - | skipped | QA returned error status: 抱歉，处理您的问题时发生错误：LLM API call failed: Did not observe any item or terminal signal within 8000ms in 'flatMap' (and no fallback has been configured) [category=llm, type=LLMException, provider=openai, endpoint=/chat/completions, model=meta/llama-3.3-70b-instruct, timeoutSeconds=8, maxRetries=0, llmErrorType=TimeoutException, llmErrorCategory=timeout] |
 
 ## Field Coverage
 
@@ -127,18 +127,16 @@ No cases.
     "chunkId": "7ae47b81-30e4-4a02-a17d-416ff33f1411",
     "contentPreview": "RAG（检索增强生成）技术详解 1. 什么是 RAG？ RAG（Retrieval-Augmented Generation，检索增强生成）是一种结合了 信息检索 和 文本生成 的 AI 技术架构。 1.1 核心思想 传统的大语言模型（LLM）依赖于训练时学到的知识，但存在以下问题： 知识截止 ：只知道训练时的数据 幻觉问题 ：可能生成不准确的内容 缺乏专业知识 ：无法回答企业内部或专业领域问题 RAG 的解决方案 ： 先从知识库中 检索 相关信息 将检索到的信息作为 上下文 提供给 LLM LLM 基于上下文生成 准确的答案 2.",
     "metadata": {
-      "sourceFileName": "rag-technology-guide.md",
-      "kbId": 15,
-      "fileName": "rag-technology-guide.md",
+      "documentTitle": "rag-technology-guide.md",
+      "documentId": 56,
+      "endIndex": 270,
       "startIndex": 0,
       "title": "rag-technology-guide.md",
+      "kbId": 15,
+      "fileName": "rag-technology-guide.md",
       "chunkIndex": 0,
-      "tokenCount": 269,
-      "headingPath": "",
-      "endIndex": 270,
-      "originalFilename": "rag-technology-guide.md",
-      "documentTitle": "rag-technology-guide.md",
-      "documentId": 56
+      "sourceFileName": "rag-technology-guide.md",
+      "vectorCollection": "kb_ff06e2ea3de24fb4"
     }
   },
   {
@@ -151,18 +149,16 @@ No cases.
     "chunkId": "0c09d312-344a-4746-9fde-9ebfdb145b0c",
     "contentPreview": "索相关法条 8. 技术栈示例（本项目） 前端：用户提问 ↓ Spring Boot 后端 ↓ 文档处理层：解析、分块 ↓ Embedding 服务：向量化（通义千问 API） ↓ Milvus 向量数据库：存储和检索 ↓ LLM 服务：生成答案（通义千问 Qwen-Turbo） ↓ 返回答案 + 引用来源 9. 面试常见问题 Q1: 为什么需要向量化？ A : 传统的关键词匹配无法理解语义。例如： 问题：\"如何学习 Java？\" 文档：\"Java 学习指南\" 关键词匹配：匹配到\"Java\"和\"学习\" 向量匹配：理解\"如何学习\"和\"学习指南\"语义相似 Q2: Chunk 大小如何选择？",
     "metadata": {
-      "sourceFileName": "rag-technology-guide.md",
-      "kbId": 15,
-      "fileName": "rag-technology-guide.md",
+      "documentTitle": "rag-technology-guide.md",
+      "documentId": 56,
+      "endIndex": 2959,
       "startIndex": 2640,
       "title": "rag-technology-guide.md",
+      "kbId": 15,
+      "fileName": "rag-technology-guide.md",
       "chunkIndex": 12,
-      "tokenCount": 319,
-      "headingPath": "",
-      "endIndex": 2959,
-      "originalFilename": "rag-technology-guide.md",
-      "documentTitle": "rag-technology-guide.md",
-      "documentId": 56
+      "sourceFileName": "rag-technology-guide.md",
+      "vectorCollection": "kb_ff06e2ea3de24fb4"
     }
   },
   {
@@ -175,18 +171,16 @@ No cases.
     "chunkId": "8b9c2406-6e0b-4c21-bc1c-7c7e98abb4d4",
     "contentPreview": "文档：\"Java 学习指南\" 关键词匹配：匹配到\"Java\"和\"学习\" 向量匹配：理解\"如何学习\"和\"学习指南\"语义相似 Q2: Chunk 大小如何选择？ A : 太小 （< 200 字符）：语义不完整 太大 （> 2000 字符）：检索不精准，耗费 Token 推荐 ：500-1000 字符，根据文档类型调整 技术文档 ：按段落或章节分块 代码文档 ：按函数或类分块 Q3: 如何评估 RAG 系统效果？ A : 离线评估 ：准备测试问答对，计算准确率 在线评估 ：A/B 测试，收集用户反馈 关键指标 ： 检索召回率：Top-K 包含正确答案的比例 答案准确率：生成答案的正确性 用户满意度：...",
     "metadata": {
-      "sourceFileName": "rag-technology-guide.md",
-      "kbId": 15,
-      "fileName": "rag-technology-guide.md",
+      "documentTitle": "rag-technology-guide.md",
+      "documentId": 56,
+      "endIndex": 3227,
       "startIndex": 2880,
       "title": "rag-technology-guide.md",
+      "kbId": 15,
+      "fileName": "rag-technology-guide.md",
       "chunkIndex": 13,
-      "tokenCount": 347,
-      "headingPath": "",
-      "endIndex": 3227,
-      "originalFilename": "rag-technology-guide.md",
-      "documentTitle": "rag-technology-guide.md",
-      "documentId": 56
+      "sourceFileName": "rag-technology-guide.md",
+      "vectorCollection": "kb_ff06e2ea3de24fb4"
     }
   },
   {
@@ -199,18 +193,16 @@ No cases.
     "chunkId": "0da3b551-7182-4a29-9650-25c7da40f95f",
     "contentPreview": ".., 0.12] (相似度低) 3.2 向量数据库 专门存储和检索向量的数据库，支持高效的相似度搜索。 常用数据库 ： Milvus ：开源，性能强，本项目使用 Pinecone ：托管服务 Weaviate ：支持混合搜索 Qdrant ：Rust 实现 检索算法 ： HNSW （层次化可导航小世界图）：召回率高，速度快 IVF （倒排索引）：适合大规模数据 FLAT （暴力搜索）：精度最高但速度慢 3.3 文本分块策略 为什么需要分块？",
     "metadata": {
-      "sourceFileName": "rag-technology-guide.md",
-      "kbId": 15,
-      "fileName": "rag-technology-guide.md",
+      "documentTitle": "rag-technology-guide.md",
+      "documentId": 56,
+      "endIndex": 1193,
       "startIndex": 961,
       "title": "rag-technology-guide.md",
+      "kbId": 15,
+      "fileName": "rag-technology-guide.md",
       "chunkIndex": 4,
-      "tokenCount": 232,
-      "headingPath": "",
-      "endIndex": 1193,
-      "originalFilename": "rag-technology-guide.md",
-      "documentTitle": "rag-technology-guide.md",
-      "documentId": 56
+      "sourceFileName": "rag-technology-guide.md",
+      "vectorCollection": "kb_ff06e2ea3de24fb4"
     }
   },
   {
@@ -223,18 +215,16 @@ No cases.
     "chunkId": "969cdcde-c573-4278-b539-2d3dcbcc919c",
     "contentPreview": "界图）：召回率高，速度快 IVF （倒排索引）：适合大规模数据 FLAT （暴力搜索）：精度最高但速度慢 3.3 文本分块策略 为什么需要分块？ LLM 有 Token 限制（GPT-3.5 是 4096，GPT-4 是 8192/32768） 小块检索更精准 提高检索效率 分块方法 ： 固定长度分块 ：每 500 字符一块 句子/段落分块 ：自然语言边界 滑动窗口 ：重叠分块，避免语义割裂 语义分块 ：使用 NLP 技术识别语义边界 示例 ： 原文档（2000 字） ↓ 分块 Chunk 1（500 字）：介绍部分 Chunk 2（500 字）：技术原理 Chunk 3（500 字）：应用场...",
     "metadata": {
-      "sourceFileName": "rag-technology-guide.md",
-      "kbId": 15,
-      "fileName": "rag-technology-guide.md",
+      "documentTitle": "rag-technology-guide.md",
+      "documentId": 56,
+      "endIndex": 1504,
       "startIndex": 1121,
       "title": "rag-technology-guide.md",
+      "kbId": 15,
+      "fileName": "rag-technology-guide.md",
       "chunkIndex": 5,
-      "tokenCount": 383,
-      "headingPath": "",
-      "endIndex": 1504,
-      "originalFilename": "rag-technology-guide.md",
-      "documentTitle": "rag-technology-guide.md",
-      "documentId": 56
+      "sourceFileName": "rag-technology-guide.md",
+      "vectorCollection": "kb_ff06e2ea3de24fb4"
     }
   }
 ]
@@ -252,7 +242,7 @@ No cases.
   "unsupportedCitationCount": 0
 }
 ```
-- errors: `timed out`
+- errors: `QA returned error status: 抱歉，处理您的问题时发生错误：LLM API call failed: Did not observe any item or terminal signal within 8000ms in 'flatMap' (and no fallback has been configured) [category=llm, type=LLMException, provider=openai, endpoint=/chat/completions, model=meta/llama-3.3-70b-instruct, timeoutSeconds=8, maxRetries=0, llmErrorType=TimeoutException, llmErrorCategory=timeout]`
 
 ## Source Normalization Diagnostics
 

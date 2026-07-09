@@ -43,6 +43,7 @@
 - 新增 `--ask-timeout` 与 `--no-retry-ask-timeouts` 后，使用 `--ask-timeout 20 --max-ask-retries 0 --no-retry-ask-timeouts` 复跑同一小样本；runner 删除旧 KB id=14 并重建评测 KB id=15，vector collection=`kb_ff06e2ea3de24fb4`，3 个文档、50 个 chunk。
 - 最新 smoke 报告已更新：`docs/eval/reports/stage1-genquality-smoke.md` 与 `docs/eval/reports/stage1-genquality-smoke-details.json`。报告状态仍为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=0`、`rateLimitErrors=0`、`skippedJudge=2`，Duration=`48.72s`。
 - 使用 `--keep-existing` 复跑 provider 复诊时，runner 日志确认 `Reusing eval KB id=15 collection=kb_ff06e2ea3de24fb4`，没有重新上传 fixture；报告仍为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=0`，Duration=`48.80s`。
+- 重启诊断型后端并临时设置 `RAG_LLM_TIMEOUT=8`、`RAG_LLM_MAX_RETRIES=0` 后再次复跑同一小样本；报告仍为 `PARTIAL`，但 ask error 已明确输出 `provider=openai`、`endpoint=/chat/completions`、`model=meta/llama-3.3-70b-instruct`、`timeoutSeconds=8`、`llmErrorCategory=timeout`，证明当前阻塞点是生成模型 provider 超时，而非检索/索引链路。
 - 小样本 retrieval 指标可比较：Recall@3=100.00%、Recall@5=100.00%、MRR=1.0000、Top1 source accuracy=100.00%。
 - generation/citation 指标仍不可比较：两个样本 `/api/qa/ask` 均为 `timed out`，ask successful samples=0；后端日志显示当前 OpenAI-compatible provider 调用 `/chat/completions` 多次 timeout，并出现一次 NVIDIA endpoint `503 Service Unavailable`。
 
@@ -69,6 +70,8 @@ python -B scripts\test_run_rag_eval.py
 - `--ask-timeout` 已接入 `run_rag_eval.py` 与 `run_reproducible_rag_eval.py`；默认继承全局 `--timeout`，仅在显式传参或设置 `RAG_EVAL_ASK_TIMEOUT` 时改变 `/api/qa/ask` 等待上限。
 - `run_reproducible_rag_eval.py --plan-only` 已显式输出 `keepExisting`、`willUploadFixtures`、`expectedFixtureUploads`，用于在执行前确认是否会重新上传 fixture / 触发 embedding provider。
 - 复跑 `fact-001 + no-answer-001` 小样本 smoke 时，`--ask-timeout 20 --max-ask-retries 0 --no-retry-ask-timeouts` 已进入报告头与 details JSON；本地后端、索引和检索成功，当前外部 LLM provider 仍 timeout。
+- 后端错误响应已补充脱敏 LLM 诊断 metadata：`llmProvider`、`llmEndpoint`、`llmModel`、`llmTimeoutSeconds`、`llmMaxRetries`、`llmErrorType`、`llmErrorCategory`；eval runner 会把这些字段带入 ask error，方便区分 provider timeout、429、5xx 与其它错误。
+- 2026-07-09 收口验证：`python -B -m py_compile scripts\run_rag_eval.py scripts\test_run_rag_eval.py`、`python -B scripts\test_run_rag_eval.py`、`python -B scripts\run_rag_eval.py --help`、小样本 `run_reproducible_rag_eval.py --plan-only --keep-existing --include-ask`、`mvn -pl rag-core "-Dtest=RAGServiceImplTest" test`、`mvn -q test` 均通过；未执行新的 live ask / judge 调用。
 
 ## 后续 live baseline 建议
 
