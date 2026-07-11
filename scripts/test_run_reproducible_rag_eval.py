@@ -198,6 +198,48 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertFalse(plan["willUploadFixtures"])
         self.assertEqual(0, plan["expectedFixtureUploads"])
 
+    def test_build_preflight_reports_ready_without_eval_calls(self) -> None:
+        args = self.eval_command_args(include_ask=True)
+        result = runner.build_preflight(
+            args,
+            {"id": 15, "name": "codex-stage1-repro-eval", "vectorCollection": "kb_test"},
+            [
+                {"title": "springboot-basics.md", "status": "COMPLETED", "chunkCount": 18},
+                {"fileName": "java-interview-guide.md", "status": "COMPLETED", "chunkCount": 20},
+            ],
+            [Path("test-data/springboot-basics.md"), Path("test-data/java-interview-guide.md")],
+        )
+
+        self.assertEqual("READY", result["status"])
+        self.assertTrue(result["mutationFree"])
+        self.assertEqual(2, result["fixtures"]["matchedCount"])
+        self.assertEqual([], result["fixtures"]["missing"])
+        self.assertEqual([], result["fixtures"]["incomplete"])
+
+    def test_build_preflight_reports_missing_and_incomplete_fixtures(self) -> None:
+        args = self.eval_command_args(include_ask=False)
+        result = runner.build_preflight(
+            args,
+            {"id": 15, "name": "codex-stage1-repro-eval"},
+            [{"title": "springboot-basics.md", "status": "PROCESSING", "chunkCount": 0}],
+            [Path("test-data/springboot-basics.md"), Path("test-data/java-interview-guide.md")],
+        )
+
+        self.assertEqual("BLOCKED", result["status"])
+        self.assertEqual(["java-interview-guide.md"], result["fixtures"]["missing"])
+        self.assertEqual(["springboot-basics.md"], result["fixtures"]["incomplete"])
+
+    def test_find_existing_eval_kb_rejects_marker_mismatch(self) -> None:
+        args = self.eval_command_args(include_ask=False)
+        args.kb_description = "expected marker"
+        with mock.patch.object(
+            runner,
+            "list_kbs",
+            return_value=[{"id": 15, "name": args.kb_name, "description": "other"}],
+        ):
+            with self.assertRaises(runner.ApiError):
+                runner.find_existing_eval_kb(args, "token")
+
     def test_main_refuses_empty_sample_selection_before_backend_calls(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
@@ -220,12 +262,49 @@ class ReproducibleRagEvalTest(unittest.TestCase):
 
             login.assert_not_called()
 
+    def test_main_preflight_does_not_create_kb_or_run_eval(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            eval_set = tmp / "eval.jsonl"
+            fixture = tmp / "fixture.md"
+            eval_set.write_text('{"id":"fact-001","should_answer":true}\n', encoding="utf-8")
+            fixture.write_text("# Fixture\n", encoding="utf-8")
+            argv = [
+                "run_reproducible_rag_eval.py",
+                "--preflight-only",
+                "--eval-set",
+                str(eval_set),
+                "--fixture",
+                str(fixture),
+            ]
+            kb = {
+                "id": 15,
+                "name": runner.DEFAULT_KB_NAME,
+                "description": runner.DEFAULT_KB_MARKER,
+                "vectorCollection": "kb_test",
+            }
+            docs = [{"title": fixture.name, "status": "COMPLETED", "chunkCount": 1}]
+
+            with (
+                mock.patch("sys.argv", argv),
+                mock.patch.object(runner, "login", return_value="token"),
+                mock.patch.object(runner, "find_existing_eval_kb", return_value=kb),
+                mock.patch.object(runner, "list_documents", return_value=docs),
+                mock.patch.object(runner, "get_or_create_kb") as get_or_create_kb,
+                mock.patch.object(runner, "run_eval") as run_eval,
+            ):
+                self.assertEqual(0, runner.main())
+
+            get_or_create_kb.assert_not_called()
+            run_eval.assert_not_called()
+
     @staticmethod
     def eval_command_args(include_ask: bool) -> argparse.Namespace:
         return argparse.Namespace(
             python="python",
             base_url="http://localhost:8080",
             kb_name="codex-stage1-repro-eval",
+            kb_description="codex reproducible retrieval-only eval fixture",
             eval_set="docs/eval/rag_eval_set.jsonl",
             report="docs/eval/reports/stage1.md",
             details_json="docs/eval/reports/stage1-details.json",

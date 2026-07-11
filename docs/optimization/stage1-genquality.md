@@ -72,6 +72,10 @@ python -B scripts\test_run_rag_eval.py
 - 复跑 `fact-001 + no-answer-001` 小样本 smoke 时，`--ask-timeout 20 --max-ask-retries 0 --no-retry-ask-timeouts` 已进入报告头与 details JSON；本地后端、索引和检索成功，当前外部 LLM provider 仍 timeout。
 - 后端错误响应已补充脱敏 LLM 诊断 metadata：`llmProvider`、`llmEndpoint`、`llmModel`、`llmTimeoutSeconds`、`llmMaxRetries`、`llmErrorType`、`llmErrorCategory`；eval runner 会把这些字段带入 ask error，方便区分 provider timeout、429、5xx 与其它错误。
 - 2026-07-09 收口验证：`python -B -m py_compile scripts\run_rag_eval.py scripts\test_run_rag_eval.py`、`python -B scripts\test_run_rag_eval.py`、`python -B scripts\run_rag_eval.py --help`、小样本 `run_reproducible_rag_eval.py --plan-only --keep-existing --include-ask`、`mvn -pl rag-core "-Dtest=RAGServiceImplTest" test`、`mvn -q test` 均通过；未执行新的 live ask / judge 调用。
+- 2026-07-11 增加 `run_reproducible_rag_eval.py --preflight-only`：只读检查后端登录、固定评测 KB 与三份 fixture 索引状态，失败时输出缺失/未完成文档，不创建或删除 KB、不上传 fixture、不调用 ask/judge。
+- 代理配置已支持 `PROXY_ENABLED`、`PROXY_HOST`、`PROXY_PORT` 环境变量覆盖。当前本机检查时 `127.0.0.1:7897` 未监听；再次启动后端前必须确认代理已启动，或显式设置 `PROXY_ENABLED=false`，避免把本地代理不可用误判为 provider 超时。
+- 2026-07-11 provider 分层诊断：禁用本地代理后，使用现有 NVIDIA 凭据请求 `/v1/models` 在 `589ms` 内成功，返回 121 个模型且包含 `meta/llama-3.3-70b-instruct`；同一模型的最小 `/v1/chat/completions` 请求（无项目数据、`max_tokens=4`）分别在 `20s` 和 `60s` 上限超时。由此可排除凭据失效、模型名不存在和基础 HTTPS 不通，当前阻塞收敛为目标 chat 模型服务不可用或响应时延不可接受。
+- 同日运行环境复核：MySQL、Redis、Milvus、etcd、MinIO 均为 healthy；以 `PROXY_ENABLED=false` 启动后端后，`--preflight-only` 返回 `READY`，复用 KB id=15，三份 fixture 均为 `COMPLETED`，chunkCount 合计 50。临时后端随后已停止。完整 Stage 1 baseline 仍不执行，需先更换稳定生成模型或等待当前 provider 恢复。
 
 ## 后续 live baseline 建议
 

@@ -150,7 +150,15 @@ proxy:
 --proxy.enabled=false
 ```
 
-或者在 IDE 的 Program arguments 中添加同样参数。
+也可以在 `.env.local` 或启动环境中设置 `PROXY_ENABLED=false`；`PROXY_HOST`、`PROXY_PORT` 可分别覆盖代理地址和端口。启动评测前，建议先执行只读预检：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --preflight-only `
+  --kb-name codex-stage1-repro-eval
+```
+
+该命令只验证登录、既有评测 KB 和三份 fixture 的索引状态，不会创建/删除 KB、上传文档，也不会调用 `/api/qa/ask` 或 LLM judge。
 
 ## 5. 完整命令顺序
 

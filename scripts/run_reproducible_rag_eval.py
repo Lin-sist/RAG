@@ -82,7 +82,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repeat", type=int, default=1, help="Run retrieval-only eval repeatedly against the same prepared KB.")
     parser.add_argument("--keep-existing", action="store_true", help="Reuse a matching KB instead of deleting and recreating it.")
     parser.add_argument("--no-overwrite", action="store_true")
-    parser.add_argument("--plan-only", action="store_true", help="Print planned files, sample selection, and eval command shape without contacting the backend.")
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument("--plan-only", action="store_true", help="Print planned files, sample selection, and eval command shape without contacting the backend.")
+    mode_group.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="Verify backend login, the existing eval KB, and fixture indexing without mutating data or running eval calls.",
+    )
     parser.add_argument("--python", default=sys.executable)
     args = parser.parse_args()
     if args.ask_timeout is None:
@@ -157,6 +163,18 @@ def list_kbs(args: argparse.Namespace, token: str) -> list[dict[str, Any]]:
     return [item for item in data if isinstance(item, dict)]
 
 
+def find_existing_eval_kb(args: argparse.Namespace, token: str) -> dict[str, Any] | None:
+    matches = [kb for kb in list_kbs(args, token) if kb.get("name") == args.kb_name]
+    if len(matches) > 1:
+        raise ApiError(f"Multiple KBs named {args.kb_name!r}; clean them before reusing the eval KB")
+    if not matches:
+        return None
+    kb = matches[0]
+    if kb.get("description") != args.kb_description:
+        raise ApiError(f"Existing KB {args.kb_name!r} does not have the eval marker description")
+    return kb
+
+
 def delete_matching_kbs(args: argparse.Namespace, token: str) -> None:
     for kb in list_kbs(args, token):
         if kb.get("name") != args.kb_name:
@@ -186,15 +204,10 @@ def create_kb(args: argparse.Namespace, token: str) -> dict[str, Any]:
 
 def get_or_create_kb(args: argparse.Namespace, token: str) -> dict[str, Any]:
     if args.keep_existing:
-        matches = [kb for kb in list_kbs(args, token) if kb.get("name") == args.kb_name]
-        if len(matches) == 1:
-            kb = matches[0]
-            if kb.get("description") != args.kb_description:
-                raise ApiError(f"Existing KB {args.kb_name!r} does not have the eval marker description")
+        kb = find_existing_eval_kb(args, token)
+        if kb is not None:
             print(f"Reusing eval KB id={kb.get('id')} collection={kb.get('vectorCollection')}")
             return kb
-        if len(matches) > 1:
-            raise ApiError(f"Multiple KBs named {args.kb_name!r}; rerun without --keep-existing to clean them")
     else:
         delete_matching_kbs(args, token)
     return create_kb(args, token)
@@ -298,6 +311,63 @@ def docs_for_expected_files(docs: list[dict[str, Any]], expected_files: set[str]
         if names & expected_files:
             relevant.append(doc)
     return relevant
+
+
+def build_preflight(
+    args: argparse.Namespace,
+    kb: dict[str, Any],
+    docs: list[dict[str, Any]],
+    fixtures: list[Path],
+) -> dict[str, Any]:
+    expected_files = {path.name for path in fixtures}
+    relevant = docs_for_expected_files(docs, expected_files)
+    by_name: dict[str, dict[str, Any]] = {}
+    for doc in relevant:
+        names = [
+            str(doc.get("title") or ""),
+            str(doc.get("fileName") or ""),
+            Path(str(doc.get("filePath") or "")).name,
+        ]
+        for name in names:
+            if name in expected_files:
+                by_name[name] = doc
+
+    missing = sorted(expected_files - set(by_name))
+    incomplete = sorted(
+        name
+        for name, doc in by_name.items()
+        if str(doc.get("status") or "") not in SUCCESS_DOCUMENT_STATES
+    )
+    ready = not missing and not incomplete
+    return {
+        "status": "READY" if ready else "BLOCKED",
+        "mutationFree": True,
+        "baseUrl": args.base_url,
+        "knowledgeBase": {
+            "id": kb.get("id"),
+            "name": kb.get("name"),
+            "vectorCollection": kb.get("vectorCollection"),
+        },
+        "fixtures": {
+            "expectedCount": len(expected_files),
+            "matchedCount": len(by_name),
+            "missing": missing,
+            "incomplete": incomplete,
+            "documents": [
+                {
+                    "name": name,
+                    "status": doc.get("status"),
+                    "chunkCount": int(doc.get("chunkCount") or 0),
+                }
+                for name, doc in sorted(by_name.items())
+            ],
+        },
+        "nextStep": (
+            "Run a small generation/citation smoke with --keep-existing --include-ask."
+            if ready
+            else "Restore the missing or incomplete eval fixtures before running evaluation."
+        ),
+    }
 
 
 def sha256_file(path: Path) -> str:
@@ -558,6 +628,15 @@ def main() -> int:
         return 0
 
     token = login(args)
+    if args.preflight_only:
+        kb = find_existing_eval_kb(args, token)
+        if kb is None:
+            raise ApiError(f"Eval KB {args.kb_name!r} does not exist; preflight never creates it")
+        kb_id = int(kb["id"])
+        preflight = build_preflight(args, kb, list_documents(args, token, kb_id), fixtures)
+        print(json.dumps(preflight, ensure_ascii=False, indent=2))
+        return 0 if preflight["status"] == "READY" else 1
+
     kb = get_or_create_kb(args, token)
     kb_id = int(kb["id"])
 
