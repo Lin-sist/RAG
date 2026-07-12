@@ -115,5 +115,5 @@
 - Stage 1 已完成，可以进入合并收口。
 - Stage 2 触发条件当前不满足：没有配置真实 rerank provider/凭据，默认继续使用 heuristic；后续应正式记录为“跳过”或在取得 provider 后单独 A/B。
 - Stage 3 的标题感知、长代码块/长段落分块专项尚未开始。
-- Stage 4 的 `docs/后端优化文档/` 清理尚未开始，旧文档不得作为当前代码真相源。
+- Stage 4 文档真相源清理已于 2026-07-12 完成；当前索引为 `docs/optimization/README.md`。
 - claim-level citation support、LLM judge、生产数据扩集与 provider 延迟/成本统计留待后续阶段。

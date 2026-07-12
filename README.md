@@ -232,9 +232,13 @@ Flyway 会自动执行初始化脚本（`V1/V2/V3`），包含：
 
 ## 10. 常用文档
 
-- `docs/API-调用教程.md`
-- `docs/frontend-spec.md`
-- `docs/frontend-v2-design.md`
+- `docs/architecture/overview.md`
+- `docs/开发文档/API-调用教程.md`
+- `docs/开发文档/前端文档/frontend-current-state.md`
+- `docs/eval/RAG_EVAL_GUIDE.md`
+- `docs/optimization/README.md`
+- `docs/roadmap/technical-debt.md`
+- `docs/learning/LEARNING_ROADMAP.md`
 
 ---
 

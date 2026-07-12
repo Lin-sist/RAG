@@ -11,7 +11,7 @@
 - model reranker API key 未配置
 - 没有可用于真实 A/B 的 provider 凭据
 
-根据 `docs/optimization/v4-plan.md` 的条件触发规则，本阶段不伪造 provider、不复用 LLM key 代替 rerank key，也不通过 mock 结果宣称业务收益，因此本轮正式跳过，不产生 rerank 代码改动或外部调用。
+根据 `docs/optimization/v4/plan.md` 的条件触发规则，本阶段不伪造 provider、不复用 LLM key 代替 rerank key，也不通过 mock 结果宣称业务收益，因此本轮正式跳过，不产生 rerank 代码改动或外部调用。
 
 ## 后续重新触发条件
 

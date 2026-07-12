@@ -1,6 +1,6 @@
 # RAG 项目优化实施文档 v4（供 codex /goal 执行）
 
-> 执行状态（2026-07-12）：Stage 1 已完成并形成两轮 CLEAN objective baseline；Stage 2 因无真实 rerank provider/凭据按条件规则跳过；Stage 3、Stage 4 与最终总报告尚未执行。本次可合并范围仅为“v3 + v4 Stage 1 checkpoint”，不得表述为整个 v4 已完成。
+> 执行状态（2026-07-12）：Stage 1 已完成并形成两轮 CLEAN objective baseline；Stage 2 因无真实 rerank provider/凭据按条件规则跳过；Stage 4 文档真相源清理已完成；Stage 3 与最终总报告尚未执行，不得表述为整个 v4 已完成。
 
 ## 0. 全局约束（最高优先级，违反即视为失败）
 
@@ -8,9 +8,9 @@
    BM25 keyword route + vector route + RRF 混合检索(`QueryEngineImpl.java:112`)，默认开启
    hybrid/keyword(`application.yml:144`)，分块 chunk-size=420 / overlap=80(`application.yml:167`)，
    Stage 2 最优 retrieval-only 指标 Recall@5 68.63% / MRR 0.7346 / Top1 96.30%
-   (`docs/optimization/stage2-chunking.md:26`)；Reranker 工程接入完成(ModelReranker 为 HTTP
+   (`docs/optimization/v3/stage2-chunking.md:26`)；Reranker 工程接入完成(ModelReranker 为 HTTP
    adapter，含健康检查/超时/降级，`RerankerRegistry.java:22`)，但**默认仍是 heuristic，真实
-   provider 未配置，业务收益未验证**(`docs/optimization/stage3-rerank.md:3`)。
+   provider 未配置，业务收益未验证**(`docs/optimization/v3/stage3-rerank-adapter.md:3`)。
 2. **本轮核心缺口**：检索侧已被量化得很干净，但**生成/引用侧仍是黑盒**——答案忠实度、引用命中率、
    no-answer 稳定性都没有对等的评测尺子。本轮首要目标就是补齐这条链路的可评测性。
 3. **指标是证据，不是保证**：所有指标（检索类 + 新增生成/引用类）仅用于举证，**不得**作为
@@ -35,18 +35,17 @@
    `docs/optimization/` 追加说明（改了什么、为什么、验收数字、是否回滚）。
    **复用 v3 的可复现评测闭环**（固定评测 KB 身份、记录 kbId/chunk 数/时间戳），禁止 kbId 漂移复发。
 8. **执行前事实核验（必须先做，不得跳过）**：
-   - 先执行 `git status --short --branch`，确认仍在 `feature/pr2-rag-eval`，记录当前 HEAD。
-     若出现除 `docs/后端优化文档/` 之外的未提交改动，暂停并向用户请示。
-   - 重新核对关键事实源：`docs/optimization/summary.md`、`stage1-eval.md`、`stage2-chunking.md`、
-     `stage3-rerank.md`、`scripts/run_rag_eval.py`、`scripts/run_reproducible_rag_eval.py`，
+   - 先执行 `git status --short --branch`，记录当前分支与 HEAD。
+     若出现与当前任务无关的未提交改动，暂停并向用户请示。
+   - 重新核对关键事实源：`docs/optimization/v3/summary.md`、`v3/stage1-reproducible-eval.md`、
+     `v3/stage2-chunking.md`、`v3/stage3-rerank-adapter.md`、`scripts/run_rag_eval.py`、`scripts/run_reproducible_rag_eval.py`，
      以及 `QueryEngineImpl`、`RerankerRegistry`、`ModelReranker`、`DocumentChunker`、`application.yml`。
      若本文档与代码/已提交报告不一致，以代码和 `docs/optimization/` 为准，先记录差异并请示。
    - 不得信任旧 `docs/后端优化文档/`、README 或历史 audit 的阶段判断；它们只能作为历史材料。
    - 不得只看报告文件名下结论；比较前必须读取报告头的 `Report status`、`retrieveErrors`、
      `askErrors`、`rateLimitErrors`、run metadata/details JSON。
-9. **v4 文档归属**：当前 `docs/后端优化文档/` 是未跟踪工作目录。正式执行 Stage 1 前，
-   先将本 v4 计划迁入或复制为 `docs/optimization/v4-plan.md`（或用户确认的等价权威路径），
-   作为本轮唯一执行计划；旧目录中的其它文档不得在未确认时混入代码提交。
+9. **v4 文档归属**：本文件位于 `docs/optimization/v4/plan.md`，是 v4 的阶段计划快照；当前目录索引见
+   `docs/optimization/README.md`。新的未完成 change 在引入 OpenSpec 后应迁入 OpenSpec，不再新增平行总计划。
 
 ## 1. 本轮优化目标（明确、不可跑偏）
 
@@ -95,7 +94,7 @@
 
 ### 验收标准
 - 同一配置连续跑两次，客观指标(citation hit / no-answer)一致；LLM-judge 类指标差异在可解释浮动内，
-  在 `docs/optimization/stage1-genquality.md` 贴出两次结果 + judge 配置 + 若干抽样判定。
+  在 `docs/optimization/v4/stage1-generation-citation.md` 贴出两次结果 + judge 配置 + 若干抽样判定。
 - 产出当前系统的**首份生成/引用质量基线**（citation hit、faithfulness、no-answer 正确率），
   如实报告，不与任何目标数字挂钩。
 
@@ -106,12 +105,12 @@
 
 ### 触发条件
 **仅当具备可用的 rerank 服务/凭据（在线 rerank API 或本地 BGE reranker 服务）时执行本阶段；
-若无凭据或服务不可达，跳过本阶段，在 `docs/optimization/stage2-rerank-verify.md` 明确写
+若无凭据或服务不可达，跳过本阶段，在 `docs/optimization/v4/stage2-rerank-decision.md` 明确写
 "真实 rerank 待验证：缺 provider/凭据"，并继续 Stage 3。**
 
 ### 现状
 `ModelReranker` 已是含健康检查/超时/降级的 HTTP adapter，但默认 heuristic，真实收益未验证
-(`docs/optimization/stage3-rerank.md:3`、`RerankerRegistry.java:22`)。
+(`docs/optimization/v3/stage3-rerank-adapter.md:3`、`RerankerRegistry.java:22`)。
 
 ### 目标
 配好真实 rerank provider，量化 heuristic vs 真实 rerank 的收益（检索 + 生成双维度）。
@@ -124,7 +123,7 @@
    generation/citation 指标。
 
 ### 验收标准
-- 在 `stage2-rerank-verify.md` 如实报告两组对比与涨/平/跌；若真实 rerank 未带来收益甚至回退，
+- 在 `v4/stage2-rerank-decision.md` 如实报告两组对比与涨/平/跌；若真实 rerank 未带来收益甚至回退，
   照实写并给出"是否默认启用/维持 heuristic"的建议，**暂停并向用户请示**是否切换默认 provider。
 
 ### ✅ Stage 2 完成后提交（若被跳过则不产生本提交，仅在后续阶段文档或总报告记录跳过原因）：
@@ -150,7 +149,7 @@
 4. 若新策略未超过当前 Recall@5 68.63%，**保持现状不改默认**，只在文档记录实验与结论。
 
 ### 验收标准
-- 在 `docs/optimization/stage3-chunking-plus.md` 给出实验矩阵、最终是否采纳、涨/平/跌与原因。
+- 在 `docs/optimization/v4/stage3-chunking-plus.md` 给出实验矩阵、最终是否采纳、涨/平/跌与原因。
 
 ### ✅ Stage 3 完成后提交：
 `git commit -m "perf(切分): 标题感知与长块处理专项实验，如实记录是否采纳"`
@@ -158,18 +157,22 @@
 
 ## 5. Stage 4：清理文档真相源
 
-### 现状
-存在未跟踪目录 `docs/后端优化文档/`，其中旧版概括已过时（仍称"没有 BM25/RRF、没有 token 切分"），
-会误导后续 agent 与人类阅读者。
+### 状态
+
+**已完成（2026-07-12）。**
+
+已删除与当前实现矛盾的旧 audit、Kiro 初始规格、旧维护计划、Phase 0 诊断资料和会话式交接稿；有效内容已迁入当前架构、技术债、前端现状和学习路线文档。
 
 ### 目标
 消除过时真相源，建立清晰的"历史材料 vs 新版策略文档"结构。
 
-### 实施约束
-1. 将 `docs/后端优化文档/` 整理为历史归档（如移动到 `docs/optimization/archive/` 并加显著
-   "已过时/仅供历史参考"标注），或在确认无价值后删除——**处理方式先向用户请示确认**再执行。
-2. 确保 `docs/optimization/` 下的 v3/v4 报告为唯一权威真相源，README 或索引指向最新结论。
-3. 本阶段**只动文档**，不碰任何代码。
+### 已落实
+
+1. `docs/optimization/` 已按 `v3 / v4 / history` 重组，并新增 `README.md` 索引。
+2. 当前架构与技术债分别归入 `docs/architecture/`、`docs/roadmap/`。
+3. 前端旧规格合并为 `frontend-current-state.md`。
+4. 个人学习路线移入 `docs/learning/`。
+5. 本阶段未修改 Java/Vue 业务逻辑。
 
 ### 验收标准
 - 仓库内不再存在与当前实现矛盾的过时结论；`docs/optimization/` 有清晰的最新索引。
@@ -189,7 +192,8 @@
 
 ## 7. 执行顺序总览（不可打乱）
 
-执行前事实核验 + v4 计划迁入权威路径 → Stage 1 生成/引用评测（提交）→ Stage 2 真实 rerank 对比（有凭据才提交，否则文档记录跳过）→
-Stage 3 分块专项（提交）→ Stage 4 文档清理（提交）→ 总报告（提交）。
+已完成：事实核验 → Stage 1 生成/引用评测 → Stage 2 条件判定并跳过 → Stage 4 文档清理。
+
+剩余顺序：Stage 3 分块专项（提交）→ 总报告（提交）。
 每一步以"评测可复现出数 + mvn test 通过 + 已按安全闸 commit"作为进入下一步的前置条件。
 任何异常暂停并向用户请示。
