@@ -424,7 +424,7 @@
 - expected_contexts.contains: `["RAG（Retrieval-Augmented Generation，检索增强生成）", "结合了**信息检索**和**文本生成**"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["Retrieval-Augmented Generation", "检索增强生成", "信息检索", "文本生成"]`
 - keyword_hit: `0/4`
 - top5 retrieved results:
@@ -473,7 +473,7 @@
 - expected_contexts.contains: `["专门存储和检索向量的数据库", "支持高效的相似度搜索"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["存储", "检索向量", "相似度搜索"]`
 - keyword_hit: `0/3`
 - top5 retrieved results:
@@ -911,7 +911,7 @@
 - expected_contexts.contains: `["核心特性", "自动配置"]`
 - retrieve hit ratio: `2/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["自动配置", "起步依赖", "内嵌服务器", "生产就绪"]`
 - keyword_hit: `0/4`
 - top5 retrieved results:
@@ -1392,7 +1392,7 @@
 - expected_contexts.contains: `["RAG（Retrieval-Augmented Generation，检索增强生成）", "结合了**信息检索**和**文本生成**"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["Retrieval-Augmented Generation", "检索增强生成", "信息检索", "文本生成"]`
 - keyword_hit: `0/4`
 - top5 retrieved results:
@@ -1489,7 +1489,7 @@
 - expected_contexts.contains: `["专门存储和检索向量的数据库", "支持高效的相似度搜索"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["存储", "检索向量", "相似度搜索"]`
 - keyword_hit: `0/3`
 - top5 retrieved results:
@@ -2218,7 +2218,7 @@
 - expected_contexts.contains: `["核心特性", "自动配置"]`
 - retrieve hit ratio: `2/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["自动配置", "起步依赖", "内嵌服务器", "生产就绪"]`
 - keyword_hit: `0/4`
 - top5 retrieved results:
@@ -2363,7 +2363,7 @@
 - expected_contexts.contains: `["RAG（Retrieval-Augmented Generation，检索增强生成）", "结合了**信息检索**和**文本生成**"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["Retrieval-Augmented Generation", "检索增强生成", "信息检索", "文本生成"]`
 - keyword_hit: `0/4`
 - top5 retrieved results:
@@ -2412,7 +2412,7 @@
 - expected_contexts.contains: `["专门存储和检索向量的数据库", "支持高效的相似度搜索"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["存储", "检索向量", "相似度搜索"]`
 - keyword_hit: `0/3`
 - top5 retrieved results:

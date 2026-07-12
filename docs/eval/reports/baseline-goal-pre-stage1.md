@@ -104,7 +104,7 @@
 - expected_contexts.contains: `["@SpringBootApplication 是组合注解", "@SpringBootApplication = @Configuration"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["@Configuration", "@EnableAutoConfiguration", "@ComponentScan"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -152,7 +152,7 @@
 - expected_contexts.contains: `["@RestController：= @Controller + @ResponseBody"]`
 - retrieve hit ratio: `0/1`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["@Controller", "@ResponseBody", "@RestController"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -200,7 +200,7 @@
 - expected_contexts.contains: `["accessToken：短期令牌", "refreshToken：长期令牌"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["accessToken", "refreshToken", "访问接口", "刷新"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -248,7 +248,7 @@
 - expected_contexts.contains: `["数据类型", "ZSet：排行榜"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["String", "Hash", "List", "Set", "ZSet"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -296,7 +296,7 @@
 - expected_contexts.contains: `["常用数据库", "Qdrant：Rust 实现"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["Milvus", "Pinecone", "Weaviate", "Qdrant"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -344,7 +344,7 @@
 - expected_contexts.contains: `["问答处理（在线）", "问题向量化"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["问题向量化", "相似度检索", "构建提示词", "LLM 生成"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -392,7 +392,7 @@
 - expected_contexts.contains: `["B+ 树索引：MySQL InnoDB 默认索引结构"]`
 - retrieve hit ratio: `0/1`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["B+ 树索引", "InnoDB", "默认索引结构"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -440,7 +440,7 @@
 - expected_contexts.contains: `["RAG（Retrieval-Augmented Generation，检索增强生成）", "结合了**信息检索**和**文本生成**"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["Retrieval-Augmented Generation", "检索增强生成", "信息检索", "文本生成"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -488,7 +488,7 @@
 - expected_contexts.contains: `["专门存储和检索向量的数据库", "支持高效的相似度搜索"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["存储", "检索向量", "相似度搜索"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -536,7 +536,7 @@
 - expected_contexts.contains: `["文本分块策略", "小块检索更精准"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["分块", "Chunk", "Token 限制", "检索更精准"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -584,7 +584,7 @@
 - expected_contexts.contains: `["缓存穿透：查询不存在的数据", "布隆过滤器、缓存空值"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["缓存穿透", "不存在的数据", "布隆过滤器", "缓存空值"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -632,7 +632,7 @@
 - expected_contexts.contains: `["为什么需要分块？", "提高检索效率"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["Token 限制", "检索更精准", "检索效率", "语义割裂"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -680,7 +680,7 @@
 - expected_contexts.contains: `["重排序（Rerank）", "二次精排，提高准确率"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["重排序", "二次精排", "提高准确率", "检索优化"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -728,7 +728,7 @@
 - expected_contexts.contains: `["构造器注入（推荐，保证不可变性）", "字段注入（不推荐）"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["构造器注入", "保证不可变性", "字段注入", "难以测试"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -776,7 +776,7 @@
 - expected_contexts.contains: `["线程不安全，多线程使用 ConcurrentHashMap"]`
 - retrieve hit ratio: `0/1`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["线程不安全", "ConcurrentHashMap", "多线程"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -824,7 +824,7 @@
 - expected_contexts.contains: `["如何提高 RAG 准确率？", "优化 Prompt"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["优化分块策略", "提升 Embedding 质量", "增加 Top-K", "使用 Rerank", "优化 Prompt"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -872,7 +872,7 @@
 - expected_contexts.contains: `["接口性能优化手段", "Spring Cache"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["Redis", "使用缓存", "@Cacheable", "@CacheEvict", "@CachePut"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -930,7 +930,7 @@ No cases.
 - expected_contexts.contains: `[]`
 - retrieve hit ratio: `0/0`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `[]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -960,7 +960,7 @@ No cases.
 - expected_contexts.contains: `[]`
 - retrieve hit ratio: `0/0`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `[]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -990,7 +990,7 @@ No cases.
 - expected_contexts.contains: `[]`
 - retrieve hit ratio: `0/0`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `[]`
 - keyword_hit: `0/0`
 - top5 retrieved results:

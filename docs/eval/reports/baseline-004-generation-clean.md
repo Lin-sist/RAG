@@ -488,7 +488,7 @@
 - expected_contexts.contains: `["专门存储和检索向量的数据库", "支持高效的相似度搜索"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["存储", "检索向量", "相似度搜索"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:

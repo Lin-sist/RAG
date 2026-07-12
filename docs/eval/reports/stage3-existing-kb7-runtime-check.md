@@ -104,7 +104,7 @@
 - expected_contexts.contains: `["@RestController：= @Controller + @ResponseBody"]`
 - retrieve hit ratio: `0/1`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["@Controller", "@ResponseBody", "@RestController"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -265,7 +265,7 @@
 - expected_contexts.contains: `["accessToken：短期令牌", "refreshToken：长期令牌"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["accessToken", "refreshToken", "访问接口", "刷新"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -426,7 +426,7 @@
 - expected_contexts.contains: `["数据类型", "ZSet：排行榜"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["String", "Hash", "List", "Set", "ZSet"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -587,7 +587,7 @@
 - expected_contexts.contains: `["常用数据库", "Qdrant：Rust 实现"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `4`
-- answer: 
+- answer:
 - expected_keywords: `["Milvus", "Pinecone", "Weaviate", "Qdrant"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -748,7 +748,7 @@
 - expected_contexts.contains: `["问答处理（在线）", "问题向量化"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["问题向量化", "相似度检索", "构建提示词", "LLM 生成"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -909,7 +909,7 @@
 - expected_contexts.contains: `["B+ 树索引：MySQL InnoDB 默认索引结构"]`
 - retrieve hit ratio: `0/1`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["B+ 树索引", "InnoDB", "默认索引结构"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -1070,7 +1070,7 @@
 - expected_contexts.contains: `["RAG（Retrieval-Augmented Generation，检索增强生成）", "结合了**信息检索**和**文本生成**"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["Retrieval-Augmented Generation", "检索增强生成", "信息检索", "文本生成"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -1231,7 +1231,7 @@
 - expected_contexts.contains: `["缓存穿透：查询不存在的数据", "布隆过滤器、缓存空值"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["缓存穿透", "不存在的数据", "布隆过滤器", "缓存空值"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -1392,7 +1392,7 @@
 - expected_contexts.contains: `["重排序（Rerank）", "二次精排，提高准确率"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["重排序", "二次精排", "提高准确率", "检索优化"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -1553,7 +1553,7 @@
 - expected_contexts.contains: `["线程不安全，多线程使用 ConcurrentHashMap"]`
 - retrieve hit ratio: `0/1`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["线程不安全", "ConcurrentHashMap", "多线程"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -1714,7 +1714,7 @@
 - expected_contexts.contains: `["#{} 预编译，防止 SQL 注入", "${} 字符串替换，存在注入风险"]`
 - retrieve hit ratio: `0/2`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `["预编译", "SQL 注入", "字符串替换"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -1875,7 +1875,7 @@
 - expected_contexts.contains: `["如何提高 RAG 准确率？", "优化 Prompt"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["优化分块策略", "提升 Embedding 质量", "增加 Top-K", "使用 Rerank", "优化 Prompt"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -2036,7 +2036,7 @@
 - expected_contexts.contains: `["接口性能优化手段", "Spring Cache"]`
 - retrieve hit ratio: `1/2`
 - first_match_rank: `1`
-- answer: 
+- answer:
 - expected_keywords: `["Redis", "使用缓存", "@Cacheable", "@CacheEvict", "@CachePut"]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -2207,7 +2207,7 @@ No cases.
 - expected_contexts.contains: `[]`
 - retrieve hit ratio: `0/0`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `[]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -2326,7 +2326,7 @@ No cases.
 - expected_contexts.contains: `[]`
 - retrieve hit ratio: `0/0`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `[]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
@@ -2467,7 +2467,7 @@ No cases.
 - expected_contexts.contains: `[]`
 - retrieve hit ratio: `0/0`
 - first_match_rank: `-`
-- answer: 
+- answer:
 - expected_keywords: `[]`
 - keyword_hit: `0/0`
 - top5 retrieved results:
