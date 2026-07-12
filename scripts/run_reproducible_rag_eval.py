@@ -80,7 +80,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--poll-interval-seconds", type=float, default=2.0)
     parser.add_argument("--index-timeout-seconds", type=float, default=180.0)
     parser.add_argument("--repeat", type=int, default=1, help="Run retrieval-only eval repeatedly against the same prepared KB.")
-    parser.add_argument("--keep-existing", action="store_true", help="Reuse a matching KB instead of deleting and recreating it.")
+    parser.add_argument(
+        "--keep-existing",
+        action="store_true",
+        help="Reuse a matching KB without mutation; fail if it does not exist instead of creating or uploading data.",
+    )
     parser.add_argument("--no-overwrite", action="store_true")
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument("--plan-only", action="store_true", help="Print planned files, sample selection, and eval command shape without contacting the backend.")
@@ -205,11 +209,15 @@ def create_kb(args: argparse.Namespace, token: str) -> dict[str, Any]:
 def get_or_create_kb(args: argparse.Namespace, token: str) -> dict[str, Any]:
     if args.keep_existing:
         kb = find_existing_eval_kb(args, token)
-        if kb is not None:
-            print(f"Reusing eval KB id={kb.get('id')} collection={kb.get('vectorCollection')}")
-            return kb
-    else:
-        delete_matching_kbs(args, token)
+        if kb is None:
+            raise ApiError(
+                f"--keep-existing requested but eval KB {args.kb_name!r} does not exist; "
+                "rerun without --keep-existing to create the KB and upload fixtures"
+            )
+        print(f"Reusing eval KB id={kb.get('id')} collection={kb.get('vectorCollection')}")
+        return kb
+
+    delete_matching_kbs(args, token)
     return create_kb(args, token)
 
 

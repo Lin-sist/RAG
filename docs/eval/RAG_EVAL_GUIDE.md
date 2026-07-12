@@ -160,6 +160,17 @@ python -B scripts\run_reproducible_rag_eval.py `
 
 该命令只验证登录、既有评测 KB 和三份 fixture 的索引状态，不会创建/删除 KB、上传文档，也不会调用 `/api/qa/ask` 或 LLM judge。
 
+如果预检提示评测 KB 不存在，说明当前数据库中没有可复用的固定评测 KB。此时先**去掉** `--keep-existing` 执行一次 retrieval-only 初始化：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --report docs\eval\reports\stage1-rebuild-retrieval.md `
+  --details-json docs\eval\reports\stage1-rebuild-retrieval-details.json `
+  --metadata-json docs\eval\reports\stage1-rebuild-retrieval-metadata.json
+```
+
+该命令会删除同名且 marker 匹配的空/旧评测 KB，重新创建 KB、上传三份 fixture 并触发 Embedding。初始化成功后，再使用 `--preflight-only` 或 `--keep-existing --include-ask`。修复后的 `--keep-existing` 在 KB 缺失时会直接失败，不会再创建空 KB。
+
 ## 5. 完整命令顺序
 
 ### 5.1 启动基础设施

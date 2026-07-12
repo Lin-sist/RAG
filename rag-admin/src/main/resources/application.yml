@@ -94,39 +94,27 @@ proxy:
 rag:
   # ===== 大模型配置（用于生成回答） =====
   llm:
-    provider: openai  # 改为 openai，因为 NVIDIA NIM 兼容 OpenAI 接口规范
-    timeout: 120      # NVIDIA NIM 可能稍慢，给多一些超时时间
-    max-retries: 3
-    qwen:
-      api-key: ${QWEN_API_KEY:}
-      model: qwen-turbo
-      temperature: 0.4
-      max-tokens: 2048
+    provider: openai
+    timeout: ${RAG_LLM_TIMEOUT:30}
+    max-retries: ${RAG_LLM_MAX_RETRIES:0}
     openai:
       api-key: ${NVIDIA_API_KEY:}
-      base-url: https://integrate.api.nvidia.com/v1
-      model: meta/llama-3.3-70b-instruct
-      temperature: 0.4
-      max-tokens: 2048
+      base-url: ${NVIDIA_BASE_URL:https://integrate.api.nvidia.com/v1}
+      model: ${NVIDIA_CHAT_MODEL:qwen/qwen3-next-80b-a3b-instruct}
+      temperature: ${RAG_LLM_TEMPERATURE:0.2}
+      max-tokens: ${RAG_LLM_MAX_TOKENS:2048}
 
-  # ===== Embedding 配置（用于把文本转成向量） =====
+    # ===== Embedding 配置（用于把文本转成向量） =====
   embedding:
-    default-provider: openai  # 改为 openai，走 NVIDIA NIM 的 Embedding 模型
-    enable-fallback: false    # 暂时关闭回退，只用 NIM
+    default-provider: openai
+    enable-fallback: false
     openai:
       enabled: true
       api-key: ${NVIDIA_API_KEY:}
-      base-url: https://integrate.api.nvidia.com/v1
-      model: nvidia/llama-nemotron-embed-1b-v2
-      dimension: 2048
+      base-url: ${NVIDIA_BASE_URL:https://integrate.api.nvidia.com/v1}
+      model: ${NVIDIA_EMBED_MODEL:nvidia/llama-nemotron-embed-1b-v2}
+      dimension: ${NVIDIA_EMBED_DIMENSION:2048}
       timeout-ms: 60000
-    qwen:
-      enabled: false
-      api-key: ${QWEN_API_KEY:}
-      model: text-embedding-v1
-      dimension: 1536
-    bge:
-      enabled: false
 
   # ===== 向量数据库配置（Milvus） =====
   vectorstore:

@@ -240,6 +240,19 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             with self.assertRaises(runner.ApiError):
                 runner.find_existing_eval_kb(args, "token")
 
+    def test_get_or_create_kb_keep_existing_missing_does_not_create(self) -> None:
+        args = self.eval_command_args(include_ask=False)
+        args.keep_existing = True
+
+        with (
+            mock.patch.object(runner, "find_existing_eval_kb", return_value=None),
+            mock.patch.object(runner, "create_kb") as create_kb,
+        ):
+            with self.assertRaisesRegex(runner.ApiError, "--keep-existing"):
+                runner.get_or_create_kb(args, "token")
+
+        create_kb.assert_not_called()
+
     def test_main_refuses_empty_sample_selection_before_backend_calls(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
