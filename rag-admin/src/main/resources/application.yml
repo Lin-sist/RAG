@@ -95,7 +95,7 @@ rag:
   # ===== 大模型配置（用于生成回答） =====
   llm:
     provider: openai
-    timeout: ${RAG_LLM_TIMEOUT:60}
+    timeout: ${RAG_LLM_TIMEOUT:120}
     max-retries: ${RAG_LLM_MAX_RETRIES:0}
     openai:
       api-key: ${NVIDIA_API_KEY:}
