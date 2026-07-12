@@ -13,6 +13,8 @@ data/
 *scripts/
 !scripts/
 !scripts/run_rag_eval.py
+**/__pycache__/
+*.py[cod]
 *test-data/
 *diagnostics/
 
