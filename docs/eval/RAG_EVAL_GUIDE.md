@@ -302,8 +302,8 @@ python scripts/run_rag_eval.py \
   --top-k 5 \
   --min-score 0.3 \
   --enable-rerank \
-  --report docs/eval/reports/baseline-002-local.md \
-  --after-report docs/eval/reports/after-citation-validator.md
+  --report tmp/eval/local-eval.md \
+  --details-json tmp/eval/local-eval-details.json
 ```
 
 为了避免 LLM API 限流污染干净 baseline，建议把 live eval 拆成两步。
@@ -313,8 +313,8 @@ python scripts/run_rag_eval.py \
 ```powershell
 python scripts\run_rag_eval.py --kb-id 6 `
   --skip-ask `
-  --report docs\eval\reports\baseline-004-retrieval-only.md `
-  --details-json docs\eval\reports\baseline-004-retrieval-details.json `
+  --report tmp\eval\retrieval-only.md `
+  --details-json tmp\eval\retrieval-only-details.json `
   --no-overwrite
 ```
 
@@ -325,8 +325,8 @@ python scripts\run_rag_eval.py --kb-id 6 `
   --ask-delay-seconds 8 `
   --max-ask-retries 3 `
   --retry-backoff-seconds 10 `
-  --report docs\eval\reports\baseline-004-generation-clean.md `
-  --details-json docs\eval\reports\baseline-004-generation-details.json `
+  --report tmp\eval\generation.md `
+  --details-json tmp\eval\generation-details.json `
   --no-overwrite
 ```
 
@@ -373,8 +373,8 @@ python scripts/run_rag_eval.py
 3. 对每个问题调用 `/api/qa/debug/retrieve`。
 4. 对每个问题调用 `/api/qa/ask`。
 5. 计算指标。
-6. 生成 Markdown 报告到 `docs/eval/reports/baseline-002-local.md`。
-7. 如果传了 `--after-report`，同时写出 `docs/eval/reports/after-citation-validator.md`，方便本轮 citation validator 前后对照留档。
+6. 默认生成 Markdown 报告到已被 Git 忽略的 `tmp/eval/local-eval.md`。
+7. 只有经过确认、需要作为阶段证据长期保留的报告，才显式写入 `docs/eval/reports/`。
 
 如果后端未启动、登录失败、`kbId` 缺失、知识库不存在、检索接口失败、文档疑似未索引完成，脚本会在 stderr 和报告里写出明确提示。
 
@@ -397,24 +397,24 @@ python scripts/run_rag_eval.py
 
 ## 7. 如何记录优化前后对比
 
-当前本轮建议固定两个报告：
+临时实验报告默认写入 `tmp/eval/`，避免把每次本地运行都提交到仓库：
 
 ```bash
-python scripts/run_rag_eval.py --kb-id <kb-id> --report docs/eval/reports/baseline-002-local.md
+python scripts/run_rag_eval.py --kb-id <kb-id> --report tmp/eval/experiment-before.md
 ```
 
-citation validator 接入后：
+改变一个变量后：
 
 ```bash
-python scripts/run_rag_eval.py --kb-id <kb-id> --report docs/eval/reports/after-citation-validator.md
+python scripts/run_rag_eval.py --kb-id <kb-id> --report tmp/eval/experiment-after.md
 ```
 
 建议记录：
 
 | 实验 | 改动 | Recall@5 | MRR | keyword hit | citation hit | no-answer | 结论 |
 |---|---|---:|---:|---:|---:|---:|---|
-| baseline-002-local | dense + heuristic rerank + 本地三文档 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
-| after-citation-validator | 接入 citation validator | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
+| experiment-before | 当前稳定配置 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
+| experiment-after | 单变量候选配置 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
 
 每次只改一个变量，例如：
 
@@ -422,7 +422,7 @@ python scripts/run_rag_eval.py --kb-id <kb-id> --report docs/eval/reports/after-
 - 只改 `minScore`。
 - 只开关 rerank。
 - 只替换 chunk 策略。
-- 只增加 hybrid search。
+- 只切换 hybrid 开关或调整一个融合参数。
 
 这样才能判断指标变化来自哪里。
 
@@ -430,34 +430,22 @@ python scripts/run_rag_eval.py --kb-id <kb-id> --report docs/eval/reports/after-
 
 ### Hybrid Search
 
-目标：解决 dense vector 对关键词、缩写、编号、精确术语召回不稳的问题。
-
-建议接入点：
-
-- `rag-core/src/main/java/com/enterprise/rag/core/rag/query/QueryEngineImpl.java`
-- `rag-core/src/main/java/com/enterprise/rag/core/vectorstore/VectorStore.java`
-
-最小做法：
-
-1. 保留当前 dense vector 召回。
-2. 增加关键词召回结果。
-3. 合并 dense score 和 lexical score。
-4. 用 eval runner 对比 Recall@3、Recall@5、MRR。
+当前已经完成 dense vector + BM25 + RRF 混合检索，并通过固定评测 KB 验证。后续重点不是重复接入 hybrid，而是扩充生产样本、观察召回失败类型，并在不污染既有基线的前提下做单变量实验。
 
 ### Reranker
 
-目标：替换当前关键词启发式 rerank。
+当前已经具备 `HeuristicReranker`、`ModelReranker` 和 provider 降级机制，但真实 model reranker 尚未完成 A/B 验证。
 
 建议接入点：
 
-- `QueryEngineImpl.rerank`
-- 新增 `Reranker` 接口。
+- `rag-core/src/main/java/com/enterprise/rag/core/rag/rerank/ModelReranker.java`
+- `rag-core/src/main/java/com/enterprise/rag/core/rag/rerank/RerankerRegistry.java`
 
 最小做法：
 
-1. 把当前 heuristic rerank 抽成 `HeuristicReranker`。
-2. 增加模型 reranker 或 mock reranker。
-3. 对比 MRR 和 Top1 source accuracy。
+1. 适配真实 rerank provider 的请求/响应协议。
+2. 固定同一 KB、fixture 和配置，分别运行 heuristic 与 model reranker。
+3. 对比 Recall@5、MRR、Top1 source accuracy、延迟和失败降级行为。
 
 ### Citation Validator
 

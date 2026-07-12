@@ -78,7 +78,7 @@
 
 **先看这些文件**:
 - `README.md`
-- `DOCKER_QUICKSTART.md`
+- `USAGE_GUIDE.md`
 - `docker-compose.yml`
 - `rag-admin/src/main/resources/application.yml`
 - `rag-admin/src/main/java/com/enterprise/rag/RagQaApplication.java`
@@ -152,7 +152,7 @@
 - 为什么这里会同时出现“幂等”和“去重”两个概念，它们不是一回事
 
 **动手任务**:
-- 上传 `test-small.txt` 和 `test-md.md`
+- 上传 `test-data/springboot-basics.md` 和 `test-data/rag-technology-guide.md`
 - 看任务状态变化
 - 跟踪一次 `submitIndexing -> doIndex -> process -> embedBatch -> upsert`
 - 自己写出“上传一份文档后系统实际做了哪些步骤”

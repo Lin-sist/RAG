@@ -267,16 +267,15 @@ curl -s -X DELETE "$BASE_URL/api/knowledge-bases/$KB_ID" \
 
 ---
 
-## 7. 一次性快速回归（已有脚本）
+## 7. 一次性快速回归
 
-- [ ] 执行基础 API 冒烟
+- [ ] 执行评测环境只读预检
 
 ```bash
-chmod +x ./test_api.sh
-./test_api.sh
+python -B scripts/run_reproducible_rag_eval.py --preflight-only --keep-existing
 ```
 
-说明：该脚本覆盖登录、鉴权接口、健康检查，适合快速确认服务是否可用。
+说明：该命令只检查登录、固定评测知识库和 fixture 索引状态，不创建或删除知识库、不上传文档，也不调用 ask/judge。一般业务接口仍按前文步骤逐项验证。
 
 ---
 
@@ -306,7 +305,7 @@ docker compose logs --tail=100 mysql redis milvus minio
 4. 数据库用户排查
 
 ```bash
-docker exec -it rag-mysql mysql -uroot -proot rag_qa -e "SELECT id, username, enabled FROM user;"
+docker exec -it rag-mysql mysql -uroot -p"${DB_PASSWORD:-123456}" rag_qa -e "SELECT id, username, enabled FROM user;"
 ```
 
 ---

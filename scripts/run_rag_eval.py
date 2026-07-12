@@ -24,7 +24,7 @@ from typing import Any
 
 DEFAULT_BASE_URL = "http://localhost:8080"
 DEFAULT_EVAL_SET = Path("docs/eval/rag_eval_set.jsonl")
-DEFAULT_REPORT = Path("docs/eval/reports/baseline-002-local.md")
+DEFAULT_REPORT = Path("tmp/eval/local-eval.md")
 NO_ANSWER_CUES = (
     "没有找到",
     "未能找到",
