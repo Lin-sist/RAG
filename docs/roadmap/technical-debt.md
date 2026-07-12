@@ -1,7 +1,7 @@
 # RAG 项目技术债清单
 
 > 状态日期：2026-07-12  
-> 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；引入 OpenSpec 后，每次实际改动应迁入独立 change，再从本文移除或标记完成。
+> 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
 
@@ -21,12 +21,6 @@
 
 - 现状：单元和性质测试较完整，但 Redis 不可用时部分性质测试会在测试内部跳过；尚缺 MySQL/Redis/Milvus 联合链路证据。
 - 目标：用 Testcontainers 或受控集成环境覆盖登录、上传、索引、检索、删除和故障恢复。
-
-### 4. 建立单一开发治理入口
-
-- 现状：历史上同时存在 Kiro spec、维护计划、阶段文档和会话交接稿。
-- 目标：根目录 `AGENTS.md` 负责阅读顺序和边界，`.ai/AGENT_LOG.md` 负责执行记录，OpenSpec 负责 change 的 proposal/design/tasks/spec。
-- 约束：治理文件建立前，不再新增新的“长期总计划”文档。
 
 ## P1：下一轮 RAG 质量工程
 
@@ -74,3 +68,10 @@
 - 固定评测 KB、`--preflight-only`、只读 `--keep-existing`。
 - citation validation/fallback 与 no-answer 引用抑制。
 - generation/citation/no-answer 客观指标通道。
+
+## 已完成的治理基础
+
+- 根目录 `AGENTS.md` 已建立统一协作规则。
+- `.ai/ACTIVE_TASK.md` 已作为唯一活动任务指针。
+- `.ai/AGENT_LOG.md` 已用于追加执行证据。
+- `openspec/` 已包含 project context、baseline specs 和 change 生命周期。

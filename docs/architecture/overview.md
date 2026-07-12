@@ -74,12 +74,15 @@
 
 ## 6. 文档真相源
 
-阅读优先级：
+治理与事实源优先级：
 
-1. 当前代码与配置。
-2. `docs/architecture/overview.md`。
-3. `docs/optimization/README.md` 及其 v3/v4 子目录。
-4. `docs/eval/RAG_EVAL_GUIDE.md` 与当前正式报告。
-5. `docs/roadmap/technical-debt.md`。
+1. `AGENTS.md`：协作和安全规则。
+2. `.ai/ACTIVE_TASK.md` 与 active OpenSpec change：当前范围、契约和验收。
+3. `openspec/specs/`：已接受的长期能力契约。
+4. 当前代码与配置：已实现事实；与 spec 冲突时记录为 gap。
+5. `docs/architecture/overview.md`。
+6. `docs/optimization/README.md` 及其 v3/v4 子目录。
+7. `docs/eval/RAG_EVAL_GUIDE.md` 与当前正式报告。
+8. `docs/roadmap/technical-debt.md`。
 
 `docs/optimization/history/` 只保存演进证据，不负责约束当前阶段。

@@ -232,6 +232,10 @@ Flyway 会自动执行初始化脚本（`V1/V2/V3`），包含：
 
 ## 10. 常用文档
 
+- `AGENTS.md`
+- `.ai/ACTIVE_TASK.md`
+- `.ai/AGENT_LOG.md`
+- `openspec/project.md`
 - `docs/architecture/overview.md`
 - `docs/开发文档/API-调用教程.md`
 - `docs/开发文档/前端文档/frontend-current-state.md`

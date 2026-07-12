@@ -45,7 +45,7 @@
    - 不得只看报告文件名下结论；比较前必须读取报告头的 `Report status`、`retrieveErrors`、
      `askErrors`、`rateLimitErrors`、run metadata/details JSON。
 9. **v4 文档归属**：本文件位于 `docs/optimization/v4/plan.md`，是 v4 的阶段计划快照；当前目录索引见
-   `docs/optimization/README.md`。新的未完成 change 在引入 OpenSpec 后应迁入 OpenSpec，不再新增平行总计划。
+   `docs/optimization/README.md`。新的未完成 change 必须进入 OpenSpec，不再新增平行总计划。
 
 ## 1. 本轮优化目标（明确、不可跑偏）
 

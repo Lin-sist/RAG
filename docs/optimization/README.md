@@ -28,4 +28,4 @@
 1. 先读当前代码，再读本索引。
 2. 指标结论必须同时核对报告状态、error count、metadata 和 Git HEAD。
 3. 新优化不得继续在本目录新增无版本号的 `stage1.md / stage2.md`。
-4. 引入 OpenSpec 后，未完成的新 change 以 OpenSpec 为执行源；本目录只保存阶段完成后的长期结论。
+4. 未完成的新 change 以 OpenSpec 为执行源；本目录只保存阶段完成后的长期结论。

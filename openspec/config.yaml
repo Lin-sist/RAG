@@ -1,0 +1,23 @@
+schema: spec-driven
+
+context: |
+  Project: Enterprise RAG QA System
+  Stack: Java 17, Spring Boot 3, Vue 3, TypeScript, MySQL, Redis, Milvus
+  Current retrieval: dense vector + BM25 + RRF, heuristic reranker by default
+  Language: Simplified Chinese for collaboration and project documents
+  Commit style: Chinese Conventional Commits
+  Evidence rule: distinguish implemented, wired-but-unverified, and verified
+
+rules:
+  proposal:
+    - Explain the problem, scope, non-goals, risks, and acceptance evidence.
+    - State whether external calls, credentials, data egress, or cost are involved.
+  design:
+    - Record affected modules, contracts, data flow, rollback, and alternatives.
+    - Do not claim runtime behavior without code or execution evidence.
+  tasks:
+    - Use small verifiable slices and include tests or explicit skipped reasons.
+    - Keep unrelated refactors outside the change.
+  specs:
+    - Use MUST or SHALL for normative requirements.
+    - Include at least one observable scenario for each requirement.
