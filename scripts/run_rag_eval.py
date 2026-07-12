@@ -35,6 +35,8 @@ NO_ANSWER_CUES = (
     "知识库中没有",
     "文档中没有",
     "不包含",
+    "未包含",
+    "无法根据现有内容回答",
     "cannot answer",
     "no result",
     "not enough information",

@@ -2,11 +2,15 @@ package com.enterprise.rag.core.rag.generator;
 
 import com.enterprise.rag.core.rag.citation.CitationValidator;
 import com.enterprise.rag.core.rag.model.Citation;
+import com.enterprise.rag.core.rag.model.GeneratedAnswer;
 import com.enterprise.rag.core.rag.model.QAResponse;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.prompt.PromptBuilder;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
@@ -92,6 +96,49 @@ class AnswerGeneratorImplCitationFallbackTest {
         assertThat(noResult.metadata()).containsEntry("validCitations", 0);
         assertThat(noResult.metadata()).containsEntry("droppedCitations", 0);
         assertThat(noResult.metadata()).containsEntry("citationCoverage", 1.0d);
+    }
+
+    @Test
+    void shouldNotFallbackWhenModelSaysContextDoesNotContainTheAnswer() {
+        RetrievedContext context = context(
+                "chunk-unrelated",
+                "RAG 系统通过向量检索找到与问题相近的文档片段。",
+                32L,
+                Map.of("sourceFileName", "rag-guide.md", "documentTitle", "RAG 指南"));
+        String answer = "提供的上下文未包含有关 Kubernetes 的信息，因此无法根据现有内容回答该问题。";
+
+        AnswerGeneratorImpl.CitationResolution resolution = generator.resolveCitations(
+                "Kubernetes 如何进行滚动更新？",
+                answer,
+                List.of(context));
+
+        assertThat(resolution.fallbackUsed()).isFalse();
+        assertThat(resolution.fallbackCount()).isZero();
+        assertThat(resolution.validation().citations()).isEmpty();
+    }
+
+    @Test
+    void shouldMarkGeneratedRefusalAsNoResult() {
+        LLMProperties properties = new LLMProperties();
+        properties.setMaxRetries(0);
+        WebClient.Builder webClientBuilder = WebClient.builder().exchangeFunction(request -> Mono.just(
+                ClientResponse.create(HttpStatus.OK)
+                        .header("Content-Type", "application/json")
+                        .body("{\"choices\":[{\"message\":{\"content\":\"提供的上下文未包含有关 Kubernetes 的信息，因此无法根据现有内容回答该问题。\"}}]}")
+                        .build()));
+        AnswerGeneratorImpl publicGenerator = new AnswerGeneratorImpl(
+                properties,
+                new PromptBuilder(),
+                new CitationValidator(),
+                webClientBuilder);
+
+        GeneratedAnswer result = publicGenerator.generate(
+                "Kubernetes 如何进行滚动更新？",
+                List.of(context("chunk-unrelated", "RAG 使用检索上下文约束模型回答。", 33L, Map.of())));
+
+        assertThat(result.citations()).isEmpty();
+        assertThat(result.metadata()).containsEntry("status", "no_result");
+        assertThat(result.metadata()).containsEntry("citationFallbackUsed", false);
     }
 
     @Test

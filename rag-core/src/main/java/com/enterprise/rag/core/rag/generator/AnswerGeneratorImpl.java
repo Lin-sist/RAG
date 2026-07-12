@@ -96,6 +96,9 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         metadata.put("citationFallbackUsed", citationResolution.fallbackUsed());
         metadata.put("citationFallbackCount", citationResolution.fallbackCount());
         metadata.putAll(citationMetadata);
+        if (isNoAnswerText(answer)) {
+            metadata.put("status", "no_result");
+        }
 
         return GeneratedAnswer.of(answer, citationValidation.citations(), metadata);
     }
@@ -725,8 +728,10 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         }
         String normalized = answer.toLowerCase(Locale.ROOT);
         return normalized.contains("未能找到")
+                || normalized.contains("上下文未包含")
                 || normalized.contains("没有足够")
                 || normalized.contains("无法回答")
+                || normalized.contains("无法根据现有内容回答")
                 || normalized.contains("知识库中没有")
                 || normalized.contains("context doesn't contain")
                 || normalized.contains("not enough information")

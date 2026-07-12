@@ -41,7 +41,9 @@ public class PromptBuilder {
 
             ## Instructions
             - Answer the question based ONLY on the provided context
-            - If the context doesn't contain enough information, say so
+            - If the context doesn't contain enough information, reply exactly "知识库中没有足够信息回答该问题。" for a Chinese question; for other languages, use the equivalent sentence in the user's language
+            - When refusing because context is insufficient, do not include citations
+            - Do not add information from external knowledge
             - Do not include raw source headers, chunk numbers, relevance scores, or any internal source markers in the final answer
             - Citations are handled separately by the system, so keep the answer body clean and user-facing
             - Use complete and fluent sentences; avoid broken words or truncated phrases

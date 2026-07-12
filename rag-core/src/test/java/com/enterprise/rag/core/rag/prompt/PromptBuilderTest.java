@@ -98,4 +98,22 @@ class PromptBuilderTest {
         assertTrue(result.prompt().contains("Source: Document 1"));
         assertTrue(!result.prompt().contains("[Source 1:"));
     }
+
+    @Test
+    void shouldRequireCanonicalNoAnswerResponseWithoutExternalKnowledge() {
+        RetrievedContext context = new RetrievedContext(
+                "RAG 是一种检索增强生成架构。",
+                "doc-rag",
+                0.34f,
+                Map.of());
+
+        PromptBuilder.PromptBuildResult result = promptBuilder.buildOptimized(
+                "Kubernetes 如何进行滚动更新？",
+                List.of(context),
+                PromptStrategy.STRUCTURED,
+                800);
+
+        assertTrue(result.prompt().contains("知识库中没有足够信息回答该问题。"));
+        assertTrue(result.prompt().contains("Do not add information from external knowledge"));
+    }
 }

@@ -75,6 +75,12 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         self.assertTrue(runner.should_retry_ask_error(error, retry_timeouts=True))
         self.assertFalse(runner.should_retry_ask_error(error, retry_timeouts=False))
 
+    def test_is_no_answer_recognizes_context_missing_response(self) -> None:
+        response = {"metadata": {}, "citations": []}
+        answer = "提供的上下文未包含有关 Kubernetes 的信息，因此无法根据现有内容回答该问题。"
+
+        self.assertTrue(runner.is_no_answer(response, answer))
+
     def test_format_error_metadata_includes_llm_diagnostics(self) -> None:
         metadata = {
             "status": "error",
