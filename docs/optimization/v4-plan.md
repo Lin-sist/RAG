@@ -1,5 +1,7 @@
 # RAG 项目优化实施文档 v4（供 codex /goal 执行）
 
+> 执行状态（2026-07-12）：Stage 1 已完成并形成两轮 CLEAN objective baseline；Stage 2 因无真实 rerank provider/凭据按条件规则跳过；Stage 3、Stage 4 与最终总报告尚未执行。本次可合并范围仅为“v3 + v4 Stage 1 checkpoint”，不得表述为整个 v4 已完成。
+
 ## 0. 全局约束（最高优先级，违反即视为失败）
 
 1. **承接现状**：Modular RAG 已成型，v3 检索质量工程第一轮已完成。已落地：

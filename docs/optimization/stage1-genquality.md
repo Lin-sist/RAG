@@ -1,137 +1,119 @@
 # Stage 1：生成与引用质量评测闭环
 
-## 当前状态
+## 阶段结论
 
-本阶段已完成 `scripts/run_rag_eval.py` 的 generation / citation 评测通道增强：
+**状态：已完成（2026-07-12）。**
 
-- 保留既有 retrieval-only 指标口径，`--skip-ask` 路径不变。
-- 保留并显式报告既有客观生成指标：answer keyword hit、citation source hit、citation snippet hit、no-answer accuracy、askErrors、rateLimitErrors、retry count。
-- 新增可选 LLM-as-judge 通道，默认 `--judge-mode off`，不会自动触发外部模型调用。
-- 仅当显式传入 `--judge-mode llm` 且提供 judge model / api key 时，才调用 OpenAI-compatible `/chat/completions` 做 faithfulness / relevance 判定。
-- details JSON 保留每题 judge 原始判定、judgeError、judgeSkipped，便于后续人工抽样复核。
+本阶段在不改变既有 retrieval 指标定义、分块参数 `420/80` 和 RRF 融合逻辑的前提下，完成了 generation / citation / no-answer 的可复现评测闭环。最终代码与配置基线为 Git HEAD `5293c53869b544814bd608d684b64f0c364b4cf6`。
 
-## 外部调用边界
+本阶段可以作为“v3 检索质量工程 + v4 Stage 1 生成/引用质量闭环”的合并 checkpoint；不代表 v4 Stage 2～4 已完成。
 
-本次提交未运行批量 `/api/qa/ask` 或 LLM judge live eval。原因是 v4 计划要求批量 ask、LLM-judge、真实 provider 调用前先说明预计调用量、模型、费用/限流风险并获得用户确认。
+## 已落地能力
 
-因此当前还没有宣称首份生成/引用质量 baseline 已完成；Stage 1 的 live baseline 仍待用户确认后执行。
+- `scripts/run_rag_eval.py` 保留 Recall@3/5、MRR、Top1 source accuracy，并增加 answer keyword hit、citation source/snippet hit、unsupported citation、no-answer accuracy/violation 等客观指标。
+- 报告显式区分 `CLEAN`、`PARTIAL`、`RETRIEVAL_ONLY`、`FAILED`，同时记录 ask/retrieve/judge error、429、retry 和 skipped judge。
+- `scripts/run_reproducible_rag_eval.py` 固定 KB、fixture、配置快照和 Git HEAD；`--keep-existing` 现在是只读复用，目标 KB 不存在时直接失败，不再隐式创建或上传。
+- LLM-as-judge 仍为显式可选能力，默认 `judge-mode=off`，不会自动产生额外外部调用。
+- 后端生成错误会输出脱敏 provider、endpoint、model、timeout、retry 与错误类别，runner 会把诊断带入明细。
+- no-answer 协议固定为“知识库中没有足够信息回答该问题。”；拒答不返回 citations、不触发 citation fallback，并输出 `metadata.status=no_result`。
+- Python 缓存已从版本控制移除，`.gitignore` 明确忽略 `__pycache__/` 与 `*.pyc`。
 
-## 安全闸预检结果
+## Provider 与配置决策
 
-无网络 plan-only 预检已完成，当前评测集共有 30 条样本：27 条 answerable、3 条 no-answer。
+当前通过 NVIDIA OpenAI-compatible `/chat/completions` 调用 Qwen：
 
-完整 Stage 1 baseline 如保持 `--judge-mode off`：
+- 默认模型：`qwen/qwen3.5-122b-a10b`
+- 后端超时：`120s`
+- 后端最大重试：`0`
+- 正式 baseline runner：`ask-timeout=130s`、`ask-delay-seconds=1`、`max-ask-retries=1`、`retry-backoff-seconds=5`
 
-- 预计 `/api/qa/debug/retrieve` 调用：30 次。
-- 预计 `/api/qa/ask` 调用：30 次。
-- 预计外部 LLM judge 调用：0 次。
-- 预计报告：`docs/eval/reports/stage1-genquality-objective.md`。
-- 预计明细：`docs/eval/reports/stage1-genquality-objective-details.json`。
+选择依据：
 
-如显式开启 `--judge-mode llm`，同一批样本预计额外产生 27 次 OpenAI-compatible judge 调用；模型、base URL、API key 必须由用户确认后再执行。当前未启用 judge，因此不会产生外部 judge 成本。
+1. `qwen/qwen3-next-80b-a3b-instruct` 在无项目数据、`max_tokens=4` 的最小请求中 35 秒仍超时；3 条 no-answer 在 60 秒后仍出现超时，不能作为稳定基线 provider。
+2. 同一接口下，`qwen/qwen3.5-122b-a10b` 的 4-token 最小请求约 2.4 秒成功。
+3. Qwen 3.5 的 multi-hop 请求存在明显长尾；`60s` 会误伤复杂题，`120s` 可覆盖混合 smoke。
+4. 后端不自动重试，避免业务请求重复；baseline runner 仅允许一次显式重试并完整记账，用于吸收 provider 的偶发 5xx/timeout。
 
-## 2026-07-02 小样本 smoke 状态
+所有 API key 只来自本地环境变量；最终报告与仓库文件未发现明文凭据。
 
-用户已确认先跑 `fact-001 + no-answer-001` 小样本 smoke，计划调用量为 2 次 debug retrieve、2 次 `/api/qa/ask`、0 次 LLM judge；随后用户明确允许将本地评测样本和 `test-data` 文档内容发送到当前配置的外部 LLM/Embedding provider。
+## 验收结果
 
-执行记录：
+### 代码与脚本测试
 
-- 首次执行真实 smoke 时，后端未启动，登录阶段失败：`Cannot connect to http://localhost:8080/auth/login`。
-- 随后启动 Docker Desktop，并执行 `docker compose --env-file .env.local up -d`；`rag-mysql`、`rag-redis`、`rag-milvus`、`rag-etcd`、`rag-minio` 均为 healthy。
-- 后端通过 `start-backend.ps1` 启动，日志 `logs/stage1-v4-smoke-backend.out.log` 显示 Tomcat started on port 8080，且 `/auth/login` 探测成功。
-- 用户明确批准外部数据出站后，首次真实 smoke 完成索引并生成 `docs/eval/reports/stage1-reproducible-eval-metadata.json`；该轮评测 KB 为 id=14，vector collection=`kb_3dab7e9b88ea4888`，3 个文档、50 个 chunk。报告状态为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=4`、`rateLimitErrors=0`、`skippedJudge=2`。
-- 新增 `--ask-timeout` 与 `--no-retry-ask-timeouts` 后，使用 `--ask-timeout 20 --max-ask-retries 0 --no-retry-ask-timeouts` 复跑同一小样本；runner 删除旧 KB id=14 并重建评测 KB id=15，vector collection=`kb_ff06e2ea3de24fb4`，3 个文档、50 个 chunk。
-- 最新 smoke 报告已更新：`docs/eval/reports/stage1-genquality-smoke.md` 与 `docs/eval/reports/stage1-genquality-smoke-details.json`。报告状态仍为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=0`、`rateLimitErrors=0`、`skippedJudge=2`，Duration=`48.72s`。
-- 使用 `--keep-existing` 复跑 provider 复诊时，runner 日志确认 `Reusing eval KB id=15 collection=kb_ff06e2ea3de24fb4`，没有重新上传 fixture；报告仍为 `PARTIAL`，`askErrors=2`、`retrieveErrors=0`、`retry count=0`，Duration=`48.80s`。
-- 重启诊断型后端并临时设置 `RAG_LLM_TIMEOUT=8`、`RAG_LLM_MAX_RETRIES=0` 后再次复跑同一小样本；报告仍为 `PARTIAL`，但 ask error 已明确输出 `provider=openai`、`endpoint=/chat/completions`、`model=meta/llama-3.3-70b-instruct`、`timeoutSeconds=8`、`llmErrorCategory=timeout`，证明当前阻塞点是生成模型 provider 超时，而非检索/索引链路。
-- 小样本 retrieval 指标可比较：Recall@3=100.00%、Recall@5=100.00%、MRR=1.0000、Top1 source accuracy=100.00%。
-- generation/citation 指标仍不可比较：两个样本 `/api/qa/ask` 均为 `timed out`，ask successful samples=0；后端日志显示当前 OpenAI-compatible provider 调用 `/chat/completions` 多次 timeout，并出现一次 NVIDIA endpoint `503 Service Unavailable`。
+- `mvn -q test`：39 个 test suites，155 tests，0 failures，0 errors，0 skipped。
+- `python -B -m unittest discover -s scripts -p 'test_*.py'`：25 tests，全部通过。
+- `git diff --check main`：通过；历史生成报告中的行尾空格已做纯机械清理，没有改变报告内容。
 
-因此当前小样本 smoke 已验证检索链路与可复现 KB 准备链路，但未产出可用的生成/引用质量基线；剩余问题是当前外部 LLM provider 不稳定或超时，需要先处理 provider 可用性/超时策略，再继续完整 Stage 1 baseline。
+### 3 条 no-answer
 
-后续排查 provider 可用性时，建议先用 `--keep-existing --ask-timeout 20 --no-retry-ask-timeouts --max-ask-retries 0` 做单次快速诊断，复用已建好的评测 KB，避免重复上传 `test-data` 与触发 embedding provider；provider 恢复稳定后再恢复正式 baseline 的重试配置。
+报告：
 
-## 已验证项
+- `docs/eval/reports/stage1-qwen35-no-answer.md`
+- `docs/eval/reports/stage1-qwen35-no-answer-details.json`
+- `docs/eval/reports/stage1-qwen35-no-answer-metadata.json`
 
-```powershell
-python -B -m py_compile scripts\run_rag_eval.py scripts\test_run_rag_eval.py
-python -B scripts\run_rag_eval.py --help
-python -B scripts\test_run_rag_eval.py
-```
+结果：`CLEAN`，3/3 ask 成功，0 retry，no-answer accuracy `100%`，citation violation `0`。三条响应均满足：
 
-结果：
+- `citations=[]`
+- `citationFallbackUsed=false`
+- `metadata.status=no_result`
 
-- Python 编译通过。
-- `run_rag_eval.py --help` 已展示 `--judge-mode`、`--judge-base-url`、`--judge-model`、`--judge-temperature`、`--fail-on-judge-errors` 等参数。
-- `scripts/test_run_rag_eval.py` 通过，覆盖 judge JSON 解析、分数裁剪、judge 开关条件。
-- `run_rag_eval.py --plan-only` 已验证完整基线预计调用量：30 次 debug retrieve、30 次 ask、judge off 时 0 次 LLM judge、judge llm 时 27 次 LLM judge。
-- `run_reproducible_rag_eval.py --plan-only --include-ask` 已验证可在不登录、不建库、不上传、不调用后端的情况下输出完整执行计划，并直接列出 selectedSampleCount / estimatedLiveCalls。
-- `run_reproducible_rag_eval.py` 已前置校验样本选择；若 `--sample-id`/`--sample-limit` 导致 0 条样本，会在登录、建库、上传前失败。
-- `--ask-timeout` 已接入 `run_rag_eval.py` 与 `run_reproducible_rag_eval.py`；默认继承全局 `--timeout`，仅在显式传参或设置 `RAG_EVAL_ASK_TIMEOUT` 时改变 `/api/qa/ask` 等待上限。
-- `run_reproducible_rag_eval.py --plan-only` 已显式输出 `keepExisting`、`willUploadFixtures`、`expectedFixtureUploads`，用于在执行前确认是否会重新上传 fixture / 触发 embedding provider。
-- 复跑 `fact-001 + no-answer-001` 小样本 smoke 时，`--ask-timeout 20 --max-ask-retries 0 --no-retry-ask-timeouts` 已进入报告头与 details JSON；本地后端、索引和检索成功，当前外部 LLM provider 仍 timeout。
-- 后端错误响应已补充脱敏 LLM 诊断 metadata：`llmProvider`、`llmEndpoint`、`llmModel`、`llmTimeoutSeconds`、`llmMaxRetries`、`llmErrorType`、`llmErrorCategory`；eval runner 会把这些字段带入 ask error，方便区分 provider timeout、429、5xx 与其它错误。
-- 2026-07-09 收口验证：`python -B -m py_compile scripts\run_rag_eval.py scripts\test_run_rag_eval.py`、`python -B scripts\test_run_rag_eval.py`、`python -B scripts\run_rag_eval.py --help`、小样本 `run_reproducible_rag_eval.py --plan-only --keep-existing --include-ask`、`mvn -pl rag-core "-Dtest=RAGServiceImplTest" test`、`mvn -q test` 均通过；未执行新的 live ask / judge 调用。
-- 2026-07-11 增加 `run_reproducible_rag_eval.py --preflight-only`：只读检查后端登录、固定评测 KB 与三份 fixture 索引状态，失败时输出缺失/未完成文档，不创建或删除 KB、不上传 fixture、不调用 ask/judge。
-- 代理配置已支持 `PROXY_ENABLED`、`PROXY_HOST`、`PROXY_PORT` 环境变量覆盖。当前本机检查时 `127.0.0.1:7897` 未监听；再次启动后端前必须确认代理已启动，或显式设置 `PROXY_ENABLED=false`，避免把本地代理不可用误判为 provider 超时。
-- 2026-07-11 provider 分层诊断：禁用本地代理后，使用现有 NVIDIA 凭据请求 `/v1/models` 在 `589ms` 内成功，返回 121 个模型且包含 `meta/llama-3.3-70b-instruct`；同一模型的最小 `/v1/chat/completions` 请求（无项目数据、`max_tokens=4`）分别在 `20s` 和 `60s` 上限超时。由此可排除凭据失效、模型名不存在和基础 HTTPS 不通，当前阻塞收敛为目标 chat 模型服务不可用或响应时延不可接受。
-- 同日运行环境复核：MySQL、Redis、Milvus、etcd、MinIO 均为 healthy；以 `PROXY_ENABLED=false` 启动后端后，`--preflight-only` 返回 `READY`，复用 KB id=15，三份 fixture 均为 `COMPLETED`，chunkCount 合计 50。临时后端随后已停止。完整 Stage 1 baseline 仍不执行，需先更换稳定生成模型或等待当前 provider 恢复。
+### 混合 smoke
 
-## 后续 live baseline 建议
+样本覆盖 fact、definition、reasoning、multi-hop、no-answer 各 1 条。
 
-在用户确认外部调用后，建议先跑小样本 smoke，再跑完整 Stage 1 baseline。
+报告：
 
-小样本 smoke 示例：
+- `docs/eval/reports/stage1-qwen35-mixed-smoke.md`
+- `docs/eval/reports/stage1-qwen35-mixed-smoke-details.json`
+- `docs/eval/reports/stage1-qwen35-mixed-smoke-metadata.json`
 
-先做无网络 plan 预检：
+结果：`CLEAN`，5/5 ask 成功，0 retry；Recall@5 `87.50%`、MRR `1.0000`、Top1 `100%`、citation hit `100%`、snippet hit `100%`、no-answer accuracy `100%`、citation violation `0`。正常回答未被拒答规则误伤。
 
-```powershell
-python -B scripts\run_reproducible_rag_eval.py `
-  --plan-only `
-  --keep-existing `
-  --include-ask `
-  --sample-id fact-001 `
-  --sample-id no-answer-001 `
-  --report docs\eval\reports\stage1-genquality-smoke.md `
-  --details-json docs\eval\reports\stage1-genquality-smoke-details.json
-```
+### 两轮完整 30 条 objective baseline
 
-用户确认后再执行实际 smoke：
+固定条件：KB id `11`、collection `kb_2addbb37622c42cb`、30 条样本、topK `5`、minScore `0.3`、heuristic reranker、judge `off`。
 
-```powershell
-python -B scripts\run_reproducible_rag_eval.py `
-  --include-ask `
-  --keep-existing `
-  --sample-id fact-001 `
-  --sample-id no-answer-001 `
-  --ask-timeout 20 `
-  --ask-delay-seconds 2 `
-  --max-ask-retries 0 `
-  --no-retry-ask-timeouts `
-  --retry-backoff-seconds 10 `
-  --report docs\eval\reports\stage1-genquality-smoke.md `
-  --details-json docs\eval\reports\stage1-genquality-smoke-details.json
-```
+| 指标 | Run 1 | Run 2 |
+|---|---:|---:|
+| Report status | CLEAN | CLEAN |
+| ask / retrieve errors | 0 / 0 | 0 / 0 |
+| rate limit errors | 0 | 0 |
+| retry count | 2 | 2 |
+| Recall@5 | 68.63% | 68.63% |
+| MRR | 0.7346 | 0.7346 |
+| Top1 source accuracy | 96.30% | 96.30% |
+| Answer keyword hit | 72.12% | 72.12% |
+| Citation source hit | 83.33% | 86.67% |
+| Citation snippet hit | 100% | 100% |
+| Unsupported citations | 0 | 0 |
+| No-answer accuracy | 100% | 100% |
+| No-answer citation violations | 0 | 0 |
+| LLM judge | skipped | skipped |
 
-完整 Stage 1 baseline 示例：
+报告：
 
-```powershell
-python -B scripts\run_reproducible_rag_eval.py `
-  --include-ask `
-  --ask-delay-seconds 2 `
-  --max-ask-retries 2 `
-  --retry-backoff-seconds 10 `
-  --report docs\eval\reports\stage1-genquality-objective.md `
-  --details-json docs\eval\reports\stage1-genquality-objective-details.json
-```
+- `docs/eval/reports/stage1-qwen35-objective-run1.md`
+- `docs/eval/reports/stage1-qwen35-objective-details-run1.json`
+- `docs/eval/reports/stage1-qwen35-objective-metadata-run1.json`
+- `docs/eval/reports/stage1-qwen35-objective-run2.md`
+- `docs/eval/reports/stage1-qwen35-objective-details-run2.json`
+- `docs/eval/reports/stage1-qwen35-objective-metadata-run2.json`
 
-如启用 LLM judge，需要额外显式配置：
+两轮 retrieval 指标完全一致；citation hit 存在 `3.34` 个百分点的生成随机波动。Run 1 的 `fact-001/fact-003`、Run 2 的 `definition-006/reasoning-003` 各发生一次 provider timeout/5xx 后重试成功。报告仍为 CLEAN，但说明 provider 长尾与偶发 5xx 尚未消失。
 
-```powershell
-$env:RAG_EVAL_JUDGE_MODE="llm"
-$env:RAG_EVAL_JUDGE_MODEL="<judge-model>"
-$env:RAG_EVAL_JUDGE_API_KEY="<judge-api-key>"
-$env:RAG_EVAL_JUDGE_BASE_URL="<openai-compatible-base-url>"
-```
+## 指标解释边界
 
-正式报告必须记录 `askErrors`、`rateLimitErrors`、`judgeErrors`、retry 次数和 judge 配置。
+- `citation snippet hit=100%` 只证明引用片段能回连到本轮 retrieved contexts，不证明它在语义上支持答案每个 claim。
+- `answer keyword hit` 是字符串覆盖率，不等价于完整答案正确率。
+- 本轮 judge 为 `off`，因此不能宣称已完成独立 faithfulness/relevance 裁判。
+- 30 条开发集和 3 份教学 fixture 只适合回归与单变量对比，不是生产级 benchmark。
+- Reranker 默认仍是 heuristic；本阶段没有验证真实 model reranker 的收益。
+
+## 阶段边界与下一步
+
+- Stage 1 已完成，可以进入合并收口。
+- Stage 2 触发条件当前不满足：没有配置真实 rerank provider/凭据，默认继续使用 heuristic；后续应正式记录为“跳过”或在取得 provider 后单独 A/B。
+- Stage 3 的标题感知、长代码块/长段落分块专项尚未开始。
+- Stage 4 的 `docs/后端优化文档/` 清理尚未开始，旧文档不得作为当前代码真相源。
+- claim-level citation support、LLM judge、生产数据扩集与 provider 延迟/成本统计留待后续阶段。
