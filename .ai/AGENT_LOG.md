@@ -25,3 +25,16 @@
 - 业务代码：未修改。
 - Commit：`pending`。
 - 剩余风险：需要在第一次真实 change 中检验模板粒度，并根据实际协作成本微调规则。
+
+## 2026-07-14｜迭代蓝图冻结与协作工作流固化
+
+- 类型：治理 / 文档。
+- 范围：`docs/roadmap/iteration-blueprint.md`、`docs/workflow/vibecoding-playbook.md`、`.ai/AGENT_LOG.md`。
+- 事件一：迭代蓝图 v5 正式冻结，作为后续所有 change 的方向基线。
+- 事件二：新增 `docs/workflow/vibecoding-playbook.md`，固化协作工作流（事前闸门 / git 锚点 / 禁止清单 / 报告事实验收 / bug 处理规程）。
+- 验证：核对蓝图仅修改标题、状态日期与顶部收尾措辞；核对 Playbook 文件存在且正文完整；提交前检查工作区与暂存区范围。
+- 跳过项：按用户明确边界未运行测试，未进行 provider 或网络外部调用。
+- 范围安全：未创建、修改或归档任何 `openspec/changes` 目录；`.ai/ACTIVE_TASK.md` 保持 `IDLE`；未修改代码或 spec。
+- 说明：后续将从 B0 `sensitive-log-redaction`（Type B）正式开工。
+- 剩余风险：无；具体 B0 实施范围仍以开工时的聚焦检查为准。
+- Commit：`pending`。
