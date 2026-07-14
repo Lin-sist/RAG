@@ -20,7 +20,7 @@
 ## 当前边界
 
 - 不是生产级多租户系统。
-- 用户仍是内存初始化，不是数据库用户体系。
+- 登录与 refresh 已使用数据库用户、状态和角色；bootstrap 默认关闭，运行时不提供固定默认账号。
 - LLM judge 默认关闭，未完成逐 claim faithfulness 结论。
 - 真实 model reranker A/B、标题感知长块专项、完整 GenAI 可观测性尚未完成。
 

@@ -268,3 +268,20 @@
 - 提交边界：授权仅包含计划内文件的 `git add` 与本地 `git commit`；不包含 push、PR、发布或部署。
 - 提交计划：先提交 C2 实现、测试与技术验收证据；取得真实实现 hash 后，再以独立治理提交接受 spec delta、恢复 `IDLE` 并归档 change。
 - Commit：`pending`。
+
+## 2026-07-15｜C2 实现提交补录
+
+- Commit：`9c63051d8863786f04d8c0ccdb9fd34743d6311e`。
+- 结论：C2 数据库认证、known seed 前向迁移、管理员 bootstrap、固定凭据入口清理、真实 MySQL 测试及完整技术验收证据已完成本地中文提交。
+
+## 2026-07-15｜C2 database-backed-authentication 验收收口与归档
+
+- 类型：Type C 验收收口；用户已明确确认实现验收通过并授权 Agent 创建本地中文 commit。
+- 范围与修改文件：将 C2 delta 接受进 `openspec/specs/rag-system/spec.md`；补齐 archived `tasks.md`；将 change 移至 `openspec/changes/archive/2026-07-14-database-backed-authentication/`；更新 `.ai/ACTIVE_TASK.md` 为 `IDLE`，并同步 `openspec/project.md`、技术债与本日志。
+- 已确认事实：实现提交为 `9c63051d8863786f04d8c0ccdb9fd34743d6311e`；真实 MySQL、完整 Maven、Python、正式前端 build、敏感日志与范围门禁已通过；accepted baseline 使用已批准 delta 的 requirement/scenario 文本。
+- 验证计划：归档后检查四个必需 artifact、tasks 无未勾选项、ACTIVE_TASK 为 `IDLE`、baseline 与 archived delta 一致、Markdown 相对链接和 `git diff --check`。
+- 跳过项及原因：本轮只做验收治理收口，不重复运行刚刚通过的代码测试和 MySQL 容器测试。
+- 外部调用：embedding/rerank/judge/ask 实际调用量均为 0；无业务数据出站或费用。
+- 范围安全：不修改业务实现、历史 migration、依赖、受保护本地配置或 RAG 指标；不 push、不创建 PR、不部署或发布。
+- 剩余风险：access token 实时撤权、JWT 开发态 fallback、Redis/Milvus 联合链路和前端大 chunk 仍是已声明后续债务，不阻塞 C2 关闭。
+- Commit：`pending`。

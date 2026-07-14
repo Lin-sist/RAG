@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-14
+> 状态日期：2026-07-15
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
@@ -11,12 +11,12 @@
 - 验证：标准 build 中的 `vue-tsc -b` 与 `vite build` 均通过，并生成正式 `dist/`。
 - 证据：`rag-frontend/package.json`、`rag-frontend/tsconfig.json`。
 
-### 2. 认证用户与默认凭据治理（C2 实现中）
+### 2. 认证用户与默认凭据治理（已完成：2026-07-15）
 
 - 已实现：`UserDetailsServiceImpl` 改为数据库用户与角色查询，历史固定管理员种子由前向 migration 精确隔离，并提供默认关闭、外部凭据驱动的一次性管理员 bootstrap。
-- 待验收：真实 MySQL/Flyway 升级路径、完整质量门禁和用户验收；完成前仍以 active C2 OpenSpec 为准。
+- 验证：MySQL 8.0.36 Testcontainers 覆盖全新 V1→V6、V5 exact seed、changed-admin、重复 migrate 与 Flyway validate；完整 Maven、Python、前端和敏感日志门禁通过。
 - 独立剩余债务：`application.yml` 的开发态 JWT fallback 不属于 C2 登录/refresh 契约，后续需单独治理。
-- 证据：`openspec/changes/2026-07-14-database-backed-authentication/`、`rag-auth/.../UserDetailsServiceImpl.java`、`rag-admin/src/main/resources/db/migration/V6__quarantine_known_admin_seed.sql`。
+- 证据：`openspec/changes/archive/2026-07-14-database-backed-authentication/`、`rag-auth/.../UserDetailsServiceImpl.java`、`rag-admin/src/main/resources/db/migration/V6__quarantine_known_admin_seed.sql`。
 
 ### 3. 补真实依赖集成测试
 

@@ -66,9 +66,9 @@
 - [x] Python unittest 与正式前端 build 通过。
 - [x] `git diff --check`、change 结构、Markdown 相对链接和范围扫描通过。
 - [x] 确认没有 embedding、rerank、judge、ask 或其他业务 provider 调用。
-- [ ] 用户明确确认实现验收通过。
-- [ ] 将 delta 接受进 `openspec/specs/rag-system/spec.md`。
-- [ ] 将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`，经用户确认后归档 change。
+- [x] 用户明确确认实现验收通过。
+- [x] 将 delta 接受进 `openspec/specs/rag-system/spec.md`。
+- [x] 将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`，经用户确认后归档 change。
 
 ## Guardrails
 
