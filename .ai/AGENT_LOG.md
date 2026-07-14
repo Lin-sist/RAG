@@ -285,3 +285,8 @@
 - 范围安全：不修改业务实现、历史 migration、依赖、受保护本地配置或 RAG 指标；不 push、不创建 PR、不部署或发布。
 - 剩余风险：access token 实时撤权、JWT 开发态 fallback、Redis/Milvus 联合链路和前端大 chunk 仍是已声明后续债务，不阻塞 C2 关闭。
 - Commit：`pending`。
+
+## 2026-07-15｜C2 归档提交补录
+
+- Commit：`3c212ae9e367174aa354d2d4252824262f7df969`。
+- 结论：C2 delta 接受、ACTIVE_TASK 恢复 `IDLE`、change 归档与当前事实源同步已完成本地中文提交；本条为独立纯日志补录，不递归记录自身提交 hash。
