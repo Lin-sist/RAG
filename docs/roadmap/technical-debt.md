@@ -1,14 +1,14 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-12  
+> 状态日期：2026-07-14
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
 
-### 1. 修复前端正式构建
+### 1. 前端正式构建（已完成：2026-07-14）
 
-- 现状：`npm run build` 执行 `vue-tsc -b` 时因 `ignoreDeprecations: "6.0"` 与 TypeScript 5.7.3 不兼容报 `TS5103`。
-- 验收：标准 build 命令通过，不能只运行 `vite build` 绕过类型检查。
+- 结果：`ignoreDeprecations` 已调整为与 TypeScript 5.7.3 兼容的 `"5.0"`，不再触发 `TS5103`。
+- 验证：标准 build 中的 `vue-tsc -b` 与 `vite build` 均通过，并生成正式 `dist/`。
 - 证据：`rag-frontend/package.json`、`rag-frontend/tsconfig.json`。
 
 ### 2. 认证用户与默认凭据治理

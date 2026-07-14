@@ -1,6 +1,6 @@
 # RAG 前端当前状态与维护边界
 
-> 状态日期：2026-07-12  
+> 状态日期：2026-07-14
 > 本文合并旧前端脚手架计划、V2 视觉提案和长期维护文档中仍符合当前代码的内容。
 
 ## 1. 技术栈
@@ -9,7 +9,7 @@
 - Element Plus、Pinia、Vue Router、Axios。
 - Markdown 渲染使用 `markdown-it` 与 `highlight.js`。
 
-标准验证命令是 `npm run build`，其含义为 `vue-tsc -b && vite build`。当前 `tsconfig.json` 的 `ignoreDeprecations: "6.0"` 会让 TypeScript 5.7.3 报 `TS5103`，这是当前 P0，而不是通过单独运行 Vite 绕过的问题。
+标准验证命令是 `npm run build`，其含义为 `vue-tsc -b && vite build`。`tsconfig.json` 的 `ignoreDeprecations` 已调整为与 TypeScript 5.7.3 兼容的 `"5.0"`，两段正式构建均已通过。
 
 ## 2. 当前路由
 

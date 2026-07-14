@@ -23,7 +23,6 @@
 - 用户仍是内存初始化，不是数据库用户体系。
 - LLM judge 默认关闭，未完成逐 claim faithfulness 结论。
 - 真实 model reranker A/B、标题感知长块专项、完整 GenAI 可观测性尚未完成。
-- 前端正式 build 当前有 `TS5103` 已知问题。
 
 ## 长期规格
 
