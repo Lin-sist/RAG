@@ -1,6 +1,6 @@
-# RAG 项目优化实施文档 v4（供 codex /goal 执行）
+# RAG 项目优化实施文档 v4（已关闭的计划快照）
 
-> 执行状态（2026-07-12）：Stage 1 已完成并形成两轮 CLEAN objective baseline；Stage 2 因无真实 rerank provider/凭据按条件规则跳过；Stage 4 文档真相源清理已完成；Stage 3 与最终总报告尚未执行，不得表述为整个 v4 已完成。
+> 关闭状态（2026-07-14）：v4 以“部分完成”关闭。Stage 1 已完成并形成两轮 CLEAN objective baseline；Stage 2 因无真实 rerank provider/凭据按条件规则跳过；Stage 4 文档真相源清理已完成；Stage 3 转入 `docs/roadmap/technical-debt.md` 的 P1 分块结构专项，未来另行立项；不再补写 v4 最终总报告。本文件仅保留历史计划与决策证据，不再作为执行入口。
 
 ## 0. 全局约束（最高优先级，违反即视为失败）
 
@@ -44,8 +44,8 @@
    - 不得信任旧 `docs/后端优化文档/`、README 或历史 audit 的阶段判断；它们只能作为历史材料。
    - 不得只看报告文件名下结论；比较前必须读取报告头的 `Report status`、`retrieveErrors`、
      `askErrors`、`rateLimitErrors`、run metadata/details JSON。
-9. **v4 文档归属**：本文件位于 `docs/optimization/v4/plan.md`，是 v4 的阶段计划快照；当前目录索引见
-   `docs/optimization/README.md`。新的未完成 change 必须进入 OpenSpec，不再新增平行总计划。
+9. **v4 文档归属**：本文件位于 `docs/optimization/v4/plan.md`，是已关闭的 v4 阶段计划快照；当前目录索引见
+   `docs/optimization/README.md`。新的未完成 change 必须进入 OpenSpec，不得从本文件继续执行或新增平行总计划。
 
 ## 1. 本轮优化目标（明确、不可跑偏）
 
@@ -131,6 +131,10 @@
 
 ## 4. Stage 3：分块质量专项（限时、见好就收）
 
+### 关闭裁决
+
+本阶段未在 v4 内执行，已转入 `docs/roadmap/technical-debt.md` 的 P1“分块结构专项”。后续如排入执行，应按冻结蓝图和 `AGENTS.md` 重新分级、建立独立范围与验收，不得继续占用已关闭的 v4 计划。
+
 ### 现状
 420/80 是 Stage 2 参数矩阵最优，但尚未做标题感知切分、长代码块/长段落处理，也未用更接近真实
 业务分布的文档评测。
@@ -187,13 +191,14 @@
 - 提交前执行第 0 节安全闸：检查无关未提交改动→有则请示；只 add 本 Stage 相关文件；
   确保能编译、`mvn test` 通过、服务能启动。
 - 涉及评测结论的 Stage，提交附带 `docs/optimization/` 下对应说明文件。
-- 全部 Stage 完成后，额外提交一份总报告：
-  `git commit -m "docs(优化): 汇总v4生成质量评测、真实rerank验证与分块专项的指标对比"`
+- 关闭裁决：因 Stage 3 未在 v4 内执行，且其范围已转入技术债，不再补写会暗示“v4 全部完成”的最终总报告；各阶段事实以现有阶段文档为准。
 
-## 7. 执行顺序总览（不可打乱）
+## 7. 关闭状态
 
 已完成：事实核验 → Stage 1 生成/引用评测 → Stage 2 条件判定并跳过 → Stage 4 文档清理。
 
-剩余顺序：Stage 3 分块专项（提交）→ 总报告（提交）。
-每一步以"评测可复现出数 + mvn test 通过 + 已按安全闸 commit"作为进入下一步的前置条件。
-任何异常暂停并向用户请示。
+未在 v4 内执行：Stage 3 分块专项；已转入技术债 P1，等待未来独立立项。
+
+不再执行：v4 最终总报告。
+
+后续唯一执行路线以 `docs/roadmap/iteration-blueprint.md` 和 Active OpenSpec change 为准；本文件不再承载下一步任务。
