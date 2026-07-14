@@ -35,8 +35,8 @@
 
 - [x] 更新本 tasks 的真实完成状态与跳过原因。
 - [x] 将修改文件、验证结果、剩余风险和 `Commit: pending` 追加到 `.ai/AGENT_LOG.md`。
-- [ ] 请用户完成真实 review；未经用户确认不归档 change。
-- [ ] 用户确认完成后将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`，再按治理流程归档。
+- [x] 用户完成真实 review 并明确确认验收通过。
+- [x] 将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`，并按治理流程归档 change。
 - [x] 提供中文 Conventional Commit 建议；由用户手动暂存和提交。
 
 ## Commit Responsibility
