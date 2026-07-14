@@ -137,8 +137,8 @@ public class ModelReranker implements Reranker {
                     .block();
             healthy = true;
         } catch (Exception e) {
-            log.warn("Model reranker health check failed; provider disabled until next cache window: {}",
-                    e.getMessage());
+            log.warn("Model reranker health check failed; provider disabled until next cache window: errorType={}",
+                    e.getClass().getSimpleName());
             healthy = false;
         }
 

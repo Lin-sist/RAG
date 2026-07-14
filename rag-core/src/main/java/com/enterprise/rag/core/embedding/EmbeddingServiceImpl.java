@@ -182,7 +182,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 log.info("Switched to fallback provider: {}", provider.getModelName());
                 return result;
             } catch (EmbeddingException e) {
-                log.warn("Fallback provider {} also failed: {}", provider.getModelName(), e.getMessage());
+                log.warn("Fallback provider {} also failed: errorType={}",
+                        provider.getModelName(), e.getClass().getSimpleName());
             }
         }
         
@@ -204,7 +205,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 log.info("Switched to fallback provider: {}", provider.getModelName());
                 return result;
             } catch (EmbeddingException e) {
-                log.warn("Fallback provider {} also failed for batch: {}", provider.getModelName(), e.getMessage());
+                log.warn("Fallback provider {} also failed for batch: errorType={}",
+                        provider.getModelName(), e.getClass().getSimpleName());
             }
         }
         
@@ -266,7 +268,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 return objectMapper.readValue(json, float[].class);
             }
         } catch (Exception e) {
-            log.warn("Failed to read embedding from cache: {}", e.getMessage());
+            log.warn("Failed to read embedding from cache: errorType={}",
+                    e.getClass().getSimpleName());
         }
         return null;
     }
@@ -276,7 +279,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             String json = objectMapper.writeValueAsString(embedding);
             redisUtil.setString(cacheKey, json, cacheTtlSeconds, TimeUnit.SECONDS);
         } catch (JsonProcessingException e) {
-            log.warn("Failed to cache embedding: {}", e.getMessage());
+            log.warn("Failed to cache embedding: errorType={}",
+                    e.getClass().getSimpleName());
         }
     }
 }

@@ -171,14 +171,16 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             }
 
         } catch (Exception e) {
-            log.error("文档处理失败: documentId={}", documentId, e);
+            log.error("文档处理失败: documentId={}, errorType={}",
+                    documentId, e.getClass().getSimpleName());
             documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
             throw new RuntimeException(e);
         } finally {
             try {
                 Files.deleteIfExists(tempFilePath);
             } catch (IOException e) {
-                log.warn("清理临时上传文件失败: documentId={}, path={}, error={}", documentId, tempFilePath, e.getMessage());
+                log.warn("清理临时上传文件失败: documentId={}, errorType={}",
+                        documentId, e.getClass().getSimpleName());
             }
         }
     }
@@ -206,8 +208,9 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                     break;
                 }
                 long backoffMs = INITIAL_RETRY_BACKOFF_MS * (1L << (attempt - 1));
-                log.warn("文档入库失败，准备重试: documentId={}, attempt={}/{}, backoffMs={}, error={}",
-                        documentId, attempt, MAX_INDEX_ATTEMPTS, backoffMs, e.getMessage());
+                log.warn("文档入库失败，准备重试: documentId={}, attempt={}/{}, backoffMs={}, errorType={}",
+                        documentId, attempt, MAX_INDEX_ATTEMPTS, backoffMs,
+                        e.getClass().getSimpleName());
                 sleepBeforeRetry(documentId, backoffMs);
             }
         }
@@ -295,8 +298,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                     .toList();
             keywordIndex.upsert(collectionName, keywordDocuments);
         } catch (Exception e) {
-            log.warn("关键词索引写入失败，保留向量主链路: collection={}, errorType={}, error={}",
-                    collectionName, e.getClass().getSimpleName(), e.getMessage());
+            log.warn("关键词索引写入失败，保留向量主链路: collection={}, errorType={}",
+                    collectionName, e.getClass().getSimpleName());
         }
     }
 

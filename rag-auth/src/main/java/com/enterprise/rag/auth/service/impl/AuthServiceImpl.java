@@ -57,15 +57,15 @@ public class AuthServiceImpl implements AuthService {
             // 保存用户会话到 Redis
             saveUserSession(userPrincipal.getId(), accessToken, refreshToken);
 
-            log.info("用户 {} 登录成功", userPrincipal.getUsername());
+            log.info("用户登录成功");
 
             return buildAuthResponse(userPrincipal, accessToken, refreshToken);
 
         } catch (BadCredentialsException e) {
-            log.warn("登录失败：用户名或密码错误 - {}", request.getUsername());
+            log.warn("登录失败：用户名或密码错误");
             throw AuthException.invalidCredentials();
         } catch (DisabledException e) {
-            log.warn("登录失败：用户已禁用 - {}", request.getUsername());
+            log.warn("登录失败：用户已禁用");
             throw AuthException.userDisabled();
         }
     }
@@ -96,7 +96,7 @@ public class AuthServiceImpl implements AuthService {
 
             log.info("用户登出成功");
         } catch (Exception e) {
-            log.error("登出处理失败", e);
+            log.error("登出处理失败: errorType={}", e.getClass().getSimpleName());
         }
     }
 
@@ -142,7 +142,7 @@ public class AuthServiceImpl implements AuthService {
         // 更新用户会话
         saveUserSession(freshUserPrincipal.getId(), newAccessToken, newRefreshToken);
 
-        log.info("用户 {} Token 刷新成功", freshUserPrincipal.getUsername());
+        log.info("用户 Token 刷新成功");
 
         return buildAuthResponse(freshUserPrincipal, newAccessToken, newRefreshToken);
     }

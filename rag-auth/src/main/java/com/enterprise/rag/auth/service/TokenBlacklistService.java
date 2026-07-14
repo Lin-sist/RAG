@@ -50,7 +50,8 @@ public class TokenBlacklistService {
             
             log.info("Token 已加入黑名单，将在 {} 秒后自动移除", remainingTime);
         } catch (Exception e) {
-            log.error("将 Token 加入黑名单失败", e);
+            log.error("将 Token 加入黑名单失败: errorType={}",
+                    e.getClass().getSimpleName());
         }
     }
 
@@ -72,7 +73,8 @@ public class TokenBlacklistService {
             Boolean exists = redisUtil.hasKey(blacklistKey);
             return Boolean.TRUE.equals(exists);
         } catch (Exception e) {
-            log.error("检查 Token 黑名单失败", e);
+            log.error("检查 Token 黑名单失败: errorType={}",
+                    e.getClass().getSimpleName());
             // 出错时保守处理，认为不在黑名单中
             return false;
         }
@@ -95,7 +97,8 @@ public class TokenBlacklistService {
             redisUtil.delete(blacklistKey);
             log.info("Token 已从黑名单中移除");
         } catch (Exception e) {
-            log.error("从黑名单移除 Token 失败", e);
+            log.error("从黑名单移除 Token 失败: errorType={}",
+                    e.getClass().getSimpleName());
         }
     }
 }

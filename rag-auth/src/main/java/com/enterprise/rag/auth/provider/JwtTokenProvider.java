@@ -86,15 +86,15 @@ public class JwtTokenProvider {
             parseToken(token);
             return true;
         } catch (ExpiredJwtException e) {
-            log.warn("JWT Token 已过期: {}", e.getMessage());
+            log.warn("JWT Token 已过期");
         } catch (UnsupportedJwtException e) {
-            log.warn("不支持的 JWT Token: {}", e.getMessage());
+            log.warn("不支持的 JWT Token");
         } catch (MalformedJwtException e) {
-            log.warn("JWT Token 格式错误: {}", e.getMessage());
+            log.warn("JWT Token 格式错误");
         } catch (SignatureException e) {
-            log.warn("JWT Token 签名无效: {}", e.getMessage());
+            log.warn("JWT Token 签名无效");
         } catch (IllegalArgumentException e) {
-            log.warn("JWT Token 为空: {}", e.getMessage());
+            log.warn("JWT Token 为空");
         }
         return false;
     }

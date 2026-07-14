@@ -114,7 +114,7 @@ public class SlidingWindowRateLimiter implements RateLimiter {
             );
 
             if (result == null || result.isEmpty()) {
-                log.warn("Rate limit script returned null or empty result for key: {}", redisKey);
+                log.warn("Rate limit script returned null or empty result");
                 // 默认允许请求，避免限流器故障影响业务
                 return RateLimitResult.allowed(config.maxRequests(), now / 1000 + config.windowSeconds());
             }
@@ -130,7 +130,7 @@ public class SlidingWindowRateLimiter implements RateLimiter {
                 return RateLimitResult.denied(resetTime, retryAfter);
             }
         } catch (Exception e) {
-            log.error("Rate limit error for key: {}", redisKey, e);
+            log.error("Rate limit error: errorType={}", e.getClass().getSimpleName());
             // 限流器故障时默认允许请求
             return RateLimitResult.allowed(config.maxRequests(), now / 1000 + config.windowSeconds());
         }
@@ -146,9 +146,10 @@ public class SlidingWindowRateLimiter implements RateLimiter {
         String redisKey = buildKey(dimension, key);
         try {
             stringRedisTemplate.delete(redisKey);
-            log.debug("Reset rate limit for key: {}", redisKey);
+            log.debug("Reset rate limit");
         } catch (Exception e) {
-            log.error("Failed to reset rate limit for key: {}", redisKey, e);
+            log.error("Failed to reset rate limit: errorType={}",
+                    e.getClass().getSimpleName());
         }
     }
 

@@ -78,7 +78,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         setRateLimitHeaders(response, result, config);
 
         if (!result.allowed()) {
-            log.warn("Rate limit exceeded for key: {}, dimension: {}", key, rateLimit.dimension());
+            log.warn("Rate limit exceeded: dimension={}", rateLimit.dimension());
             throw new RateLimitExceededException(rateLimit.message(), result.resetTime(), result.retryAfter());
         }
 

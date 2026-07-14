@@ -42,8 +42,8 @@ public class RerankerRegistry {
             return requested.rerank(query, contexts);
         } catch (Exception e) {
             if (!"heuristic".equalsIgnoreCase(requested.provider())) {
-                log.warn("Reranker provider '{}' failed; falling back to heuristic: {}",
-                        requested.provider(), e.getMessage());
+                log.warn("Reranker provider '{}' failed; falling back to heuristic: errorType={}",
+                        requested.provider(), e.getClass().getSimpleName());
                 return heuristic.rerank(query, contexts);
             }
             throw e;

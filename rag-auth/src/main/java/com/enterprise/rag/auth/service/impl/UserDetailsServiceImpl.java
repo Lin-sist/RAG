@@ -68,7 +68,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         UserPrincipal user = users.get(username);
         
         if (user == null) {
-            log.warn("用户不存在: {}", username);
+            log.warn("用户不存在");
             throw new UsernameNotFoundException("用户不存在: " + username);
         }
 

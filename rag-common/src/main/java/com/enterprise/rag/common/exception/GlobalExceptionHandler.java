@@ -42,7 +42,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(
             BusinessException e, HttpServletRequest request) {
-        log.warn("Business exception: [{}] {}", e.getErrorCode(), e.getMessage());
+        log.warn("Business exception: errorCode={}, errorType={}",
+                e.getErrorCode(), e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 e.getHttpStatus().value(),
@@ -62,7 +63,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e, HttpServletRequest request) {
-        log.warn("Validation failed: {}", e.getMessage());
+        log.warn("Validation failed: errorType={}", e.getClass().getSimpleName());
         
         List<ErrorResponse.FieldError> fieldErrors = e.getBindingResult()
                 .getFieldErrors()
@@ -92,7 +93,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     public ResponseEntity<ErrorResponse> handleBindException(
             BindException e, HttpServletRequest request) {
-        log.warn("Bind exception: {}", e.getMessage());
+        log.warn("Bind exception: errorType={}", e.getClass().getSimpleName());
         
         List<ErrorResponse.FieldError> fieldErrors = e.getBindingResult()
                 .getFieldErrors()
@@ -122,7 +123,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolationException(
             ConstraintViolationException e, HttpServletRequest request) {
-        log.warn("Constraint violation: {}", e.getMessage());
+        log.warn("Constraint violation: errorType={}", e.getClass().getSimpleName());
         
         List<ErrorResponse.FieldError> fieldErrors = e.getConstraintViolations()
                 .stream()
@@ -152,7 +153,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
             MissingServletRequestParameterException e, HttpServletRequest request) {
-        log.warn("Missing request parameter: {}", e.getMessage());
+        log.warn("Missing request parameter: parameterName={}", e.getParameterName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
@@ -170,7 +171,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e, HttpServletRequest request) {
-        log.warn("Argument type mismatch: {}", e.getMessage());
+        log.warn("Argument type mismatch: parameterName={}", e.getName());
         
         String requiredType = e.getRequiredType() != null 
                 ? e.getRequiredType().getSimpleName() 
@@ -192,7 +193,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
             HttpMessageNotReadableException e, HttpServletRequest request) {
-        log.warn("Message not readable: {}", e.getMessage());
+        log.warn("Message not readable: errorType={}", e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
@@ -212,7 +213,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
-        log.warn("Method not supported: {}", e.getMessage());
+        log.warn("Method not supported: method={}", e.getMethod());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.METHOD_NOT_ALLOWED.value(),
@@ -230,7 +231,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(
             HttpMediaTypeNotSupportedException e, HttpServletRequest request) {
-        log.warn("Media type not supported: {}", e.getMessage());
+        log.warn("Media type not supported: mediaType={}", e.getContentType());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
@@ -248,7 +249,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoHandlerFoundException(
             NoHandlerFoundException e, HttpServletRequest request) {
-        log.warn("No handler found: {}", e.getMessage());
+        log.warn("No handler found: method={}", e.getHttpMethod());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
@@ -266,7 +267,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
             MaxUploadSizeExceededException e, HttpServletRequest request) {
-        log.warn("Max upload size exceeded: {}", e.getMessage());
+        log.warn("Max upload size exceeded: errorType={}", e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.PAYLOAD_TOO_LARGE.value(),
@@ -287,7 +288,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
             IllegalArgumentException e, HttpServletRequest request) {
-        log.warn("Illegal argument: {}", e.getMessage());
+        log.warn("Illegal argument: errorType={}", e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
@@ -305,7 +306,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalStateException(
             IllegalStateException e, HttpServletRequest request) {
-        log.warn("Illegal state: {}", e.getMessage());
+        log.warn("Illegal state: errorType={}", e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.CONFLICT.value(),
@@ -325,7 +326,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(
             Exception e, HttpServletRequest request) {
-        log.error("Unexpected exception: ", e);
+        log.error("Unexpected exception: errorType={}", e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),

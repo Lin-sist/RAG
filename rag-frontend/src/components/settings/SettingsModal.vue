@@ -229,11 +229,9 @@ function closeModal() {
 }
 
 function handleSaveProfile() {
-  console.log('Save profile:', user.value)
 }
 
 function handleUpdatePassword() {
-  console.log('Update password:', passwords.value)
   passwords.value = { current: '', newPassword: '', confirm: '' }
 }
 

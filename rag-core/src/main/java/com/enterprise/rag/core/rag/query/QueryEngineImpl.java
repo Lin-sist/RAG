@@ -94,8 +94,7 @@ public class QueryEngineImpl implements QueryEngine {
             return List.of();
         }
 
-        log.debug("Retrieving contexts for query: '{}' from collection: {}",
-                truncateForLog(query), options.collectionName());
+        log.debug("Retrieving contexts from collection: {}", options.collectionName());
 
         // 1. 构建搜索选项
         SearchOptions searchOptions = new SearchOptions(
@@ -180,11 +179,10 @@ public class QueryEngineImpl implements QueryEngine {
 
         for (QueryVariant queryVariant : queryVariants) {
             float[] queryVector = embeddingService.embed(queryVariant.query());
-            log.debug("Query variant embedded: '{}' weight={}", truncateForLog(queryVariant.query()), queryVariant.weight());
+            log.debug("Query variant embedded: weight={}", queryVariant.weight());
 
             List<SearchResult> searchResults = vectorStore.search(collectionName, queryVector, searchOptions);
-            log.debug("Vector search returned {} results for variant '{}'", searchResults.size(),
-                    truncateForLog(queryVariant.query()));
+            log.debug("Vector search returned {} results for query variant", searchResults.size());
 
             for (SearchResult searchResult : searchResults) {
                 RetrievedContext context = toRetrievedContext(searchResult);
@@ -250,12 +248,6 @@ public class QueryEngineImpl implements QueryEngine {
     /**
      * 截断日志输出
      */
-    private String truncateForLog(String text) {
-        if (text == null)
-            return "null";
-        return text.length() > 100 ? text.substring(0, 100) + "..." : text;
-    }
-
     private List<QueryVariant> buildQueryVariants(String query) {
         LinkedHashMap<String, Float> variants = new LinkedHashMap<>();
         addQueryVariant(variants, query, 1.0f);

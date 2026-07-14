@@ -123,14 +123,14 @@ public class PromptBuilder {
         }
 
         if (contexts == null || contexts.isEmpty()) {
-            log.warn("No contexts provided for query: {}", truncateForLog(query));
+            log.warn("No contexts provided for prompt build");
             return String.format(NO_CONTEXT_TEMPLATE, query);
         }
 
         String formattedContext = formatContexts(contexts);
         String template = getTemplate(strategy);
         String prompt = renderPrompt(template, strategy, query, formattedContext);
-        log.debug("Built prompt with strategy {} for query: {}", strategy, truncateForLog(query));
+        log.debug("Built prompt with strategy {}", strategy);
 
         return prompt;
     }
@@ -147,7 +147,7 @@ public class PromptBuilder {
         }
 
         if (contexts == null || contexts.isEmpty()) {
-            log.warn("No contexts provided for query: {}", truncateForLog(query));
+            log.warn("No contexts provided for optimized prompt build");
             return new PromptBuildResult(String.format(NO_CONTEXT_TEMPLATE, query), List.of(), 0, 0, 0,
                     contextTokenBudget);
         }
@@ -327,12 +327,6 @@ public class PromptBuilder {
     /**
      * 截断日志输出
      */
-    private String truncateForLog(String text) {
-        if (text == null)
-            return "null";
-        return text.length() > 100 ? text.substring(0, 100) + "..." : text;
-    }
-
     public record PromptBuildResult(
             String prompt,
             List<RetrievedContext> contexts,

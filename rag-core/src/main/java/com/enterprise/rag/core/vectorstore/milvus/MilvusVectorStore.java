@@ -311,13 +311,9 @@ public class MilvusVectorStore implements VectorStore {
                 float score = wrapper.getIDScore(0).get(i).getScore();
                 String id = String.valueOf(row.get(FIELD_ID));
                 String content = (String) row.get(FIELD_CONTENT);
-                String snippet = content == null ? "" : content.replaceAll("\\s+", " ").trim();
-                if (snippet.length() > 120) {
-                    snippet = snippet.substring(0, 120) + "...";
-                }
 
-                log.debug("Search result [{}]: id={}, score={}, minScore={}, snippet={}",
-                        i, id, score, options.minScore(), snippet);
+                log.debug("Search result [{}]: id={}, score={}, minScore={}",
+                        i, id, score, options.minScore());
 
                 // 过滤低于最小分数的结果
                 if (score < options.minScore()) {

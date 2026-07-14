@@ -1614,7 +1614,7 @@ def main() -> int:
 
     if not login_error:
         for index, sample in enumerate(samples, start=1):
-            print(f"[{index}/{len(samples)}] {sample['id']} {sample['question']}")
+            print(f"[{index}/{len(samples)}] sampleId={sample['id']}")
             results.append(run_sample(sample, args, token))
 
     write_report(report_path, args, samples, results, login_error, started_at, run_metadata)
@@ -1624,7 +1624,7 @@ def main() -> int:
         write_details_json(details_json_path, args, samples, results, login_error, started_at, run_metadata)
 
     if login_error:
-        print(f"Eval could not run: {login_error}", file=sys.stderr)
+        print("Eval could not run: login or backend request failed", file=sys.stderr)
         print(f"Hint: {fail_hint(login_error)}", file=sys.stderr)
         print(f"Wrote report: {report_path}")
         if after_report_path is not None:

@@ -62,8 +62,7 @@ public class RAGServiceImpl implements RAGService {
             return QAResponse.error(question, "知识库名称不能为空");
         }
 
-        log.info("Processing QA request for collection: {}, question: {}",
-                collectionName, truncateForLog(question));
+        log.info("Processing QA request for collection: {}", collectionName);
 
         try {
             // 1. 检查缓存
@@ -72,7 +71,7 @@ public class RAGServiceImpl implements RAGService {
                 QAResponse cachedResponse = getFromCache(question, collectionName, request.topK(), request.filter(),
                         modelName);
                 if (cachedResponse != null) {
-                    log.debug("Cache hit for question: {}", truncateForLog(question));
+                    log.debug("QA cache hit for collection: {}", collectionName);
                     return addCacheMetadata(cachedResponse, true);
                 }
             }
@@ -94,7 +93,7 @@ public class RAGServiceImpl implements RAGService {
             }
 
             if (contexts.isEmpty()) {
-                log.info("No relevant contexts found for question: {}", truncateForLog(question));
+                log.info("No relevant contexts found for collection: {}", collectionName);
                 return QAResponse.noResult(question);
             }
 
@@ -128,11 +127,11 @@ public class RAGServiceImpl implements RAGService {
                 saveToCache(question, collectionName, request.topK(), request.filter(), modelName, response);
             }
 
-            log.info("Successfully generated answer for question: {}", truncateForLog(question));
+            log.info("Successfully generated answer for collection: {}", collectionName);
             return response;
 
         } catch (Exception e) {
-            log.error("Failed to process QA request", e);
+            log.error("Failed to process QA request: errorType={}", e.getClass().getSimpleName());
             return QAResponse.error(question, toClientErrorMessage(e), errorMetadata(e));
         }
     }
@@ -169,16 +168,15 @@ public class RAGServiceImpl implements RAGService {
                 contexts = retryExplanatoryRetrieval(question, request, collectionName);
             }
 
-            log.info("stream_retrieval_done collection={}, question={}, retrievalLatencyMs={}, contextCount={}, topScores={}",
+            log.info("stream_retrieval_done collection={}, retrievalLatencyMs={}, contextCount={}, topScores={}",
                     collectionName,
-                    truncateForLog(question),
                     retrievalLatencyMs,
                     contexts.size(),
                     topScoresForLog(contexts, 5));
 
             if (contexts.isEmpty()) {
-                log.info("stream_retrieval_no_context collection={}, question={}, retrievalLatencyMs={}",
-                        collectionName, truncateForLog(question), retrievalLatencyMs);
+                log.info("stream_retrieval_no_context collection={}, retrievalLatencyMs={}",
+                        collectionName, retrievalLatencyMs);
                 return Flux.just("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。");
             }
 
@@ -186,7 +184,8 @@ public class RAGServiceImpl implements RAGService {
             return answerGenerator.generateStream(question, contexts);
 
         } catch (Exception e) {
-            log.error("Failed to process streaming QA request", e);
+            log.error("Failed to process streaming QA request: errorType={}",
+                    e.getClass().getSimpleName());
             return Flux.error(new IllegalStateException(toClientErrorMessage(e), e));
         }
     }
@@ -319,11 +318,8 @@ public class RAGServiceImpl implements RAGService {
                     true);
             List<RetrievedContext> fallbackContexts = queryEngine.retrieve(fallbackQuery, fallbackOptions);
             if (!fallbackContexts.isEmpty()) {
-                log.info("explanatory_retrieval_fallback_hit originalQuestion={}, fallbackQuery={}, fallbackMinScore={}, contextCount={}",
-                        truncateForLog(question),
-                        truncateForLog(fallbackQuery),
-                        fallbackMinScore,
-                        fallbackContexts.size());
+                log.info("explanatory_retrieval_fallback_hit fallbackMinScore={}, contextCount={}",
+                        fallbackMinScore, fallbackContexts.size());
             }
             mergeDistinctContexts(merged, fallbackContexts);
         }
@@ -445,7 +441,7 @@ public class RAGServiceImpl implements RAGService {
         String queryHash = hashString(question.toLowerCase().trim());
         String pattern = RedisKeyConstants.QA_CACHE_PREFIX + queryHash + ":" + collectionName + ":*";
         redisUtil.deleteByPattern(pattern);
-        log.debug("Evicted cache for question: {}", truncateForLog(question));
+        log.debug("Evicted QA cache for collection: {}", collectionName);
     }
 
     @Override
@@ -469,7 +465,8 @@ public class RAGServiceImpl implements RAGService {
             try {
                 return objectMapper.readValue(cachedJson, QAResponse.class);
             } catch (JsonProcessingException e) {
-                log.warn("Failed to deserialize cached response", e);
+                log.warn("Failed to deserialize cached response: errorType={}",
+                        e.getClass().getSimpleName());
             }
         }
         return null;
@@ -488,9 +485,10 @@ public class RAGServiceImpl implements RAGService {
         try {
             String json = objectMapper.writeValueAsString(response);
             redisUtil.setString(cacheKey, json, RedisKeyConstants.QA_CACHE_TTL, TimeUnit.SECONDS);
-            log.debug("Cached response for question: {}", truncateForLog(question));
+            log.debug("Cached QA response for collection: {}", collectionName);
         } catch (JsonProcessingException e) {
-            log.warn("Failed to serialize response for caching", e);
+            log.warn("Failed to serialize response for caching: errorType={}",
+                    e.getClass().getSimpleName());
         }
     }
 
@@ -517,7 +515,8 @@ public class RAGServiceImpl implements RAGService {
             Object normalized = normalizeFilterValue(filter);
             return objectMapper.writeValueAsString(normalized);
         } catch (Exception e) {
-            log.debug("Failed to canonicalize filter, using fallback toString", e);
+            log.debug("Failed to canonicalize filter, using fallback toString: errorType={}",
+                    e.getClass().getSimpleName());
             return new TreeMap<>(filter).toString();
         }
     }
@@ -581,12 +580,6 @@ public class RAGServiceImpl implements RAGService {
     /**
      * 截断日志输出
      */
-    private String truncateForLog(String text) {
-        if (text == null)
-            return "null";
-        return text.length() > 100 ? text.substring(0, 100) + "..." : text;
-    }
-
     private String topScoresForLog(List<RetrievedContext> contexts, int limit) {
         if (contexts == null || contexts.isEmpty()) {
             return "[]";

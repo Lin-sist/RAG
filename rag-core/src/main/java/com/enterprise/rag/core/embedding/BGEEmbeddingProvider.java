@@ -63,7 +63,8 @@ public class BGEEmbeddingProvider implements EmbeddingProvider {
             return toFloatArray(response.embeddings().get(0));
 
         } catch (WebClientResponseException e) {
-            log.error("BGE service error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("BGE service error: status={}, errorType={}",
+                    e.getStatusCode(), e.getClass().getSimpleName());
             if (e.getStatusCode().is5xxServerError()) {
                 available = false;
             }
@@ -72,7 +73,8 @@ public class BGEEmbeddingProvider implements EmbeddingProvider {
         } catch (EmbeddingException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error calling BGE service", e);
+            log.error("Unexpected error calling BGE service: errorType={}",
+                    e.getClass().getSimpleName());
             available = false;
             throw new EmbeddingException("Failed to get embedding from BGE: " + e.getMessage(),
                     e, MODEL_NAME, true);
@@ -113,7 +115,8 @@ public class BGEEmbeddingProvider implements EmbeddingProvider {
         } catch (EmbeddingException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error calling BGE service for batch", e);
+            log.error("Unexpected error calling BGE service for batch: errorType={}",
+                    e.getClass().getSimpleName());
             available = false;
             throw new EmbeddingException("Failed to get batch embeddings from BGE: " + e.getMessage(),
                     e, MODEL_NAME, true);
@@ -154,7 +157,8 @@ public class BGEEmbeddingProvider implements EmbeddingProvider {
             available = true;
             return true;
         } catch (Exception e) {
-            log.warn("BGE service health check failed: {}", e.getMessage());
+            log.warn("BGE service health check failed: errorType={}",
+                    e.getClass().getSimpleName());
             available = false;
             return false;
         }

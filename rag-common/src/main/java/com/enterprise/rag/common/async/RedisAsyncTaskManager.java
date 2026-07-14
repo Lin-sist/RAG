@@ -107,7 +107,8 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
             TaskStatusData data = objectMapper.readValue(json, TaskStatusData.class);
             return Optional.of(data.toTaskStatus());
         } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize task status: taskId={}", taskId, e);
+            log.error("Failed to deserialize task status: taskId={}, errorType={}",
+                    taskId, e.getClass().getSimpleName());
             return Optional.empty();
         }
     }
@@ -142,7 +143,8 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
             T result = objectMapper.readValue(status.result(), resultType);
             return Optional.of(result);
         } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize task result: taskId={}", taskId, e);
+            log.error("Failed to deserialize task result: taskId={}, errorType={}",
+                    taskId, e.getClass().getSimpleName());
             return Optional.empty();
         }
     }
@@ -165,7 +167,7 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
         TaskStatus updatedStatus = currentStatus.withProgress(progress, message);
         saveStatus(taskId, updatedStatus);
 
-        log.debug("Updated task progress: taskId={}, progress={}, message={}", taskId, progress, message);
+        log.debug("Updated task progress: taskId={}, progress={}", taskId, progress);
     }
 
     @Override
@@ -237,7 +239,8 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
             } catch (Exception e) {
                 // 更新状态为失败
-                log.error("Task execution failed: taskId={}", taskId, e);
+                log.error("Task execution failed: taskId={}, errorType={}",
+                        taskId, e.getClass().getSimpleName());
                 saveStatus(taskId, TaskStatus.failed(taskId, taskType, e.getMessage(), ownerId));
                 throw new RuntimeException(e);
             }
@@ -268,7 +271,8 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
             String json = objectMapper.writeValueAsString(data);
             stringRedisTemplate.opsForValue().set(redisKey, json, RedisKeyConstants.TASK_STATUS_TTL, TimeUnit.SECONDS);
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize task status: taskId={}", taskId, e);
+            log.error("Failed to serialize task status: taskId={}, errorType={}",
+                    taskId, e.getClass().getSimpleName());
             throw AsyncTaskException.storageFailed(taskId, e);
         }
     }
@@ -283,7 +287,8 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
         try {
             return objectMapper.writeValueAsString(result);
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize task result", e);
+            log.error("Failed to serialize task result: errorType={}",
+                    e.getClass().getSimpleName());
             return null;
         }
     }

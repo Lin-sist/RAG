@@ -65,7 +65,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             throw new IllegalArgumentException("Query cannot be null or blank");
         }
 
-        log.debug("Generating answer for query: {}", truncateForLog(query));
+        log.debug("Generating answer");
 
         // 构建 Prompt（RAG-02: 上下文去重 + token budget + 来源增强）
         PromptBuilder.PromptBuildResult buildResult = promptBuilder.buildOptimized(
@@ -109,7 +109,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             return Flux.error(new IllegalArgumentException("Query cannot be null or blank"));
         }
 
-        log.debug("Generating streaming answer for query: {}", truncateForLog(query));
+        log.debug("Generating streaming answer");
 
         PromptBuilder.PromptBuildResult buildResult = promptBuilder.buildOptimized(
                 query,
@@ -117,9 +117,8 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 PromptStrategy.STRUCTURED,
                 PromptBuilder.DEFAULT_CONTEXT_TOKEN_BUDGET);
         String prompt = buildResult.prompt();
-        log.info("stream_prompt_ready model={}, query={}, contextCount={}, estimatedContextTokens={}, removedByDedup={}, removedByBudget={}",
+        log.info("stream_prompt_ready model={}, contextCount={}, estimatedContextTokens={}, removedByDedup={}, removedByBudget={}",
                 getModelName(),
-                truncateForLog(query),
                 buildResult.contexts().size(),
                 buildResult.estimatedContextTokens(),
                 buildResult.removedByDedup(),
@@ -148,7 +147,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         } catch (LLMException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to call LLM API", e);
+            log.error("Failed to call LLM API: errorType={}", e.getClass().getSimpleName());
             throw new LLMException("Failed to generate answer: " + e.getMessage(), e);
         }
     }
@@ -315,12 +314,12 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .filter(this::isRetryableError)
                 .doBeforeRetry(signal -> {
                     Throwable cause = unwrap(signal.failure());
-                    log.warn("LLM调用重试: provider={}, endpoint={}, attempt={}/{}, reason={}",
+                    log.warn("LLM调用重试: provider={}, endpoint={}, attempt={}/{}, errorType={}",
                             provider,
                             endpoint,
                             signal.totalRetries() + 1,
                             maxRetries,
-                            cause.getClass().getSimpleName() + ": " + cause.getMessage());
+                            cause.getClass().getSimpleName());
                 })
                 .onRetryExhaustedThrow((spec, signal) -> {
                     Throwable cause = unwrap(signal.failure());
@@ -342,18 +341,14 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     private void logLlmError(String provider, String endpoint, Throwable error) {
         Throwable cause = unwrap(error);
         if (cause instanceof WebClientResponseException ex) {
-            String body = ex.getResponseBodyAsString();
-            String bodyPreview = body == null ? "" : (body.length() > 500 ? body.substring(0, 500) + "..." : body);
-            log.error("LLM调用失败: provider={}, endpoint={}, status={}, body={}",
-                    provider, endpoint, ex.getStatusCode().value(), bodyPreview, ex);
+            log.error("LLM调用失败: provider={}, endpoint={}, status={}, errorType={}",
+                    provider, endpoint, ex.getStatusCode().value(), ex.getClass().getSimpleName());
             return;
         }
-        log.error("LLM调用失败: provider={}, endpoint={}, causeType={}, message={}",
+        log.error("LLM调用失败: provider={}, endpoint={}, errorType={}",
                 provider,
                 endpoint,
-                cause.getClass().getSimpleName(),
-                cause.getMessage(),
-                cause);
+                cause.getClass().getSimpleName());
     }
 
     private Throwable unwrap(Throwable error) {
@@ -408,7 +403,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             JsonNode root = objectMapper.readTree(response);
             return root.path("choices").get(0).path("message").path("content").asText();
         } catch (Exception e) {
-            log.error("Failed to parse OpenAI response: {}", response, e);
+            log.error("Failed to parse OpenAI response: errorType={}", e.getClass().getSimpleName());
             throw new LLMException("Failed to parse OpenAI response", e);
         }
     }
@@ -421,7 +416,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             JsonNode root = objectMapper.readTree(response);
             return root.path("output").path("text").asText();
         } catch (Exception e) {
-            log.error("Failed to parse Qwen response: {}", response, e);
+            log.error("Failed to parse Qwen response: errorType={}", e.getClass().getSimpleName());
             throw new LLMException("Failed to parse Qwen response", e);
         }
     }
@@ -462,7 +457,8 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             JsonNode root = objectMapper.readTree(chunk);
             return root.path("choices").get(0).path("delta").path("content").asText("");
         } catch (Exception e) {
-            log.debug("Failed to parse stream chunk: {}", chunk);
+            log.debug("Failed to parse OpenAI stream chunk: errorType={}",
+                    e.getClass().getSimpleName());
             return "";
         }
     }
@@ -478,7 +474,8 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             JsonNode root = objectMapper.readTree(chunk);
             return root.path("output").path("text").asText("");
         } catch (Exception e) {
-            log.debug("Failed to parse stream chunk: {}", chunk);
+            log.debug("Failed to parse Qwen stream chunk: errorType={}",
+                    e.getClass().getSimpleName());
             return "";
         }
     }
@@ -749,12 +746,6 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     /**
      * 截断日志输出
      */
-    private String truncateForLog(String text) {
-        if (text == null)
-            return "null";
-        return text.length() > 100 ? text.substring(0, 100) + "..." : text;
-    }
-
     static final class StreamSanitizer {
         private final StringBuilder pending = new StringBuilder();
 

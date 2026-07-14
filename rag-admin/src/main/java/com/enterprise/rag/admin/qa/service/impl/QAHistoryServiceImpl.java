@@ -49,7 +49,8 @@ public class QAHistoryServiceImpl implements QAHistoryService {
             try {
                 history.setCitations(objectMapper.writeValueAsString(request.getCitations()));
             } catch (JsonProcessingException e) {
-                log.warn("Failed to serialize citations", e);
+                log.warn("Failed to serialize citations: errorType={}",
+                        e.getClass().getSimpleName());
                 history.setCitations("[]");
             }
         } else {
@@ -155,7 +156,8 @@ public class QAHistoryServiceImpl implements QAHistoryService {
         try {
             return objectMapper.readValue(citationsJson, new TypeReference<List<Citation>>() {});
         } catch (JsonProcessingException e) {
-            log.warn("Failed to parse citations JSON: {}", citationsJson, e);
+            log.warn("Failed to parse citations JSON: errorType={}",
+                    e.getClass().getSimpleName());
             return Collections.emptyList();
         }
     }

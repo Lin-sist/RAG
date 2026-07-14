@@ -42,7 +42,8 @@ public class KeywordIndexBootstrap {
                 rebuildCollection(knowledgeBase);
             }
         } catch (Exception e) {
-            log.warn("关键词 BM25 索引启动重建失败，保留向量检索主链路: {}", e.getMessage());
+            log.warn("关键词 BM25 索引启动重建失败，保留向量检索主链路: errorType={}",
+                    e.getClass().getSimpleName());
         }
     }
 

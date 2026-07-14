@@ -49,8 +49,9 @@ public class RequestObservationFilter extends OncePerRequestFilter {
             int status = response.getStatus();
 
             if (chainException != null) {
-                log.error("request_failed traceId={} method={} uri={} status={} latencyMs={} error={}",
-                        traceId, method, uri, status, latencyMs, chainException.getMessage());
+                log.error("request_failed traceId={} method={} uri={} status={} latencyMs={} errorType={}",
+                        traceId, method, uri, status, latencyMs,
+                        chainException.getClass().getSimpleName());
             } else if (latencyMs >= slowRequestThresholdMs) {
                 log.warn("slow_request traceId={} method={} uri={} status={} latencyMs={} thresholdMs={}",
                         traceId, method, uri, status, latencyMs, slowRequestThresholdMs);

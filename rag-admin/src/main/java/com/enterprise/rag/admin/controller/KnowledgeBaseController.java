@@ -67,9 +67,9 @@ public class KnowledgeBaseController {
                         @Valid @RequestBody CreateKnowledgeBaseRequest request,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
                 Long ownerId = currentUserService.requireUserId(userDetails);
-                log.info("创建知识库请求: name={}, ownerId={}", request.getName(), ownerId);
+                log.info("创建知识库请求: ownerId={}", ownerId);
                 KnowledgeBaseDTO kb = knowledgeBaseService.create(request, ownerId);
-                log.info("知识库创建成功: id={}, name={}", kb.getId(), kb.getName());
+                log.info("知识库创建成功: id={}", kb.getId());
                 return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(kb));
         }
 
@@ -200,7 +200,7 @@ public class KnowledgeBaseController {
                         throw new BusinessException("DOC_003", "文件名不能为空");
                 }
 
-                log.info("文档上传请求: kbId={}, fileName={}, uploaderId={}", id, fileName, uploaderId);
+                log.info("文档上传请求: kbId={}, uploaderId={}", id, uploaderId);
 
                 // DOC-01: 索引编排完全委托给 DocumentIndexingService
                 DocumentUploadResponse response = documentIndexingService.submitIndexing(id, uploaderId, file, title);

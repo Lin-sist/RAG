@@ -123,7 +123,8 @@ public class DocumentServiceImpl implements DocumentService {
                             document.getKbId(), id);
                 }
             } catch (Exception e) {
-                log.error("Failed to delete vectors for document {}: {}", id, e.getMessage());
+                log.error("Failed to delete vectors for document {}: errorType={}",
+                        id, e.getClass().getSimpleName());
             }
         }
 

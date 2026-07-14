@@ -21,7 +21,8 @@ public class RateLimitExceptionHandler {
 
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleRateLimitExceededException(RateLimitExceededException e) {
-        log.warn("Rate limit exceeded: {}", e.getMessage());
+        log.warn("Rate limit exceeded: errorCode={}, errorType={}",
+                e.getErrorCode(), e.getClass().getSimpleName());
         
         return ResponseEntity
             .status(HttpStatus.TOO_MANY_REQUESTS)

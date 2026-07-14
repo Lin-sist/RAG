@@ -74,13 +74,15 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
             return toFloatArray(embedding);
 
         } catch (WebClientResponseException e) {
-            log.error("OpenAI API error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("OpenAI API error: status={}, errorType={}",
+                    e.getStatusCode(), e.getClass().getSimpleName());
             throw new EmbeddingException("OpenAI API error: " + e.getMessage(), e, MODEL_NAME,
                     isRetryableStatusCode(e.getStatusCode().value()));
         } catch (EmbeddingException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error calling OpenAI API", e);
+            log.error("Unexpected error calling OpenAI API: errorType={}",
+                    e.getClass().getSimpleName());
             throw new EmbeddingException("Failed to get embedding from OpenAI: " + e.getMessage(),
                     e, MODEL_NAME, true);
         }
@@ -139,7 +141,8 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
         } catch (EmbeddingException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error calling OpenAI API for batch (size={})", texts.size(), e);
+            log.error("Unexpected error calling OpenAI API for batch: size={}, errorType={}",
+                    texts.size(), e.getClass().getSimpleName());
             throw new EmbeddingException("Failed to get batch embeddings from OpenAI: " + e.getMessage(),
                     e, MODEL_NAME, true);
         }

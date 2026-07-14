@@ -126,7 +126,8 @@ public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
         try {
             return objectMapper.writeValueAsString(obj);
         } catch (JsonProcessingException e) {
-            log.error("Failed to convert object to JSON string", e);
+            log.error("Failed to convert object to JSON string: errorType={}",
+                    e.getClass().getSimpleName());
             throw new RuntimeException("Failed to serialize response", e);
         }
     }

@@ -70,13 +70,15 @@ public class QwenEmbeddingProvider implements EmbeddingProvider {
             return toFloatArray(embedding);
 
         } catch (WebClientResponseException e) {
-            log.error("Qwen API error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("Qwen API error: status={}, errorType={}",
+                    e.getStatusCode(), e.getClass().getSimpleName());
             throw new EmbeddingException("Qwen API error: " + e.getMessage(), e, MODEL_NAME,
                     isRetryableStatusCode(e.getStatusCode().value()));
         } catch (EmbeddingException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error calling Qwen API", e);
+            log.error("Unexpected error calling Qwen API: errorType={}",
+                    e.getClass().getSimpleName());
             throw new EmbeddingException("Failed to get embedding from Qwen: " + e.getMessage(),
                     e, MODEL_NAME, true);
         }
@@ -119,7 +121,8 @@ public class QwenEmbeddingProvider implements EmbeddingProvider {
         } catch (EmbeddingException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error calling Qwen API for batch", e);
+            log.error("Unexpected error calling Qwen API for batch: errorType={}",
+                    e.getClass().getSimpleName());
             throw new EmbeddingException("Failed to get batch embeddings from Qwen: " + e.getMessage(),
                     e, MODEL_NAME, true);
         }

@@ -44,7 +44,8 @@ public class DefaultDocumentIndexConsumer implements DocumentIndexConsumer {
             log.info("Document index message processed successfully: messageId={}", message.messageId());
             
         } catch (Exception e) {
-            log.error("Failed to process document index message: messageId={}", message.messageId(), e);
+            log.error("Failed to process document index message: messageId={}, errorType={}",
+                    message.messageId(), e.getClass().getSimpleName());
             onError(message, e);
             throw e;
         }
@@ -52,8 +53,8 @@ public class DefaultDocumentIndexConsumer implements DocumentIndexConsumer {
 
     @Override
     public void onError(DocumentIndexMessage message, Throwable error) {
-        log.error("Document index error: messageId={}, documentId={}, error={}", 
-            message.messageId(), message.documentId(), error.getMessage());
+        log.error("Document index error: messageId={}, documentId={}, errorType={}",
+            message.messageId(), message.documentId(), error.getClass().getSimpleName());
         
         // 更新任务状态为失败
         String taskId = message.taskId();

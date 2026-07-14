@@ -242,26 +242,17 @@ function setTheme(dark: boolean) {
 
 // Action handlers
 function handleSaveBasicInfo() {
-  console.log('save basic info', {
-    name: user.value.name,
-    email: user.value.email
-  })
 }
 
 function handleUpdatePassword() {
-  console.log('update password', {
-    current: passwords.value.current,
-    new: passwords.value.new,
-    confirm: passwords.value.confirm
-  })
 }
 
 async function handleCopyApiKey() {
   try {
     await navigator.clipboard.writeText(user.value.apiKey)
     console.log('API key copied')
-  } catch (err) {
-    console.error('Failed to copy API key:', err)
+  } catch {
+    console.error('Failed to copy API key')
   }
 }
 

@@ -30,7 +30,7 @@ public class AuthExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationException(
             AuthenticationException e, HttpServletRequest request) {
-        log.warn("Authentication exception: {}", e.getMessage());
+        log.warn("Authentication exception: errorType={}", e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
@@ -48,7 +48,7 @@ public class AuthExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentialsException(
             BadCredentialsException e, HttpServletRequest request) {
-        log.warn("Bad credentials: {}", e.getMessage());
+        log.warn("Bad credentials: errorType={}", e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
@@ -66,7 +66,7 @@ public class AuthExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(
             AccessDeniedException e, HttpServletRequest request) {
-        log.warn("Access denied: {}", e.getMessage());
+        log.warn("Access denied: errorType={}", e.getClass().getSimpleName());
         
         ErrorResponse response = buildErrorResponse(
                 HttpStatus.FORBIDDEN.value(),

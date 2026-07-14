@@ -90,8 +90,7 @@ public class QAController {
 
         Long userId = currentUserService.requireUserId(userDetails);
         String traceId = TraceContext.getTraceId();
-        log.info("问答请求: kbId={}, question={}, userId={}",
-                request.kbId(), truncate(request.question(), 50), userId);
+        log.info("问答请求: traceId={}, kbId={}, userId={}", traceId, request.kbId(), userId);
 
         var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
 
@@ -130,7 +129,7 @@ public class QAController {
                     .latencyMs((int) latencyMs)
                     .build());
         } catch (Exception e) {
-            log.warn("保存问答历史失败: {}", e.getMessage());
+            log.warn("保存问答历史失败: errorType={}", e.getClass().getSimpleName());
         }
 
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -153,8 +152,7 @@ public class QAController {
 
         Long userId = currentUserService.requireUserId(userDetails);
         String traceId = TraceContext.getTraceId();
-        log.info("流式问答请求: kbId={}, question={}, userId={}",
-                request.kbId(), truncate(request.question(), 50), userId);
+        log.info("流式问答请求: traceId={}, kbId={}, userId={}", traceId, request.kbId(), userId);
 
         var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
         long startTime = System.currentTimeMillis();
@@ -191,7 +189,7 @@ public class QAController {
                                 // SseEmitter.send() 会自动格式化为 "data:chunk\n\n"
                                 emitter.send(chunk, MediaType.TEXT_PLAIN);
                             } catch (IOException e) {
-                                log.warn("SSE发送失败: {}", e.getMessage());
+                                log.warn("SSE发送失败: errorType={}", e.getClass().getSimpleName());
                                 logStreamDiagnostics("stream_delivery_send_failed", traceId, request.kbId(), userId,
                                         diagnostics, answerBuffer.length(), System.currentTimeMillis() - startTime);
                                 emitter.complete();
@@ -199,8 +197,9 @@ public class QAController {
                         },
                         error -> {
                             long latencyMs = System.currentTimeMillis() - startTime;
-                            log.error("流式问答错误: traceId={}, kbId={}, userId={}, latencyMs={}, error={}",
-                                    traceId, request.kbId(), userId, latencyMs, error.getMessage(), error);
+                            log.error("流式问答错误: traceId={}, kbId={}, userId={}, latencyMs={}, errorType={}",
+                                    traceId, request.kbId(), userId, latencyMs,
+                                    error.getClass().getSimpleName());
                             saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
                                     startTime);
                             logStreamDiagnostics("stream_delivery_error", traceId, request.kbId(), userId,
@@ -211,7 +210,8 @@ public class QAController {
                                 emitter.send("[DONE]", MediaType.TEXT_PLAIN);
                                 emitter.complete();
                             } catch (IOException ioException) {
-                                log.warn("SSE错误消息发送失败: {}", ioException.getMessage());
+                                log.warn("SSE错误消息发送失败: errorType={}",
+                                        ioException.getClass().getSimpleName());
                                 emitter.complete();
                             }
                         },
@@ -287,9 +287,9 @@ public class QAController {
             }
         } catch (Exception e) {
             String message = toDebugRetrieveErrorMessage(e);
-            log.error("检索调试执行失败: traceId={}, kbId={}, userId={}, collection={}, question={}, error={}",
+            log.error("检索调试执行失败: traceId={}, kbId={}, userId={}, collection={}, errorType={}",
                     TraceContext.getTraceId(), request.kbId(), userId, kb.getVectorCollection(),
-                    truncate(request.question(), 80), e.getMessage(), e);
+                    e.getClass().getSimpleName());
 
             RetrievalDebugResponse response = new RetrievalDebugResponse(
                     request.kbId(),
@@ -433,7 +433,7 @@ public class QAController {
                     .latencyMs((int) (System.currentTimeMillis() - startTime))
                     .build());
         } catch (Exception e) {
-            log.warn("保存流式问答历史失败: {}", e.getMessage());
+            log.warn("保存流式问答历史失败: errorType={}", e.getClass().getSimpleName());
         }
     }
 
@@ -527,8 +527,8 @@ public class QAController {
         } catch (Exception e) {
             String message = "queryVariants generation failed: " + e.getClass().getSimpleName();
             warnings.add(message);
-            log.warn("检索调试 queryVariants 生成失败: question={}, error={}",
-                    truncate(question, 80), e.getMessage(), e);
+            log.warn("检索调试 queryVariants 生成失败: errorType={}",
+                    e.getClass().getSimpleName());
             return List.of();
         }
     }
@@ -550,8 +550,8 @@ public class QAController {
                     firstNonBlank(stringValue(query), ""),
                     floatValue(weight, 0.0f));
         } catch (Exception e) {
-            log.warn("检索调试 queryVariant DTO 转换失败: variantType={}, error={}",
-                    variant.getClass().getName(), e.toString());
+            log.warn("检索调试 queryVariant DTO 转换失败: variantType={}, errorType={}",
+                    variant.getClass().getName(), e.getClass().getSimpleName());
             return new QueryVariantDebugItem(String.valueOf(variant), 0.0f);
         }
     }
@@ -646,7 +646,8 @@ public class QAController {
             Map<String, Object> parsed = DEBUG_OBJECT_MAPPER.readValue(trimmed, STRING_OBJECT_MAP);
             return sanitizeMetadata(parsed);
         } catch (Exception e) {
-            log.warn("检索调试 metadata JSON 解析失败: error={}", e.getMessage());
+            log.warn("检索调试 metadata JSON 解析失败: errorType={}",
+                    e.getClass().getSimpleName());
             return Map.of("rawMetadata", trimmed);
         }
     }
@@ -788,7 +789,8 @@ public class QAController {
                         .filter(title -> title != null && !title.isBlank())
                         .ifPresent(title -> documentTitleCache.put(documentId, title));
             } catch (Exception e) {
-                log.warn("检索调试来源解析失败: documentId={}, error={}", documentId, e.getMessage());
+                log.warn("检索调试来源解析失败: documentId={}, errorType={}",
+                        documentId, e.getClass().getSimpleName());
             }
 
             String loadedTitle = documentTitleCache.get(documentId);

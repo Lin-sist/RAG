@@ -188,7 +188,7 @@ def delete_matching_kbs(args: argparse.Namespace, token: str) -> None:
                 f"Refusing to delete KB named {args.kb_name!r} because its description does not match the eval marker."
             )
         kb_id = kb.get("id")
-        print(f"Deleting old eval KB id={kb_id} name={args.kb_name}")
+        print(f"Deleting old eval KB id={kb_id}")
         unwrap(call_json("DELETE", f"{args.base_url}/api/knowledge-bases/{kb_id}", None, token, args.timeout))
 
 
@@ -570,8 +570,18 @@ def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, 
     env = os.environ.copy()
     if args.judge_api_key:
         env["RAG_EVAL_JUDGE_API_KEY"] = args.judge_api_key
-    print("Running:", " ".join(command))
+    print("Running:", " ".join(redact_command(command)))
     subprocess.run(command, check=True, env=env)
+
+
+def redact_command(command: list[str]) -> list[str]:
+    redacted = list(command)
+    for option in ("--password", "--judge-api-key"):
+        if option in redacted:
+            value_index = redacted.index(option) + 1
+            if value_index < len(redacted):
+                redacted[value_index] = "***"
+    return redacted
 
 
 def build_plan(
@@ -587,9 +597,7 @@ def build_plan(
     return {
         "mode": "generation/citation" if args.include_ask else "retrieval-only",
         "baseUrl": args.base_url,
-        "kbName": args.kb_name,
-        "evalSet": args.eval_set,
-        "fixtures": [str(path) for path in fixtures],
+        "fixtureCount": len(fixtures),
         "keepExisting": args.keep_existing,
         "willUploadFixtures": not args.keep_existing,
         "expectedFixtureUploads": 0 if args.keep_existing else len(fixtures),
@@ -605,15 +613,44 @@ def build_plan(
         "retryAskTimeouts": args.retry_ask_timeouts,
         "repeat": args.repeat,
         "estimatedLiveCalls": estimate_live_calls(args, selected_samples, repeat),
-        "reports": [str(repeat_path(args.report, repeat, index)) for index in range(1, repeat + 1)],
-        "detailsJson": [str(repeat_path(args.details_json, repeat, index)) for index in range(1, repeat + 1)],
-        "metadataJson": str(Path(args.metadata_json)),
-        "childCommandShape": build_eval_command(args, 0, Path(args.report), Path(args.details_json), Path(args.metadata_json)),
+        "outputSetCount": repeat,
+        "childCommandShape": redact_command(
+            build_eval_command(args, 0, Path(args.report), Path(args.details_json), Path(args.metadata_json))
+        ),
     }
 
 
 def print_plan(plan: dict[str, Any]) -> None:
     print(json.dumps(plan, ensure_ascii=False, indent=2))
+
+
+def redact_preflight_for_display(preflight: dict[str, Any]) -> dict[str, Any]:
+    knowledge_base = preflight.get("knowledgeBase") or {}
+    fixtures = preflight.get("fixtures") or {}
+    documents = fixtures.get("documents") or []
+    return {
+        "status": preflight.get("status"),
+        "mutationFree": preflight.get("mutationFree"),
+        "baseUrl": preflight.get("baseUrl"),
+        "knowledgeBase": {
+            "id": knowledge_base.get("id"),
+            "vectorCollection": knowledge_base.get("vectorCollection"),
+        },
+        "fixtures": {
+            "expectedCount": fixtures.get("expectedCount", 0),
+            "matchedCount": fixtures.get("matchedCount", 0),
+            "missingCount": len(fixtures.get("missing") or []),
+            "incompleteCount": len(fixtures.get("incomplete") or []),
+            "documentStates": [
+                {
+                    "status": document.get("status"),
+                    "chunkCount": document.get("chunkCount", 0),
+                }
+                for document in documents
+            ],
+        },
+        "nextStep": preflight.get("nextStep"),
+    }
 
 
 def main() -> int:
@@ -622,7 +659,7 @@ def main() -> int:
     fixtures = [Path(value) for value in (args.fixtures or [str(path) for path in DEFAULT_FIXTURES])]
     missing = [str(path) for path in fixtures if not path.exists()]
     if missing:
-        print(f"Missing fixture file(s): {missing}", file=sys.stderr)
+        print(f"Missing fixture file count: {len(missing)}", file=sys.stderr)
         return 2
     if args.repeat < 1:
         print("--repeat must be >= 1", file=sys.stderr)
@@ -642,7 +679,7 @@ def main() -> int:
             raise ApiError(f"Eval KB {args.kb_name!r} does not exist; preflight never creates it")
         kb_id = int(kb["id"])
         preflight = build_preflight(args, kb, list_documents(args, token, kb_id), fixtures)
-        print(json.dumps(preflight, ensure_ascii=False, indent=2))
+        print(json.dumps(redact_preflight_for_display(preflight), ensure_ascii=False, indent=2))
         return 0 if preflight["status"] == "READY" else 1
 
     kb = get_or_create_kb(args, token)
@@ -656,7 +693,7 @@ def main() -> int:
             if not task_id:
                 raise ApiError(f"Upload response for {fixture} did not include taskId")
             task_ids.append(task_id)
-            print(f"Uploaded {fixture} taskId={task_id}")
+            print(f"Uploaded fixture taskId={task_id}")
         docs = wait_for_indexing(args, token, kb_id, task_ids, {path.name for path in fixtures})
     else:
         docs = docs_for_expected_files(list_documents(args, token, kb_id), {path.name for path in fixtures})
@@ -679,5 +716,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except ApiError as exc:
-        print(f"Reproducible eval failed: {exc}", file=sys.stderr)
+        print(f"Reproducible eval failed: errorType={type(exc).__name__}", file=sys.stderr)
         raise SystemExit(1) from exc

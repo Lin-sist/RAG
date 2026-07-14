@@ -78,10 +78,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 
-                log.debug("用户 {} 认证成功", userPrincipal.getUsername());
+                log.debug("用户认证成功");
             }
         } catch (Exception e) {
-            log.error("JWT 认证过程中发生错误", e);
+            log.error("JWT 认证过程中发生错误: errorType={}",
+                    e.getClass().getSimpleName());
         }
 
         filterChain.doFilter(request, response);

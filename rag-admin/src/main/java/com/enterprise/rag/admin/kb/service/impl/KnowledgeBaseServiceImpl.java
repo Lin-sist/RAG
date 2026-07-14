@@ -68,7 +68,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             vectorStore.createCollection(collectionName, dimension);
             log.info("Created vector collection: {} with dimension: {}", collectionName, dimension);
         } catch (Exception e) {
-            log.error("Failed to create vector collection {}, rollback create: {}", collectionName, e.getMessage());
+            log.error("Failed to create vector collection {}, rollback create: errorType={}",
+                    collectionName, e.getClass().getSimpleName());
             throw new BusinessException("KB_005", "创建知识库失败：向量集合初始化失败", e);
         }
 
@@ -169,7 +170,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 vectorStore.dropCollection(kb.getVectorCollection());
                 log.info("Dropped vector collection: {}", kb.getVectorCollection());
             } catch (Exception e) {
-                log.warn("Failed to drop vector collection {}: {}", kb.getVectorCollection(), e.getMessage());
+                log.warn("Failed to drop vector collection {}: errorType={}",
+                        kb.getVectorCollection(), e.getClass().getSimpleName());
             }
         }
 
@@ -201,8 +203,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             try {
                 vectorCount = vectorStore.count(kb.getVectorCollection());
             } catch (Exception e) {
-                log.warn("Failed to get vector count for collection {}: {}",
-                        kb.getVectorCollection(), e.getMessage());
+                log.warn("Failed to get vector count for collection {}: errorType={}",
+                        kb.getVectorCollection(), e.getClass().getSimpleName());
             }
         }
 
@@ -239,7 +241,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         try {
             redisTemplate.opsForValue().increment(QUERY_COUNT_KEY_PREFIX + id);
         } catch (Exception e) {
-            log.warn("Failed to increment query count for kb {}: {}", id, e.getMessage());
+            log.warn("Failed to increment query count for kb {}: errorType={}",
+                    id, e.getClass().getSimpleName());
         }
     }
 

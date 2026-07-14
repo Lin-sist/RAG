@@ -49,9 +49,9 @@ public class AuthController {
     })
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request) {
-        log.info("用户登录请求: username={}", request.getUsername());
+        log.info("用户登录请求");
         AuthResponse response = authService.login(request);
-        log.info("用户登录成功: username={}", request.getUsername());
+        log.info("用户登录成功");
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

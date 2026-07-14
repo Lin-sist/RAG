@@ -183,6 +183,8 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertTrue(plan["retryAskTimeouts"])
         self.assertIn("--sample-id", plan["childCommandShape"])
         self.assertNotIn("--judge-api-key", plan["childCommandShape"])
+        password_index = plan["childCommandShape"].index("--password") + 1
+        self.assertEqual("***", plan["childCommandShape"][password_index])
 
     def test_build_plan_marks_keep_existing_as_no_fixture_uploads(self) -> None:
         args = self.eval_command_args(include_ask=True)

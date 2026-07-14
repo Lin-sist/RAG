@@ -21,7 +21,8 @@ public class IdempotencyExceptionHandler {
      */
     @ExceptionHandler(IdempotencyException.class)
     public ResponseEntity<ApiResponse<Void>> handleIdempotencyException(IdempotencyException e) {
-        log.warn("Idempotency exception: {}", e.getMessage());
+        log.warn("Idempotency exception: errorCode={}, errorType={}",
+                e.getErrorCode(), e.getClass().getSimpleName());
         
         ApiResponse<Void> response = ApiResponse.error(e.getErrorCode(), e.getMessage());
         return ResponseEntity.status(e.getHttpStatus()).body(response);
