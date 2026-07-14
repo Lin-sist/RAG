@@ -15,7 +15,7 @@ spring:
 
 mybatis-plus:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
 
 jwt:
   secret: test-secret-key-for-testing-purposes-only-256-bits

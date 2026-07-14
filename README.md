@@ -189,14 +189,20 @@ npm run dev
 后端默认地址：`http://localhost:8080`
 Swagger：`http://localhost:8080/swagger-ui.html`
 
-## 7. 默认数据与账号
+## 7. 初始化数据与管理员 Bootstrap
 
 Flyway 会自动执行初始化脚本（`V1/V2/V3`），包含：
 - 基础表结构（用户、角色、权限、知识库、文档、历史、任务等）
 - 默认角色与权限
-- 默认管理员账号（可在迁移脚本中查看）
+- 历史管理员种子会由后续迁移隔离，不能作为运行时登录凭据
 
-建议在本地联调时根据实际环境修改默认密码与敏感配置。
+系统不提供固定默认账号。空用户库首次初始化管理员时，显式提供以下环境变量；完成后关闭开关并撤去初始密码：
+
+```powershell
+$env:AUTH_BOOTSTRAP_ENABLED="true"
+$env:AUTH_BOOTSTRAP_USERNAME="<your-admin-username>"
+$env:AUTH_BOOTSTRAP_PASSWORD="<your-strong-password>"
+```
 
 ## 8. 配置说明（关键项）
 

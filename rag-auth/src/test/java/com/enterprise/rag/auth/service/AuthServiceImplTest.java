@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Optional;
 import java.util.Set;
@@ -24,6 +25,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.same;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AuthServiceImplTest {
@@ -79,6 +82,90 @@ class AuthServiceImplTest {
                 .thenReturn("another-refresh-token");
 
         assertThrows(AuthException.class, () -> authService.refreshToken(refreshToken));
+    }
+
+    @Test
+    void shouldRejectRefreshWhenReloadedDatabaseUserIsDisabled() {
+        String refreshToken = "refresh-token";
+        UserPrincipal tokenPrincipal = UserPrincipal.builder()
+                .id(7L)
+                .username("alice")
+                .enabled(true)
+                .roles(Set.of("USER"))
+                .build();
+        UserPrincipal disabledDatabaseUser = UserPrincipal.builder()
+                .id(7L)
+                .username("alice")
+                .enabled(false)
+                .roles(Set.of("USER"))
+                .build();
+
+        when(jwtTokenProvider.isTokenValid(refreshToken)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklisted(refreshToken)).thenReturn(false);
+        when(jwtTokenProvider.getTokenType(refreshToken)).thenReturn("refresh");
+        when(jwtTokenProvider.getUserPrincipalFromToken(refreshToken)).thenReturn(tokenPrincipal);
+        when(redisUtil.hasKey(RedisKeyConstants.userSessionKey(7L))).thenReturn(true);
+        when(redisUtil.hGet(RedisKeyConstants.userSessionKey(7L), "refreshToken"))
+                .thenReturn(refreshToken);
+        when(userDetailsService.loadUserByUsername("alice")).thenReturn(disabledDatabaseUser);
+
+        assertThrows(AuthException.class, () -> authService.refreshToken(refreshToken));
+    }
+
+    @Test
+    void shouldRejectRefreshWhenDatabaseUserNoLongerExists() {
+        String refreshToken = "refresh-token";
+        UserPrincipal tokenPrincipal = UserPrincipal.builder()
+                .id(7L)
+                .username("alice")
+                .enabled(true)
+                .roles(Set.of("USER"))
+                .build();
+
+        when(jwtTokenProvider.isTokenValid(refreshToken)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklisted(refreshToken)).thenReturn(false);
+        when(jwtTokenProvider.getTokenType(refreshToken)).thenReturn("refresh");
+        when(jwtTokenProvider.getUserPrincipalFromToken(refreshToken)).thenReturn(tokenPrincipal);
+        when(redisUtil.hasKey(RedisKeyConstants.userSessionKey(7L))).thenReturn(true);
+        when(redisUtil.hGet(RedisKeyConstants.userSessionKey(7L), "refreshToken"))
+                .thenReturn(refreshToken);
+        when(userDetailsService.loadUserByUsername("alice"))
+                .thenThrow(new UsernameNotFoundException("用户不存在"));
+
+        assertThrows(UsernameNotFoundException.class, () -> authService.refreshToken(refreshToken));
+    }
+
+    @Test
+    void shouldUseReloadedDatabaseRolesWhenRefreshingTokens() {
+        String refreshToken = "refresh-token";
+        UserPrincipal tokenPrincipal = UserPrincipal.builder()
+                .id(7L)
+                .username("alice")
+                .enabled(true)
+                .roles(Set.of("USER"))
+                .build();
+        UserPrincipal freshDatabaseUser = UserPrincipal.builder()
+                .id(7L)
+                .username("alice")
+                .enabled(true)
+                .roles(Set.of("ADMIN"))
+                .build();
+
+        when(jwtTokenProvider.isTokenValid(refreshToken)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklisted(refreshToken)).thenReturn(false);
+        when(jwtTokenProvider.getTokenType(refreshToken)).thenReturn("refresh");
+        when(jwtTokenProvider.getUserPrincipalFromToken(refreshToken)).thenReturn(tokenPrincipal);
+        when(redisUtil.hasKey(RedisKeyConstants.userSessionKey(7L))).thenReturn(true);
+        when(redisUtil.hGet(RedisKeyConstants.userSessionKey(7L), "refreshToken"))
+                .thenReturn(refreshToken);
+        when(userDetailsService.loadUserByUsername("alice")).thenReturn(freshDatabaseUser);
+        when(jwtTokenProvider.generateAccessToken(freshDatabaseUser)).thenReturn("new-access-token");
+        when(jwtTokenProvider.generateRefreshToken(freshDatabaseUser)).thenReturn("new-refresh-token");
+
+        authService.refreshToken(refreshToken);
+
+        verify(jwtTokenProvider).generateAccessToken(same(freshDatabaseUser));
+        verify(jwtTokenProvider).generateRefreshToken(same(freshDatabaseUser));
     }
 
     @Test

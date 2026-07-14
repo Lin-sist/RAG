@@ -11,6 +11,12 @@ import run_reproducible_rag_eval as runner
 
 
 class ReproducibleRagEvalTest(unittest.TestCase):
+    def test_require_credentials_rejects_missing_values(self) -> None:
+        args = argparse.Namespace(username="", password="")
+
+        with self.assertRaisesRegex(runner.ApiError, "explicit credentials"):
+            runner.require_credentials(args)
+
     def test_repeat_path_suffixes_only_when_repeated(self) -> None:
         self.assertEqual(
             Path("docs/eval/reports/stage1.md"),
@@ -291,6 +297,10 @@ class ReproducibleRagEvalTest(unittest.TestCase):
                 str(eval_set),
                 "--fixture",
                 str(fixture),
+                "--username",
+                "test-operator",
+                "--password",
+                "test-only-password",
             ]
             kb = {
                 "id": 15,

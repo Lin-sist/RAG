@@ -215,3 +215,56 @@
 - 范围验证：工作区仅修改 `.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md` 并新增本 C2 change 目录；Java、SQL、Vue、运行配置、依赖与评测脚本零改动。
 - 外部调用复核：embedding/rerank/judge/ask 实际调用量均为 0，无业务数据出站或费用。
 - Commit：`pending`；提交责任仍为用户手动提交。
+
+## 2026-07-14｜C2 规格草案提交补录
+
+- Commit：`2282d2a14e8e1d3d0f0a5154a5c332912617c05a`。
+- 结论：C2 proposal、design、tasks、spec delta 与 ACTIVE_TASK 已由用户手动完成中文提交；用户随后明确批准草案及全部设计决策，允许按 TDD 进入实现。
+
+## 2026-07-14｜C2 规格草案提交 hash 更正
+
+- 更正：上一条补录中的 commit hash 录入错误；真实 commit 为 `2282d2ab7c40ffe5954c1e098cce3ba7f4f0d9b0`。
+- 说明：按 append-only 规则保留原记录并追加更正，不回改历史文本。
+
+## 2026-07-14｜C2 草案批准与实现启动
+
+- 用户决策：用户明确批准 proposal、design、tasks、spec delta 及五项设计决策，授权按 TDD 开始 C2 实现。
+- 当前切片：Phase 1 数据库用户/角色查询边界；先写一个公共行为测试形成 RED，再加入最小持久层实现转 GREEN，不并行铺开后续 phase。
+- 提交责任：用户手动提交；Agent 不暂存、不提交、不 push。
+- 外部调用：本切片 embedding/rerank/judge/ask 计划调用量均为 0；只运行本地 Maven 测试。
+- Commit：`pending`。
+
+## 2026-07-14｜C2 database-backed-authentication 实现与本地验证
+
+- 类型：Type C 重大变更实现；change 保持 `ACTIVE`，等待真实 MySQL/Flyway 证据与用户验收。
+- 范围与修改文件：`rag-auth` 新增 bootstrap、认证 user/role mapper 与 repository，替换 `UserDetailsServiceImpl` 的内存用户；`rag-admin` 新增 `V6__quarantine_known_admin_seed.sql`、数据库认证/bootstrap/H2 兼容性/Testcontainers MySQL 测试并增加 `auth.bootstrap` 配置；补 refresh 测试；清理登录页、评测脚本和正式文档中的固定凭据入口；同步 C2 tasks、ACTIVE_TASK、架构与技术债说明。
+- 已确认事实与关键决策：登录和 refresh 以数据库未删除用户及有效角色为事实源；角色只映射 `ROLE_*`，不加载 permission code；V6 只按历史 username + 精确 hash 隔离 known seed，禁用并保留 ID；bootstrap 默认关闭，只允许空库创建、精确隔离种子接管、正常 ADMIN no-op，其他状态 fail-fast；外部密码仅以 BCrypt hash 入库，正常用户状态与凭据不被覆盖。
+- TDD 证据：数据库用户测试先在旧内存实现上 RED，再由 mapper/repository/UserDetailsService 转 GREEN；V6 资源缺失先 RED，再由精确 migration 转 GREEN；bootstrap 从缺少类型、未实现创建、`user` 保留字、种子接管、幂等 no-op、known-default 放行等连续 RED 推进到 GREEN；两个 eval runner 的显式凭据 helper 均先 RED 后 GREEN；全量 Python 首轮暴露 preflight 测试缺少显式凭据，修正 test-scope fixture 后转 GREEN。
+- 迁移事实：历史 V1→V5 未修改，Git blob hash 依次为 `b38c90e0fb367e729143403caff016436e2091ea`、`df30a10907a2243de2e23e7e157032f0f99fcb39`、`77c752db9ebb696a78a934d0628051b1b2c9a657`、`f591e0d72b016db64f32e28dd1c5d50f01717986`、`163b7a8fd7fd3e275e772b9bf99010e2198f36fc`；`git diff --exit-code` 确认这些文件相对 HEAD 无改动。
+- 验证：`mvn -q -pl rag-auth -am test` 通过；C2 聚焦测试通过；最终 `mvn -q test` 通过，Surefire 汇总 45 suites / 200 tests / 0 failures / 0 errors / 2 skipped；`python -B -m unittest discover -s scripts -p 'test_*.py'` 33 tests 通过；SensitiveLogs 扫描 331 个源码文件通过；正式前端 `vue-tsc -b` 与 `vite build` 通过；change 四个 artifact、requirement/scenario 结构、10 个变更 Markdown 文件相对链接、固定凭据范围扫描和 `git diff --check` 通过。
+- 跳过项及原因：本机 Docker daemon 不可用，因此 `KnownSeedMigrationMySqlTest` 的 2 个真实 MySQL 场景由 `disabledWithoutDocker` 明确 skipped；没有把 H2 兼容性测试当作 MySQL/Flyway 验收，也未勾选 Phase 2/6 的真实 MySQL 项。完整 Maven 日志中的 3 条 Redis unavailable 是既有属性测试内部条件降级；Maven 仍成功，但它们不构成真实 Redis 证据。
+- 工具说明：bundled pnpm 与现有 npm 布局不兼容，首次前端尝试把依赖移入 ignored 目录并因沙箱网络失败；已恢复被忽略的本地 `node_modules` 布局，随后通过项目质量脚本的 direct Node fallback 完成正式 build，tracked files 未受该尝试污染。
+- 外部调用：embedding/rerank/judge/ask 及其他业务 provider 实际调用量均为 0；无业务数据出站、无模型费用或限流风险。Maven 仅解析仓库已声明依赖；Docker/MySQL 容器未启动。
+- 范围安全：未修改历史 V1/V3 migration、API/DTO/token shape、RAG pipeline、评测指标、依赖版本、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、提交、push、部署或发布。
+- 剩余风险：真实 MySQL 上的全新 V1→V6、V5 known seed 升级、changed-admin 不变、重复 migrate 与 Flyway validate 尚未执行；存量 access token 实时撤权仍按批准设计留在后续 change；前端 build 保留既有大 chunk 警告。完成 MySQL 证据并由用户确认验收前，不接受 baseline delta、不将 ACTIVE_TASK 置为 IDLE、不归档 C2。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-15｜C2 真实 MySQL/Flyway 最终技术验收
+
+- 类型：Type C 最终技术验收；change 保持 `ACTIVE`，等待用户明确确认实现验收通过。
+- 范围与修改文件：补强 `KnownSeedMigrationMySqlTest.java`，新增“V5 exact known seed 升级后原 ID 不变”的独立场景；同步 C2 `tasks.md`、`.ai/ACTIVE_TASK.md` 与本日志。未改动 V6 实现或其他业务逻辑。
+- 已确认事实：Docker Desktop 4.47.0、Engine 28.4.0 可用；Testcontainers 使用 `mysql:8.0.36` 与合成数据库 `rag_c2_migration`，未连接或修改本机 MySQL80 数据。
+- 真实 MySQL 证据：`KnownSeedMigrationMySqlTest` 3 tests / 0 failures / 0 errors / 0 skipped；覆盖全新数据库 V1→V6 后 exact seed 被隔离、重复 migrate 执行数为 0、V5 exact seed 升级保留原 user ID、V5 changed-admin 的 hash/enabled/version/ID 均不变；Flyway 9.22.3 对 6 migrations validate 成功。
+- 完整验证：最终 `mvn -q test` 通过，Surefire 汇总 45 suites / 201 tests / 0 failures / 0 errors / 0 skipped；`python -B -m unittest discover -s scripts -p 'test_*.py'` 33 tests 通过；SensitiveLogs 门禁通过；正式前端 `vue-tsc -b` 与 `vite build` 通过并转换 3334 modules。
+- 警告与降级：MySQL 8 对历史 V1/V2 中 integer display width 输出弃用警告，不影响 migration/validate，属于既有 schema 兼容性债务；完整 Maven 日志仍有 3 条既有 Redis unavailable 属性测试内部条件降级，但 Surefire skipped 为 0；前端保留既有大 chunk 警告。
+- 外部调用：首次 Testcontainers 执行从 Docker Hub 拉取 `testcontainers/ryuk:0.5.1` 与 `mysql:8.0.36` 镜像；未发送业务数据、用户凭据或 secret。embedding/rerank/judge/ask 及其他业务 provider 调用量均为 0。
+- 范围安全：未修改历史 V1→V5 migration、API/DTO/token shape、RAG pipeline、评测指标、依赖版本、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、提交、push、部署或发布。
+- 剩余步骤：等待用户明确确认实现验收通过；确认后才接受 delta 到 baseline、将 ACTIVE_TASK 恢复 `IDLE` 并归档 change。当前不提前执行治理收口。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-15｜C2 验收确认与提交授权
+
+- 用户决策：用户明确回复“C2 验收通过”，并授权 Agent 为本 change 创建必要的本地中文 commit，可按范围拆分。
+- 提交边界：授权仅包含计划内文件的 `git add` 与本地 `git commit`；不包含 push、PR、发布或部署。
+- 提交计划：先提交 C2 实现、测试与技术验收证据；取得真实实现 hash 后，再以独立治理提交接受 spec delta、恢复 `IDLE` 并归档 change。
+- Commit：`pending`。

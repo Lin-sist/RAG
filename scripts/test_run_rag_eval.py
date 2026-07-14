@@ -8,6 +8,12 @@ import run_rag_eval as runner
 
 
 class RunRagEvalJudgeTest(unittest.TestCase):
+    def test_require_credentials_rejects_missing_values(self) -> None:
+        args = argparse.Namespace(username="", password="")
+
+        with self.assertRaisesRegex(RuntimeError, "explicit credentials"):
+            runner.require_credentials(args)
+
     def test_parse_judge_content_accepts_fenced_json_and_clamps_scores(self) -> None:
         parsed = runner.parse_judge_content(
             """```json

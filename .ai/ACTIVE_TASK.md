@@ -11,9 +11,9 @@
 - 目标：将登录与 refresh 的用户事实源切换到数据库，增加默认关闭的一次性管理员 bootstrap，并通过前向 migration 隔离已知默认管理员凭据。
 - 范围：认证 user/role 持久层、数据库 `UserDetailsService`、refresh 状态重载、known seed 安全迁移、bootstrap、固定凭据入口清理及相应测试。
 - 非目标：注册/用户管理/密码修改 API、实时 access token 撤权、租户模型、C3 联合集成测试及任何 RAG 指标行为调整。
-- 当前阶段：proposal/design/tasks/spec delta 草案已建立，等待用户审阅批准；批准前不进入实现。
+- 当前阶段：Phase 1→6 技术实现与验证均已完成；MySQL 8.0.36 Testcontainers、完整 Maven、Python、正式前端 build、敏感日志和范围门禁全部通过，等待用户明确确认验收后接受 delta、恢复 `IDLE` 并归档 C2。
 - 验收入口：`openspec/changes/2026-07-14-database-backed-authentication/tasks.md` 的 Phase 6。
-- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push。
+- 提交责任：`Agent 提交`；用户已明确授权本地中文 commit，不授权 push、PR、发布或部署。
 
 ## Last Completed
 

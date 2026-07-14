@@ -49,8 +49,8 @@ class ApiError(RuntimeError):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare and run a reproducible RAG eval.")
     parser.add_argument("--base-url", default=os.getenv("RAG_BASE_URL", DEFAULT_BASE_URL))
-    parser.add_argument("--username", default=os.getenv("RAG_EVAL_USERNAME", "admin"))
-    parser.add_argument("--password", default=os.getenv("RAG_EVAL_PASSWORD", "admin123"))
+    parser.add_argument("--username", default=os.getenv("RAG_EVAL_USERNAME", ""))
+    parser.add_argument("--password", default=os.getenv("RAG_EVAL_PASSWORD", ""))
     parser.add_argument("--kb-name", default=os.getenv("RAG_EVAL_KB_NAME", DEFAULT_KB_NAME))
     parser.add_argument("--kb-description", default=os.getenv("RAG_EVAL_KB_DESCRIPTION", DEFAULT_KB_MARKER))
     parser.add_argument("--eval-set", default=os.getenv("RAG_EVAL_SET", str(DEFAULT_EVAL_SET)))
@@ -98,6 +98,14 @@ def parse_args() -> argparse.Namespace:
     if args.ask_timeout is None:
         args.ask_timeout = args.timeout
     return args
+
+
+def require_credentials(args: argparse.Namespace) -> None:
+    if not str(args.username).strip() or not str(args.password).strip():
+        raise ApiError(
+            "Reproducible RAG eval requires explicit credentials via "
+            "--username/--password or RAG_EVAL_USERNAME/RAG_EVAL_PASSWORD."
+        )
 
 
 def parse_float_env(name: str) -> float | None:
@@ -671,6 +679,12 @@ def main() -> int:
     if args.plan_only:
         print_plan(build_plan(args, fixtures, selected_samples))
         return 0
+
+    try:
+        require_credentials(args)
+    except ApiError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
 
     token = login(args)
     if args.preflight_only:

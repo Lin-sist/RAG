@@ -14,7 +14,6 @@
         </el-button>
       </el-form-item>
     </el-form>
-    <div class="login-tip">默认账号：admin / admin123</div>
   </div>
 </template>
 
@@ -58,11 +57,5 @@ async function handleLogin() {
   height: 44px;
   font-size: 16px;
   border-radius: var(--rag-radius-sm);
-}
-.login-tip {
-  text-align: center;
-  margin-top: var(--rag-space-4);
-  font-size: var(--rag-font-small);
-  color: rgba(255, 255, 255, 0.4);
 }
 </style>

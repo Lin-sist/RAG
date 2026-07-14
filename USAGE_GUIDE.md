@@ -37,14 +37,16 @@ curl -s http://localhost:8080/actuator/health | jq
 
 ```bash
 BASE_URL="http://localhost:8080"
+export RAG_EVAL_USERNAME="<your-username>"
+export RAG_EVAL_PASSWORD="<your-password>"
 
-TOKEN=$(curl -s -X POST "$BASE_URL/auth/login" \
+LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}' | jq -r '.data.accessToken')
+  -d "$(jq -n --arg username "$RAG_EVAL_USERNAME" --arg password "$RAG_EVAL_PASSWORD" \
+    '{username:$username,password:$password}')")
 
-REFRESH_TOKEN=$(curl -s -X POST "$BASE_URL/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}' | jq -r '.data.refreshToken')
+TOKEN=$(jq -r '.data.accessToken' <<<"$LOGIN_RESPONSE")
+REFRESH_TOKEN=$(jq -r '.data.refreshToken' <<<"$LOGIN_RESPONSE")
 
 echo "TOKEN长度: ${#TOKEN}"
 echo "REFRESH_TOKEN长度: ${#REFRESH_TOKEN}"

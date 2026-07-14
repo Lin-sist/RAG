@@ -234,7 +234,13 @@ PowerShell 示例：
 
 ```powershell
 $base="http://localhost:8080"
-$login = Invoke-RestMethod -Method Post -Uri "$base/auth/login" -ContentType "application/json" -Body '{"username":"admin","password":"admin123"}'
+$env:RAG_EVAL_USERNAME="<your-username>"
+$env:RAG_EVAL_PASSWORD="<your-password>"
+$loginBody = @{
+  username = $env:RAG_EVAL_USERNAME
+  password = $env:RAG_EVAL_PASSWORD
+} | ConvertTo-Json
+$login = Invoke-RestMethod -Method Post -Uri "$base/auth/login" -ContentType "application/json" -Body $loginBody
 $token = $login.data.accessToken
 
 $headers = @{ Authorization = "Bearer $token" }
@@ -297,8 +303,8 @@ python scripts/run_rag_eval.py --kb-id <kb-id>
 python scripts/run_rag_eval.py \
   --base-url http://localhost:8080 \
   --kb-id <kb-id> \
-  --username admin \
-  --password admin123 \
+  --username <your-username> \
+  --password <your-password> \
   --top-k 5 \
   --min-score 0.3 \
   --enable-rerank \
@@ -361,8 +367,8 @@ python scripts\run_rag_eval.py --kb-id 6 `
 
 ```bash
 set RAG_EVAL_KB_ID=<kb-id>
-set RAG_EVAL_USERNAME=admin
-set RAG_EVAL_PASSWORD=admin123
+set RAG_EVAL_USERNAME=<your-username>
+set RAG_EVAL_PASSWORD=<your-password>
 python scripts/run_rag_eval.py
 ```
 

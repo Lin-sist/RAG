@@ -101,8 +101,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report", default=os.getenv("RAG_EVAL_REPORT", str(DEFAULT_REPORT)))
     parser.add_argument("--after-report", default=os.getenv("RAG_EVAL_AFTER_REPORT", ""))
     parser.add_argument("--kb-id", type=int, default=parse_int_env("RAG_EVAL_KB_ID"))
-    parser.add_argument("--username", default=os.getenv("RAG_EVAL_USERNAME", "admin"))
-    parser.add_argument("--password", default=os.getenv("RAG_EVAL_PASSWORD", "admin123"))
+    parser.add_argument("--username", default=os.getenv("RAG_EVAL_USERNAME", ""))
+    parser.add_argument("--password", default=os.getenv("RAG_EVAL_PASSWORD", ""))
     parser.add_argument("--top-k", type=int, default=int(os.getenv("RAG_EVAL_TOP_K", "5")))
     parser.add_argument("--min-score", type=float, default=float(os.getenv("RAG_EVAL_MIN_SCORE", "0.3")))
     parser.add_argument("--enable-rerank", action=argparse.BooleanOptionalAction, default=True)
@@ -136,6 +136,14 @@ def parse_args() -> argparse.Namespace:
     if args.ask_timeout is None:
         args.ask_timeout = args.timeout
     return args
+
+
+def require_credentials(args: argparse.Namespace) -> None:
+    if not str(args.username).strip() or not str(args.password).strip():
+        raise RuntimeError(
+            "RAG eval requires explicit credentials via --username/--password "
+            "or RAG_EVAL_USERNAME/RAG_EVAL_PASSWORD."
+        )
 
 
 def parse_int_env(name: str) -> int | None:
@@ -256,7 +264,7 @@ def fail_hint(error: str) -> str:
     if "cannot connect" in lowered or "actively refused" in lowered or "connection refused" in lowered:
         return "后端未启动或端口不对。请先启动 MySQL/Redis/Milvus，再启动 RagQaApplication.main()。"
     if "401" in error or "403" in error or "bad credentials" in lowered:
-        return "登录失败。请检查 --username/--password，默认账号通常是 admin/admin123。"
+        return "登录失败。请检查显式提供的 --username/--password 或对应环境变量。"
     if "404" in error and "knowledge" in lowered:
         return "知识库不存在。请先创建 eval 知识库，并用 --kb-id 指定返回的 id。"
     if "collection not found" in lowered or "index" in lowered:
@@ -1603,6 +1611,11 @@ def main() -> int:
     if args.plan_only:
         print_eval_plan(eval_plan(samples, args))
         return 0
+    try:
+        require_credentials(args)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     token = ""
     login_error = None
     results: list[SampleResult] = []

@@ -11,11 +11,12 @@
 - 验证：标准 build 中的 `vue-tsc -b` 与 `vite build` 均通过，并生成正式 `dist/`。
 - 证据：`rag-frontend/package.json`、`rag-frontend/tsconfig.json`。
 
-### 2. 认证用户与默认凭据治理
+### 2. 认证用户与默认凭据治理（C2 实现中）
 
-- 现状：`UserDetailsServiceImpl` 仍在内存中初始化 `admin/admin123` 与 `user/user123`；`application.yml` 仍有开发态 JWT fallback。
-- 目标：数据库用户体系、环境级 bootstrap 管理员、生产启动时拒绝弱默认 secret。
-- 证据：`rag-auth/.../UserDetailsServiceImpl.java`、`rag-admin/src/main/resources/application.yml`。
+- 已实现：`UserDetailsServiceImpl` 改为数据库用户与角色查询，历史固定管理员种子由前向 migration 精确隔离，并提供默认关闭、外部凭据驱动的一次性管理员 bootstrap。
+- 待验收：真实 MySQL/Flyway 升级路径、完整质量门禁和用户验收；完成前仍以 active C2 OpenSpec 为准。
+- 独立剩余债务：`application.yml` 的开发态 JWT fallback 不属于 C2 登录/refresh 契约，后续需单独治理。
+- 证据：`openspec/changes/2026-07-14-database-backed-authentication/`、`rag-auth/.../UserDetailsServiceImpl.java`、`rag-admin/src/main/resources/db/migration/V6__quarantine_known_admin_seed.sql`。
 
 ### 3. 补真实依赖集成测试
 

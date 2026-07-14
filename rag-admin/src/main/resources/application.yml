@@ -66,6 +66,14 @@ jwt:
   access-token-expiration: 3600  # 1 hour in seconds
   refresh-token-expiration: 604800  # 7 days in seconds
 
+# One-time admin bootstrap. Disabled by default; credentials must come from the environment.
+auth:
+  bootstrap:
+    enabled: ${AUTH_BOOTSTRAP_ENABLED:false}
+    username: ${AUTH_BOOTSTRAP_USERNAME:}
+    password: ${AUTH_BOOTSTRAP_PASSWORD:}
+    email: ${AUTH_BOOTSTRAP_EMAIL:}
+
 # Logging
 logging:
   level:
@@ -73,6 +81,7 @@ logging:
     com.enterprise.rag: DEBUG
     com.enterprise.rag.admin.kb.mapper: INFO
     com.enterprise.rag.admin.qa.mapper: INFO
+    com.enterprise.rag.auth.persistence.mapper: INFO
     org.springframework.security: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId}] %-5level %logger{36} - %msg%n"

@@ -19,10 +19,12 @@
 
 ```json
 {
-  "username": "admin",
-  "password": "admin123"
+  "username": "<your-bootstrap-username>",
+  "password": "<your-bootstrap-password>"
 }
 ```
+
+系统不提供固定默认账号；这里使用由环境级 bootstrap 创建或接管的管理员凭据。
 
 点击 **Execute**，响应中会返回：
 
@@ -134,9 +136,15 @@ RAG 系统的正常使用流程：
 
 ```powershell
 # 1. 登录
+$env:RAG_API_USERNAME = "<your-username>"
+$env:RAG_API_PASSWORD = "<your-password>"
+$loginBody = @{
+  username = $env:RAG_API_USERNAME
+  password = $env:RAG_API_PASSWORD
+} | ConvertTo-Json
 $response = Invoke-RestMethod -Uri "http://localhost:8080/auth/login" `
   -Method POST -ContentType "application/json" `
-  -Body '{"username":"admin","password":"admin123"}'
+  -Body $loginBody
 
 $token = $response.data.accessToken
 Write-Host "Token: $token"
