@@ -24,6 +24,7 @@
 - 验证：目录契约、spec 标题层级、YAML 必需字段、引用、Markdown 链接与 `git diff --check` 均通过；本机未发现 `openspec` CLI，Python 环境也没有 PyYAML，因此未执行官方 CLI/schema validate。
 - 业务代码：未修改。
 - Commit：`pending`。
+
 - 剩余风险：需要在第一次真实 change 中检验模板粒度，并根据实际协作成本微调规则。
 
 ## 2026-07-14｜迭代蓝图冻结与协作工作流固化
@@ -190,3 +191,27 @@
 - 范围安全：未修改业务代码、API、DTO、数据库、依赖、RAG pipeline、评测指标、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、提交、push、部署或发布。
 - 剩余风险：真实部署编排中的 `prod` profile 与 `JWT_SECRET` 注入仍需在未来部署验收中验证；secret manager 与轮换仍为 out_of_scope，不阻塞 C1 完成。
 - Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-14｜C2 database-backed-authentication 启动与规格草案
+
+- 类型：Type C 重大变更的规格阶段；change 已声明为 `ACTIVE`，业务实现尚未开始。
+- 范围与修改文件：`.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md`、`openspec/changes/2026-07-14-database-backed-authentication/{proposal.md,design.md,tasks.md,specs/rag-system/spec.md}`。
+- 已确认事实与关键决策：C1 已归档且 C2 顺序前置满足；当前认证仍使用内存 `admin/admin123` 与 `user/user123`；数据库已有 user/role/user_role 表和 V3 默认 admin 种子；历史 Flyway migration 不回改。草案建议用新前向 migration 精确隔离 known seed 并保留 user ID，bootstrap 默认关闭、外部注入、事务性、幂等且不得覆盖正常用户。
+- 大白话：改前应用只认代码里写死的账号，数据库禁用和角色变化不生效；改后登录与刷新以数据库真实状态为准，没有显式 bootstrap 就不会出现可登录默认账号。
+- 能力分类：`confirmed` 为 schema/种子/内存认证/refresh 重载入口；`partial` 为 H2 test profile 关闭 Flyway、缺真实 MySQL migration 证据；`planned` 为数据库认证、bootstrap、前向迁移和固定凭据清理；`out_of_scope` 为用户管理 API、实时 access token 撤权与 C3；`unknown` 为部署平台最终的 secret manager。
+- 外部调用：embedding/rerank/judge/ask 预计与实际调用量均为 0；无业务数据出站、无模型、无限流风险、费用为 0，依据是不发生调用。
+- 提交责任：用户手动提交；Agent 不暂存、不提交、不 push。
+- 验证：待执行 change 四个 artifact、必需标题/字段、ACTIVE 指针、Markdown 相对链接、业务实现零改动、固定范围与 `git diff --check` 检查。
+- 跳过项及原因：当前只启动规格草案，未修改 Java、SQL、Vue、配置或评测脚本，因此不运行 Maven/Python/前端测试；实现与真实 MySQL migration 验证须在用户批准草案后进行。
+- 范围安全：未修改 API、DTO、数据库 migration、认证实现、依赖、RAG pipeline、评测指标、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未执行 provider、部署、发布或网络业务调用。
+- 剩余风险：known seed 隔离标记、bootstrap 状态机、角色装配、access token 实时撤权边界和评测脚本显式凭据策略仍待用户审定；批准前不得实现。
+- Commit：`pending`。
+
+## 2026-07-14｜C2 规格草案验证补充
+
+- 结构验证：proposal、design、tasks、`specs/rag-system/spec.md` 四个必需 artifact 均存在且非空；proposal 的 Why/用户故事/Current Status/Scope/Non-goals/External Calls/Acceptance/提交责任、spec delta 的 requirement/scenario、tasks 的审批闸门与 ACTIVE 指针均已检查。
+- 文档验证：草案没有 Markdown 相对链接；六个计划内 Markdown 文件无行尾空白；`git diff --check` 通过。
+- 工具说明：当前环境未发现 `openspec` CLI，因此未执行官方 CLI/schema validate；已使用目录契约、标题和场景结构检查替代，并明确保留该跳过项。
+- 范围验证：工作区仅修改 `.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md` 并新增本 C2 change 目录；Java、SQL、Vue、运行配置、依赖与评测脚本零改动。
+- 外部调用复核：embedding/rerank/judge/ask 实际调用量均为 0，无业务数据出站或费用。
+- Commit：`pending`；提交责任仍为用户手动提交。
