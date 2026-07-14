@@ -79,15 +79,13 @@ JWT secret 的语义归属认证模块。计划新增一个无外部依赖、核
 
 禁止包含 secret 原值、前后缀、长度、hash、环境变量内容或异常对象的敏感 payload。现有普通日志脱敏规则继续适用。
 
-## 5. 预计影响文件
+## 5. 实际影响文件
 
-以下仅是实现阶段计划，当前草案阶段不修改：
-
-- `rag-auth/src/main/java/com/enterprise/rag/auth/config/`：新增 prod secret guard/policy，必要时调整配置接线。
+- `rag-auth/src/main/java/com/enterprise/rag/auth/config/JwtSecretProductionGuard.java`：新增 prod secret guard。
 - `rag-auth/src/main/java/com/enterprise/rag/auth/provider/JwtTokenProvider.java`：在 JJWT key 构造前显式调用 guard。
-- `rag-auth/src/test/java/...`：新增规则边界、UTF-8/JJWT 职责和无 secret 泄露测试；适配现有直接构造测试。
-- `rag-admin/src/test/java/...` 或 `rag-auth/src/test/java/...`：用最小 context 验证 prod 启动拒绝/允许语义。
-- 可能更新 `README.md` 的 `JWT_SECRET` 生产配置说明；不修改本地 `.env.local` 或部署 secret。
+- `rag-auth/src/test/java/com/enterprise/rag/auth/config/`：新增规则边界、UTF-8/JJWT 职责、无 secret 泄露和最小 Spring context 测试。
+- `rag-auth` 既有两个直接构造 `JwtTokenProvider` 的属性测试：接入非 prod `MockEnvironment`。
+- `README.md`：补充 `JWT_SECRET` 的 prod fail-fast 说明；未修改本地 `.env.local` 或部署 secret。
 
 不计划修改 API、DTO、数据库、前端、RAG pipeline、评测脚本或依赖版本。
 
@@ -153,11 +151,11 @@ git diff --check
 
 ## 9. 回滚
 
-实现尚未开始。未来若实现需回滚，应同时撤销 guard 接线、相关测试与本 change 的未接受 spec delta，使行为恢复到“仅由 JJWT 校验 key-strength”。不得只删除测试或只改 baseline spec 来掩盖实现差异。
+若本实现需回滚，应同时撤销 guard 接线、相关测试与本 change 的未接受 spec delta，使行为恢复到“仅由 JJWT 校验 key-strength”。不得只删除测试或只改 baseline spec 来掩盖实现差异。
 
-## 10. 审查请求
+## 10. 已接受的审查结论
 
-请重点确认：
+用户已批准以下设计结论：
 
 1. 是否接受 prod 精确拒绝集合：blank、tracked default、首尾空白、完整未解析占位符；
 2. 是否接受“非 prod 保留 fallback，JJWT 继续独占最小长度校验”的职责边界；

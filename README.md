@@ -220,6 +220,8 @@ Flyway 会自动执行初始化脚本（`V1/V2/V3`），包含：
 - `JWT_SECRET`
 - `NVIDIA_API_KEY` / `QWEN_API_KEY`
 
+当 active profile 包含精确的 `prod` 时，必须通过 `JWT_SECRET` 注入非默认值。若配置为空白、仍为仓库默认值、带首尾空白或整个值仍是 `${...}` 未解析占位符，应用会在 JWT provider 创建阶段拒绝启动；错误不会回显 secret。JWT 算法最小 key 长度仍由 JJWT 按 UTF-8 bytes 校验。
+
 ## 9. 当前状态与后续优化方向
 
 当前版本已具备端到端主链路，但仍有可优化空间：

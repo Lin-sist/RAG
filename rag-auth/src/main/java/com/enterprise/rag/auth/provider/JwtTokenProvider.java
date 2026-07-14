@@ -1,6 +1,7 @@
 package com.enterprise.rag.auth.provider;
 
 import com.enterprise.rag.auth.config.JwtProperties;
+import com.enterprise.rag.auth.config.JwtSecretProductionGuard;
 import com.enterprise.rag.auth.model.UserPrincipal;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -23,8 +24,11 @@ public class JwtTokenProvider {
     private final JwtProperties jwtProperties;
     private final SecretKey secretKey;
 
-    public JwtTokenProvider(JwtProperties jwtProperties) {
+    public JwtTokenProvider(
+            JwtProperties jwtProperties,
+            JwtSecretProductionGuard jwtSecretProductionGuard) {
         this.jwtProperties = jwtProperties;
+        jwtSecretProductionGuard.validate(jwtProperties.getSecret());
         this.secretKey = Keys.hmacShaKeyFor(
                 jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8)
         );

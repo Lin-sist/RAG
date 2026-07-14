@@ -8,7 +8,7 @@
 
 - Change：`2026-07-14-jwt-secret-production-guard`
 - 位置：`openspec/changes/2026-07-14-jwt-secret-production-guard/`
-- 阶段：C1 规格草案评审；业务代码尚未开始。
+- 阶段：C1 实现与本地验证已完成，等待用户验收确认。
 
 ## Objective
 
@@ -16,8 +16,8 @@
 
 ## Scope
 
-- proposal、design、tasks 与 `rag-system` spec delta 草案。
-- 用户批准后，才允许在 `rag-auth` 实现 prod secret guard 和聚焦测试。
+- 已批准的 proposal、design、tasks 与 `rag-system` spec delta。
+- 在 `rag-auth` 实现 prod secret guard 和聚焦测试。
 - 错误与日志不得回显 secret 原文、长度、hash 或内容片段。
 
 ## Non-goals
@@ -25,7 +25,7 @@
 - 不修改认证数据源、用户模型、token API/DTO 或过期策略。
 - 不新增依赖、secret manager、部署、轮换或生产凭据。
 - 不修改 RAG 检索、生成、引用、拒答、rerank 或评测指标。
-- 当前评审阶段不修改业务代码、配置或测试。
+- 不修改与 C1 无关的业务代码、配置或测试。
 
 ## External Calls
 

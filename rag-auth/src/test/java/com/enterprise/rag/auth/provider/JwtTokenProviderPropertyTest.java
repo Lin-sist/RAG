@@ -1,12 +1,14 @@
 package com.enterprise.rag.auth.provider;
 
 import com.enterprise.rag.auth.config.JwtProperties;
+import com.enterprise.rag.auth.config.JwtSecretProductionGuard;
 import com.enterprise.rag.auth.model.UserPrincipal;
 import io.jsonwebtoken.Claims;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.IntRange;
 import net.jqwik.api.constraints.StringLength;
+import org.springframework.mock.env.MockEnvironment;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -27,7 +29,9 @@ class JwtTokenProviderPropertyTest {
         jwtProperties.setAccessTokenExpiration(3600L);
         jwtProperties.setRefreshTokenExpiration(86400L);
         jwtProperties.setIssuer("test-issuer");
-        this.jwtTokenProvider = new JwtTokenProvider(jwtProperties);
+        this.jwtTokenProvider = new JwtTokenProvider(
+                jwtProperties,
+                new JwtSecretProductionGuard(new MockEnvironment()));
     }
 
     /**
