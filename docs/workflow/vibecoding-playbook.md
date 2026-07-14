@@ -13,12 +13,12 @@
 
 标准闭环分六步，串行推进，一次只激活一个 change：
 
-- **① 开工前置**：确认工作区干净、记录当前 commit hash（或打轻量 tag，如 `pre-B0`）作为回滚锚点；让 codex 先报告仓库最新状态（git log / git status），避免信息口径不一致。
-- **② 事前闸门（关键加固）**：让 codex 先输出"执行计划 / 待改清单"（碰哪些文件、改成什么、影响面），经我确认后才允许改代码。Type C 的事前闸门天然是 proposal/design——先审方向，别等 tasks 跑完才审。
-- **③ 执行**：codex 按已确认的计划改真实代码，边做边在 AGENT_LOG 追加执行证据。
+- **① 开工前置**：确认工作区干净、记录当前 commit hash（或打轻量 tag，如 `pre-B0`）作为回滚锚点；让 codex 先报告仓库最新状态（git log / git status）。工具链不明时先跑本地 `Preflight`，避免把 PATH/依赖问题误判成代码问题。
+- **② 事前闸门（关键加固）**：让 codex 先输出"执行计划 / 待改清单"（碰哪些文件、改成什么、影响面），并明确本轮是 `Agent 提交`还是`用户手动提交`，经我确认后才允许改代码。Type C 的事前闸门天然是 proposal/design——先审方向，别等 tasks 跑完才审。
+- **③ 执行**：codex 按已确认的计划改真实代码，边做边在 AGENT_LOG 追加执行证据；执行记录先写 `Commit: pending`。
 - **④ 收尾报告**：codex 报告改动摘要 + 跑测试结果（报告提升/持平/回退，不承诺一定达标）。
 - **⑤ 人工审 diff**：我亲自看 `git diff`，重点检查是否超出既定边界。
-- **⑥ 定版**：Type C 归档 change + spec delta 合入 baseline + ACTIVE_TASK 回 IDLE；Type B 追加 AGENT_LOG。中文 commit，提交前确认暂存区无无关改动。
+- **⑥ 定版**：Type C 归档 change + spec delta 合入 baseline + ACTIVE_TASK 回 IDLE；Type B 追加 AGENT_LOG。按事前约定的提交责任完成中文 commit，提交前确认暂存区无无关改动；下一次仓库写操作开始时追加上一执行提交的真实 hash。
 
 回到 IDLE（Type C）或干净工作区（Type B），才允许开下一个。
 
@@ -30,7 +30,7 @@
 
 判定拿不准时的经验法则：改了 API / 权限 / 数据持久化 / spec 语义 → 一律按 Type C。
 
-## 3. 四条加固纪律
+## 3. 七条加固纪律
 
 ### 3.1 事前闸门：先出计划，我确认后再动手
 
@@ -47,6 +47,26 @@ codex 的自由发挥多发生在"没说不能做"的灰色地带。每个任务
 ### 3.4 验收报告事实，不承诺达标
 
 涉及评测 / 指标的 change（如 reranker A/B、评测门禁、隔离评测），验收话术统一为"跑同一评测集，报告提升/持平/回退；若回退必须解释原因，由我决定是否回滚"。禁止写"指标必须提升"——那会诱导过拟合评测集，污染用于面试叙事的数据。指标是验收证据，不是必达承诺。
+
+### 3.5 提交责任前置
+
+每个任务的事前闸门必须明确二选一：`Agent 提交`或`用户手动提交`。选择 Agent 提交时，Agent 仅暂存已确认的目标文件，提交前再次检查暂存区；选择用户手动提交或未写明时，Agent 不执行 `git add` / `git commit`，只提供中文 message。push、PR、发布和部署不随提交授权自动放开。
+
+### 3.6 验证命令授权与工具链预检
+
+Agent 可直接运行现有项目的 Maven/npm 验证命令，包括 compile、test、package、build、lint，以及解析 POM/lockfile 已声明版本所需的正常依赖下载，无需逐次请示。该授权不允许新增/升级依赖、`npm publish`、部署、push，也不允许绕过 RAG 外部调用安全闸去执行 provider、embedding、rerank、ask 或 judge。
+
+工具链不明时先运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_local_quality_gates.ps1 -Mode Preflight
+```
+
+`Preflight` 只报告 Git/Java/Maven/Python/Node/npm 与前端依赖状态，不安装工具、退出成功、不作为阻塞门禁。需要回归验证时按需运行 `SensitiveLogs`、`FrontendBuild` 或聚合 `All`；敏感日志门禁是启发式防线，不替代人工审计。
+
+### 3.7 AGENT_LOG 两段式
+
+执行阶段只追加事实记录并写 `Commit: pending`。提交完成后，在下一次仓库写操作开始时追加一条“提交补录”，记录上一执行提交的真实 hash，不回头修改历史。若必须立即闭环，可单独创建纯日志补录提交；该补录提交只承载上一提交 hash，不递归记录自己的 hash。
 
 ## 4. Bug 处理规程
 
@@ -89,9 +109,10 @@ flowchart TD
 用途：日志脱敏、构建修复等局部改动。
 
 - 声明本轮为 Type B；按 AGENTS.md 不建 change 目录、不写 proposal.md，只在完成后追加 AGENT_LOG。
-- 第一步（事前闸门）：先确认仓库最新状态，输出"待改清单"（文件 + 行号 + 现状 + 建议改法），给我确认；确认前不得改任何代码。
+- 第一步（事前闸门）：先确认仓库最新状态，必要时运行工具链 `Preflight`；输出"待改清单"（文件 + 行号 + 现状 + 建议改法），并写明 `Agent 提交`或`用户手动提交`，给我确认；确认前不得改任何代码。
 - 第二步：按清单逐处修改，不改业务逻辑、不动接口、不做无关重构。
-- 第三步：跑相关测试报告结果；在 AGENT_LOG 追加记录（改了哪些文件 + 一句大白话"改前坏事 / 改后不同" + 如何验证）；中文 commit，提交前确认暂存区无无关改动，有则停下报告。
+- 第三步：Agent 直接运行相关 Maven/npm 验证并报告结果；在 AGENT_LOG 追加记录（改了哪些文件 + 一句大白话"改前坏事 / 改后不同" + 如何验证 + `Commit: pending`）；按已确认的提交责任处理中文 commit，提交前确认暂存区无无关改动，有则停下报告。
+- 第四步：下一次仓库写操作开始时追加上一执行提交的真实 hash，不回改历史。
 - 禁止清单：创建 openspec/changes 目录、把任务当 Type C、修改 spec、超出既定范围改其它东西。
 
 ### 6.3 Type C · 重大变更（分阶段）
@@ -101,6 +122,7 @@ flowchart TD
 阶段一（proposal/design，事前闸门）：
 
 - 声明启动某个 Type C change；先在 `openspec/changes/<id>/` 生成 proposal（含"用户故事：改前坏事 → 改后不同"）+ design + tasks + spec delta 草案，置 ACTIVE_TASK 为 ACTIVE。
+- 明确本 change 的提交责任：`Agent 提交`或`用户手动提交`；未明确时默认用户手动提交。
 - 此阶段不改业务代码；把 proposal/design 交我审。涉及外部调用的（embedding/rerank/judge/ask），在此阶段就说明调用量 / 数据出站 / 模型 / 限流 / 费用及零费用依据并取得授权。
 
 阶段二（实现，我确认 design 后）：
@@ -113,15 +135,16 @@ flowchart TD
 阶段三（收尾）：
 
 - 报告改动摘要 + 测试结果；我审 diff。
-- 无误后归档 change、spec delta 合入 baseline、ACTIVE_TASK 回 IDLE；中文 commit，确认暂存区干净。
+- 无误后归档 change、spec delta 合入 baseline、ACTIVE_TASK 回 IDLE；按已确认的提交责任完成中文 commit，确认暂存区干净；下一次仓库写操作开始时补录执行提交 hash。
 
 ### 6.4 写任务 · 文档定版 / 提交（明确授权）
 
 用途：冻结蓝图、更新治理文档等纯文档写操作。
 
 - 明确列出允许编辑的文件与具体改法，要求正文其余内容一字不改。
+- 明确提交责任：`Agent 提交`或`用户手动提交`；未明确时默认用户手动提交。
 - 要求同步在 AGENT_LOG 追加事件记录。
-- 中文 commit；提交前 git status / git diff 确认暂存区只含目标文件，发现我未提交的无关改动则停下报告、不一起提交。
+- 按已确认的提交责任处理中文 commit；提交前 git status / git diff 确认暂存区只含目标文件，发现我未提交的无关改动则停下报告、不一起提交。
 - 禁止：改代码 / spec、创建 change 目录、把 ACTIVE_TASK 改为 ACTIVE、运行测试、外部调用。
 
 ## 7. 提交信息约定
@@ -130,6 +153,7 @@ flowchart TD
 - 前缀参考：`docs:`（文档）、`fix:`（缺陷/脱敏）、`feat:`（新能力）、`test:`（测试）、`refactor:`（重构）。
 - 一个 commit 对应一个可解释的最小改动单元；Type C 的归档、spec 合入尽量单独成 commit，便于回溯。
 - 提交前始终确认暂存区不含未授权的无关改动。
+- 事前未明确提交责任时，默认 Agent 不暂存、不提交；push、PR、发布和部署需要独立授权。
 
 ## 8. 与治理文件的关系
 
