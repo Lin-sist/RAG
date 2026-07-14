@@ -13,6 +13,9 @@ data/
 *scripts/
 !scripts/
 !scripts/run_rag_eval.py
+!scripts/check_sensitive_logs.py
+!scripts/test_check_sensitive_logs.py
+!scripts/run_local_quality_gates.ps1
 **/__pycache__/
 *.py[cod]
 *test-data/
