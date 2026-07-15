@@ -2,11 +2,39 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
 ## Active Change
 
-无。
+- Change：`2026-07-15-llm-provider-resilience`
+- 位置：`openspec/changes/2026-07-15-llm-provider-resilience/`
+- 阶段：C4b 规格草案，等待用户审阅 proposal、design 与 `rag-system` spec delta。
+
+## Objective
+
+锁定 LLM 429、5xx、timeout、network 和非重试型故障的有界重试、同步/SSE 失败结果、诊断安全与 cache/history/query count 副作用；使用本地合成 HTTP server 验证，真实 provider 调用量为 0。
+
+## Scope
+
+- LLM 公共故障契约矩阵、`1+N` 尝试上限和稳定错误分类。
+- 同步 HTTP 200 外层兼容 + `metadata.status=error`。
+- SSE 首 chunk 前可重试、首 chunk 后不重放。
+- generation failure 不写 cache/history，query count 只计一次。
+- 安全 diagnostics 与本地故障注入测试。
+
+## Non-goals
+
+- 不处理 Redis/Milvus、索引恢复、跨 provider fallback、熔断器或结构化 SSE。
+- 不默认开启 retry，不新增依赖，不修改 DTO/schema/评测指标。
+- 未获用户明确批准前不修改生产 Java、配置、测试或评测脚本。
+
+## Approval Gate
+
+用户需明确批准本 change 的 proposal、design 与 spec delta 后，才进入 TDD 实现。
+
+## Commit Responsibility
+
+`用户手动提交`。Agent 不暂存、不提交、不 push。
 
 ## Last Completed
 

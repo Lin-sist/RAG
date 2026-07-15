@@ -357,3 +357,20 @@
 - 验证依据：实现提交前 C3 专用 verify 为 203 tests / 0 failures / 0 errors / 0 skipped，默认 Maven 为 202 tests / 0 failures / 0 errors / 0 skipped，Python 33 tests 与 SensitiveLogs 门禁通过；本轮治理收口只改文档与 change 位置，不重复运行代码测试。
 - 范围安全：未修改生产代码、API/DTO、Flyway migration、provider、RAG pipeline、评测指标或受保护本地配置；未 push、创建 PR、部署或发布。
 - Commit：`pending`；本条将在治理提交中落盘，不递归记录该治理提交自身 hash。
+
+## 2026-07-15｜C4b llm-provider-resilience 启动与规格草案
+
+- 类型：Type C 重大变更的规格阶段；`ACTIVE_TASK` 已置为 `ACTIVE`，生产实现尚未开始。
+- 用户决策：用户同意按状态扫描后的建议启动 C4b；本轮只生成 proposal、design、tasks 与 `rag-system` spec delta，等待用户审阅具体契约后再进入 TDD 实现。
+- 范围与修改文件：`.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md`、`openspec/changes/2026-07-15-llm-provider-resilience/{proposal.md,design.md,tasks.md,specs/rag-system/spec.md}`。
+- 已确认事实：C3 已归档，启动前 `main` 与 `origin/main` 一致且工作区干净；现有 LLM 同步/流式客户端已有 timeout、429/5xx retry filter 和安全诊断雏形，但 tracked 默认 `max-retries=0`，没有真实 HTTP 故障测试；完整 Flux retry 在首 chunk 后可能重订阅；同步失败当前以 HTTP 200 + `metadata.status=error` 返回，controller 仍会增加查询次数并保存失败历史。
+- 能力分类：`confirmed` 为 C3 前置、现有 timeout/retry filter 与诊断字段；`partial` 为默认关闭的 retry、未锁定的同步/SSE 失败语义和失败历史；`planned` 为本地 429/503/timeout/4xx/malformed/stream 故障注入与副作用测试；`out_of_scope` 为 C4c/C4d、C5、跨 provider fallback、熔断器和结构化 SSE；`unknown` 为真实 provider 的 `Retry-After`/心跳/body 差异。
+- 关键草案决策：公共故障矩阵直接落在 C4b，不创建 C4a；tracked 默认 `max-retries=0`，显式 `N` 时总尝试不超过 `1+N`；同步保留 HTTP 200 外层兼容并以 `metadata.status=error` 表达失败；SSE 仅首 chunk 前可重试，首 chunk 后不重放；query count 计一次，但失败/部分输出不写 cache/history；不做跨 provider failover。
+- 大白话：改前模型抖动可能直接失败、流式重放或把错误/半截答案保存成正常历史；改后每类故障有明确预算、稳定提示和副作用边界，失败不再伪装成成功记录。
+- Spec delta：新增“LLM Provider 有界重试与故障分类”“LLM Generation 失败响应与副作用”两个 requirements，当前仅为 change 草案，用户验收前不接受进 baseline。
+- 外部调用：embedding/rerank/judge/ask/LLM 业务调用量均为 0；规格阶段未启动本地 HTTP server。后续测试只向 `127.0.0.1` 合成服务发送合成 prompt，无真实模型、业务数据出站、provider 限流或费用。部署态理论放大边界为默认 1 次，运维显式配置时最多 `1+N` 次。
+- 验证：四个必需 artifact 均存在且非空；proposal 必需章节、spec delta 的 ADDED/Requirement/Scenario 结构、tasks 审批闸门、`ACTIVE_TASK=ACTIVE` 与唯一 change 指针检查通过；Markdown 相对链接检查为 `MARKDOWN_RELATIVE_LINKS_OK`；`git diff --check` 通过；业务代码、测试、配置、评测脚本与 baseline spec 零改动。
+- 跳过项及原因：本轮仅创建规格草案，没有 Java/Python/前端/依赖改动，因此不重复运行 Maven、Python、前端 build、SensitiveLogs 或 C3 容器测试；上一只读扫描已在相同 HEAD 验证默认 Maven 202 tests、Python 33 tests 与 `git diff --check` 通过，但该结果不替代后续 C4b 实现验证。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、生产 Java、API/DTO、数据库 migration、RAG pipeline、评测指标或依赖；未执行真实 provider 调用、暂存、提交、push、PR、部署或发布。
+- 剩余风险与审批点：用户仍需确认默认零重试、同步 HTTP 200 外层兼容、失败不保存 history、SSE 首 chunk 后不重试、无跨 provider fallback/熔断/结构化 SSE，以及本地合成验证边界；批准前不得开始实现。
+- Commit：`pending`；提交责任为用户手动提交。
