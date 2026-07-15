@@ -8,7 +8,7 @@
 
 - Change：`2026-07-15-llm-provider-resilience`
 - 位置：`openspec/changes/2026-07-15-llm-provider-resilience/`
-- 阶段：C4b 规格草案，等待用户审阅 proposal、design 与 `rag-system` spec delta。
+- 阶段：C4b 规格已批准，按 TDD 进入实现。
 
 ## Objective
 
@@ -30,11 +30,11 @@
 
 ## Approval Gate
 
-用户需明确批准本 change 的 proposal、design 与 spec delta 后，才进入 TDD 实现。
+用户已明确批准 proposal、design、决策记录与 spec delta，允许进入 TDD 实现。
 
 ## Commit Responsibility
 
-`用户手动提交`。Agent 不暂存、不提交、不 push。
+`Agent 提交`。用户已授权本 change 计划内文件的本地暂存与中文提交；不包含 push、PR、部署或发布。
 
 ## Last Completed
 

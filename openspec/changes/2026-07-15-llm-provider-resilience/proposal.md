@@ -79,4 +79,4 @@ C3 已用隔离基础设施验证登录、上传、索引、retrieval 与删除 
 
 ## Commit Responsibility
 
-`用户手动提交`。Agent 不执行 `git add`、`git commit`、push、PR、发布或部署；每个可验证切片结束后只提供中文 Conventional Commit 建议。
+`Agent 提交`。用户已授权 Agent 对本 change 计划内文件执行本地 `git add` 与中文 Conventional Commit；授权不包含 push、PR、发布或部署。

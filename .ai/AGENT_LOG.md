@@ -374,3 +374,17 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、生产 Java、API/DTO、数据库 migration、RAG pipeline、评测指标或依赖；未执行真实 provider 调用、暂存、提交、push、PR、部署或发布。
 - 剩余风险与审批点：用户仍需确认默认零重试、同步 HTTP 200 外层兼容、失败不保存 history、SSE 首 chunk 后不重试、无跨 provider fallback/熔断/结构化 SSE，以及本地合成验证边界；批准前不得开始实现。
 - Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-15｜C4b 草案批准与 Agent 提交授权
+
+- 用户决策：用户确认 C4b proposal、design、决策记录和 `rag-system` spec delta 无误，批准按草案进入 TDD 实现，并授权 Agent 为本 change 创建必要的本地中文 commit。
+- 提交边界：授权仅包含计划内文件的 `git add` 与本地 `git commit`；不包含 push、PR、部署、发布或真实 provider 业务调用。
+- 已接受契约：默认 `max-retries=0`；显式 `N` 时总尝试不超过 `1+N`；同步 generation failure 保持 HTTP 200 外层与 `metadata.status=error`；失败计一次 query count 但不写 cache/history；SSE 仅首 chunk 前可重试，首 chunk 后不重放；不做跨 provider fallback、熔断器、精确 `Retry-After` 或结构化 SSE。
+- TDD 纪律：按公开可观察行为逐个 RED→GREEN；先同步故障，再流式边界，再 controller 副作用；每个切片转绿后才进入下一行为。
+- 外部调用：实现与验证只允许访问 `127.0.0.1` 合成 HTTP server；真实 embedding/rerank/judge/ask/LLM 调用量为 0。
+- Commit：`pending`。
+
+## 2026-07-15｜C4b 规格草案提交补录
+
+- Commit：`22425c1861b33462ce9730fb2b05b5cd8b701b5c`。
+- 结论：C4b proposal、design、严格三行决策记录、tasks、`rag-system` spec delta、ACTIVE_TASK 与启动证据已完成本地中文提交；本补录不改写历史记录。

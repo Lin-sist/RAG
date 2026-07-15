@@ -9,10 +9,10 @@
 - [x] 创建 design、tasks 与 `rag-system` spec delta 草案。
 - [x] 把公共故障契约矩阵模板应用到 C4b，不创建独立 C4a change。
 - [x] 声明规格/实现验证中的 embedding/rerank/judge/ask/LLM 业务调用量均为 0，并披露 runtime `1+N` 理论放大边界。
-- [x] 明确提交责任为“用户手动提交”。
+- [x] 启动草案时提交责任为“用户手动提交”；规格批准后用户已追加授权为“Agent 提交”。
 - [x] 将 `.ai/ACTIVE_TASK.md` 置为 `ACTIVE` 并指向本 change。
 - [x] 完成 change 结构、必需标题/字段、Markdown 链接、范围和 `git diff --check` 验证。
-- [ ] 用户审阅并明确批准 proposal、design 与 spec delta；批准前禁止修改业务代码。
+- [x] 用户审阅并明确批准 proposal、design 与 spec delta；批准后按 TDD 进入实现。
 
 ## Phase 1：同步 provider 故障契约（TDD）
 
@@ -71,4 +71,4 @@
 - 不实现跨 provider fallback、熔断器、结构化 SSE、Redis/Milvus 故障或索引恢复。
 - 不为故障测试定制生产 prompt 或 provider response parser 的成功语义。
 - 未取得单独授权不得 push、创建 PR、部署、发布或真实业务外调。
-- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push。
+- 提交责任：`Agent 提交`；用户已授权本 change 计划内文件的本地暂存与中文提交，不包含 push。
