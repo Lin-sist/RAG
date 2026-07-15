@@ -487,3 +487,18 @@
 - 数据与外调：全程使用合成用户、token marker、cache 内容与任务；embedding provider 为进程内 synthetic stub，真实 embedding、rerank、judge、ask/LLM 业务调用量均为 0。
 - 剩余风险：任务恢复、重放与孤儿协调仍按批准边界留给 C5；用户尚未完成实现验收，因此 ACTIVE_TASK 保持 C4c，spec delta 未接受、change 未归档。Docker Desktop 为本次验证启动，验证后保持运行。
 - 提交责任：用户手动提交；Agent 未暂存、未提交、未 push。Commit：`pending`。
+
+## 2026-07-15｜C4c 实现提交补录
+
+- Commit：`ae0fbd9d870370ac5f02f8c7e22bfd4fc5f29eb7`。
+- 结论：C4c Redis 分级故障语义、TDD 回归、隔离 Redis stop/start 验证与实现证据已由用户手动完成中文提交。
+
+## 2026-07-15｜C4c 用户验收与 OpenSpec 收口
+
+- 用户决策：用户明确确认 C4c 实现验收通过，并授权归档 `2026-07-15-redis-failure-semantics` change。
+- 范围与修改文件：将已批准 C4c `rag-system` delta 原文接受进 `openspec/specs/rag-system/spec.md`，勾选最终 closeout task，将 `.ai/ACTIVE_TASK.md` 恢复 `IDLE`，并把 change 移入 `openspec/changes/archive/`。
+- 验证依据：实现提交 `ae0fbd9`；最终 Maven 245 tests / 0 failures / 0 errors，隔离 `RedisFailureSemanticsIT` 1 test / 0 failures / 0 errors / 0 skipped，Python 33 tests / OK，SensitiveLogs 275 个源文件通过，真实 provider 业务调用量为 0。
+- 跳过项：本轮仅做治理收口，不修改 Java、测试、POM、前端或运行配置，因此不重复运行 Maven、Python、前端 build 或真实 provider/业务外调；执行 spec exact-match、旧 active 路径扫描与 `git diff --check`。
+- 范围安全：未修改 API/DTO、数据库 schema、依赖版本、Redis/Milvus 生产配置、评测指标或受保护本地配置；未进入 C4d/C5，未暂存、未提交、未 push、未创建 PR、未部署或发布。
+- 剩余风险：Redis outage 中断任务的恢复、重放与孤儿协调仍留给 C5；Milvus 故障语义仍留给 C4d，不影响 C4c 已接受契约。
+- Commit：`pending`；提交责任为用户手动提交。

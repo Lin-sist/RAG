@@ -74,7 +74,7 @@
 - [x] 运行 `python -B -m unittest discover -s scripts -p 'test_*.py'`。
 - [x] 运行 SensitiveLogs 门禁与 `git diff --check`。
 - [x] 更新本 tasks、`.ai/ACTIVE_TASK.md` 与追加式 `.ai/AGENT_LOG.md`。
-- [ ] 用户完成实现验收后，才接受 spec delta、恢复 `IDLE` 并归档 change。
+- [x] 用户完成实现验收后，接受 spec delta、恢复 `IDLE` 并归档 change。
 
 ## Commit Responsibility
 
