@@ -388,3 +388,21 @@
 
 - Commit：`22425c1861b33462ce9730fb2b05b5cd8b701b5c`。
 - 结论：C4b proposal、design、严格三行决策记录、tasks、`rag-system` spec delta、ACTIVE_TASK 与启动证据已完成本地中文提交；本补录不改写历史记录。
+
+## 2026-07-15｜C4b 批准检查点提交补录
+
+- Commit：`95bed9ec7689838d8b4d5455868801451106e6fb`。
+- 结论：C4b 规格批准状态、Agent 本地提交授权、ACTIVE_TASK 与决策记录已完成中文治理提交；不包含实现代码。
+
+## 2026-07-15｜C4b LLM provider 韧性实现与技术验收
+
+- 范围：实现同步 provider 重试计数与安全分类、SSE 首个可见内容前后重试闸门、稳定客户端降级、失败 cache/history 副作用约束和 emitter 取消；新增本地 `127.0.0.1` JDK `HttpServer` 故障测试，并更新 controller/RAG service 测试与 C4b tasks。
+- 修改文件：`rag-core/src/main/java/com/enterprise/rag/core/rag/generator/AnswerGeneratorImpl.java`、`LLMProperties.java`、`RAGServiceImpl.java`、`rag-admin/src/main/java/com/enterprise/rag/admin/controller/QAController.java`、对应 3 个测试文件、`openspec/changes/2026-07-15-llm-provider-resilience/tasks.md` 与本日志。
+- 已确认事实：`maxRetries=N` 的总尝试上限为 `1+N`，Java 与 tracked 配置默认均为 0；429、5xx、timeout、I/O/connect 才重试，401 与 malformed/empty 2xx 不重试；SSE 只在首个可见 chunk 前重试，`alpha` 后截断只订阅一次，完整流无可见内容按 `invalid_response` 结束；同步 failure 保持 HTTP 200 + `metadata.status=error`，失败或部分输出不写 cache/history，query count 仍为 1。
+- 安全：异常消息和客户端提示不透传 provider body/message；diagnostics 仅保留固定 provider/endpoint/model/timeout/retry/category/status 等允许字段。合成 API key、provider body 和 prompt marker 均未出现在捕获日志、异常消息或 diagnostics。
+- TDD 证据：连续 503 的 attempt diagnostics、malformed response 分类、首 chunk 后重复订阅、同步/流式失败 history 保存与 Java 默认重试值均先观察到 RED，再以最小实现转 GREEN；429 恢复行为在首个测试中已由现有实现满足。
+- 验证：`mvn -q -pl rag-core -am test` 通过；`mvn -q -pl rag-admin -am test` 通过；最终 `mvn -q test` 通过，47 个 surefire report、213 tests、0 failures、0 errors、3 skipped；`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 33 tests / OK；SensitiveLogs 扫描 274 个源文件通过；`git diff --check` 通过。
+- 跳过项：无前端改动，未运行前端 build；未调用真实 embedding、rerank、judge、ask/LLM，实际业务外调量为 0；未做 Redis/Milvus、跨 provider fallback、熔断、结构化 SSE、部署或 push。
+- 既有内部降级信号：完整 Maven 中 Redis property tests 因本地 Redis 不可用按既有逻辑跳过，Spring 测试环境仍记录 Milvus/BGE/关键词索引降级日志；命令整体退出码为 0，未将这些日志误报为真实 provider 验收。
+- 剩余风险：尚未进行用户实现验收；spec delta 未接受进 baseline，ACTIVE_TASK 仍为 C4b，change 未归档。流式客户端断连由取消订阅保证，但未引入真实 servlet 容器断连测试，留待后续端到端 transport 验证。
+- Commit：`pending`。

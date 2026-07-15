@@ -16,10 +16,13 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -92,13 +95,16 @@ class RAGServiceImplTest {
                 .thenReturn(List.of(context));
         when(answerGenerator.generate(eq("Spring Boot 的核心特性有哪些？"), org.mockito.ArgumentMatchers.anyList()))
                 .thenThrow(new LLMException(
-                        "LLM API call failed: timed out",
+                        "synthetic provider secret marker",
                         Map.of(
                                 "provider", "openai",
                                 "endpoint", "/chat/completions",
                                 "model", "nvidia/test",
                                 "timeoutSeconds", 120,
                                 "maxRetries", 3,
+                                "attemptCount", 4,
+                                "retryCount", 3,
+                                "retryExhausted", true,
                                 "errorType", "TimeoutException",
                                 "errorCategory", "timeout")));
 
@@ -108,6 +114,14 @@ class RAGServiceImplTest {
         assertEquals("openai", response.metadata().get("llmProvider"));
         assertEquals("/chat/completions", response.metadata().get("llmEndpoint"));
         assertEquals(120, response.metadata().get("llmTimeoutSeconds"));
+        assertEquals(4, response.metadata().get("llmAttemptCount"));
+        assertEquals(3, response.metadata().get("llmRetryCount"));
+        assertEquals(true, response.metadata().get("llmRetryExhausted"));
         assertEquals("timeout", response.metadata().get("llmErrorCategory"));
+        assertEquals("抱歉，处理您的问题时发生错误：模型服务响应超时，请稍后重试", response.answer());
+        assertTrue(!response.answer().contains("synthetic provider secret marker"));
+        assertTrue(response.citations().isEmpty());
+        assertTrue(response.contexts().isEmpty());
+        verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
     }
 }

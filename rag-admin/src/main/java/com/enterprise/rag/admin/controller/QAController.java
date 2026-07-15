@@ -17,6 +17,7 @@ import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
+import com.enterprise.rag.core.rag.generator.LLMException;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.service.RAGService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -39,6 +40,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.Disposable;
+import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
@@ -117,19 +119,21 @@ public class QAController {
         log.info("问答完成: traceId={}, kbId={}, userId={}, latencyMs={}, hasResult={}",
                 traceId, request.kbId(), userId, latencyMs, response.hasResult());
 
-        // 保存问答历史
-        try {
-            qaHistoryService.save(SaveQAHistoryRequest.builder()
-                    .userId(userId)
-                    .kbId(request.kbId())
-                    .question(request.question())
-                    .answer(response.answer())
-                    .citations(response.citations())
-                    .traceId(TraceContext.getTraceId())
-                    .latencyMs((int) latencyMs)
-                    .build());
-        } catch (Exception e) {
-            log.warn("保存问答历史失败: errorType={}", e.getClass().getSimpleName());
+        // 只保存完整成功答案；generation failure 仍计数，但不伪装成正常历史。
+        if (response.isSuccess()) {
+            try {
+                qaHistoryService.save(SaveQAHistoryRequest.builder()
+                        .userId(userId)
+                        .kbId(request.kbId())
+                        .question(request.question())
+                        .answer(response.answer())
+                        .citations(response.citations())
+                        .traceId(TraceContext.getTraceId())
+                        .latencyMs((int) latencyMs)
+                        .build());
+            } catch (Exception e) {
+                log.warn("保存问答历史失败: errorType={}", e.getClass().getSimpleName());
+            }
         }
 
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -177,7 +181,8 @@ public class QAController {
         StringBuffer answerBuffer = new StringBuffer();
         StreamDeliveryDiagnostics diagnostics = new StreamDeliveryDiagnostics(startTime, STREAM_GAP_WARN_THRESHOLD_MS);
 
-        Disposable subscription = ragService.askStream(qaRequest)
+        Disposable.Swap subscription = Disposables.swap();
+        subscription.update(ragService.askStream(qaRequest)
                 .doOnSubscribe(s -> log.debug("流式问答开始: kbId={}", request.kbId()))
                 .subscribe(
                         chunk -> {
@@ -192,6 +197,7 @@ public class QAController {
                                 log.warn("SSE发送失败: errorType={}", e.getClass().getSimpleName());
                                 logStreamDiagnostics("stream_delivery_send_failed", traceId, request.kbId(), userId,
                                         diagnostics, answerBuffer.length(), System.currentTimeMillis() - startTime);
+                                subscription.dispose();
                                 emitter.complete();
                             }
                         },
@@ -200,8 +206,6 @@ public class QAController {
                             log.error("流式问答错误: traceId={}, kbId={}, userId={}, latencyMs={}, errorType={}",
                                     traceId, request.kbId(), userId, latencyMs,
                                     error.getClass().getSimpleName());
-                            saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
-                                    startTime);
                             logStreamDiagnostics("stream_delivery_error", traceId, request.kbId(), userId,
                                     diagnostics, answerBuffer.length(), latencyMs);
                             try {
@@ -229,7 +233,7 @@ public class QAController {
                             } catch (IOException e) {
                                 emitter.complete();
                             }
-                        });
+                        }));
 
         emitter.onCompletion(() -> {
             if (!subscription.isDisposed()) {
@@ -438,6 +442,22 @@ public class QAController {
     }
 
     private String toStreamClientErrorMessage(Throwable error) {
+        LLMException llmException = findLlmException(error);
+        if (llmException != null) {
+            Map<String, Object> diagnostics = llmException.diagnostics();
+            String category = String.valueOf(diagnostics.getOrDefault("errorCategory", "unknown"));
+            return switch (category) {
+                case "rate_limit" -> "模型服务触发限流，请稍后重试";
+                case "timeout" -> "模型服务响应超时，请稍后重试";
+                case "provider_5xx" -> Boolean.TRUE.equals(diagnostics.get("retryExhausted"))
+                        ? "模型服务当前不稳定（重试耗尽），请稍后重试"
+                        : "模型服务当前不可用，请稍后重试";
+                case "network" -> "模型服务网络连接失败，请稍后重试";
+                case "provider_http_error" -> "模型服务请求未被接受，请检查配置后重试";
+                case "invalid_response" -> "模型服务返回了无效响应，请稍后重试";
+                default -> "问答服务暂时不可用，请稍后重试";
+            };
+        }
         String message = error != null ? error.getMessage() : null;
         if (message != null && message.contains("Max retries exceeded")) {
             return "模型服务当前不稳定（重试耗尽），请稍后重试";
@@ -455,6 +475,20 @@ public class QAController {
             return "系统未配置可用的向量化服务，请先配置 NVIDIA_API_KEY 或启用本地 BGE 服务";
         }
         return "问答服务暂时不可用，请稍后重试";
+    }
+
+    private LLMException findLlmException(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof LLMException llmException) {
+                return llmException;
+            }
+            if (current.getCause() == null || current.getCause() == current) {
+                break;
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
     /**

@@ -191,6 +191,10 @@ public class RAGServiceImpl implements RAGService {
     }
 
     private String toClientErrorMessage(Exception e) {
+        LLMException llmException = findLlmException(e);
+        if (llmException != null) {
+            return toLlmClientErrorMessage(llmException.diagnostics());
+        }
         String message = e != null ? e.getMessage() : null;
         if (message == null || message.isBlank()) {
             return "问答服务暂时不可用，请稍后重试";
@@ -211,6 +215,21 @@ public class RAGServiceImpl implements RAGService {
         return message;
     }
 
+    private String toLlmClientErrorMessage(Map<String, Object> diagnostics) {
+        String category = String.valueOf(diagnostics.getOrDefault("errorCategory", "unknown"));
+        return switch (category) {
+            case "rate_limit" -> "模型服务触发限流，请稍后重试";
+            case "timeout" -> "模型服务响应超时，请稍后重试";
+            case "provider_5xx" -> Boolean.TRUE.equals(diagnostics.get("retryExhausted"))
+                    ? "模型服务当前不稳定（重试耗尽），请稍后重试"
+                    : "模型服务当前不可用，请稍后重试";
+            case "network" -> "模型服务网络连接失败，请稍后重试";
+            case "provider_http_error" -> "模型服务请求未被接受，请检查配置后重试";
+            case "invalid_response" -> "模型服务返回了无效响应，请稍后重试";
+            default -> "问答服务暂时不可用，请稍后重试";
+        };
+    }
+
     private Map<String, Object> errorMetadata(Exception e) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("errorType", e.getClass().getSimpleName());
@@ -225,6 +244,9 @@ public class RAGServiceImpl implements RAGService {
             copyDiagnostic(metadata, diagnostics, "model", "llmModel");
             copyDiagnostic(metadata, diagnostics, "timeoutSeconds", "llmTimeoutSeconds");
             copyDiagnostic(metadata, diagnostics, "maxRetries", "llmMaxRetries");
+            copyDiagnostic(metadata, diagnostics, "attemptCount", "llmAttemptCount");
+            copyDiagnostic(metadata, diagnostics, "retryCount", "llmRetryCount");
+            copyDiagnostic(metadata, diagnostics, "retryExhausted", "llmRetryExhausted");
             copyDiagnostic(metadata, diagnostics, "errorType", "llmErrorType");
             copyDiagnostic(metadata, diagnostics, "errorCategory", "llmErrorCategory");
             copyDiagnostic(metadata, diagnostics, "httpStatus", "llmHttpStatus");

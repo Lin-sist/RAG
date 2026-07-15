@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -150,6 +151,31 @@ class QAControllerTest {
         }
 
         @Test
+        void askShouldCountButNotSaveHistoryWhenGenerationFails() {
+                when(ragService.ask(any(QARequest.class))).thenReturn(
+                                QAResponse.error("什么是RAG", "模型服务暂时不可用，请稍后重试"));
+
+                QAController.AskRequest request = new QAController.AskRequest(
+                                10L,
+                                "什么是RAG",
+                                5,
+                                null,
+                                Map.of(),
+                                true);
+
+                var responseEntity = qaController.ask(request, userDetails);
+
+                assertEquals(200, responseEntity.getStatusCode().value());
+                assertNotNull(responseEntity.getBody());
+                assertNotNull(responseEntity.getBody().getData());
+                assertEquals("error", responseEntity.getBody().getData().metadata().get("status"));
+                assertTrue(responseEntity.getBody().getData().citations().isEmpty());
+                assertTrue(responseEntity.getBody().getData().contexts().isEmpty());
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
+                verify(qaHistoryService, never()).save(any());
+        }
+
+        @Test
         void askStreamShouldIncrementQueryCount() {
                 when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.just("chunk-1", "chunk-2", "[DONE]"));
 
@@ -173,6 +199,25 @@ class QAControllerTest {
                 verify(qaHistoryService, times(1)).save(argThat(saveReq -> saveReq != null
                                 && "什么是RAG".equals(saveReq.getQuestion())
                                 && "chunk-1chunk-2".equals(saveReq.getAnswer())));
+        }
+
+        @Test
+        void askStreamShouldCountButNotSavePartialHistoryWhenGenerationFails() {
+                when(ragService.askStream(any(QARequest.class))).thenReturn(
+                                Flux.concat(Flux.just("partial"), Flux.error(new RuntimeException("synthetic failure"))));
+
+                QAController.AskRequest request = new QAController.AskRequest(
+                                10L,
+                                "什么是RAG",
+                                5,
+                                null,
+                                Map.of(),
+                                false);
+
+                qaController.askStream(request, userDetails);
+
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
+                verify(qaHistoryService, never()).save(any());
         }
 
         @Test

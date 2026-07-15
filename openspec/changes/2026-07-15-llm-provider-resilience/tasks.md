@@ -16,51 +16,51 @@
 
 ## Phase 1：同步 provider 故障契约（TDD）
 
-- [ ] RED：使用本地 `HttpServer` 添加 429→成功、连续 503、timeout、非重试型 4xx、malformed 2xx 测试，证明当前 attempt/diagnostics 契约未被锁定。
-- [ ] 固定 `max-retries=N` 表示总尝试上限 `1+N`，tracked 默认保持 0。
-- [ ] 只允许 429、5xx、timeout、I/O/connect 进入 retry；其他 4xx、invalid response 不重试。
-- [ ] 补齐 `attemptCount`、`retryCount`、`retryExhausted` 和稳定 `errorCategory`，不暴露原始 provider message/body。
-- [ ] 保持 OpenAI-compatible 与 Qwen 成功解析行为不变。
-- [ ] 运行 `rag-core` 聚焦测试并更新 tasks/AGENT_LOG。
+- [x] RED：使用本地 `HttpServer` 添加 429→成功、连续 503、timeout、非重试型 4xx、malformed 2xx 测试，证明当前 attempt/diagnostics 契约未被锁定。
+- [x] 固定 `max-retries=N` 表示总尝试上限 `1+N`，tracked 默认保持 0。
+- [x] 只允许 429、5xx、timeout、I/O/connect 进入 retry；其他 4xx、invalid response 不重试。
+- [x] 补齐 `attemptCount`、`retryCount`、`retryExhausted` 和稳定 `errorCategory`，不暴露原始 provider message/body。
+- [x] 保持 OpenAI-compatible 与 Qwen 成功解析行为不变。
+- [x] 运行 `rag-core` 聚焦测试并更新 tasks/AGENT_LOG。
 
 ## Phase 2：流式首 chunk 边界（TDD）
 
-- [ ] RED：添加首 chunk 前 transient failure 可重试测试。
-- [ ] RED：添加已输出 `alpha` 后 provider failure 测试，断言当前完整 Flux retry 会造成或可能造成重复订阅风险。
-- [ ] 实现 `BEFORE_FIRST_CONTENT / AFTER_FIRST_CONTENT` gate；首 chunk 后禁止重订阅。
-- [ ] 耗尽或首 chunk 后失败时只发送稳定 `[ERROR]` 与 `[DONE]`，不泄露 provider body/prompt/context。
-- [ ] client disconnect、emitter send failure 和 timeout 取消订阅，不触发 provider retry。
-- [ ] 运行 `rag-core` 流式聚焦测试并更新 tasks/AGENT_LOG。
+- [x] RED：添加首 chunk 前 transient failure 可重试测试。
+- [x] RED：添加已输出 `alpha` 后 provider failure 测试，断言当前完整 Flux retry 会造成或可能造成重复订阅风险。
+- [x] 实现 `BEFORE_FIRST_CONTENT / AFTER_FIRST_CONTENT` gate；首 chunk 后禁止重订阅。
+- [x] 耗尽或首 chunk 后失败时只发送稳定 `[ERROR]` 与 `[DONE]`，不泄露 provider body/prompt/context。
+- [x] client disconnect、emitter send failure 和 timeout 取消订阅，不触发 provider retry。
+- [x] 运行 `rag-core` 流式聚焦测试并更新 tasks/AGENT_LOG。
 
 ## Phase 3：API 与副作用（TDD）
 
-- [ ] RED：同步 generation failure 保持 HTTP 200 外层但 `metadata.status=error`，citations/contexts 为空且 machine-readable diagnostics 完整。
-- [ ] RED：同步失败不保存 QA history、不写 cache，query count 只增加一次。
-- [ ] RED：SSE 失败或部分输出后失败不保存 history，成功 complete 才保存完整 answer。
-- [ ] `RAGServiceImpl` 按 diagnostics category 映射稳定客户端提示，不再依赖原始 LLM message 猜测 429/timeout。
-- [ ] 保持 retrieval/no-answer/citation 成功路径和评测口径不变。
-- [ ] 运行 `rag-admin` 聚焦测试并更新 tasks/AGENT_LOG。
+- [x] RED：同步 generation failure 保持 HTTP 200 外层但 `metadata.status=error`，citations/contexts 为空且 machine-readable diagnostics 完整。
+- [x] RED：同步失败不保存 QA history、不写 cache，query count 只增加一次。
+- [x] RED：SSE 失败或部分输出后失败不保存 history，成功 complete 才保存完整 answer。
+- [x] `RAGServiceImpl` 按 diagnostics category 映射稳定客户端提示，不再依赖原始 LLM message 猜测 429/timeout。
+- [x] 保持 retrieval/no-answer/citation 成功路径和评测口径不变。
+- [x] 运行 `rag-admin` 聚焦测试并更新 tasks/AGENT_LOG。
 
 ## Phase 4：安全与完整验证
 
-- [ ] 用合成 API key、Authorization、provider body、prompt/context marker 验证响应、metadata 和日志均不泄露。
-- [ ] `mvn -q -pl rag-core -am test` 通过。
-- [ ] `mvn -q -pl rag-admin -am test` 通过。
-- [ ] `mvn -q test` 通过，记录 suites/tests/failures/errors/skipped 与既有内部降级日志。
-- [ ] `python -B -m unittest discover -s scripts -p 'test_*.py'` 通过。
-- [ ] SensitiveLogs 门禁通过。
-- [ ] 无前端改动时明确跳过正式前端 build；若触及前端则运行包含 `vue-tsc` 的正式 build。
-- [ ] `git diff --check`、change 结构、Markdown 相对链接和计划文件范围检查通过。
-- [ ] 确认真实 embedding、rerank、judge、ask/LLM 业务调用量均为 0。
+- [x] 用合成 API key、Authorization、provider body、prompt/context marker 验证响应、metadata 和日志均不泄露。
+- [x] `mvn -q -pl rag-core -am test` 通过。
+- [x] `mvn -q -pl rag-admin -am test` 通过。
+- [x] `mvn -q test` 通过，记录 suites/tests/failures/errors/skipped 与既有内部降级日志。
+- [x] `python -B -m unittest discover -s scripts -p 'test_*.py'` 通过。
+- [x] SensitiveLogs 门禁通过。
+- [x] 无前端改动，已明确跳过正式前端 build。
+- [x] `git diff --check`、change 结构、Markdown 相对链接和计划文件范围检查通过。
+- [x] 确认真实 embedding、rerank、judge、ask/LLM 业务调用量均为 0。
 
 ## Phase 5：验收与收口
 
-- [ ] 更新本 tasks 的真实完成状态、验证结果、跳过原因与剩余风险。
-- [ ] 将修改文件、关键决策、验证结果和 `Commit: pending` 追加到 `.ai/AGENT_LOG.md`。
+- [x] 更新本 tasks 的真实完成状态、验证结果、跳过原因与剩余风险。
+- [x] 将修改文件、关键决策、验证结果和 `Commit: pending` 追加到 `.ai/AGENT_LOG.md`。
 - [ ] 用户完成 review 并明确确认 C4b 实现验收通过。
 - [ ] 把已批准 delta 按原文接受进 `openspec/specs/rag-system/spec.md` 并验证 exact match。
 - [ ] 将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`，经用户确认后归档 change。
-- [ ] 提供中文 Conventional Commit 建议；由用户手动暂存和提交。
+- [x] 为实现提交准备中文 Conventional Commit；提交后等待用户确认，不 push。
 
 ## Guardrails
 

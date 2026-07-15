@@ -35,7 +35,7 @@ public class LLMProperties {
     /**
      * 最大重试次数
      */
-    private int maxRetries = 3;
+    private int maxRetries = 0;
 
     @Data
     public static class OpenAIConfig {

@@ -8,7 +8,7 @@
 
 - Change：`2026-07-15-llm-provider-resilience`
 - 位置：`openspec/changes/2026-07-15-llm-provider-resilience/`
-- 阶段：C4b 规格已批准，按 TDD 进入实现。
+- 阶段：C4b 实现与技术验收已完成，等待用户 review 与实现验收确认。
 
 ## Objective
 
@@ -31,6 +31,8 @@
 ## Approval Gate
 
 用户已明确批准 proposal、design、决策记录与 spec delta，允许进入 TDD 实现。
+
+实现已按批准范围完成；用户确认验收前不得接受 delta、恢复 `IDLE` 或归档 change。
 
 ## Commit Responsibility
 

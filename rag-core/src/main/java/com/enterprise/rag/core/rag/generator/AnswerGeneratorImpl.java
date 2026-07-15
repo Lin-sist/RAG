@@ -21,8 +21,11 @@ import reactor.util.retry.Retry;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.TimeoutException;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -124,7 +127,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 buildResult.removedByDedup(),
                 buildResult.removedByBudget());
 
-        return sanitizeStream(callLLMStream(prompt));
+        return callLLMStream(prompt);
     }
 
     @Override
@@ -148,7 +151,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             throw e;
         } catch (Exception e) {
             log.error("Failed to call LLM API: errorType={}", e.getClass().getSimpleName());
-            throw new LLMException("Failed to generate answer: " + e.getMessage(), e);
+            throw new LLMException("LLM provider request failed", e);
         }
     }
 
@@ -173,15 +176,30 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(properties.getTimeout()));
+        AtomicInteger attemptCount = new AtomicInteger();
+        AtomicInteger retryCount = new AtomicInteger();
 
         try {
-            String response = applyRetryPolicy(responseMono, "openai", "/chat/completions")
+            String response = applyRetryPolicy(
+                    Mono.defer(() -> {
+                        attemptCount.incrementAndGet();
+                        return responseMono;
+                    }),
+                    "openai",
+                    "/chat/completions",
+                    retryCount)
                     .doOnError(error -> logLlmError("openai", "/chat/completions", error))
                     .block();
 
             return parseOpenAIResponse(response);
         } catch (Exception e) {
-            throw buildLlmException("openai", "/chat/completions", config.getModel(), e);
+            throw buildLlmException(
+                    "openai",
+                    "/chat/completions",
+                    config.getModel(),
+                    e,
+                    attemptCount.get(),
+                    retryCount.get());
         }
     }
 
@@ -208,15 +226,30 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(properties.getTimeout()));
+        AtomicInteger attemptCount = new AtomicInteger();
+        AtomicInteger retryCount = new AtomicInteger();
 
         try {
-            String response = applyRetryPolicy(responseMono, "qwen", "/services/aigc/text-generation/generation")
+            String response = applyRetryPolicy(
+                    Mono.defer(() -> {
+                        attemptCount.incrementAndGet();
+                        return responseMono;
+                    }),
+                    "qwen",
+                    "/services/aigc/text-generation/generation",
+                    retryCount)
                     .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation", error))
                     .block();
 
             return parseQwenResponse(response);
         } catch (Exception e) {
-            throw buildLlmException("qwen", "/services/aigc/text-generation/generation", config.getModel(), e);
+            throw buildLlmException(
+                    "qwen",
+                    "/services/aigc/text-generation/generation",
+                    config.getModel(),
+                    e,
+                    attemptCount.get(),
+                    retryCount.get());
         }
     }
 
@@ -245,20 +278,41 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         requestBody.put("max_tokens", config.getMaxTokens());
         requestBody.put("stream", true);
 
-        Flux<String> responseFlux = webClient.post()
-                .uri(config.getBaseUrl() + "/chat/completions")
-                .header("Authorization", "Bearer " + config.getApiKey())
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
-                .retrieve()
-                .bodyToFlux(String.class)
-                .timeout(Duration.ofSeconds(properties.getTimeout()));
+        AtomicInteger attemptCount = new AtomicInteger();
+        AtomicInteger retryCount = new AtomicInteger();
+        AtomicBoolean visibleContentEmitted = new AtomicBoolean();
+        String endpoint = "/chat/completions(stream)";
 
-        return applyRetryPolicy(responseFlux, "openai", "/chat/completions(stream)")
-                .doOnError(error -> logLlmError("openai", "/chat/completions(stream)", error))
+        Flux<String> visibleResponseFlux = Flux.defer(() -> sanitizeStream(Flux.defer(() -> {
+            attemptCount.incrementAndGet();
+            return webClient.post()
+                    .uri(config.getBaseUrl() + "/chat/completions")
+                    .header("Authorization", "Bearer " + config.getApiKey())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToFlux(String.class)
+                    .timeout(Duration.ofSeconds(properties.getTimeout()));
+        })
                 .filter(line -> !line.equals("[DONE]"))
                 .map(this::parseOpenAIStreamChunk)
-                .filter(content -> content != null && !content.isEmpty());
+                .filter(content -> content != null && !content.isEmpty())))
+                .switchIfEmpty(Flux.error(invalidResponse()));
+
+        return applyStreamRetryPolicy(
+                visibleResponseFlux.doOnNext(ignored -> visibleContentEmitted.set(true)),
+                "openai",
+                endpoint,
+                retryCount,
+                visibleContentEmitted)
+                .doOnError(error -> logLlmError("openai", endpoint, error))
+                .onErrorMap(error -> buildLlmException(
+                                "openai",
+                                endpoint,
+                                config.getModel(),
+                                error,
+                                attemptCount.get(),
+                                retryCount.get()));
     }
 
     /**
@@ -277,42 +331,91 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 "max_tokens", config.getMaxTokens(),
                 "incremental_output", true));
 
-        Flux<String> responseFlux = webClient.post()
-                .uri(config.getBaseUrl() + "/services/aigc/text-generation/generation")
-                .header("Authorization", "Bearer " + config.getApiKey())
-                .header("X-DashScope-SSE", "enable")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
-                .retrieve()
-                .bodyToFlux(String.class)
-                .timeout(Duration.ofSeconds(properties.getTimeout()));
+        AtomicInteger attemptCount = new AtomicInteger();
+        AtomicInteger retryCount = new AtomicInteger();
+        AtomicBoolean visibleContentEmitted = new AtomicBoolean();
+        String endpoint = "/services/aigc/text-generation/generation(stream)";
 
-        return applyRetryPolicy(responseFlux, "qwen", "/services/aigc/text-generation/generation(stream)")
-                .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation(stream)", error))
+        Flux<String> visibleResponseFlux = Flux.defer(() -> sanitizeStream(Flux.defer(() -> {
+            attemptCount.incrementAndGet();
+            return webClient.post()
+                    .uri(config.getBaseUrl() + "/services/aigc/text-generation/generation")
+                    .header("Authorization", "Bearer " + config.getApiKey())
+                    .header("X-DashScope-SSE", "enable")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToFlux(String.class)
+                    .timeout(Duration.ofSeconds(properties.getTimeout()));
+        })
                 .map(this::parseQwenStreamChunk)
-                .filter(content -> content != null && !content.isEmpty());
+                .filter(content -> content != null && !content.isEmpty())))
+                .switchIfEmpty(Flux.error(invalidResponse()));
+
+        return applyStreamRetryPolicy(
+                visibleResponseFlux.doOnNext(ignored -> visibleContentEmitted.set(true)),
+                "qwen",
+                endpoint,
+                retryCount,
+                visibleContentEmitted)
+                .doOnError(error -> logLlmError("qwen", endpoint, error))
+                .onErrorMap(error -> buildLlmException(
+                                "qwen",
+                                endpoint,
+                                config.getModel(),
+                                error,
+                                attemptCount.get(),
+                                retryCount.get()));
     }
 
-    private <T> Mono<T> applyRetryPolicy(Mono<T> source, String provider, String endpoint) {
+    private <T> Mono<T> applyRetryPolicy(
+            Mono<T> source,
+            String provider,
+            String endpoint,
+            AtomicInteger retryCount) {
         int maxRetries = Math.max(0, properties.getMaxRetries());
         if (maxRetries == 0) {
             return source;
         }
-        return source.retryWhen(buildRetrySpec(provider, endpoint, maxRetries));
+        return source.retryWhen(buildRetrySpec(provider, endpoint, maxRetries, retryCount));
     }
 
-    private <T> Flux<T> applyRetryPolicy(Flux<T> source, String provider, String endpoint) {
+    private <T> Flux<T> applyStreamRetryPolicy(
+            Flux<T> source,
+            String provider,
+            String endpoint,
+            AtomicInteger retryCount,
+            AtomicBoolean visibleContentEmitted) {
         int maxRetries = Math.max(0, properties.getMaxRetries());
         if (maxRetries == 0) {
             return source;
         }
-        return source.retryWhen(buildRetrySpec(provider, endpoint, maxRetries));
+        return source.retryWhen(buildRetrySpec(
+                provider,
+                endpoint,
+                maxRetries,
+                retryCount,
+                error -> !visibleContentEmitted.get() && isRetryableError(error)));
     }
 
-    private Retry buildRetrySpec(String provider, String endpoint, int maxRetries) {
+    private Retry buildRetrySpec(
+            String provider,
+            String endpoint,
+            int maxRetries,
+            AtomicInteger retryCount) {
+        return buildRetrySpec(provider, endpoint, maxRetries, retryCount, this::isRetryableError);
+    }
+
+    private Retry buildRetrySpec(
+            String provider,
+            String endpoint,
+            int maxRetries,
+            AtomicInteger retryCount,
+            Predicate<Throwable> retryFilter) {
         return Retry.backoff(maxRetries, Duration.ofMillis(800))
-                .filter(this::isRetryableError)
+                .filter(retryFilter)
                 .doBeforeRetry(signal -> {
+                    retryCount.set(Math.toIntExact(signal.totalRetries() + 1));
                     Throwable cause = unwrap(signal.failure());
                     log.warn("LLM调用重试: provider={}, endpoint={}, attempt={}/{}, errorType={}",
                             provider,
@@ -322,8 +425,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                             cause.getClass().getSimpleName());
                 })
                 .onRetryExhaustedThrow((spec, signal) -> {
-                    Throwable cause = unwrap(signal.failure());
-                    return new LLMException("Max retries exceeded for LLM API: " + cause.getMessage(), cause);
+                    return signal.failure();
                 });
     }
 
@@ -359,7 +461,13 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         return current;
     }
 
-    private LLMException buildLlmException(String provider, String endpoint, String model, Throwable error) {
+    private LLMException buildLlmException(
+            String provider,
+            String endpoint,
+            String model,
+            Throwable error,
+            int attemptCount,
+            int retryCount) {
         Throwable cause = unwrap(error);
         Map<String, Object> diagnostics = new LinkedHashMap<>();
         diagnostics.put("provider", provider);
@@ -367,12 +475,35 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         diagnostics.put("model", model);
         diagnostics.put("timeoutSeconds", properties.getTimeout());
         diagnostics.put("maxRetries", properties.getMaxRetries());
+        diagnostics.put("attemptCount", attemptCount);
+        diagnostics.put("retryCount", retryCount);
+        diagnostics.put("retryExhausted",
+                properties.getMaxRetries() > 0
+                        && retryCount >= properties.getMaxRetries()
+                        && isRetryableError(cause));
         diagnostics.put("errorType", cause.getClass().getSimpleName());
-        diagnostics.put("errorCategory", classifyLlmError(cause));
+        diagnostics.put("errorCategory", diagnosticCategory(error, cause));
         if (cause instanceof WebClientResponseException ex) {
             diagnostics.put("httpStatus", ex.getStatusCode().value());
         }
-        return new LLMException("LLM API call failed: " + cause.getMessage(), cause, diagnostics);
+        return new LLMException("LLM provider request failed", cause, diagnostics);
+    }
+
+    private String diagnosticCategory(Throwable error, Throwable cause) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof LLMException llmException) {
+                Object category = llmException.diagnostics().get("errorCategory");
+                if (category instanceof String value && !value.isBlank()) {
+                    return value;
+                }
+            }
+            if (current.getCause() == null || current.getCause() == current) {
+                break;
+            }
+            current = current.getCause();
+        }
+        return classifyLlmError(cause);
     }
 
     private String classifyLlmError(Throwable cause) {
@@ -401,10 +532,21 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     private String parseOpenAIResponse(String response) {
         try {
             JsonNode root = objectMapper.readTree(response);
-            return root.path("choices").get(0).path("message").path("content").asText();
+            JsonNode choices = root.path("choices");
+            if (!choices.isArray() || choices.isEmpty()) {
+                throw invalidResponse();
+            }
+            String content = choices.get(0).path("message").path("content").asText("");
+            if (content.isBlank()) {
+                throw invalidResponse();
+            }
+            return content;
         } catch (Exception e) {
             log.error("Failed to parse OpenAI response: errorType={}", e.getClass().getSimpleName());
-            throw new LLMException("Failed to parse OpenAI response", e);
+            if (e instanceof LLMException llmException) {
+                throw llmException;
+            }
+            throw invalidResponse(e);
         }
     }
 
@@ -414,11 +556,29 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     private String parseQwenResponse(String response) {
         try {
             JsonNode root = objectMapper.readTree(response);
-            return root.path("output").path("text").asText();
+            String content = root.path("output").path("text").asText("");
+            if (content.isBlank()) {
+                throw invalidResponse();
+            }
+            return content;
         } catch (Exception e) {
             log.error("Failed to parse Qwen response: errorType={}", e.getClass().getSimpleName());
-            throw new LLMException("Failed to parse Qwen response", e);
+            if (e instanceof LLMException llmException) {
+                throw llmException;
+            }
+            throw invalidResponse(e);
         }
+    }
+
+    private LLMException invalidResponse() {
+        return invalidResponse(null);
+    }
+
+    private LLMException invalidResponse(Throwable cause) {
+        return new LLMException(
+                "Invalid LLM provider response",
+                cause,
+                Map.of("errorCategory", "invalid_response"));
     }
 
     static String sanitizeAnswerText(String answer) {
