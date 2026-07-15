@@ -43,7 +43,7 @@ embedding/rerank model/ask/LLM/judge 业务外部调用预计与授权量均为 
 
 ## Approval Gate
 
-当前仅完成规格草案。用户明确批准 proposal、design、tasks 与“无长期 spec delta”决定前，不进入实现。
+用户已明确批准 proposal、design、tasks 与“无长期 spec delta”决定。C3 test-scope 实现和完整技术验证已完成，当前等待用户审核并明确确认实现验收；确认前保持 `ACTIVE`，不归档。实现若触及 production seam，仍须停止并补 delta 后重新审批。
 
 ## Commit Responsibility
 

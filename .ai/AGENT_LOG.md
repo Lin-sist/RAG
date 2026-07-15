@@ -316,3 +316,34 @@
 - 外部调用复核：embedding/rerank model/judge/ask/LLM 实际调用量均为 0；未启动新容器、未拉取镜像、无业务数据出站或费用。
 - 跳过项：本轮仅文档规格，无代码、依赖或测试实现改动，因此未运行 Maven、Python、前端 build 或真实联合容器；等待用户批准后按 tasks 进入 TDD 实现。
 - Commit：`pending`；提交责任仍为用户手动提交。
+
+## 2026-07-15｜C3 规格草案提交补录
+
+- Commit：`ab1e6e5233dcd7ebb8fbd74e87c05390b7051592`。
+- 结论：C3 proposal、design、tasks、ACTIVE_TASK 与规格阶段证据已由用户手动完成中文提交；当前本地 `main` 比 `origin/main` 多 1 个提交，后续实现不暂存、不提交、不 push。
+
+## 2026-07-15｜C3 草案批准与实现启动
+
+- 用户决策：用户确认 Docker 已打开，并明确要求条件具备后进入 C3 迭代；实现完成后先提供测试反馈，范围内问题可直接修复，Git 等用户审核后手动提交。
+- 已批准设计：独立 `c3-integration` Maven/Failsafe 入口；真实 MySQL、Redis、etcd、MinIO、Milvus 隔离容器；test-scope 确定性 embedding；只验证 retrieval、不调用 LLM；Docker/关键容器不可用时专用命令失败而非 skip；当前无长期 spec delta。
+- TDD 纪律：按公开 HTTP 接口进行 RED → GREEN → REFACTOR，每次只推进一个可观察行为；不通过内部 mock 或数据库直查代替主链路断言。
+- Docker 事实：Client/Server 均为 28.4.0，Engine 连通；本 change 不读取、不停止、不复用常驻 `rag-*` 容器。
+- 外部调用：embedding/rerank model/judge/ask/LLM 计划调用量均为 0；只允许本地 Testcontainers network。首次运行可能拉取固定版本基础设施镜像，不上传业务数据。
+- 提交责任：用户手动提交；Agent 不暂存、不提交、不 push。
+- Commit：`pending`。
+
+## 2026-07-15｜C3 integration-test-happy-path 实现与技术验收
+
+- 类型：Type C test-scope 主链路集成测试实现；change 保持 `ACTIVE`，等待用户审核并明确确认实现验收通过。
+- 范围与修改文件：在 `rag-admin/pom.xml` 增加 test-scope Testcontainers 依赖和 `c3-integration` Failsafe profile；新增 `application-c3-integration.yml`、`HappyPathIT.java`、`DeterministicEmbeddingTestConfig.java`；同步本 change `tasks.md`、`.ai/ACTIVE_TASK.md` 与本日志。未修改 production Java、API/DTO、Flyway migration、baseline spec 或生产 profile。
+- TDD 与修复：最小真实容器测试首次因 Milvus 无法使用自定义 MinIO access key 而失败，改为 Milvus standalone 固定镜像所期望的合成 `minioadmin` 凭据；随后知识库创建因无可用 embedding provider 明确失败，新增 test-scope `deterministic-test` provider 后转绿。完整 HTTP happy-path 在该边界上补齐登录、知识库创建、target/distractor 上传、异步任务轮询、文档状态、retrieval 排序、删除可见性和资源清理断言。
+- 容器事实：Testcontainers 使用 `mysql:8.0.36`、Redis 7 Alpine 固定 digest、`quay.io/coreos/etcd:v3.5.5`、`minio/minio:RELEASE.2023-03-20T20-16-18Z`、`milvusdb/milvus:v2.3.4` 与 `testcontainers/ryuk:0.5.1`；随机 host ports、独立 network、无固定 name/volume/reuse。Docker Engine 28.4.0、总内存 7790 MB；C3 退出后仅原有常驻容器存活，未停止、复用或改写任何 `rag-*` 容器。
+- 主链路证据：两次聚焦隔离运行分别 48.9 秒和 46.4 秒并通过；每次均重新生成端口、容器和知识库 collection。真实 MySQL/Flyway、Redis 异步任务、Milvus 向量、BM25/RRF 参与；两个文档均为 `COMPLETED` 且 chunkCount > 0，target 首位召回，删除 target 后只剩 distractor，最终知识库和 Milvus collection 清理成功。
+- 完整验证：`mvn -q -pl rag-admin -am -Pc3-integration verify` 114.6 秒通过，47 个 XML report / 203 tests / 0 failures / 0 errors / 0 skipped，其中 `HappyPathIT` 1 test / 0 failures / 0 errors / 0 skipped、36.578 秒；独立 `mvn -q test` 78 秒通过，46 reports / 202 tests / 0 failures / 0 errors / 0 skipped；Python 33 tests 通过；SensitiveLogs 扫描 274 个源文件通过；`git diff --check` 与计划范围检查通过。
+- 跳过项及原因：本轮没有前端改动，按计划跳过正式前端 build；没有 generation/citation/no-answer/judge/SSE 范围，因此未做 ask 或 provider smoke。
+- 警告与降级：Testcontainers 停止 Redis 时 Lettuce 输出一次 connection closed/reconnect 告警，测试和资源清理仍成功；默认 Maven 日志保留 3 条既有 Redis unavailable 属性测试内部条件降级，但 Surefire skipped 为 0；MySQL 8 对历史 integer display width 的弃用告警仍存在。以上均未作为业务成功证据，也不阻塞 C3 retrieval happy-path。
+- 外部调用：真实 embedding、rerank model、judge、ask/LLM 调用量均为 0；确定性 provider 调用覆盖两个文档索引与 query embedding。除固定基础设施镜像下载外无业务数据出站、provider 费用或限流风险。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、生产依赖版本、生产 provider、RAG pipeline、chunking、prompt、citation/no-answer 或评测指标；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余步骤：等待用户审核测试反馈并明确确认实现验收；确认后才将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE` 并归档 change。当前无长期 spec delta，不修改 baseline。
+- 建议提交信息：`test(集成): 完成C3主链路真实依赖验证`。
+- Commit：`pending`；提交责任为用户手动提交。

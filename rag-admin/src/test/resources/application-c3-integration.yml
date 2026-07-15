@@ -1,0 +1,38 @@
+spring:
+  flyway:
+    enabled: true
+  datasource:
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 4
+      connection-timeout: 30000
+  data:
+    redis:
+      database: 0
+      timeout: 5s
+
+rag:
+  embedding:
+    enable-fallback: false
+    openai:
+      enabled: false
+    qwen:
+      enabled: false
+    bge:
+      enabled: false
+  vectorstore:
+    type: milvus
+    milvus:
+      database: default
+      connect-timeout: 30
+
+retrieval:
+  rerank:
+    provider: heuristic
+    model:
+      enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.enterprise.rag: INFO
