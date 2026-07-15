@@ -290,3 +290,29 @@
 
 - Commit：`3c212ae9e367174aa354d2d4252824262f7df969`。
 - 结论：C2 delta 接受、ACTIVE_TASK 恢复 `IDLE`、change 归档与当前事实源同步已完成本地中文提交；本条为独立纯日志补录，不递归记录自身提交 hash。
+
+## 2026-07-15｜C3 integration-test-happy-path 启动与规格草案
+
+- 类型：Type C 重大变更的规格阶段；change 已声明为 `ACTIVE`，业务实现尚未开始。
+- 范围与修改文件：`.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md`、`openspec/changes/2026-07-15-integration-test-happy-path/{proposal.md,design.md,tasks.md}`。
+- 已确认事实与关键决策：用户已手动 push C1/C2 提交，`main` 与 `origin/main` 一致且启动前工作区干净；C2 已归档；现有应用测试仍以 H2/禁用 Flyway 为主，MySQL Testcontainers 仅覆盖 migration，Redis 性质测试存在内部降级，Milvus 与确定性 embedding 尚未进入同一 happy-path。草案选择独立 `c3-integration` Maven/Failsafe 入口，使用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope token-hash embedding；Docker/依赖不可用时专用命令失败而非 skip。
+- 大白话：改前测试全绿仍不能证明数据库用户登录后真的能上传、完成索引、检索并删除；改后用一条命令启动隔离依赖并走完整链路，任何关键步骤失败都会明确报错。
+- 能力分类：`confirmed` 为 C2/主链路 API/Testcontainers MySQL/Docker 基线；`partial` 为 H2 应用测试、Redis 内部降级、Milvus/embedding 局部测试；`planned` 为真实联合容器、确定性 embedding 与 HTTP happy-path；`out_of_scope` 为 LLM/citation/judge、故障语义、索引恢复、生产契约修改；`unknown` 为跨机器 Milvus 资源上限、Redis 精确镜像与 CI Docker 额度。
+- Spec delta：当前不创建长期 delta，因为只增加 test-scope harness，不修改生产 provider 接口或正式运行语义；如果实现必须触及 production seam，停止实现、补 `rag-system` delta 并重新审批。
+- 外部调用：embedding/rerank model/judge/ask/LLM 预计与实际业务调用量均为 0；无模型、无业务数据出站、无 provider 限流或费用。后续首次真实运行可能下载固定版本基础设施镜像，需记录镜像身份，不上传业务数据。
+- 提交责任：用户手动提交；Agent 不暂存、不提交、不 push。
+- 验证：待执行 change artifact、必需标题/字段、ACTIVE 指针、Markdown 相对链接、业务实现零改动、固定范围与 `git diff --check` 检查。
+- 跳过项及原因：当前只启动规格草案，未修改 Java、POM、test resources、依赖、配置或测试，因此不运行 Maven/Python/前端测试；实现与真实联合容器验证须在用户批准草案后进行。
+- 范围安全：未修改业务代码、API/DTO、Flyway migration、生产 provider、RAG pipeline、评测指标、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未执行 provider、容器启动、部署、发布或网络业务调用。
+- 剩余风险：五容器拓扑的启动时间/资源上限、Redis 精确镜像、任务轮询预算和 cleanup 诊断仍待用户审定及实现期真实验证；批准前不得实现。
+- Commit：`pending`。
+
+## 2026-07-15｜C3 规格草案验证补充
+
+- 结构验证：proposal、design、tasks 三个必需 artifact 均存在且非空；proposal 的 Why/用户故事/Current Status/Scope/Non-goals/Spec Delta Decision/External Calls/Acceptance/Risks/提交责任，design 的测试入口/容器拓扑/确定性 embedding/happy-path/验证链/重审条件/审查决策，以及 tasks 的审批闸门均已检查。
+- Spec delta 复核：change 下没有 `specs/` 目录，符合当前“只增加 test-scope harness、不修改生产契约”的显式决定；proposal、design、tasks 和 ACTIVE_TASK 均写明触及 production seam 时必须停下补 delta 并重新审批。
+- 文档与范围验证：三份新 Markdown 无相对链接；行尾空白扫描与 `git diff --check` 通过；变更范围仅为 `.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md` 和本 C3 change 三个文件，Java、POM、test resources、依赖、baseline spec 与生产配置零改动。
+- 状态验证：`ACTIVE_TASK=ACTIVE` 且唯一指向 `2026-07-15-integration-test-happy-path`；用户审批任务仍未勾选，实现保持阻断。
+- 外部调用复核：embedding/rerank model/judge/ask/LLM 实际调用量均为 0；未启动新容器、未拉取镜像、无业务数据出站或费用。
+- 跳过项：本轮仅文档规格，无代码、依赖或测试实现改动，因此未运行 Maven、Python、前端 build 或真实联合容器；等待用户批准后按 tasks 进入 TDD 实现。
+- Commit：`pending`；提交责任仍为用户手动提交。
