@@ -421,3 +421,8 @@
 - 范围安全：未修改 API/DTO、数据库 migration、Redis/Milvus、索引恢复、评测指标或受保护本地配置；未 push、创建 PR、部署或发布。
 - 剩余风险：真实 servlet client disconnect 仍留作后续 transport 端到端验证，不阻塞已接受的 C4b provider 契约；C4c 必须作为新的唯一 active change 另行审阅。
 - Commit：`pending`；本条将在 C4b 治理收口提交中落盘，不递归记录该提交自身 hash。
+
+## 2026-07-15｜C4b 治理收口提交补录
+
+- Commit：`df2f75b602f411ffd0a4b2342d464a678a9c0d5c`。
+- 结论：C4b delta 已按原文接受进 `rag-system` baseline，exact match 为真，ACTIVE_TASK 已恢复 `IDLE`，change 已归档；本条为独立纯日志补录，不递归记录自身提交 hash。
