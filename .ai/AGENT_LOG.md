@@ -347,3 +347,13 @@
 - 剩余步骤：等待用户审核测试反馈并明确确认实现验收；确认后才将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE` 并归档 change。当前无长期 spec delta，不修改 baseline。
 - 建议提交信息：`test(集成): 完成C3主链路真实依赖验证`。
 - Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-15｜C3 实现提交补录与验收收口
+
+- 用户决策：用户明确要求完成 C3 主链路真实依赖验证，检查确认无误后授权 Agent 创建本地 commit；该授权不包含 push、PR、部署或发布。
+- 实现提交：`7f94538`（`test(集成): 完成C3主链路真实依赖验证`）。
+- 收口范围：勾选用户验收与归档任务；将 change 移入 `openspec/changes/archive/2026-07-15-integration-test-happy-path/`；将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`；同步 `openspec/project.md`、技术债清单与本日志。
+- Spec delta：本 change 只增加 test-scope 联合证据，没有修改生产契约；归档时不创建或接受 delta，不修改 `openspec/specs/` baseline。
+- 验证依据：实现提交前 C3 专用 verify 为 203 tests / 0 failures / 0 errors / 0 skipped，默认 Maven 为 202 tests / 0 failures / 0 errors / 0 skipped，Python 33 tests 与 SensitiveLogs 门禁通过；本轮治理收口只改文档与 change 位置，不重复运行代码测试。
+- 范围安全：未修改生产代码、API/DTO、Flyway migration、provider、RAG pipeline、评测指标或受保护本地配置；未 push、创建 PR、部署或发布。
+- Commit：`pending`；本条将在治理提交中落盘，不递归记录该治理提交自身 hash。

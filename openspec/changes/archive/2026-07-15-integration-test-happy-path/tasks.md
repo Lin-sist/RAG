@@ -59,8 +59,8 @@
 - [x] 无前端改动时明确跳过前端 build；若触及前端则运行包含 `vue-tsc` 的正式 build。
 - [x] `git diff --check`、change 结构、Markdown 相对链接和计划文件范围检查通过。
 - [x] 确认 embedding、rerank model、judge、ask/LLM 业务外部调用量均为 0。
-- [ ] 用户明确确认实现验收通过。
-- [ ] 无 spec delta 时不修改 baseline；将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE` 并经用户确认后归档 change。
+- [x] 用户明确确认实现验收通过。
+- [x] 无 spec delta 时不修改 baseline；将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE` 并经用户确认后归档 change。
 
 ## Guardrails
 

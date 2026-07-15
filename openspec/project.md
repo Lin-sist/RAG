@@ -16,6 +16,7 @@
 - 默认分块为 `420/80`。
 - 同步问答返回答案、contexts、citations、metadata；SSE 当前主要输出文本 chunk。
 - 评测集为 30 条开发样本，具备固定 KB、retrieval/generation/citation/no-answer 指标。
+- `c3-integration` Maven/Failsafe 入口可用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding 重复验证登录、上传、索引、retrieval 与删除主链路。
 
 ## 当前边界
 

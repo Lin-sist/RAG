@@ -18,10 +18,12 @@
 - 独立剩余债务：`application.yml` 的开发态 JWT fallback 不属于 C2 登录/refresh 契约，后续需单独治理。
 - 证据：`openspec/changes/archive/2026-07-14-database-backed-authentication/`、`rag-auth/.../UserDetailsServiceImpl.java`、`rag-admin/src/main/resources/db/migration/V6__quarantine_known_admin_seed.sql`。
 
-### 3. 补真实依赖集成测试
+### 3. 补真实依赖集成测试（主链路已完成：2026-07-15）
 
-- 现状：单元和性质测试较完整，但 Redis 不可用时部分性质测试会在测试内部跳过；尚缺 MySQL/Redis/Milvus 联合链路证据。
-- 目标：用 Testcontainers 或受控集成环境覆盖登录、上传、索引、检索、删除和故障恢复。
+- 已实现：独立 `c3-integration` Maven/Failsafe 入口使用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding，覆盖登录、上传、异步索引、retrieval、删除与资源清理。
+- 验证：主链路重复运行通过；完整 Maven 203 tests、默认 Maven 202 tests、Python 33 tests 与 SensitiveLogs 门禁通过，均为 0 failures/errors/skipped。
+- 独立剩余债务：Redis/Milvus 故障语义和索引中断恢复不属于 happy-path，后续按独立 OpenSpec change 处理。
+- 证据：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`、`rag-admin/src/test/java/com/enterprise/rag/integration/HappyPathIT.java`。
 
 ## P1：下一轮 RAG 质量工程
 
