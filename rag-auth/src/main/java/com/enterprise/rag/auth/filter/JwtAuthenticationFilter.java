@@ -3,6 +3,7 @@ package com.enterprise.rag.auth.filter;
 import com.enterprise.rag.auth.model.UserPrincipal;
 import com.enterprise.rag.auth.provider.JwtTokenProvider;
 import com.enterprise.rag.auth.service.TokenBlacklistService;
+import com.enterprise.rag.common.exception.RedisDependencyException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -80,12 +81,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 
                 log.debug("用户认证成功");
             }
+        } catch (RedisDependencyException e) {
+            SecurityContextHolder.clearContext();
+            log.error("JWT authentication failed closed: dependency=redis, subsystem={}, "
+                            + "operation={}, failMode={}, errorCategory={}",
+                    e.getSubsystem(), e.getOperation(), e.getFailMode(), e.getErrorCategory());
+            writeRedisUnavailable(response);
+            return;
         } catch (Exception e) {
             log.error("JWT 认证过程中发生错误: errorType={}",
                     e.getClass().getSimpleName());
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void writeRedisUnavailable(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(
+                "{\"status\":503,\"errorCode\":\"REDIS_DEPENDENCY_UNAVAILABLE\","
+                        + "\"message\":\"Redis 依赖暂时不可用，请稍后重试\"}");
     }
 
     /**

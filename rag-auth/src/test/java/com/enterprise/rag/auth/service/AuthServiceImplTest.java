@@ -7,6 +7,7 @@ import com.enterprise.rag.auth.model.UserPrincipal;
 import com.enterprise.rag.auth.provider.JwtTokenProvider;
 import com.enterprise.rag.auth.service.impl.AuthServiceImpl;
 import com.enterprise.rag.common.constant.RedisKeyConstants;
+import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.enterprise.rag.common.util.RedisUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,8 +23,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.same;
 import static org.mockito.Mockito.verify;
@@ -208,5 +212,96 @@ class AuthServiceImplTest {
         AuthResponse response = authService.login(request);
 
         assertEquals(3600L, response.getExpiresIn());
+    }
+
+    @Test
+    void loginShouldReturnStableUnavailableWhenSessionWriteFails() {
+        UserPrincipal principal = UserPrincipal.builder()
+                .id(1L)
+                .username("admin")
+                .enabled(true)
+                .roles(Set.of("ADMIN"))
+                .build();
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                principal, null, principal.getAuthorities());
+        when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authentication);
+        when(jwtTokenProvider.generateAccessToken(principal)).thenReturn("new-access");
+        when(jwtTokenProvider.generateRefreshToken(principal)).thenReturn("new-refresh");
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisUtil).hSetAll(anyString(), anyMap());
+        LoginRequest request = new LoginRequest();
+        request.setUsername("admin");
+        request.setPassword("password");
+
+        RedisDependencyException exception = assertThrows(RedisDependencyException.class,
+                () -> authService.login(request));
+
+        assertEquals("auth_session", exception.getSubsystem());
+        assertEquals("write", exception.getOperation());
+    }
+
+    @Test
+    void refreshShouldReturnStableUnavailableWhenSessionReadFails() {
+        String refreshToken = "refresh-token";
+        UserPrincipal principal = UserPrincipal.builder()
+                .id(7L)
+                .username("alice")
+                .enabled(true)
+                .roles(Set.of("USER"))
+                .build();
+        when(jwtTokenProvider.isTokenValid(refreshToken)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklisted(refreshToken)).thenReturn(false);
+        when(jwtTokenProvider.getTokenType(refreshToken)).thenReturn("refresh");
+        when(jwtTokenProvider.getUserPrincipalFromToken(refreshToken)).thenReturn(principal);
+        when(redisUtil.hasKey(RedisKeyConstants.userSessionKey(7L)))
+                .thenThrow(new RuntimeException("synthetic redis marker"));
+
+        RedisDependencyException exception = assertThrows(RedisDependencyException.class,
+                () -> authService.refreshToken(refreshToken));
+
+        assertEquals("auth_session", exception.getSubsystem());
+        assertEquals("read", exception.getOperation());
+    }
+
+    @Test
+    void refreshShouldNotReturnTokensWhenSessionWriteFails() {
+        String refreshToken = "refresh-token";
+        UserPrincipal principal = UserPrincipal.builder()
+                .id(7L)
+                .username("alice")
+                .enabled(true)
+                .roles(Set.of("USER"))
+                .build();
+        when(jwtTokenProvider.isTokenValid(refreshToken)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklisted(refreshToken)).thenReturn(false);
+        when(jwtTokenProvider.getTokenType(refreshToken)).thenReturn("refresh");
+        when(jwtTokenProvider.getUserPrincipalFromToken(refreshToken)).thenReturn(principal);
+        when(redisUtil.hasKey(RedisKeyConstants.userSessionKey(7L))).thenReturn(true);
+        when(redisUtil.hGet(RedisKeyConstants.userSessionKey(7L), "refreshToken"))
+                .thenReturn(refreshToken);
+        when(userDetailsService.loadUserByUsername("alice")).thenReturn(principal);
+        when(jwtTokenProvider.generateAccessToken(principal)).thenReturn("new-access");
+        when(jwtTokenProvider.generateRefreshToken(principal)).thenReturn("new-refresh");
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisUtil).hSetAll(anyString(), anyMap());
+
+        RedisDependencyException exception = assertThrows(RedisDependencyException.class,
+                () -> authService.refreshToken(refreshToken));
+
+        assertEquals("auth_session", exception.getSubsystem());
+        assertEquals("write", exception.getOperation());
+    }
+
+    @Test
+    void logoutShouldNotReportSuccessWhenRevocationWriteFails() {
+        doThrow(RedisDependencyException.unavailable(
+                "token_blacklist", "write", new RuntimeException("synthetic redis marker")))
+                .when(tokenBlacklistService).addToBlacklist("access-token");
+
+        RedisDependencyException exception = assertThrows(RedisDependencyException.class,
+                () -> authService.logout("access-token"));
+
+        assertEquals("token_blacklist", exception.getSubsystem());
+        assertEquals("write", exception.getOperation());
     }
 }

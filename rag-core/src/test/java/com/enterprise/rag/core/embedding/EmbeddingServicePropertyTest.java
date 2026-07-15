@@ -23,6 +23,46 @@ class EmbeddingServicePropertyTest {
     private static final int TEST_DIMENSION = 1536;
     private static final long CACHE_TTL = 3600L;
 
+    @Example
+    void embeddingShouldRemainAvailableWhenCacheWriteFails() {
+        EmbeddingProvider provider = createMockProvider(TEST_DIMENSION);
+        RedisUtil redisUtil = createMockRedisUtil();
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisUtil).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+        EmbeddingService service = new EmbeddingServiceImpl(
+                List.of(provider), redisUtil, new ObjectMapper(), true, CACHE_TTL);
+
+        float[] embedding = service.embed("cache write failure");
+
+        assertThat(embedding.length == TEST_DIMENSION)
+                .as("Embedding should remain available when Redis cache write fails")
+                .isTrue();
+    }
+
+    @Example
+    void cacheEvictionShouldRemainBestEffortWhenRedisFails() {
+        EmbeddingProvider provider = createMockProvider(TEST_DIMENSION);
+        RedisUtil redisUtil = createMockRedisUtil();
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisUtil).delete(anyString());
+        EmbeddingService service = new EmbeddingServiceImpl(
+                List.of(provider), redisUtil, new ObjectMapper(), true, CACHE_TTL);
+
+        service.evictCache("cache eviction failure");
+    }
+
+    @Example
+    void cacheClearShouldRemainBestEffortWhenRedisFails() {
+        EmbeddingProvider provider = createMockProvider(TEST_DIMENSION);
+        RedisUtil redisUtil = createMockRedisUtil();
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisUtil).deleteByPattern(anyString());
+        EmbeddingService service = new EmbeddingServiceImpl(
+                List.of(provider), redisUtil, new ObjectMapper(), true, CACHE_TTL);
+
+        service.clearAllCache();
+    }
+
     /**
      * Property 9: 嵌入向量有效性
      * 

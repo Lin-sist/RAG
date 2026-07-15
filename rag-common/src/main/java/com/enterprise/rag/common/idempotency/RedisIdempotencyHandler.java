@@ -1,7 +1,7 @@
 package com.enterprise.rag.common.idempotency;
 
 import com.enterprise.rag.common.constant.RedisKeyConstants;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,10 +116,11 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
             Boolean result = stringRedisTemplate.opsForValue()
                 .setIfAbsent(redisKey, json, PROCESSING_TTL_SECONDS, TimeUnit.SECONDS);
             return Boolean.TRUE.equals(result);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize processing data: errorType={}",
+        } catch (Exception e) {
+            log.error("Idempotency lock failed closed: dependency=redis, subsystem=idempotency, "
+                            + "operation=lock, failMode=closed, errorType={}",
                     e.getClass().getSimpleName());
-            return false;
+            throw RedisDependencyException.unavailable("idempotency", "lock", e);
         }
     }
 
@@ -133,10 +134,12 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
             String json = objectMapper.writeValueAsString(data);
             stringRedisTemplate.opsForValue().set(redisKey, json, ttlSeconds, TimeUnit.SECONDS);
             log.debug("Stored completed idempotency result");
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize completed result: errorType={}",
+        } catch (Exception e) {
+            log.error("Idempotency result write has unknown outcome: dependency=redis, "
+                            + "subsystem=idempotency, operation=write_result, "
+                            + "failMode=outcome_unknown, errorType={}",
                     e.getClass().getSimpleName());
-            throw IdempotencyException.storageFailed(redisKey, e);
+            throw RedisDependencyException.outcomeUnknown("idempotency", "write_result", e);
         }
     }
 
@@ -149,8 +152,10 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
             String json = objectMapper.writeValueAsString(data);
             stringRedisTemplate.opsForValue().set(redisKey, json, ttlSeconds, TimeUnit.SECONDS);
             log.debug("Stored failed idempotency result");
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize failed result: errorType={}",
+        } catch (Exception e) {
+            log.error("Failed to persist idempotency failure state: dependency=redis, "
+                            + "subsystem=idempotency, operation=write_failure, "
+                            + "failMode=closed, errorType={}",
                     e.getClass().getSimpleName());
         }
     }
@@ -159,7 +164,15 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
      * 获取已存储的结果（内部方法）
      */
     private <T> IdempotencyResult<T> getStoredResultInternal(String redisKey, Class<T> resultType) {
-        String json = stringRedisTemplate.opsForValue().get(redisKey);
+        String json;
+        try {
+            json = stringRedisTemplate.opsForValue().get(redisKey);
+        } catch (Exception e) {
+            log.error("Idempotency read failed closed: dependency=redis, subsystem=idempotency, "
+                            + "operation=read, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("idempotency", "read", e);
+        }
         if (json == null) {
             return null;
         }
@@ -181,12 +194,11 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
                 default:
                     return null;
             }
-        } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize idempotency data: errorType={}",
+        } catch (Exception e) {
+            log.error("Failed to read idempotency state: dependency=redis, subsystem=idempotency, "
+                            + "operation=deserialize, failMode=closed, errorType={}",
                     e.getClass().getSimpleName());
-            // 数据损坏，删除并允许重试
-            stringRedisTemplate.delete(redisKey);
-            return null;
+            throw RedisDependencyException.unavailable("idempotency", "deserialize", e);
         }
     }
 }

@@ -451,3 +451,39 @@
 - 跳过项：本轮仅规划文档，没有代码、测试、配置或依赖变更，因此未运行 Maven、Python、前端 build、SensitiveLogs 或容器故障测试；没有真实 provider 或外部业务调用。
 - 工作区：仅 `.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md` 与新 C4c change artifacts 未提交；Agent 未暂存、未提交、未 push。
 - Commit：`pending`；建议用户审核后使用 `docs(openspec): 启动C4c Redis故障语义规划`。
+
+## 2026-07-15｜C4c 规格草案提交补录
+
+- Commit：`1e40d2e35e1797b2c23f9ca7706eebe7af615d5e`。
+- 结论：C4c proposal、design、严格三行决策记录、tasks、`rag-system` spec delta、ACTIVE_TASK 与规划验证证据已由用户手动完成中文提交。
+
+## 2026-07-15｜C4c 实现批准与 TDD 启动
+
+- 用户决策：用户明确确认进入 C4c 实现，等同批准当前 proposal、design、决策记录与 spec delta；提交责任继续为用户手动提交，Agent 不暂存、不提交、不 push。
+- 范围：按已批准 tasks 依次推进 optional cache/counter、auth/blacklist/rate-limit、idempotency、async task 与隔离 Redis stop/start；不修改 baseline spec，不进入 C4d/C5。
+- 验证纪律：使用 `tdd` skill，按公开可观察行为逐个 RED → GREEN → REFACTOR，不一次性铺开全部测试与实现。
+- 外部调用：真实 embedding、rerank、judge、ask/LLM 业务调用量均为 0；只允许 mock boundary 与隔离 Testcontainers Redis 使用合成数据。
+- 剩余风险：幂等 operation 后 Redis 写失败时事务/AOP 真实顺序仍需集成测试确认；任务执行中状态丢失的恢复与协调明确留给 C5。
+- Commit：`pending`。
+
+## 2026-07-15｜C4c Redis 分级故障语义实现与技术验证
+
+- 范围与修改文件：在 `rag-common` 新增安全的 `RedisDependencyException`，实现限流、幂等、异步任务的稳定故障语义；在 `rag-auth` 收紧 session、token blacklist 与 JWT filter；在 `rag-core` 让 QA/embedding cache 全链路 fail-open；在 `rag-admin` 修正 query counter/statistics，并新增 `c4c-redis-fault` Failsafe profile、隔离 Redis stop/start 集成用例及对应单元/HTTP/事务测试；同步更新 C4c design inventory、tasks 与 ACTIVE_TASK。
+- 已确认事实与关键决策：optional cache/counter 写清理只损失性能或计数；security-critical 与 state-source 在 unknown 时返回稳定 503；限流 null/empty/exception 均不执行 controller；幂等 pre-operation read/lock 故障 supplier 为 0 次，completed 写失败为 `IDEMPOTENCY_OUTCOME_UNKNOWN`；Spring AOP + transaction 测试先观察到 completed 写位于事务内的 RED，设置明确切面顺序后确认业务事务完成再写幂等结果；task PENDING 成功前不启动 operation，progress/terminal/cancel 写失败不报告假成功。
+- TDD 证据：QA cache read/write、embedding cache write、blacklist lookup/write、login/refresh/logout session、rate-limit exception、幂等 read/lock/post-write、task initial/read/progress/completed/cancel 等关键分支均先观察到预期 RED，再以 consumer-boundary 最小实现转 GREEN；既有兼容路径和 null/empty/corrupt 值补充回归测试。
+- HTTP 与安全：`REDIS_DEPENDENCY_UNAVAILABLE` 和 `IDEMPOTENCY_OUTCOME_UNKNOWN` 均映射 503；既有 PROCESSING 仍为 409、正常超限仍为 429；JWT filter 在 blacklist unknown 时清空认证并停止 filter chain。新增 Redis 诊断仅记录 dependency/subsystem/operation/errorCategory/failMode/exception type，不记录 Redis key/value、token/hash/session、幂等 key、question/prompt/context、任务 result/error 或底层异常 message。
+- 验证：`mvn -q -pl rag-common -am test`、`rag-auth`、`rag-core`、`rag-admin` 均通过；聚焦 C4c 回归通过；最终 `mvn -q test` 通过，54 个 surefire reports、245 tests、0 failures、0 errors、3 skipped；Python 33 tests / OK；SensitiveLogs 扫描 275 个源文件通过；`git diff --check` 通过。
+- 隔离故障入口：`mvn -q -pl rag-admin -am -Pc4c-redis-fault verify` 退出码 0且测试成功编译，但本机 Docker daemon 未运行，`RedisFailureSemanticsIT` 为 1 skipped，未真实执行 stop/start；不能记为集成通过。用例只调用其 Testcontainer 自身 container id，覆盖 optional embedding 200、auth/rate-limit 503且 controller 0 次、task status 503及 restart recovery，不枚举或操作用户常驻容器/volume。
+- 跳过项：无前端改动，未运行前端 build；真实 embedding/rerank/judge/ask/LLM 业务调用量为 0；未修改 baseline spec、DTO/schema、依赖版本、生产 Redis 配置、`.env.local` 或 `application-dev.yml`；未进入 C4d/C5，未做 HA/retry/replay/orphan coordination。
+- 剩余风险：Docker 可用后必须补跑 `-Pc4c-redis-fault verify` 并确认 stop/start 非 skipped；任务执行中 Redis 中断后的恢复、重放与孤儿协调仍明确留给 C5；用户尚未完成实现验收，因此 ACTIVE_TASK 保持 C4c，spec delta 未接受、change 未归档。
+- 提交责任与范围安全：用户手动提交；Agent 未执行 `git add`、`git commit`、push、PR、部署或发布。Commit：`pending`。
+
+## 2026-07-15｜C4c 隔离 Redis stop/start 补跑与端口漂移修正
+
+- 环境与范围：为完成既定集成门禁，启动本机 Docker Desktop，daemon 版本为 28.4.0；仅操作测试创建的 Redis Testcontainer 和一次性端口探针容器，均使用镜像 `redis:7-alpine` 的既定固定 digest，未枚举、停止或修改用户常驻容器/volume。
+- 首轮真实结果：optional embedding outage 保持 200、auth/rate-limit 返回稳定 503 且 controller 未执行、task status 返回稳定 503 均通过；恢复探针失败。诊断确认 Redis 容器内已 `PONG`，但 Docker Desktop 会在随机发布端口的容器 stop/start 后重新分配宿主端口，一次性探针实测由 63723 漂移到 63732，应用仍连接旧端口。
+- 修正：隔离测试在启动前选择随机空闲宿主端口并固定映射，增加 stop/start 前后映射端口一致性断言；恢复等待以真实公开 `/auth/login` 200 为应用级完成条件，不引入生产 retry、fallback 或恢复逻辑。
+- 最终验证：`mvn -q -pl rag-admin -am verify -Pc4c-redis-fault` 退出码 0；`RedisFailureSemanticsIT` 为 1 test / 0 failures / 0 errors / 0 skipped。真实验证覆盖健康登录与任务完成、outage 期间 optional fail-open、auth/rate-limit fail-closed 且 controller 0 次、task status 503，以及 Redis restart 后 Lettuce 重连和公开登录恢复 200。
+- 数据与外调：全程使用合成用户、token marker、cache 内容与任务；embedding provider 为进程内 synthetic stub，真实 embedding、rerank、judge、ask/LLM 业务调用量均为 0。
+- 剩余风险：任务恢复、重放与孤儿协调仍按批准边界留给 C5；用户尚未完成实现验收，因此 ACTIVE_TASK 保持 C4c，spec delta 未接受、change 未归档。Docker Desktop 为本次验证启动，验证后保持运行。
+- 提交责任：用户手动提交；Agent 未暂存、未提交、未 push。Commit：`pending`。

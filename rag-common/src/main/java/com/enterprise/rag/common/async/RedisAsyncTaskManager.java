@@ -1,6 +1,7 @@
 package com.enterprise.rag.common.async;
 
 import com.enterprise.rag.common.constant.RedisKeyConstants;
+import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -97,7 +98,15 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
     @Override
     public Optional<TaskStatus> getStatus(String taskId) {
         String redisKey = buildKey(taskId);
-        String json = stringRedisTemplate.opsForValue().get(redisKey);
+        String json;
+        try {
+            json = stringRedisTemplate.opsForValue().get(redisKey);
+        } catch (Exception e) {
+            log.error("Task status read failed closed: dependency=redis, subsystem=task_status, "
+                            + "operation=read, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("task_status", "read", e);
+        }
 
         if (json == null) {
             return Optional.empty();
@@ -106,10 +115,11 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
         try {
             TaskStatusData data = objectMapper.readValue(json, TaskStatusData.class);
             return Optional.of(data.toTaskStatus());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize task status: taskId={}, errorType={}",
-                    taskId, e.getClass().getSimpleName());
-            return Optional.empty();
+        } catch (Exception e) {
+            log.error("Task status deserialize failed closed: dependency=redis, subsystem=task_status, "
+                            + "operation=deserialize, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("task_status", "deserialize", e);
         }
     }
 
@@ -142,10 +152,11 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
         try {
             T result = objectMapper.readValue(status.result(), resultType);
             return Optional.of(result);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize task result: taskId={}, errorType={}",
-                    taskId, e.getClass().getSimpleName());
-            return Optional.empty();
+        } catch (Exception e) {
+            log.error("Task result deserialize failed closed: dependency=redis, subsystem=task_status, "
+                            + "operation=deserialize_result, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("task_status", "deserialize_result", e);
         }
     }
 
@@ -204,14 +215,28 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
     @Override
     public boolean exists(String taskId) {
         String redisKey = buildKey(taskId);
-        Boolean exists = stringRedisTemplate.hasKey(redisKey);
-        return Boolean.TRUE.equals(exists);
+        try {
+            Boolean exists = stringRedisTemplate.hasKey(redisKey);
+            return Boolean.TRUE.equals(exists);
+        } catch (Exception e) {
+            log.error("Task status existence check failed closed: dependency=redis, subsystem=task_status, "
+                            + "operation=exists, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("task_status", "exists", e);
+        }
     }
 
     @Override
     public void remove(String taskId) {
         String redisKey = buildKey(taskId);
-        stringRedisTemplate.delete(redisKey);
+        try {
+            stringRedisTemplate.delete(redisKey);
+        } catch (Exception e) {
+            log.error("Task status removal failed closed: dependency=redis, subsystem=task_status, "
+                            + "operation=remove, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("task_status", "remove", e);
+        }
         taskFutures.remove(taskId);
         log.debug("Removed task: {}", taskId);
     }
@@ -237,11 +262,18 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
                 log.info("Task completed successfully: taskId={}", taskId);
                 return result;
 
+            } catch (RedisDependencyException e) {
+                throw e;
             } catch (Exception e) {
                 // 更新状态为失败
                 log.error("Task execution failed: taskId={}, errorType={}",
                         taskId, e.getClass().getSimpleName());
-                saveStatus(taskId, TaskStatus.failed(taskId, taskType, e.getMessage(), ownerId));
+                try {
+                    saveStatus(taskId, TaskStatus.failed(taskId, taskType, e.getMessage(), ownerId));
+                } catch (RedisDependencyException statusFailure) {
+                    statusFailure.addSuppressed(e);
+                    throw statusFailure;
+                }
                 throw new RuntimeException(e);
             }
         }, asyncTaskExecutor);
@@ -270,10 +302,18 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
             TaskStatusData data = TaskStatusData.fromTaskStatus(status);
             String json = objectMapper.writeValueAsString(data);
             stringRedisTemplate.opsForValue().set(redisKey, json, RedisKeyConstants.TASK_STATUS_TTL, TimeUnit.SECONDS);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize task status: taskId={}, errorType={}",
-                    taskId, e.getClass().getSimpleName());
-            throw AsyncTaskException.storageFailed(taskId, e);
+        } catch (Exception e) {
+            String operation = switch (status.state()) {
+                case PENDING -> "write_pending";
+                case RUNNING -> "write_running";
+                case COMPLETED -> "write_completed";
+                case FAILED -> "write_failed";
+                case CANCELLED -> "write_cancelled";
+            };
+            log.error("Task status write failed closed: dependency=redis, subsystem=task_status, "
+                            + "operation={}, failMode=closed, errorType={}",
+                    operation, e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("task_status", operation, e);
         }
     }
 

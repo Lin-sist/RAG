@@ -12,6 +12,7 @@ import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KBPermissionService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.common.exception.BusinessException;
+import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.enterprise.rag.common.idempotency.Idempotent;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
@@ -176,7 +177,13 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         }
 
         // 删除查询计数
-        redisTemplate.delete(QUERY_COUNT_KEY_PREFIX + id);
+        try {
+            redisTemplate.delete(QUERY_COUNT_KEY_PREFIX + id);
+        } catch (Exception e) {
+            log.warn("Query count cleanup degraded: dependency=redis, subsystem=query_counter, "
+                            + "operation=delete, failMode=open, errorType={}",
+                    e.getClass().getSimpleName());
+        }
 
         // 删除知识库记录
         knowledgeBaseMapper.deleteById(id);
@@ -210,12 +217,23 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         // 获取查询次数
         long queryCount = 0;
-        String countStr = redisTemplate.opsForValue().get(QUERY_COUNT_KEY_PREFIX + id);
+        String countStr;
+        try {
+            countStr = redisTemplate.opsForValue().get(QUERY_COUNT_KEY_PREFIX + id);
+        } catch (Exception e) {
+            log.error("Query count read failed: dependency=redis, subsystem=query_counter, "
+                            + "operation=read, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("query_counter", "read", e);
+        }
         if (countStr != null) {
             try {
                 queryCount = Long.parseLong(countStr);
             } catch (NumberFormatException e) {
-                log.warn("Invalid query count for kb {}: {}", id, countStr);
+                log.error("Query count deserialize failed: dependency=redis, subsystem=query_counter, "
+                                + "operation=deserialize, failMode=closed, errorType={}",
+                        e.getClass().getSimpleName());
+                throw RedisDependencyException.unavailable("query_counter", "deserialize", e);
             }
         }
 
@@ -241,8 +259,9 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         try {
             redisTemplate.opsForValue().increment(QUERY_COUNT_KEY_PREFIX + id);
         } catch (Exception e) {
-            log.warn("Failed to increment query count for kb {}: errorType={}",
-                    id, e.getClass().getSimpleName());
+            log.warn("Query count increment degraded: dependency=redis, subsystem=query_counter, "
+                            + "operation=increment, failMode=open, errorType={}",
+                    e.getClass().getSimpleName());
         }
     }
 

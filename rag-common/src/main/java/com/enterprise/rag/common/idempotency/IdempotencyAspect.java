@@ -8,6 +8,8 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -23,6 +25,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Aspect
 @Component
 @RequiredArgsConstructor
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class IdempotencyAspect {
 
     private final IdempotencyHandler idempotencyHandler;
@@ -80,7 +83,7 @@ public class IdempotencyAspect {
                 idempotent.ttlSeconds());
 
         if (!result.isNew()) {
-            log.info("Returning cached result for idempotency key: {}", fullKey);
+            log.info("Returning cached idempotency result");
         }
 
         return result.result();

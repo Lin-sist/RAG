@@ -25,7 +25,7 @@ public class IdempotencyException extends BusinessException {
     public static IdempotencyException processing(String idempotencyKey) {
         return new IdempotencyException(
             ERROR_CODE_PROCESSING,
-            "请求正在处理中，请稍后重试。幂等性Key: " + idempotencyKey
+            "请求正在处理中，请稍后重试"
         );
     }
 
@@ -35,7 +35,7 @@ public class IdempotencyException extends BusinessException {
     public static IdempotencyException storageFailed(String idempotencyKey, Throwable cause) {
         return new IdempotencyException(
             ERROR_CODE_STORAGE,
-            "幂等性结果存储失败。幂等性Key: " + idempotencyKey,
+            "幂等性结果存储失败",
             cause
         );
     }

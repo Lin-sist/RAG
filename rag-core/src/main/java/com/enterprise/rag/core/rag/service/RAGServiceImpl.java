@@ -6,7 +6,6 @@ import com.enterprise.rag.core.rag.generator.AnswerGenerator;
 import com.enterprise.rag.core.rag.generator.LLMException;
 import com.enterprise.rag.core.rag.model.*;
 import com.enterprise.rag.core.rag.query.QueryEngine;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -462,14 +461,26 @@ public class RAGServiceImpl implements RAGService {
     public void evictCache(String question, String collectionName) {
         String queryHash = hashString(question.toLowerCase().trim());
         String pattern = RedisKeyConstants.QA_CACHE_PREFIX + queryHash + ":" + collectionName + ":*";
-        redisUtil.deleteByPattern(pattern);
-        log.debug("Evicted QA cache for collection: {}", collectionName);
+        try {
+            redisUtil.deleteByPattern(pattern);
+            log.debug("Evicted QA cache for collection: {}", collectionName);
+        } catch (Exception e) {
+            log.warn("QA cache eviction degraded: dependency=redis, subsystem=qa_cache, "
+                            + "operation=delete, failMode=open, errorType={}",
+                    e.getClass().getSimpleName());
+        }
     }
 
     @Override
     public void clearAllCache() {
-        redisUtil.deleteByPattern(RedisKeyConstants.QA_CACHE_PREFIX + "*");
-        log.info("Cleared all QA cache");
+        try {
+            redisUtil.deleteByPattern(RedisKeyConstants.QA_CACHE_PREFIX + "*");
+            log.info("Cleared all QA cache");
+        } catch (Exception e) {
+            log.warn("QA cache clear degraded: dependency=redis, subsystem=qa_cache, "
+                            + "operation=clear, failMode=open, errorType={}",
+                    e.getClass().getSimpleName());
+        }
     }
 
     /**
@@ -479,17 +490,17 @@ public class RAGServiceImpl implements RAGService {
             String collectionName,
             int topK,
             Map<String, Object> filter,
-            String modelName) {
+        String modelName) {
         String cacheKey = buildCacheKey(question, collectionName, topK, filter, modelName);
-        String cachedJson = redisUtil.getString(cacheKey);
-
-        if (cachedJson != null) {
-            try {
+        try {
+            String cachedJson = redisUtil.getString(cacheKey);
+            if (cachedJson != null) {
                 return objectMapper.readValue(cachedJson, QAResponse.class);
-            } catch (JsonProcessingException e) {
-                log.warn("Failed to deserialize cached response: errorType={}",
-                        e.getClass().getSimpleName());
             }
+        } catch (Exception e) {
+            log.warn("QA cache read degraded: dependency=redis, subsystem=qa_cache, "
+                            + "operation=read, failMode=open, errorType={}",
+                    e.getClass().getSimpleName());
         }
         return null;
     }
@@ -508,8 +519,9 @@ public class RAGServiceImpl implements RAGService {
             String json = objectMapper.writeValueAsString(response);
             redisUtil.setString(cacheKey, json, RedisKeyConstants.QA_CACHE_TTL, TimeUnit.SECONDS);
             log.debug("Cached QA response for collection: {}", collectionName);
-        } catch (JsonProcessingException e) {
-            log.warn("Failed to serialize response for caching: errorType={}",
+        } catch (Exception e) {
+            log.warn("QA cache write degraded: dependency=redis, subsystem=qa_cache, "
+                            + "operation=write, failMode=open, errorType={}",
                     e.getClass().getSimpleName());
         }
     }

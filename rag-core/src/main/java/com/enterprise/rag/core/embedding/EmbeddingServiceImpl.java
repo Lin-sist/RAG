@@ -2,7 +2,6 @@ package com.enterprise.rag.core.embedding;
 
 import com.enterprise.rag.common.constant.RedisKeyConstants;
 import com.enterprise.rag.common.util.RedisUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,14 +129,26 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     @Override
     public void evictCache(String text) {
         String cacheKey = getCacheKey(text);
-        redisUtil.delete(cacheKey);
-        log.debug("Evicted cache for: {}", cacheKey);
+        try {
+            redisUtil.delete(cacheKey);
+            log.debug("Evicted embedding cache");
+        } catch (Exception e) {
+            log.warn("Embedding cache eviction degraded: dependency=redis, subsystem=embedding_cache, "
+                            + "operation=delete, failMode=open, errorType={}",
+                    e.getClass().getSimpleName());
+        }
     }
 
     @Override
     public void clearAllCache() {
-        redisUtil.deleteByPattern(RedisKeyConstants.EMBEDDING_CACHE_PREFIX + "*");
-        log.info("Cleared all embedding cache");
+        try {
+            redisUtil.deleteByPattern(RedisKeyConstants.EMBEDDING_CACHE_PREFIX + "*");
+            log.info("Cleared all embedding cache");
+        } catch (Exception e) {
+            log.warn("Embedding cache clear degraded: dependency=redis, subsystem=embedding_cache, "
+                            + "operation=clear, failMode=open, errorType={}",
+                    e.getClass().getSimpleName());
+        }
     }
 
     private float[] getEmbeddingWithFallback(String text) {
@@ -268,7 +279,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 return objectMapper.readValue(json, float[].class);
             }
         } catch (Exception e) {
-            log.warn("Failed to read embedding from cache: errorType={}",
+            log.warn("Embedding cache read degraded: dependency=redis, subsystem=embedding_cache, "
+                            + "operation=read, failMode=open, errorType={}",
                     e.getClass().getSimpleName());
         }
         return null;
@@ -278,8 +290,9 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         try {
             String json = objectMapper.writeValueAsString(embedding);
             redisUtil.setString(cacheKey, json, cacheTtlSeconds, TimeUnit.SECONDS);
-        } catch (JsonProcessingException e) {
-            log.warn("Failed to cache embedding: errorType={}",
+        } catch (Exception e) {
+            log.warn("Embedding cache write degraded: dependency=redis, subsystem=embedding_cache, "
+                            + "operation=write, failMode=open, errorType={}",
                     e.getClass().getSimpleName());
         }
     }

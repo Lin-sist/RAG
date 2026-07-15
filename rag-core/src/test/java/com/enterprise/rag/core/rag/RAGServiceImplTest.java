@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -123,5 +124,56 @@ class RAGServiceImplTest {
         assertTrue(response.citations().isEmpty());
         assertTrue(response.contexts().isEmpty());
         verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
+    void shouldContinueCanonicalAnswerWhenQaCacheReadFails() {
+        RetrievedContext context = new RetrievedContext(
+                "Redis cache 不是问答事实源。",
+                "cache-contract.md",
+                0.88f,
+                Map.of());
+        when(redisUtil.getString(anyString())).thenThrow(new RuntimeException("synthetic redis marker"));
+        when(queryEngine.retrieve(eq("缓存故障时还能回答吗？"),
+                org.mockito.ArgumentMatchers.<RetrieveOptions>any())).thenReturn(List.of(context));
+
+        QAResponse response = ragService.ask(QARequest.of("缓存故障时还能回答吗？", "kb_rag"));
+
+        assertTrue(response.hasResult());
+        assertEquals("RAG 的工作原理是先检索再生成。", response.answer());
+    }
+
+    @Test
+    void shouldKeepCanonicalAnswerWhenQaCacheWriteFails() {
+        RetrievedContext context = new RetrievedContext(
+                "缓存写入失败只影响后续命中。",
+                "cache-contract.md",
+                0.88f,
+                Map.of());
+        when(queryEngine.retrieve(eq("缓存写失败会丢答案吗？"),
+                org.mockito.ArgumentMatchers.<RetrieveOptions>any())).thenReturn(List.of(context));
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisUtil).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+
+        QAResponse response = ragService.ask(QARequest.of("缓存写失败会丢答案吗？", "kb_rag"));
+
+        assertTrue(response.hasResult());
+        assertEquals("RAG 的工作原理是先检索再生成。", response.answer());
+    }
+
+    @Test
+    void qaCacheEvictionShouldRemainBestEffortWhenRedisFails() {
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisUtil).deleteByPattern(anyString());
+
+        ragService.evictCache("缓存失效", "kb_rag");
+    }
+
+    @Test
+    void qaCacheClearShouldRemainBestEffortWhenRedisFails() {
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisUtil).deleteByPattern(anyString());
+
+        ragService.clearAllCache();
     }
 }

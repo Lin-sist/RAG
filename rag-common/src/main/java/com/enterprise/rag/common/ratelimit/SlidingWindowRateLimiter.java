@@ -1,6 +1,7 @@
 package com.enterprise.rag.common.ratelimit;
 
 import com.enterprise.rag.common.constant.RedisKeyConstants;
+import com.enterprise.rag.common.exception.RedisDependencyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -102,9 +103,10 @@ public class SlidingWindowRateLimiter implements RateLimiter {
         long windowMillis = config.windowSeconds() * 1000;
         String requestId = now + ":" + Math.random();
 
+        List<Long> result;
         try {
             @SuppressWarnings("unchecked")
-            List<Long> result = stringRedisTemplate.execute(
+            List<Long> redisResult = stringRedisTemplate.execute(
                 slidingWindowScript,
                 Collections.singletonList(redisKey),
                 String.valueOf(now),
@@ -112,28 +114,29 @@ public class SlidingWindowRateLimiter implements RateLimiter {
                 String.valueOf(config.maxRequests()),
                 requestId
             );
-
-            if (result == null || result.isEmpty()) {
-                log.warn("Rate limit script returned null or empty result");
-                // 默认允许请求，避免限流器故障影响业务
-                return RateLimitResult.allowed(config.maxRequests(), now / 1000 + config.windowSeconds());
-            }
-
-            boolean allowed = result.get(0) == 1L;
-            long remaining = result.get(1);
-            long resetTime = result.get(2);
-            long retryAfter = result.size() > 3 ? result.get(3) : 0;
-
-            if (allowed) {
-                return RateLimitResult.allowed(remaining, resetTime);
-            } else {
-                return RateLimitResult.denied(resetTime, retryAfter);
-            }
+            result = redisResult;
         } catch (Exception e) {
-            log.error("Rate limit error: errorType={}", e.getClass().getSimpleName());
-            // 限流器故障时默认允许请求
-            return RateLimitResult.allowed(config.maxRequests(), now / 1000 + config.windowSeconds());
+            log.error("Rate limit failed closed: dependency=redis, subsystem=rate_limit, "
+                            + "operation=acquire, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("rate_limit", "acquire", e);
         }
+
+        if (result == null || result.isEmpty()) {
+            log.error("Rate limit failed closed: dependency=redis, subsystem=rate_limit, "
+                    + "operation=acquire, failMode=closed, errorType=EmptyResult");
+            throw RedisDependencyException.unavailable("rate_limit", "acquire", null);
+        }
+
+        boolean allowed = result.get(0) == 1L;
+        long remaining = result.get(1);
+        long resetTime = result.get(2);
+        long retryAfter = result.size() > 3 ? result.get(3) : 0;
+
+        if (allowed) {
+            return RateLimitResult.allowed(remaining, resetTime);
+        }
+        return RateLimitResult.denied(resetTime, retryAfter);
     }
 
     @Override

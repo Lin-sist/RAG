@@ -12,7 +12,9 @@ import com.enterprise.rag.core.vectorstore.VectorStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -20,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -75,5 +78,63 @@ class KnowledgeBaseServiceImplTest {
 
         assertEquals("KB_005", ex.getErrorCode());
         verify(vectorStore).createCollection(anyString(), anyInt());
+    }
+
+    @Test
+    void statisticsShouldReportRedisUnavailableInsteadOfFakeZero() {
+        KnowledgeBase kb = new KnowledgeBase();
+        kb.setId(7L);
+        when(knowledgeBaseMapper.selectById(7L)).thenReturn(kb);
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("kb:query:count:7"))
+                .thenThrow(new RuntimeException("synthetic redis marker"));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.getStatistics(7L));
+
+        assertEquals("REDIS_DEPENDENCY_UNAVAILABLE", exception.getErrorCode());
+        assertEquals(503, exception.getHttpStatus().value());
+    }
+
+    @Test
+    void deleteShouldContinueWhenQueryCounterCleanupFails() {
+        KnowledgeBase kb = new KnowledgeBase();
+        kb.setId(7L);
+        when(knowledgeBaseMapper.selectById(7L)).thenReturn(kb);
+        doThrow(new RuntimeException("synthetic redis marker"))
+                .when(redisTemplate).delete("kb:query:count:7");
+
+        service.delete(7L);
+
+        verify(knowledgeBaseMapper).deleteById(7L);
+    }
+
+    @Test
+    void corruptQueryCounterShouldNotBeReportedAsZero() {
+        KnowledgeBase kb = new KnowledgeBase();
+        kb.setId(7L);
+        when(knowledgeBaseMapper.selectById(7L)).thenReturn(kb);
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("kb:query:count:7")).thenReturn("not-a-number");
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.getStatistics(7L));
+
+        assertEquals("REDIS_DEPENDENCY_UNAVAILABLE", exception.getErrorCode());
+    }
+
+    @Test
+    void incrementQueryCounterShouldRemainBestEffort() {
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment("kb:query:count:7"))
+                .thenThrow(new RuntimeException("synthetic redis marker"));
+
+        assertDoesNotThrow(() -> service.incrementQueryCount(7L));
     }
 }

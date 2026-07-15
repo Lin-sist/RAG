@@ -80,4 +80,4 @@ C3 已证明隔离 Redis 正常时登录、上传、异步索引、retrieval 与
 
 ## Commit Responsibility
 
-`用户手动提交`。当前仅授权创建 C4c 规格草案；Agent 不暂存、不提交、不 push。若用户批准实现并授权 Agent 提交，需要另行明确。
+`用户手动提交`。用户已批准按本 proposal、design 与 spec delta 进入实现，但未授权 Agent 暂存或提交；Agent 不执行 `git add`、`git commit` 或 push。

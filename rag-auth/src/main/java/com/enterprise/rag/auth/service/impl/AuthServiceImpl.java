@@ -8,6 +8,7 @@ import com.enterprise.rag.auth.provider.JwtTokenProvider;
 import com.enterprise.rag.auth.service.AuthService;
 import com.enterprise.rag.auth.service.TokenBlacklistService;
 import com.enterprise.rag.common.constant.RedisKeyConstants;
+import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.enterprise.rag.common.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -76,28 +77,29 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        try {
-            // 将 Token 加入黑名单
-            tokenBlacklistService.addToBlacklist(accessToken);
+        // 将 Token 加入黑名单；失败时不得报告登出成功
+        tokenBlacklistService.addToBlacklist(accessToken);
 
-            // 获取用户 ID 并清除会话
-            Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
-            if (userId != null) {
-                String sessionKey = RedisKeyConstants.userSessionKey(userId);
-
-                // 同步失效当前会话里的 refresh token，防止 logout 后继续刷新
+        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+        if (userId != null) {
+            String sessionKey = RedisKeyConstants.userSessionKey(userId);
+            try {
                 Object refreshTokenInSession = redisUtil.hGet(sessionKey, "refreshToken");
                 if (refreshTokenInSession instanceof String refreshToken && !refreshToken.isBlank()) {
                     tokenBlacklistService.addToBlacklist(refreshToken);
                 }
-
                 redisUtil.delete(sessionKey);
+            } catch (RedisDependencyException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("Logout session revoke failed closed: dependency=redis, subsystem=auth_session, "
+                                + "operation=revoke, failMode=closed, errorType={}",
+                        e.getClass().getSimpleName());
+                throw RedisDependencyException.unavailable("auth_session", "revoke", e);
             }
-
-            log.info("用户登出成功");
-        } catch (Exception e) {
-            log.error("登出处理失败: errorType={}", e.getClass().getSimpleName());
         }
+
+        log.info("用户登出成功");
     }
 
     @Override
@@ -180,18 +182,45 @@ public class AuthServiceImpl implements AuthService {
         sessionData.put("loginTime", Instant.now().toString());
         sessionData.put("lastActiveTime", Instant.now().toString());
 
-        redisUtil.hSetAll(sessionKey, sessionData);
-        // 会话 TTL 与 refresh token 生命周期保持一致，避免出现 token 未过期但会话先失效
-        redisUtil.expire(sessionKey, jwtTokenProvider.getRefreshTokenExpiration(), TimeUnit.SECONDS);
+        try {
+            redisUtil.hSetAll(sessionKey, sessionData);
+            // 会话 TTL 与 refresh token 生命周期保持一致，避免出现 token 未过期但会话先失效
+            redisUtil.expire(sessionKey, jwtTokenProvider.getRefreshTokenExpiration(), TimeUnit.SECONDS);
+        } catch (Exception e) {
+            try {
+                redisUtil.delete(sessionKey);
+            } catch (Exception cleanupError) {
+                log.warn("Auth session cleanup degraded: dependency=redis, subsystem=auth_session, "
+                                + "operation=delete, failMode=closed, errorType={}",
+                        cleanupError.getClass().getSimpleName());
+            }
+            log.error("Auth session write failed closed: dependency=redis, subsystem=auth_session, "
+                            + "operation=write, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("auth_session", "write", e);
+        }
     }
 
     private void validateRefreshSession(Long userId, String refreshToken) {
         String sessionKey = RedisKeyConstants.userSessionKey(userId);
-        if (!Boolean.TRUE.equals(redisUtil.hasKey(sessionKey))) {
+        Boolean sessionExists;
+        Object storedRefreshToken;
+        try {
+            sessionExists = redisUtil.hasKey(sessionKey);
+            storedRefreshToken = Boolean.TRUE.equals(sessionExists)
+                    ? redisUtil.hGet(sessionKey, "refreshToken")
+                    : null;
+        } catch (Exception e) {
+            log.error("Auth session read failed closed: dependency=redis, subsystem=auth_session, "
+                            + "operation=read, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("auth_session", "read", e);
+        }
+
+        if (!Boolean.TRUE.equals(sessionExists)) {
             throw AuthException.invalidRefreshToken();
         }
 
-        Object storedRefreshToken = redisUtil.hGet(sessionKey, "refreshToken");
         if (!(storedRefreshToken instanceof String tokenInSession)
                 || !Objects.equals(tokenInSession, refreshToken)) {
             throw AuthException.invalidRefreshToken();
