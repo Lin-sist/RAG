@@ -2,49 +2,19 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
 ## Active Change
 
-- Change：`2026-07-15-llm-provider-resilience`
-- 位置：`openspec/changes/2026-07-15-llm-provider-resilience/`
-- 阶段：C4b 实现与技术验收已完成，等待用户 review 与实现验收确认。
-
-## Objective
-
-锁定 LLM 429、5xx、timeout、network 和非重试型故障的有界重试、同步/SSE 失败结果、诊断安全与 cache/history/query count 副作用；使用本地合成 HTTP server 验证，真实 provider 调用量为 0。
-
-## Scope
-
-- LLM 公共故障契约矩阵、`1+N` 尝试上限和稳定错误分类。
-- 同步 HTTP 200 外层兼容 + `metadata.status=error`。
-- SSE 首 chunk 前可重试、首 chunk 后不重放。
-- generation failure 不写 cache/history，query count 只计一次。
-- 安全 diagnostics 与本地故障注入测试。
-
-## Non-goals
-
-- 不处理 Redis/Milvus、索引恢复、跨 provider fallback、熔断器或结构化 SSE。
-- 不默认开启 retry，不新增依赖，不修改 DTO/schema/评测指标。
-- 未获用户明确批准前不修改生产 Java、配置、测试或评测脚本。
-
-## Approval Gate
-
-用户已明确批准 proposal、design、决策记录与 spec delta，允许进入 TDD 实现。
-
-实现已按批准范围完成；用户确认验收前不得接受 delta、恢复 `IDLE` 或归档 change。
-
-## Commit Responsibility
-
-`Agent 提交`。用户已授权本 change 计划内文件的本地暂存与中文提交；不包含 push、PR、部署或发布。
+无。
 
 ## Last Completed
 
-- Change：`2026-07-15-integration-test-happy-path`
-- 位置：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`
-- 结果：新增独立 C3 Maven/Failsafe 入口，使用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding，真实验证登录、上传、索引、retrieval 与删除主链路。
-- 实现提交：`7f94538`。
-- 验收：用户已确认通过；本 change 不修改生产契约，因此无 spec delta、未修改 baseline。
+- Change：`2026-07-15-llm-provider-resilience`
+- 位置：`openspec/changes/archive/2026-07-15-llm-provider-resilience/`
+- 结果：锁定 LLM provider 有界重试、安全诊断、SSE 首内容边界及失败 cache/history/query count 副作用。
+- 实现提交：`db8898a`。
+- 验收：用户已确认通过；delta 已接受进 `rag-system` baseline，change 已归档。
 
 ## Start A New Material Change
 

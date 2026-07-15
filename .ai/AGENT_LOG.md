@@ -406,3 +406,18 @@
 - 既有内部降级信号：完整 Maven 中 Redis property tests 因本地 Redis 不可用按既有逻辑跳过，Spring 测试环境仍记录 Milvus/BGE/关键词索引降级日志；命令整体退出码为 0，未将这些日志误报为真实 provider 验收。
 - 剩余风险：尚未进行用户实现验收；spec delta 未接受进 baseline，ACTIVE_TASK 仍为 C4b，change 未归档。流式客户端断连由取消订阅保证，但未引入真实 servlet 容器断连测试，留待后续端到端 transport 验证。
 - Commit：`pending`。
+
+## 2026-07-15｜C4b 实现提交补录
+
+- Commit：`db8898a2edcaa96ba7c5a3bdec8a79049a774e10`。
+- 结论：C4b LLM provider 有界重试、流式首内容闸门、安全降级、副作用约束及本地故障测试已完成本地中文提交。
+
+## 2026-07-15｜C4b 用户验收与 OpenSpec 收口
+
+- 用户决策：用户明确确认 C4b 实现验收通过，并要求收口后进入 C4c 规划。
+- 范围：把已批准 C4b delta 原文接受进 `openspec/specs/rag-system/spec.md`，完成 exact-match 校验，更新 tasks，将 ACTIVE_TASK 恢复 `IDLE` 并归档 change。
+- 验证依据：实现提交 `db8898a`；最终 Maven 213 tests / 0 failures / 0 errors / 3 skipped，Python 33 tests / OK，SensitiveLogs 274 个源文件通过，真实 provider 业务调用量为 0。
+- 跳过项：本轮仅做治理收口，不修改 Java、配置、测试或前端，因此不重复运行 Maven、Python、前端 build 或业务外调。
+- 范围安全：未修改 API/DTO、数据库 migration、Redis/Milvus、索引恢复、评测指标或受保护本地配置；未 push、创建 PR、部署或发布。
+- 剩余风险：真实 servlet client disconnect 仍留作后续 transport 端到端验证，不阻塞已接受的 C4b provider 契约；C4c 必须作为新的唯一 active change 另行审阅。
+- Commit：`pending`；本条将在 C4b 治理收口提交中落盘，不递归记录该提交自身 hash。

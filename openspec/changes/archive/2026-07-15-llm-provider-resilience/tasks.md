@@ -57,9 +57,9 @@
 
 - [x] 更新本 tasks 的真实完成状态、验证结果、跳过原因与剩余风险。
 - [x] 将修改文件、关键决策、验证结果和 `Commit: pending` 追加到 `.ai/AGENT_LOG.md`。
-- [ ] 用户完成 review 并明确确认 C4b 实现验收通过。
-- [ ] 把已批准 delta 按原文接受进 `openspec/specs/rag-system/spec.md` 并验证 exact match。
-- [ ] 将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`，经用户确认后归档 change。
+- [x] 用户完成 review 并明确确认 C4b 实现验收通过。
+- [x] 把已批准 delta 按原文接受进 `openspec/specs/rag-system/spec.md` 并验证 exact match。
+- [x] 将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`，经用户确认后归档 change。
 - [x] 为实现提交准备中文 Conventional Commit；提交后等待用户确认，不 push。
 
 ## Guardrails
