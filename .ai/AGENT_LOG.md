@@ -426,3 +426,28 @@
 
 - Commit：`df2f75b602f411ffd0a4b2342d464a678a9c0d5c`。
 - 结论：C4b delta 已按原文接受进 `rag-system` baseline，exact match 为真，ACTIVE_TASK 已恢复 `IDLE`，change 已归档；本条为独立纯日志补录，不递归记录自身提交 hash。
+
+## 2026-07-15｜C4c redis-failure-semantics 启动与规格草案
+
+- 类型：Type C 重大变更规格阶段；C4b 已收口，`ACTIVE_TASK` 已唯一指向 `2026-07-15-redis-failure-semantics`，生产实现尚未开始。
+- 用户决策：用户确认 C4b 实现验收通过，并要求收口后开始 C4c 规划；C4c 尚未获得实现批准或 Agent 提交授权，当前提交责任为用户手动提交。
+- 范围与修改文件：`.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md`、`openspec/changes/2026-07-15-redis-failure-semantics/{proposal.md,design.md,tasks.md,specs/rag-system/spec.md}`；未修改业务代码、测试、配置、依赖或 baseline spec。
+- 已确认事实：Redis 直接消费者不只包括 QA/embedding cache、登录 session 和异步任务状态，还包括 token blacklist、滑动窗口限流、Redis 幂等、query count/statistics 及知识库删除时的计数清理；当前异常处理同时存在 fail-open、传播底层异常和伪装 empty/zero/not-blacklisted 的不一致行为。
+- 能力分类：`confirmed` 为 C4b 前置完成与 direct consumer 清单；`partial` 为 embedding cache read/query count increment/rate-limit/blacklist 的局部吞异常和 login/task/idempotency 的局部传播；`planned` 为 consumer criticality 矩阵、稳定 503、幂等 outcome unknown、task 状态事实源及隔离 Redis stop/start；`out_of_scope` 为 C4d、C5、Redis HA/集群、内存 fallback 与生产 retry；`unknown` 为幂等 post-operation Redis 写失败时真实事务/AOP 顺序和副作用状态。
+- 关键草案决策：optional cache 与计数写/清理 fail-open；statistics read 不伪造零值而返回 503；auth session/blacklist、rate-limit、带 key 幂等 pre-operation、task status fail-closed；幂等 post-operation 写失败返回 `IDEMPOTENCY_OUTCOME_UNKNOWN`；task recovery 留给 C5；consumer boundary 分级，不在 `RedisUtil` 全局吞异常。
+- 用户故事：改前 Redis 重启可能让缓存拖垮问答、让已注销 token/限流失效，或把 task unknown 误报成不存在；改后可选能力安全绕过，安全与状态关键能力明确拒绝，且不伪造成功、零值或不存在。
+- Spec delta：新增“Redis 依赖分级与稳定故障结果”“Redis 幂等保护与不确定结果”“Redis 异步任务状态事实源”“Redis 故障安全诊断”四个 requirements；仅为 change 草案，用户实现验收前不接受进 baseline。
+- 外部调用：embedding/rerank/judge/ask/LLM 实际调用量均为 0；规格阶段未启动容器。后续故障验证只操作隔离 Testcontainers Redis 与合成数据，不停止或复用用户常驻 Redis。
+- 跳过项：本轮只创建规划文档，没有 Java/Python/前端/依赖改动，因此不运行 Maven、Python、前端 build、SensitiveLogs 或故障容器；完成结构与差异检查后再记录结果。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、生产 Java、API DTO、Flyway migration、评测指标或依赖；未执行真实 provider 调用、暂存、提交、push、PR、部署或发布。
+- 剩余审批点：用户需确认 rate-limit/auth fail-closed、statistics read 503、idempotency outcome unknown、C5 边界、隔离 stop/start 验证及提交责任；批准前不得进入实现。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-15｜C4c 规格草案结构与范围验证补充
+
+- 结构验证：proposal、design、tasks 与 `rag-system` spec delta 四个必需 artifact 均存在且非空；proposal 必需章节齐全；design 含 10 条决策记录，每条严格为“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”三行；spec delta 含 4 个 requirements 与 14 个 scenarios。
+- 状态验证：`ACTIVE_TASK=ACTIVE` 且唯一指向现存 `2026-07-15-redis-failure-semantics`；实现审批任务均未勾选，提交责任为用户手动提交。
+- 差异验证：相对 C4b 收口补录提交 `d3e86d8`，accepted `openspec/specs/` baseline、生产/测试 Java、POM/package、application 配置和受保护路径均零改动；`git diff --check` 通过。
+- 跳过项：本轮仅规划文档，没有代码、测试、配置或依赖变更，因此未运行 Maven、Python、前端 build、SensitiveLogs 或容器故障测试；没有真实 provider 或外部业务调用。
+- 工作区：仅 `.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md` 与新 C4c change artifacts 未提交；Agent 未暂存、未提交、未 push。
+- Commit：`pending`；建议用户审核后使用 `docs(openspec): 启动C4c Redis故障语义规划`。
