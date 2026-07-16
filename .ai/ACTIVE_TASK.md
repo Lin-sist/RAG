@@ -9,7 +9,7 @@
 - Change：`2026-07-15-milvus-failure-semantics`
 - 位置：`openspec/changes/2026-07-15-milvus-failure-semantics/`
 - 目标：锁定默认 Milvus 在检索、索引 mutation、删除、统计和重启窗口中的失败、部分降级与 outcome unknown 语义。
-- 范围：proposal、design、tasks、决策记录与 `rag-system` spec delta 草案；当前仅规划，生产实现尚未批准。
+- 范围：已批准的 proposal、design、tasks、决策记录与 `rag-system` spec delta；生产实现与验证已完成，当前等待用户验收，验收前不接受进 baseline。
 - 非目标：Qdrant/Elasticsearch 故障契约、Milvus HA/容量调优、索引恢复/重放/孤儿协调、公开 DTO/schema/前端重做。
 - 验收入口：`openspec/changes/2026-07-15-milvus-failure-semantics/tasks.md`。
 - 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push。

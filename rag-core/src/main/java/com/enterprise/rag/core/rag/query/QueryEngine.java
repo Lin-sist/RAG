@@ -24,6 +24,13 @@ public interface QueryEngine {
     List<RetrievedContext> retrieve(String query, RetrieveOptions options);
 
     /**
+     * Internal route-aware retrieval result. Existing implementations remain compatible.
+     */
+    default RetrievalResult retrieveWithDiagnostics(String query, RetrieveOptions options) {
+        return RetrievalResult.complete(retrieve(query, options));
+    }
+
+    /**
      * Explain query variants generated for retrieval debugging and offline eval.
      * This method must not execute embedding or vector search.
      *

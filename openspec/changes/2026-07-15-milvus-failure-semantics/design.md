@@ -102,7 +102,7 @@ Milvus adapter 产生统一安全 exception，至少携带：
 
 ### 6.2 Dense retrieval partial degradation
 
-当前 `QueryEngine` 只返回 `List<RetrievedContext>`，无法可靠携带 route 状态。规划默认引入内部 retrieval result carrier（contexts + fixed diagnostics），保留公开 QA DTO shape；`RAGServiceImpl` 把固定字段写入现有 metadata map：
+原 `QueryEngine` 只返回 `List<RetrievedContext>`，无法可靠携带 route 状态。实现已引入内部 retrieval result carrier（contexts + fixed diagnostics），保留公开 QA DTO shape；`RAGServiceImpl` 把固定字段写入现有 metadata map：
 
 - `retrievalMode=hybrid` 或 `keyword_only`；
 - `retrievalDegraded=true/false`；
@@ -214,6 +214,8 @@ git diff --check
 
 隔离 profile 可以在 Docker 不可用时 skip 编译验证，但不得把 skipped 记为 C4d 验收通过；最终必须取得真实 stop/start `0 skipped` 证据。测试只操作自己的 Milvus container id，不停止 etcd/MinIO 或用户常驻容器。Milvus host port 使用随机选取后固定映射，避免 Docker Desktop stop/start 后端口漂移。
 
+最终隔离验证显式把测试 client 的 SDK retry 限制为 1 次，并设置 3 秒 RPC deadline；该设置只属于测试夹具，不修改生产 retry/timeout。一次真实 Milvus stop 产生的稳定 outage 结果会在同一个 Failsafe 场景中继续驱动 no-keyword error、keyword-only degradation 和 index task failure，随后启动同一 container id，并使用原 client 完成应用级 search recovery。这样既覆盖真实断连/重连，也避免为三个 consumer 重复触发 SDK 隐式长重试。
+
 ## 10. External Calls And Cost
 
 真实 embedding/rerank/judge/ask/LLM 调用量为 0。测试使用进程内确定性 embedding 和合成文档；本地 Docker 只承载固定 Milvus/etcd/MinIO 基础设施镜像，无业务数据出站和模型费用。
@@ -244,62 +246,62 @@ git diff --check
 
 ### DR-1：C4d 覆盖 Milvus 还是所有 vector adapters
 - **面临的选择**：同时统一 Milvus/Qdrant/Elasticsearch、只处理当前默认 Milvus，或修改共享接口但让所有 adapter 行为一起变化。
-- **选了哪个 + 为什么**：规划默认只处理 Milvus，并把共享改动限制为不改变其他 adapter 行为，因为路线图和 C3 验收对象都是 Milvus；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：只处理 Milvus，并把共享改动限制为不改变其他 adapter 行为，因为路线图和 C3 验收对象都是 Milvus；用户已在事前闸门确认。
 - **放弃的代价**：Qdrant/Elasticsearch 仍没有同等级故障契约，未来启用前需要独立 change，不能宣称 vector store 全家族已完成韧性治理。
 
 ### DR-2：dense search 失败时整体失败还是 keyword-only
 - **面临的选择**：所有请求整体失败、无条件返回 keyword-only，或仅在 keyword route 健康且返回 contexts 时降级。
-- **选了哪个 + 为什么**：规划默认选择条件式 keyword-only，因为它保留可用性同时不把空关键词结果伪装成完整检索；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：选择条件式 keyword-only，因为它保留可用性同时不把空关键词结果伪装成完整检索；用户已在事前闸门确认。
 - **放弃的代价**：查询编排需要携带 route 状态和更多测试，降级答案的召回覆盖率也可能低于正常 hybrid。
 
 ### DR-3：如何向上层表达检索降级
 - **面临的选择**：只写日志、给每个 context 塞隐式 marker，或引入内部 retrieval result carrier 并映射到现有 QA metadata。
-- **选了哪个 + 为什么**：规划默认选择内部 result carrier，因为日志不能约束客户端可观察语义，context marker 容易在融合/重排中丢失，同时无需改公开 DTO；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：选择内部 result carrier，因为日志不能约束客户端可观察语义，context marker 容易在融合/重排中丢失，同时无需改公开 DTO；用户已在事前闸门确认。
 - **放弃的代价**：`QueryEngine` 内部调用与测试需要调整，改动面大于局部 catch。
 
 ### DR-4：dense unknown + keyword empty 是否算 no-result
 - **面临的选择**：返回正常 no-result、继续无上下文 generation，或返回稳定 retrieval error。
-- **选了哪个 + 为什么**：规划默认返回 retrieval error，因为 dense 状态未知时不能证明知识库没有答案，也不能让 LLM 在无证据下作答；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：返回 retrieval error，因为 dense 状态未知时不能证明知识库没有答案，也不能让 LLM 在无证据下作答；用户已在事前闸门确认。
 - **放弃的代价**：Milvus outage 且关键词召回为空时可用性下降，但结果不会伪造为业务无答案。
 
 ### DR-5：degraded answer 是否进入普通 QA cache
 - **面临的选择**：照常缓存、使用新短 TTL cache，或不写普通成功 cache。
-- **选了哪个 + 为什么**：规划默认不写普通成功 cache，避免 Milvus 恢复后持续命中较弱 keyword-only 答案，同时不扩展 Redis key/TTL 契约；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：不写普通成功 cache，避免 Milvus 恢复后持续命中较弱 keyword-only 答案，同时不扩展 Redis key/TTL 契约；用户已在事前闸门确认。
 - **放弃的代价**：outage 期间相同问题会重复执行 keyword retrieval 和 generation，延迟与 provider 压力上升。
 
 ### DR-6：Milvus mutation failure 是否自动重试
 - **面临的选择**：沿用所有 runtime 三次重试、只重试确认未执行的 pre-operation failure，或 C4d 默认不做应用级 vector mutation retry。
-- **选了哪个 + 为什么**：规划默认不做应用级 vector mutation retry，因为 delete + insert/drop 在回执丢失时无法证明安全重放，先锁定 unavailable/unknown 更诚实；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：不做应用级 vector mutation retry，因为 delete + insert/drop 在回执丢失时无法证明安全重放，先锁定 unavailable/unknown 更诚实；用户已在事前闸门确认。
 - **放弃的代价**：短暂抖动可能让一次索引或删除失败，需要用户稍后重新发起或等待 C5 协调能力。
 
 ### DR-7：删除失败后是否继续 SQL delete
 - **面临的选择**：best-effort warning 后继续、fail-closed 并保留 SQL 事实，或本 change 引入 outbox/tombstone 补偿。
-- **选了哪个 + 为什么**：规划默认 fail-closed，因为继续会产生孤儿向量和假成功；outbox/tombstone 需要持久状态机，属于 C5；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：选择 fail-closed，因为继续会产生孤儿向量和假成功；outbox/tombstone 需要持久状态机，属于 C5；用户已在事前闸门确认。
 - **放弃的代价**：Milvus outage 期间文档/知识库删除不可用，且 outcome unknown 时客户端仍需查询当前状态。
 
 ### DR-8：statistics count unknown 如何表达
 - **面临的选择**：继续返回零、修改 DTO 表达 partial/unknown，或保持 DTO 并返回 503。
-- **选了哪个 + 为什么**：规划默认返回 503，因为零是业务事实，不是故障占位，同时避免 C4d 扩成 statistics API 重设计；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：返回 503，因为零是业务事实，不是故障占位，同时避免 C4d 扩成 statistics API 重设计；用户已在事前闸门确认。
 - **放弃的代价**：即使 document/query count 可读，整个 statistics endpoint 也会在 Milvus outage 时不可用。
 
 ### DR-9：collection missing 是否自动重建
 - **面临的选择**：search 时自动建空 collection、当作 empty/no-result，或返回 index unavailable 并把重建留给 C5。
-- **选了哪个 + 为什么**：规划默认返回 `VECTOR_INDEX_UNAVAILABLE`，因为创建空 collection 会掩盖数据丢失并产生假 no-result；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：返回 `VECTOR_INDEX_UNAVAILABLE`，因为创建空 collection 会掩盖数据丢失并产生假 no-result；用户已在事前闸门确认。
 - **放弃的代价**：C4d 完成后仍不能自愈 collection 缺失，只能准确暴露并等待后续恢复流程。
 
 ### DR-10：错误分类使用 raw message 还是结构化事实
 - **面临的选择**：继续匹配/返回 SDK message、只保留一个通用 unknown，或依据 exception/status 生成稳定 category 并屏蔽 raw message。
-- **选了哪个 + 为什么**：规划默认使用结构化稳定分类，因为 raw message 不稳定且可能进入 task/client，单一 unknown 又不足以验证重启与 timeout；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：使用结构化稳定分类，因为 raw message 不稳定且可能进入 task/client，单一 unknown 又不足以验证重启与 timeout；用户已在事前闸门确认。
 - **放弃的代价**：需要维护 SDK exception/status 映射，未识别版本仍只能落到 `unknown`。
 
 ### DR-11：真实故障验证使用共享服务还是隔离容器
 - **面临的选择**：mock-only、停止用户常驻 Milvus，或 mock 加测试自有 Milvus stop/start。
-- **选了哪个 + 为什么**：规划默认 mock 加隔离 Testcontainers，以覆盖真实 RPC/reconnect 又不破坏用户环境；Milvus 固定 host port 避免 Docker Desktop 端口漂移；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：使用 mock 加隔离 Testcontainers，以覆盖真实 RPC/reconnect 又不破坏用户环境；Milvus 固定 host port 避免 Docker Desktop 端口漂移；用户已在事前闸门确认。
 - **放弃的代价**：验证资源占用和耗时较高，Docker 不可用时只能完成编译/单元测试而不能验收。
 
 ### DR-12：C4d 是否包含恢复、HA 与跨存储对账
 - **面临的选择**：同时实现 repair/replay/HA，加入进程内临时补偿，或只锁定故障结果并把恢复留给 C5。
-- **选了哪个 + 为什么**：规划默认只锁定故障结果，因为 durable input、orphan reconciliation 和 resume 已有 C5a/C5b 顺序，内存补偿在重启后也不可靠；待用户在事前闸门确认。
+- **选了哪个 + 为什么**：只锁定故障结果，因为 durable input、orphan reconciliation 和 resume 已有 C5a/C5b 顺序，内存补偿在重启后也不可靠；用户已在事前闸门确认。
 - **放弃的代价**：C4d 后仍需人工处理 outcome unknown，且不能自动重建缺失 collection 或清理孤儿向量。
 
 ### DR-13：提交责任

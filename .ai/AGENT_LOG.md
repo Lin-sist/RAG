@@ -530,3 +530,41 @@
 - 跳过项：本轮仅规划文档，没有代码、测试、配置、依赖或前端改动，因此未运行 Maven、Python、前端 build、SensitiveLogs、Docker/Milvus stop/start 或 provider 调用；没有业务数据出站和费用。
 - 工作区：仅 `.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md` 与新 C4d change artifacts 未提交；Agent 未暂存、未提交、未 push。
 - Commit：`pending`；建议用户审核后使用 `docs(openspec): 启动C4d Milvus故障语义规划`。
+
+## 2026-07-16｜C4d 规格草案提交补录
+
+- Commit：`3b6750f`。
+- 结论：C4d proposal、design、严格三行决策记录、tasks、`rag-system` spec delta、ACTIVE_TASK 与规划验证证据已由用户手动完成中文提交。
+
+## 2026-07-16｜C4d 实现批准与 TDD 启动
+
+- 用户决策：用户明确要求启动 C4d 项目迭代，等同批准当前 proposal、design、全部决策记录与 `rag-system` spec delta；提交责任继续为用户手动提交，Agent 不暂存、不提交、不 push。
+- 范围：按已批准 tasks 依次推进 Milvus adapter 稳定异常、条件式 keyword-only retrieval、mutation/lifecycle/statistics fail-closed 与隔离 Milvus stop/start；不修改 baseline spec，不进入 C5。
+- 验证纪律：使用 `tdd` skill，按公开可观察行为逐个 RED → GREEN → REFACTOR，不一次性铺开全部测试与实现。
+- 外部调用：真实 embedding、rerank、judge、ask/LLM 业务调用量均为 0；只允许 mock boundary、确定性 stub、合成数据与隔离 Testcontainers Milvus。
+- 剩余风险：Milvus SDK 在真实 stop/start、RPC timeout 和 mutation 回执丢失时的 exception/status 仍需由聚焦测试与隔离集成验证确认；自动恢复、重放和跨存储对账继续留给 C5。
+- Commit：`pending`。
+
+## 2026-07-16｜C4d Milvus 故障语义实现与阶段验证
+
+- 范围与修改文件：在 `rag-core` 新增 `VectorDependencyException` 与内部 `RetrievalResult`，收紧 `MilvusVectorStore` 全操作响应检查、检索降级和 QA metadata/cache；在 `rag-admin` 收紧索引重试、文档/知识库删除与 statistics，新增 `c4d-milvus-fault` profile 和隔离 stop/start 用例；在 `rag-common` 让异步 task 持久化稳定 BusinessException code/message；同步更新 C4d proposal/design/tasks、ACTIVE_TASK 和安全日志配置。
+- 已确认事实与关键决策：Milvus search 首次依赖失败即停止剩余 query variants；只有 keyword contexts 非空才进入 `keyword_only`，固定写 `retrievalMode/retrievalDegraded/degradedDependency` 且不写普通成功 cache；keyword disabled/error/empty 保留稳定 vector error，不进入 no-result/LLM；confirmed missing collection 为 `VECTOR_INDEX_UNAVAILABLE`；thrown mutation 为 `VECTOR_OPERATION_OUTCOME_UNKNOWN` 且不进入索引 blanket retry；create/delete/drop/count 均 fail-closed。
+- TDD 证据：adapter thrown exception、mutation response lost、collection missing、non-success status、null response和敏感 marker；QueryEngine keyword healthy/empty 与 vector call budget；QA metadata/cache；KB create/drop/count；document upsert retry budget均先观察预期 RED，再以最小实现转 GREEN。既有非 vector retry、hybrid/RRF、no-result 与 C4b generation failure 回归通过。
+- 安全诊断：稳定 diagnostics 只含 dependency/subsystem/operation/errorCategory/failMode；客户端与 task 使用固定 code/message；Milvus adapter 普通日志不再记录 collection/host/port，并关闭会输出 SDK request 细节的 `io.milvus.client.AbstractMilvusGrpcClient` logger。SensitiveLogs 扫描 277 个源文件通过，人工扫描未发现 C4d raw marker 进入生产源。
+- 隔离故障证据：Docker Desktop 28.4.0；`MilvusFailureSemanticsIT` 使用固定 `milvusdb/milvus:v2.3.4`、etcd 3.5.5、MinIO 固定版本、随机空闲后固定 Milvus host port及测试自有 container id；健康 create/upsert/search、仅 Milvus stop、稳定 unavailable、原 client restart search recovery、drop cleanup真实通过，1 test / 0 failures / 0 errors / 0 skipped，耗时 341.3 秒。未枚举或操作用户常驻容器/volume，也未停止测试 etcd/MinIO。
+- 验证：聚焦 core/admin C4d 测试通过；`mvn -q test` 通过，55 个 surefire reports、255 tests、0 failures、0 errors、0 skipped；Python 33 tests / OK；SensitiveLogs 277 个源文件通过；`git diff --check` 通过。
+- 外部调用：真实 embedding、rerank、judge、ask/LLM 业务调用量均为 0；集成测试只使用合成 collection、vector、content 和 metadata，无业务数据出站、无模型费用。
+- 范围安全：accepted baseline spec、公开 DTO/schema、Flyway migration、Qdrant/Elasticsearch、`.env.local`、`application-dev.yml`、`.agents/` 和 `docs/学习文档/` 均零改动；未进入 C5，未暂存、未提交、未 push、未创建 PR、未部署或发布。
+- 剩余风险与未完成项：真实 stop/start 已覆盖 adapter failure/recovery；keyword-only、no-keyword stable error 与 index task failure 当前由 mock/单元层覆盖，尚未在同一个真实 outage Failsafe 场景中全部串联，因此 tasks 6 对应组合项保持未勾选。Milvus SDK 2.3.4 在 outage 调用中执行较长内置 retry，单次隔离测试耗时约 5 分 41 秒；C4d 未新增生产 retry/timeout 配置。用户尚未验收，ACTIVE_TASK 保持 C4d，delta 未接受、change 未归档。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-16｜C4d 剩余组合故障验证闭环
+
+- 范围与修改文件：仅增强 `MilvusFailureSemanticsIT` 的组合故障编排，并同步 C4d design、tasks、ACTIVE_TASK 与追加式执行证据；未修改生产 retry/timeout、公开 API、baseline 或归档状态。
+- 真实故障编排：隔离测试 client 使用 SDK `withRetry(1)` 和 3 秒 RPC deadline；健康态完成 create/upsert/search 后，只 stop 测试自有 Milvus container id。真实 dense/no-keyword 请求得到稳定 `VECTOR_STORE_UNAVAILABLE`，同一已观测 outage 继续驱动 keyword-only diagnostics 和 document index task failure，断言 vector upsert 只调用一次、document 为 `FAILED` 且不保存 chunks；随后 start 同一 container id，固定 host port 不变，原 client 的应用级 search 恢复并完成 collection cleanup。
+- Failsafe 结果：`MilvusFailureSemanticsIT` 1 test / 0 failures / 0 errors / 0 skipped，测试耗时 49.971 秒；相较上一版 341.3 秒，显式测试 retry/deadline 消除了 SDK 默认长重试造成的验收拖延。未枚举、停止或修改用户常驻容器/volume，也未停止测试 etcd/MinIO。
+- 完整验证：`mvn -q test` 通过，55 个 surefire reports、257 tests、0 failures、0 errors、0 skipped；Python 33 tests / OK；SensitiveLogs 扫描 277 个源文件通过；`git diff --check` 通过。
+- 外部调用与跳过项：真实 embedding、rerank、judge、ask/LLM 调用量均为 0；只使用进程内确定性 embedding、mock consumer seam、合成 collection/vector/content/metadata，无业务数据出站和模型费用。无前端改动，因此未运行前端 build。
+- 范围安全：accepted baseline spec、公开 DTO/schema、Flyway migration、Qdrant/Elasticsearch、`.env.local`、`application-dev.yml`、`.agents/` 和 `docs/学习文档/` 均零改动；未进入 C5，未暂存、未提交、未 push、未创建 PR、未部署或发布。
+- 剩余风险：Milvus SDK 的生产默认 retry/timeout 仍沿用既有配置，本 change 只保证稳定语义，不承诺 outage 延迟上界；outcome unknown 的自动恢复、重放和跨存储对账仍留给 C5。实现与必需验证已完成，当前只等待用户验收；delta 尚未接受、change 尚未归档。
+- Commit：`pending`；提交责任为用户手动提交。

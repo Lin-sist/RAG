@@ -82,6 +82,7 @@ logging:
     com.enterprise.rag.admin.kb.mapper: INFO
     com.enterprise.rag.admin.qa.mapper: INFO
     com.enterprise.rag.auth.persistence.mapper: INFO
+    io.milvus.client.AbstractMilvusGrpcClient: OFF
     org.springframework.security: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId}] %-5level %logger{36} - %msg%n"

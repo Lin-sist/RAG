@@ -11,6 +11,7 @@ import com.enterprise.rag.core.rag.rerank.RerankerRegistry;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.SearchResult;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -89,9 +90,14 @@ public class QueryEngineImpl implements QueryEngine {
 
     @Override
     public List<RetrievedContext> retrieve(String query, RetrieveOptions options) {
+        return retrieveWithDiagnostics(query, options).contexts();
+    }
+
+    @Override
+    public RetrievalResult retrieveWithDiagnostics(String query, RetrieveOptions options) {
         if (query == null || query.isBlank()) {
             log.warn("Empty query received, returning empty results");
-            return List.of();
+            return RetrievalResult.complete(List.of());
         }
 
         log.debug("Retrieving contexts from collection: {}", options.collectionName());
@@ -104,19 +110,41 @@ public class QueryEngineImpl implements QueryEngine {
 
         // 2. 对口语化/缩写问题生成少量检索变体，并合并多路召回结果
         List<QueryVariant> queryVariants = buildQueryVariants(query);
-        List<RetrievedContext> vectorContexts = mergeRetrievedContexts(queryVariants, options.collectionName(), searchOptions);
-        log.debug("Vector route merged {} contexts from {} query variants", vectorContexts.size(), queryVariants.size());
+        List<RetrievedContext> vectorContexts;
+        VectorDependencyException vectorFailure = null;
+        try {
+            vectorContexts = mergeRetrievedContexts(queryVariants, options.collectionName(), searchOptions);
+            log.debug("Vector route merged {} contexts from {} query variants", vectorContexts.size(), queryVariants.size());
+        } catch (VectorDependencyException e) {
+            vectorContexts = List.of();
+            vectorFailure = e;
+            log.warn("Vector route unavailable: dependency={}, operation={}, errorCategory={}, failMode={}",
+                    e.getDependency(), e.getOperation(), e.getErrorCategory(), e.getFailMode());
+        }
 
         List<RetrievedContext> contexts = vectorContexts;
         if (isHybridEnabled()) {
-            List<RetrievedContext> keywordContexts = keywordIndex.search(
-                    options.collectionName(),
-                    query,
-                    keywordTopK(options.topK()),
-                    options.filter());
+            List<RetrievedContext> keywordContexts;
+            try {
+                keywordContexts = keywordIndex.search(
+                        options.collectionName(),
+                        query,
+                        keywordTopK(options.topK()),
+                        options.filter());
+            } catch (RuntimeException keywordFailure) {
+                if (vectorFailure != null) {
+                    throw vectorFailure;
+                }
+                throw keywordFailure;
+            }
+            if (vectorFailure != null && (keywordContexts == null || keywordContexts.isEmpty())) {
+                throw vectorFailure;
+            }
             contexts = fuseByRrf(vectorContexts, keywordContexts, rrfK());
             log.debug("Hybrid retrieval fused vectorContexts={}, keywordContexts={}, fused={}",
                     vectorContexts.size(), keywordContexts.size(), contexts.size());
+        } else if (vectorFailure != null) {
+            throw vectorFailure;
         }
 
         // 3. 如果启用重排序，执行重排序
@@ -127,9 +155,12 @@ public class QueryEngineImpl implements QueryEngine {
             log.debug("Reranked {} contexts", contexts.size());
         }
 
-        return contexts.stream()
+        List<RetrievedContext> finalContexts = contexts.stream()
                 .limit(finalTopK(options.topK()))
                 .toList();
+        return vectorFailure == null
+                ? RetrievalResult.complete(finalContexts)
+                : RetrievalResult.keywordOnly(finalContexts);
     }
 
     private boolean isHybridEnabled() {

@@ -9,6 +9,7 @@ import com.enterprise.rag.core.rag.model.QAResponse;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.query.QueryEngine;
+import com.enterprise.rag.core.rag.query.RetrievalResult;
 import com.enterprise.rag.core.rag.service.RAGServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,6 +50,10 @@ class RAGServiceImplTest {
         when(answerGenerator.getModelName()).thenReturn("mock-model");
         when(redisUtil.getString(any())).thenReturn(null);
         when(queryEngine.retrieve(any(), org.mockito.ArgumentMatchers.<RetrieveOptions>any())).thenReturn(List.of());
+        doAnswer(invocation -> RetrievalResult.complete(queryEngine.retrieve(
+                        invocation.getArgument(0, String.class),
+                        invocation.getArgument(1, RetrieveOptions.class))))
+                .when(queryEngine).retrieveWithDiagnostics(any(), org.mockito.ArgumentMatchers.<RetrieveOptions>any());
         when(answerGenerator.generate(any(), any())).thenReturn(
                 GeneratedAnswer.of("RAG 的工作原理是先检索再生成。", List.of(), Map.of("model", "mock-model")));
 
@@ -159,6 +166,27 @@ class RAGServiceImplTest {
 
         assertTrue(response.hasResult());
         assertEquals("RAG 的工作原理是先检索再生成。", response.answer());
+    }
+
+    @Test
+    void keywordOnlyDegradationShouldBeVisibleAndShouldNotWriteSuccessCache() {
+        RetrievedContext context = new RetrievedContext(
+                "关键词路线仍有可用证据。",
+                "keyword-doc",
+                0.72f,
+                Map.of());
+        doReturn(RetrievalResult.keywordOnly(List.of(context)))
+                .when(queryEngine).retrieveWithDiagnostics(eq("Milvus 故障时还能回答吗？"),
+                        org.mockito.ArgumentMatchers.<RetrieveOptions>any());
+
+        QAResponse response = ragService.ask(QARequest.of("Milvus 故障时还能回答吗？", "kb_rag"));
+
+        assertTrue(response.hasResult());
+        assertEquals("keyword_only", response.metadata().get("retrievalMode"));
+        assertEquals(true, response.metadata().get("retrievalDegraded"));
+        assertEquals("milvus", response.metadata().get("degradedDependency"));
+        verify(answerGenerator).generate(eq("Milvus 故障时还能回答吗？"), eq(List.of(context)));
+        verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
     }
 
     @Test

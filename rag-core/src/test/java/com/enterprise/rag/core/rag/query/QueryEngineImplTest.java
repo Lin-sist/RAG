@@ -10,6 +10,7 @@ import com.enterprise.rag.core.rag.rerank.RerankerRegistry;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.SearchResult;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +19,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -207,6 +209,50 @@ class QueryEngineImplTest {
         assertEquals(2, contexts.size());
         assertEquals("shared", contexts.get(0).source());
         verify(keywordIndex).search(eq("kb_test"), eq("缓存穿透"), eq(4), eq(Map.of()));
+    }
+
+    @Test
+    void shouldDegradeToKeywordOnlyAndStopVectorVariantsAfterMilvusFailure() {
+        KeywordIndex keywordIndex = mock(KeywordIndex.class);
+        RetrievalProperties properties = new RetrievalProperties();
+        queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties);
+        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class)))
+                .thenThrow(VectorDependencyException.unavailable("search", new IllegalStateException("raw-marker")));
+        when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
+                .thenReturn(List.of(new RetrievedContext("关键词证据", "keyword-doc", 0.8f, Map.of())));
+
+        RetrievalResult result = queryEngine.retrieveWithDiagnostics(
+                "什么是JWT？",
+                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), false));
+
+        assertEquals(List.of("keyword-doc"), result.contexts().stream().map(RetrievedContext::source).toList());
+        assertEquals("keyword_only", result.diagnostics().get("retrievalMode"));
+        assertEquals(true, result.diagnostics().get("retrievalDegraded"));
+        assertEquals("milvus", result.diagnostics().get("degradedDependency"));
+        verify(vectorStore, times(1)).search(anyString(), any(float[].class), any(SearchOptions.class));
+        verify(keywordIndex, times(1)).search(eq("kb_test"), eq("什么是JWT？"), eq(10), eq(Map.of()));
+    }
+
+    @Test
+    void shouldKeepStableVectorFailureWhenKeywordRouteReturnsNoEvidence() {
+        KeywordIndex keywordIndex = mock(KeywordIndex.class);
+        RetrievalProperties properties = new RetrievalProperties();
+        queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties);
+        VectorDependencyException failure = VectorDependencyException.unavailable(
+                "search", new IllegalStateException("raw-marker"));
+        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenThrow(failure);
+        when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
+                .thenReturn(List.of());
+
+        VectorDependencyException actual = assertThrows(
+                VectorDependencyException.class,
+                () -> queryEngine.retrieveWithDiagnostics(
+                        "什么是JWT？",
+                        new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), false)));
+
+        assertEquals(VectorDependencyException.ERROR_CODE_UNAVAILABLE, actual.getErrorCode());
+        verify(vectorStore, times(1)).search(anyString(), any(float[].class), any(SearchOptions.class));
+        verify(keywordIndex, times(1)).search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any());
     }
 
     @Test

@@ -6,6 +6,8 @@ import com.enterprise.rag.core.rag.generator.AnswerGenerator;
 import com.enterprise.rag.core.rag.generator.LLMException;
 import com.enterprise.rag.core.rag.model.*;
 import com.enterprise.rag.core.rag.query.QueryEngine;
+import com.enterprise.rag.core.rag.query.RetrievalResult;
+import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -82,7 +84,8 @@ public class RAGServiceImpl implements RAGService {
                     request.minScore(),
                     request.filter(),
                     true);
-            List<RetrievedContext> contexts = queryEngine.retrieve(question, retrieveOptions);
+            RetrievalResult retrievalResult = retrieveWithDiagnostics(question, retrieveOptions);
+            List<RetrievedContext> contexts = retrievalResult.contexts();
             log.debug("Retrieved {} contexts for question", contexts.size());
             log.debug("Top retrieval scores: {}", topScoresForLog(contexts, 5));
 
@@ -101,6 +104,7 @@ public class RAGServiceImpl implements RAGService {
 
             // 5. 构建响应
             Map<String, Object> metadata = new HashMap<>(generatedAnswer.metadata());
+            metadata.putAll(retrievalResult.diagnostics());
             metadata.put("cached", false);
             metadata.putIfAbsent("contextCount", contexts.size());
             copyCitationValidationSummary(metadata);
@@ -122,7 +126,7 @@ public class RAGServiceImpl implements RAGService {
                     metadata);
 
             // 6. 缓存结果
-            if (request.enableCache()) {
+            if (request.enableCache() && !retrievalResult.degraded()) {
                 saveToCache(question, collectionName, request.topK(), request.filter(), modelName, response);
             }
 
@@ -160,7 +164,8 @@ public class RAGServiceImpl implements RAGService {
                     request.minScore(),
                     request.filter(),
                     true);
-            List<RetrievedContext> contexts = queryEngine.retrieve(question, retrieveOptions);
+            RetrievalResult retrievalResult = retrieveWithDiagnostics(question, retrieveOptions);
+            List<RetrievedContext> contexts = retrievalResult.contexts();
             long retrievalLatencyMs = System.currentTimeMillis() - retrievalStartTime;
 
             if (contexts.isEmpty()) {
@@ -172,6 +177,9 @@ public class RAGServiceImpl implements RAGService {
                     retrievalLatencyMs,
                     contexts.size(),
                     topScoresForLog(contexts, 5));
+            if (retrievalResult.degraded()) {
+                log.warn("stream_retrieval_degraded dependency=milvus, retrievalMode=keyword_only, failMode=open");
+            }
 
             if (contexts.isEmpty()) {
                 log.info("stream_retrieval_no_context collection={}, retrievalLatencyMs={}",
@@ -190,6 +198,10 @@ public class RAGServiceImpl implements RAGService {
     }
 
     private String toClientErrorMessage(Exception e) {
+        VectorDependencyException vectorException = findVectorException(e);
+        if (vectorException != null) {
+            return vectorException.getMessage();
+        }
         LLMException llmException = findLlmException(e);
         if (llmException != null) {
             return toLlmClientErrorMessage(llmException.diagnostics());
@@ -214,6 +226,13 @@ public class RAGServiceImpl implements RAGService {
         return message;
     }
 
+    private RetrievalResult retrieveWithDiagnostics(String question, RetrieveOptions options) {
+        RetrievalResult result = queryEngine.retrieveWithDiagnostics(question, options);
+        return result != null
+                ? result
+                : RetrievalResult.complete(queryEngine.retrieve(question, options));
+    }
+
     private String toLlmClientErrorMessage(Map<String, Object> diagnostics) {
         String category = String.valueOf(diagnostics.getOrDefault("errorCategory", "unknown"));
         return switch (category) {
@@ -233,6 +252,12 @@ public class RAGServiceImpl implements RAGService {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("errorType", e.getClass().getSimpleName());
         metadata.put("errorCategory", classifyClientError(e));
+
+        VectorDependencyException vectorException = findVectorException(e);
+        if (vectorException != null) {
+            metadata.put("errorCode", vectorException.getErrorCode());
+            metadata.put("vectorDiagnostics", vectorException.diagnostics());
+        }
 
         LLMException llmException = findLlmException(e);
         if (llmException != null && !llmException.diagnostics().isEmpty()) {
@@ -276,10 +301,25 @@ public class RAGServiceImpl implements RAGService {
         return null;
     }
 
+    private VectorDependencyException findVectorException(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof VectorDependencyException vectorException) {
+                return vectorException;
+            }
+            current = current.getCause();
+        }
+        return null;
+    }
+
     private String classifyClientError(Exception e) {
         String message = e != null ? String.valueOf(e.getMessage()).toLowerCase() : "";
         if (findLlmException(e) != null) {
             return "llm";
+        }
+        VectorDependencyException vectorException = findVectorException(e);
+        if (vectorException != null) {
+            return vectorException.getErrorCategory();
         }
         if (message.contains("collection not found")) {
             return "vector_index";

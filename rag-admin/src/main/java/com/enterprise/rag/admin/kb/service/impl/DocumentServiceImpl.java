@@ -11,6 +11,7 @@ import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -111,20 +112,15 @@ public class DocumentServiceImpl implements DocumentService {
 
         // 删除向量数据（DOC-03: 使用知识库真实 vectorCollection，而非拼接 kb_{kbId}）
         if (!vectorIds.isEmpty()) {
-            try {
-                KnowledgeBase kb = knowledgeBaseMapper.selectById(document.getKbId());
-                if (kb != null && kb.getVectorCollection() != null) {
-                    vectorStore.delete(kb.getVectorCollection(), vectorIds);
-                    keywordIndex.delete(kb.getVectorCollection(), vectorIds);
-                    log.info("Deleted {} vectors for document {} from collection {}",
-                            vectorIds.size(), id, kb.getVectorCollection());
-                } else {
-                    log.warn("无法找到知识库或集合名，跳过向量删除: kbId={}, documentId={}",
-                            document.getKbId(), id);
-                }
-            } catch (Exception e) {
-                log.error("Failed to delete vectors for document {}: errorType={}",
-                        id, e.getClass().getSimpleName());
+            KnowledgeBase kb = knowledgeBaseMapper.selectById(document.getKbId());
+            if (kb != null && kb.getVectorCollection() != null) {
+                vectorStore.delete(kb.getVectorCollection(), vectorIds);
+                keywordIndex.delete(kb.getVectorCollection(), vectorIds);
+                log.info("Deleted vectors for document");
+            } else {
+                log.warn("向量删除前无法确认知识库集合，拒绝继续删除文档: kbId={}, documentId={}",
+                        document.getKbId(), id);
+                throw VectorDependencyException.indexUnavailable("delete", null);
             }
         }
 

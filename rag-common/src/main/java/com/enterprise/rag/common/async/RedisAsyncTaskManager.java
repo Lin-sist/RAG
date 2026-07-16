@@ -2,6 +2,7 @@ package com.enterprise.rag.common.async;
 
 import com.enterprise.rag.common.constant.RedisKeyConstants;
 import com.enterprise.rag.common.exception.RedisDependencyException;
+import com.enterprise.rag.common.exception.BusinessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -263,6 +264,17 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
                 return result;
 
             } catch (RedisDependencyException e) {
+                throw e;
+            } catch (BusinessException e) {
+                log.error("Task execution failed with stable business result: taskId={}, errorCode={}, errorType={}",
+                        taskId, e.getErrorCode(), e.getClass().getSimpleName());
+                try {
+                    saveStatus(taskId, TaskStatus.failed(
+                            taskId, taskType, e.getErrorCode() + ": " + e.getMessage(), ownerId));
+                } catch (RedisDependencyException statusFailure) {
+                    statusFailure.addSuppressed(e);
+                    throw statusFailure;
+                }
                 throw e;
             } catch (Exception e) {
                 // 更新状态为失败

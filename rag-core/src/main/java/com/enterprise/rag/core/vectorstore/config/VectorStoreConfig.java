@@ -44,7 +44,7 @@ public class VectorStoreConfig {
     public MilvusServiceClient milvusServiceClient(VectorStoreProperties properties) {
         VectorStoreProperties.MilvusProperties milvusProps = properties.getMilvus();
         
-        log.info("Connecting to Milvus at {}:{}", milvusProps.getHost(), milvusProps.getPort());
+        log.info("Connecting to configured Milvus dependency");
         
         ConnectParam connectParam = ConnectParam.newBuilder()
                 .withHost(milvusProps.getHost())

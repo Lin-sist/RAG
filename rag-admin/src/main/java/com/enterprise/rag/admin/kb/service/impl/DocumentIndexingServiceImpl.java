@@ -16,6 +16,7 @@ import com.enterprise.rag.core.rag.keyword.KeywordDocument;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorDocument;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.document.chunker.DocumentChunk;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentInput;
@@ -174,6 +175,9 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             log.error("文档处理失败: documentId={}, errorType={}",
                     documentId, e.getClass().getSimpleName());
             documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
             throw new RuntimeException(e);
         } finally {
             try {
@@ -202,6 +206,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 }
                 return indexOnce(kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
                         progressCallback);
+            } catch (VectorDependencyException e) {
+                throw e;
             } catch (RuntimeException e) {
                 lastException = e;
                 if (attempt >= MAX_INDEX_ATTEMPTS) {

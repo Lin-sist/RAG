@@ -16,6 +16,7 @@ import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.enterprise.rag.common.idempotency.Idempotent;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -68,9 +69,13 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             int dimension = embeddingService.getDimension();
             vectorStore.createCollection(collectionName, dimension);
             log.info("Created vector collection: {} with dimension: {}", collectionName, dimension);
+        } catch (VectorDependencyException e) {
+            log.error("Vector collection create failed: dependency=milvus, operation={}, errorCategory={}, failMode={}",
+                    e.getOperation(), e.getErrorCategory(), e.getFailMode());
+            throw e;
         } catch (Exception e) {
-            log.error("Failed to create vector collection {}, rollback create: errorType={}",
-                    collectionName, e.getClass().getSimpleName());
+            log.error("Failed to create vector collection; rollback create: errorType={}",
+                    e.getClass().getSimpleName());
             throw new BusinessException("KB_005", "创建知识库失败：向量集合初始化失败", e);
         }
 
@@ -167,13 +172,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         // 删除向量集合
         if (kb.getVectorCollection() != null) {
-            try {
-                vectorStore.dropCollection(kb.getVectorCollection());
-                log.info("Dropped vector collection: {}", kb.getVectorCollection());
-            } catch (Exception e) {
-                log.warn("Failed to drop vector collection {}: errorType={}",
-                        kb.getVectorCollection(), e.getClass().getSimpleName());
-            }
+            vectorStore.dropCollection(kb.getVectorCollection());
+            log.info("Dropped vector collection for knowledge base");
         }
 
         // 删除查询计数
@@ -209,9 +209,12 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         if (kb.getVectorCollection() != null) {
             try {
                 vectorCount = vectorStore.count(kb.getVectorCollection());
+            } catch (VectorDependencyException e) {
+                throw e;
             } catch (Exception e) {
-                log.warn("Failed to get vector count for collection {}: errorType={}",
-                        kb.getVectorCollection(), e.getClass().getSimpleName());
+                log.error("Vector count read failed: dependency=milvus, operation=count, failMode=closed, errorType={}",
+                        e.getClass().getSimpleName());
+                throw VectorDependencyException.unavailable("count", e);
             }
         }
 

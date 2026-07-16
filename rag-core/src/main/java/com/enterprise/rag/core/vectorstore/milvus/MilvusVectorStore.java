@@ -3,8 +3,8 @@ package com.enterprise.rag.core.vectorstore.milvus;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.SearchResult;
 import com.enterprise.rag.core.vectorstore.VectorDocument;
+import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.core.vectorstore.VectorStore;
-import com.enterprise.rag.core.vectorstore.VectorStoreException;
 import com.enterprise.rag.core.vectorstore.config.VectorStoreProperties;
 import com.google.gson.Gson;
 import io.milvus.client.MilvusServiceClient;
@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 /**
  * Milvus 向量存储实现
@@ -66,11 +67,11 @@ public class MilvusVectorStore implements VectorStore {
     @Override
     public void createCollection(String collectionName, int dimension) {
         if (hasCollection(collectionName)) {
-            log.info("Collection {} already exists", collectionName);
+            log.info("Milvus collection already exists");
             return;
         }
 
-        log.info("Creating collection {} with dimension {}", collectionName, dimension);
+        log.info("Creating Milvus collection with dimension {}", dimension);
 
         // 定义字段
         FieldType idField = FieldType.newBuilder()
@@ -108,8 +109,8 @@ public class MilvusVectorStore implements VectorStore {
                 .addFieldType(metadataField)
                 .build();
 
-        R<RpcStatus> response = milvusClient.createCollection(createParam);
-        handleResponse(response, "Failed to create collection: " + collectionName);
+        R<RpcStatus> response = mutationCall("create", () -> milvusClient.createCollection(createParam));
+        handleResponse(response, "create");
 
         // 创建索引
         createIndex(collectionName, dimension);
@@ -117,7 +118,7 @@ public class MilvusVectorStore implements VectorStore {
         // 加载集合到内存
         loadCollection(collectionName);
 
-        log.info("Collection {} created successfully", collectionName);
+        log.info("Milvus collection created successfully");
     }
 
     private void createIndex(String collectionName, int dimension) {
@@ -132,8 +133,8 @@ public class MilvusVectorStore implements VectorStore {
                 .withExtraParam("{\"nlist\":" + properties.getNlist() + "}")
                 .build();
 
-        R<RpcStatus> response = milvusClient.createIndex(indexParam);
-        handleResponse(response, "Failed to create index for collection: " + collectionName);
+        R<RpcStatus> response = mutationCall("create_index", () -> milvusClient.createIndex(indexParam));
+        handleResponse(response, "create_index");
     }
 
     private void loadCollection(String collectionName) {
@@ -141,8 +142,13 @@ public class MilvusVectorStore implements VectorStore {
                 .withCollectionName(collectionName)
                 .build();
 
-        R<RpcStatus> response = milvusClient.loadCollection(loadParam);
-        handleResponse(response, "Failed to load collection: " + collectionName);
+        R<RpcStatus> response;
+        try {
+            response = milvusClient.loadCollection(loadParam);
+        } catch (RuntimeException e) {
+            throw VectorDependencyException.unavailable("load", e);
+        }
+        handleResponse(response, "load");
     }
 
     @Override
@@ -151,37 +157,41 @@ public class MilvusVectorStore implements VectorStore {
                 .withCollectionName(collectionName)
                 .build();
 
-        R<Boolean> response = milvusClient.hasCollection(param);
-        if (response.getStatus() != R.Status.Success.getCode()) {
-            throw new VectorStoreException("Failed to check collection existence: " + response.getMessage());
+        R<Boolean> response;
+        try {
+            response = milvusClient.hasCollection(param);
+        } catch (RuntimeException e) {
+            throw VectorDependencyException.unavailable("has_collection", e);
         }
+        handleResponse(response, "has_collection");
         return response.getData();
     }
 
     @Override
     public void dropCollection(String collectionName) {
         if (!hasCollection(collectionName)) {
-            log.info("Collection {} does not exist, skip dropping", collectionName);
+            log.info("Milvus collection does not exist, skip dropping");
             return;
         }
 
-        log.info("Dropping collection {}", collectionName);
+        log.info("Dropping Milvus collection");
 
         // 先释放集合
         ReleaseCollectionParam releaseParam = ReleaseCollectionParam.newBuilder()
                 .withCollectionName(collectionName)
                 .build();
-        milvusClient.releaseCollection(releaseParam);
+        R<RpcStatus> releaseResponse = mutationCall("release", () -> milvusClient.releaseCollection(releaseParam));
+        handleResponse(releaseResponse, "release");
 
         // 删除集合
         DropCollectionParam dropParam = DropCollectionParam.newBuilder()
                 .withCollectionName(collectionName)
                 .build();
 
-        R<RpcStatus> response = milvusClient.dropCollection(dropParam);
-        handleResponse(response, "Failed to drop collection: " + collectionName);
+        R<RpcStatus> response = mutationCall("drop", () -> milvusClient.dropCollection(dropParam));
+        handleResponse(response, "drop");
 
-        log.info("Collection {} dropped successfully", collectionName);
+        log.info("Milvus collection dropped successfully");
     }
 
     @Override
@@ -190,12 +200,11 @@ public class MilvusVectorStore implements VectorStore {
             return;
         }
 
-        log.debug("Upserting {} documents to collection {}", documents.size(), collectionName);
+        log.debug("Upserting {} documents to Milvus", documents.size());
 
         if (!hasCollection(collectionName)) {
             int dimension = documents.get(0).vector().length;
-            log.warn("Collection {} not found before upsert, auto-creating with dimension {}",
-                    collectionName, dimension);
+            log.warn("Milvus collection not found before upsert; creating with dimension {}", dimension);
             createCollection(collectionName, dimension);
         }
 
@@ -229,28 +238,10 @@ public class MilvusVectorStore implements VectorStore {
                 .withFields(fields)
                 .build();
 
-        R<MutationResult> response = milvusClient.insert(insertParam);
-        try {
-            handleResponse(response, "Failed to insert documents");
-        } catch (VectorStoreException e) {
-            if (!isCollectionNotFoundMessage(e.getMessage())) {
-                throw e;
-            }
-            int dimension = vectorList.get(0).size();
-            log.warn(
-                    "Insert failed because collection is missing, retry after auto-create: collection={}, dimension={}",
-                    collectionName,
-                    dimension);
-            createCollection(collectionName, dimension);
-            R<MutationResult> retryResponse = milvusClient.insert(insertParam);
-            handleResponse(retryResponse, "Failed to insert documents after auto-create");
-        }
+        R<MutationResult> response = mutationCall("upsert", () -> milvusClient.insert(insertParam));
+        handleResponse(response, "upsert");
 
         log.debug("Successfully upserted {} documents", documents.size());
-    }
-
-    private boolean isCollectionNotFoundMessage(String message) {
-        return message != null && message.toLowerCase().contains("collection not found");
     }
 
     private void deleteIfExists(String collectionName, List<String> ids) {
@@ -267,12 +258,27 @@ public class MilvusVectorStore implements VectorStore {
                 .withExpr(expr)
                 .build();
 
-        milvusClient.delete(deleteParam);
+        R<MutationResult> response = mutationCall("upsert_delete_existing", () -> milvusClient.delete(deleteParam));
+        handleResponse(response, "upsert_delete_existing");
     }
 
     @Override
     public List<SearchResult> search(String collectionName, float[] queryVector, SearchOptions options) {
-        log.debug("Searching in collection {} with topK={}", collectionName, options.topK());
+        try {
+            return searchOnce(collectionName, queryVector, options);
+        } catch (VectorDependencyException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw VectorDependencyException.unavailable("search", e);
+        }
+    }
+
+    private List<SearchResult> searchOnce(String collectionName, float[] queryVector, SearchOptions options) {
+        log.debug("Searching Milvus with topK={}", options.topK());
+
+        if (!hasCollection(collectionName)) {
+            throw VectorDependencyException.indexUnavailable("search", null);
+        }
 
         // 确保集合已加载到内存（Milvus 重启后集合会被卸载，必须重新 load 才能搜索）
         loadCollection(collectionName);
@@ -298,7 +304,7 @@ public class MilvusVectorStore implements VectorStore {
         }
 
         R<SearchResults> response = milvusClient.search(searchBuilder.build());
-        handleResponse(response, "Failed to search");
+        handleResponse(response, "search");
 
         SearchResultsWrapper wrapper = new SearchResultsWrapper(response.getData().getResults());
         List<SearchResult> results = new ArrayList<>();
@@ -333,8 +339,8 @@ public class MilvusVectorStore implements VectorStore {
         // 确保按分数降序排列
         results.sort((a, b) -> Float.compare(b.score(), a.score()));
 
-        log.info("Search complete: collection={}, rawResults={}, filteredResults={}",
-                collectionName, totalRawResults, results.size());
+        log.info("Milvus search complete: rawResults={}, filteredResults={}",
+                totalRawResults, results.size());
         return results;
     }
 
@@ -370,7 +376,7 @@ public class MilvusVectorStore implements VectorStore {
             return;
         }
 
-        log.debug("Deleting {} documents from collection {}", ids.size(), collectionName);
+        log.debug("Deleting {} documents from Milvus", ids.size());
 
         String expr = FIELD_ID + " in [" + ids.stream()
                 .map(id -> "\"" + id + "\"")
@@ -381,8 +387,8 @@ public class MilvusVectorStore implements VectorStore {
                 .withExpr(expr)
                 .build();
 
-        R<MutationResult> response = milvusClient.delete(deleteParam);
-        handleResponse(response, "Failed to delete documents");
+        R<MutationResult> response = mutationCall("delete", () -> milvusClient.delete(deleteParam));
+        handleResponse(response, "delete");
 
         log.debug("Successfully deleted {} documents", ids.size());
     }
@@ -412,8 +418,13 @@ public class MilvusVectorStore implements VectorStore {
                 .withConsistencyLevel(ConsistencyLevelEnum.STRONG)
                 .build();
 
-        R<QueryResults> response = milvusClient.query(queryParam);
-        handleResponse(response, "Failed to query documents");
+        R<QueryResults> response;
+        try {
+            response = milvusClient.query(queryParam);
+        } catch (RuntimeException e) {
+            throw VectorDependencyException.unavailable("query", e);
+        }
+        handleResponse(response, "query");
 
         QueryResultsWrapper wrapper = new QueryResultsWrapper(response.getData());
         List<VectorDocument> results = new ArrayList<>();
@@ -443,8 +454,13 @@ public class MilvusVectorStore implements VectorStore {
                 .withCollectionName(collectionName)
                 .build();
 
-        R<GetCollectionStatisticsResponse> response = milvusClient.getCollectionStatistics(param);
-        handleResponse(response, "Failed to get collection statistics");
+        R<GetCollectionStatisticsResponse> response;
+        try {
+            response = milvusClient.getCollectionStatistics(param);
+        } catch (RuntimeException e) {
+            throw VectorDependencyException.unavailable("count", e);
+        }
+        handleResponse(response, "count");
 
         GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(response.getData());
         return wrapper.getRowCount();
@@ -472,9 +488,22 @@ public class MilvusVectorStore implements VectorStore {
         return array;
     }
 
-    private <T> void handleResponse(R<T> response, String errorMessage) {
+    private <T> R<T> mutationCall(String operation, Supplier<R<T>> call) {
+        try {
+            return call.get();
+        } catch (VectorDependencyException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw VectorDependencyException.outcomeUnknown(operation, e);
+        }
+    }
+
+    private <T> void handleResponse(R<T> response, String operation) {
+        if (response == null || response.getStatus() == null) {
+            throw VectorDependencyException.malformedResponse(operation, null);
+        }
         if (response.getStatus() != R.Status.Success.getCode()) {
-            throw new VectorStoreException(errorMessage + ": " + response.getMessage());
+            throw VectorDependencyException.rpcFailure(operation, response.getException());
         }
     }
 }

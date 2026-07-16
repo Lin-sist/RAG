@@ -14,6 +14,7 @@ import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.document.chunker.DocumentChunk;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentProcessor;
@@ -207,5 +208,40 @@ class DocumentIndexingServiceImplTest {
         verify(documentService, times(1)).updateStatus(99L, DocumentStatus.COMPLETED.name());
         verify(documentService, never()).updateStatus(99L, DocumentStatus.FAILED.name());
         verify(knowledgeBaseService, times(1)).updateDocumentCount(10L, 1);
+    }
+
+    @Test
+    void vectorMutationOutcomeUnknownShouldNotBeRetried() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "vector-failure.md", "text/markdown", "content".getBytes());
+        Document created = new Document();
+        created.setId(101L);
+        created.setTitle("vector-failure.md");
+        KnowledgeBaseDTO kb = new KnowledgeBaseDTO();
+        kb.setVectorCollection("kb_vector_failure");
+        DocumentChunk chunk = new DocumentChunk("chunk-1", "content", 0, 7, Map.of());
+        ProcessResult result = ProcessResult.newDocument("doc-1", "hash-1", "content", List.of(chunk));
+
+        when(documentParserFactory.isSupported("md")).thenReturn(true);
+        when(documentService.create(any(Document.class))).thenReturn(created);
+        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
+                .thenReturn(new TaskHandle<>("task-101", CompletableFuture.completedFuture(result)));
+        when(documentProcessor.process(any())).thenReturn(result);
+        when(documentService.getByKnowledgeBaseAndContentHash(10L, "hash-1")).thenReturn(Optional.empty());
+        when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
+        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] { 0.1f, 0.2f }));
+        doThrow(VectorDependencyException.outcomeUnknown("upsert", new IllegalStateException("raw-marker")))
+                .when(vectorStore).upsert(eq("kb_vector_failure"), anyList());
+
+        service.submitIndexing(10L, 20L, file, "vector-failure.md");
+        ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
+        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+
+        assertThrows(RuntimeException.class, () -> taskCaptor.getValue().execute(progress -> {
+        }));
+        verify(vectorStore, times(1)).upsert(eq("kb_vector_failure"), anyList());
+        verify(documentService).updateStatus(101L, DocumentStatus.FAILED.name());
+        verify(documentService, never()).saveChunks(anyList());
     }
 }
