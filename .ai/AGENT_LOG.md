@@ -502,3 +502,31 @@
 - 范围安全：未修改 API/DTO、数据库 schema、依赖版本、Redis/Milvus 生产配置、评测指标或受保护本地配置；未进入 C4d/C5，未暂存、未提交、未 push、未创建 PR、未部署或发布。
 - 剩余风险：Redis outage 中断任务的恢复、重放与孤儿协调仍留给 C5；Milvus 故障语义仍留给 C4d，不影响 C4c 已接受契约。
 - Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-15｜C4c 治理收口提交补录
+
+- Commit：`c63d9c209d82f6693ce699f93323cfa3e82559cf`。
+- 结论：C4c delta 已接受进 `rag-system` baseline，ACTIVE_TASK 已恢复 `IDLE`，change 已归档并由用户手动完成中文提交。
+
+## 2026-07-15｜C4d milvus-failure-semantics 启动与规格草案
+
+- 类型与用户决策：Type C 重大变更规格阶段；用户在 readiness scan 结论为 GO 后明确要求开始 C4d 规划。当前只建立 OpenSpec 事前闸门，尚未批准生产实现或 Agent 提交。
+- 范围与修改文件：`.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md`、`openspec/changes/2026-07-15-milvus-failure-semantics/{proposal.md,design.md,tasks.md,specs/rag-system/spec.md}`；未修改生产 Java、测试、POM、配置、依赖或 baseline spec。
+- 已确认事实：C3 已用固定 Milvus 2.3.4 + etcd/MinIO + 确定性 embedding 验证健康主链路；当前 Milvus consumers 覆盖 KB create/drop/count、document upsert/delete 与 dense search。`MilvusVectorStore` 多数 status 失败拼接 raw message，部分 release/delete response 未检查；vector search failure 会阻止 keyword route；index 对所有 runtime 整段重试；delete/drop 吞异常后继续 SQL delete；count failure 伪装零值。
+- 能力分类：`confirmed` 为 C3/C4b/C4c 前置和 tracked consumer 清单；`partial` 为 load-on-search、通用 VectorStoreException、FAILED 状态与未分类重试/吞异常；`planned` 为 stable categories、conditional keyword-only、mutation outcome unknown、lifecycle fail-closed、statistics 503、安全 task/log 与隔离 stop/start；`out_of_scope` 为其他 adapters、HA/容量、C5 恢复与公开 DTO/schema；`unknown` 为 SDK stop/start/timeout/status 与 post-mutation response lost 的真实表现。
+- 规划默认与待审决策：仅 Milvus；keyword contexts 非空才降级并写现有 QA metadata，不写普通成功 cache；keyword 不可用/empty 时 stable error、LLM 0 次；vector mutation 不自动重放；delete/drop fail-closed；count unknown 503；collection missing 不自动重建；内部 retrieval result carrier；恢复/对账留 C5。所有默认项已在 tasks 事前闸门和 design 决策记录中标记待用户确认。
+- Spec delta：草案新增“Milvus 依赖故障分类与稳定结果”“Milvus 检索部分降级”“Milvus 索引写入与生命周期一致性”“Milvus 统计与安全诊断”四组 requirements；仅为 change delta，用户实现验收前不得接受进 baseline。
+- 外部调用：规划阶段未启动容器；真实 embedding/rerank/judge/ask/LLM 调用量均为 0。后续仅允许固定基础设施镜像、进程内确定性 embedding、合成数据与测试自有 container id。
+- 跳过项：本轮只写规划文档，因此不运行 Maven、Python、前端 build、SensitiveLogs、Milvus stop/start 或 provider 调用；完成结构、决策记录、旧路径、baseline/代码零改动与 `git diff --check` 后再交付审阅。
+- 范围安全：不修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、Qdrant/Elasticsearch、API DTO、数据库 schema、评测指标或生产 Milvus 配置；不进入 C5/C6，不暂存、不提交、不 push、不部署。
+- 剩余审批点：adapter scope、keyword-only 条件与可观察 metadata、degraded cache、mutation retry/outcome unknown、delete/drop、statistics 503、collection missing、隔离验证和提交责任。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-15｜C4d 规格草案结构与范围验证补充
+
+- 结构验证：proposal、design、tasks 与 `rag-system` spec delta 四个必需 artifact 均存在；proposal 必需章节齐全；design 含 13 条真实决策记录，每条严格为“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”三行；spec delta 含 4 个 requirements 与 15 个 scenarios。
+- 闸门验证：所有 implementation/approval tasks 均保持未勾选；`ACTIVE_TASK=ACTIVE` 且唯一指向现存 `2026-07-15-milvus-failure-semantics`；提交责任为用户手动提交。
+- 差异验证：accepted `openspec/specs/` baseline、生产/测试 Java、POM/package、application 配置、Qdrant/Elasticsearch 和受保护路径均零改动；`git diff --check` 通过。
+- 跳过项：本轮仅规划文档，没有代码、测试、配置、依赖或前端改动，因此未运行 Maven、Python、前端 build、SensitiveLogs、Docker/Milvus stop/start 或 provider 调用；没有业务数据出站和费用。
+- 工作区：仅 `.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md` 与新 C4d change artifacts 未提交；Agent 未暂存、未提交、未 push。
+- Commit：`pending`；建议用户审核后使用 `docs(openspec): 启动C4d Milvus故障语义规划`。
