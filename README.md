@@ -224,9 +224,13 @@ $env:AUTH_BOOTSTRAP_PASSWORD="<your-strong-password>"
 - `DB_URL` / `DB_USERNAME` / `DB_PASSWORD`
 - `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DB`
 - `JWT_SECRET`
+- `RAG_INDEX_INPUT_ROOT`（`prod` 必填，必须指向已挂载的非临时持久目录）
+- `RAG_INDEX_INPUT_MAX_FILE_SIZE` / `RAG_INDEX_INPUT_MIN_USABLE_SPACE`（默认 `50MB` / `100MB`）
 - `NVIDIA_API_KEY` / `QWEN_API_KEY`
 
 当 active profile 包含精确的 `prod` 时，必须通过 `JWT_SECRET` 注入非默认值。若配置为空白、仍为仓库默认值、带首尾空白或整个值仍是 `${...}` 未解析占位符，应用会在 JWT provider 创建阶段拒绝启动；错误不会回显 secret。JWT 算法最小 key 长度仍由 JJWT 按 UTF-8 bytes 校验。
+
+文档索引输入默认保存在 `data/index-inputs`，只适合本地开发。当 active profile 包含精确的 `prod` 时，必须显式设置 `RAG_INDEX_INPUT_ROOT`；目录位于系统临时目录、不可写、空间低于门槛或不支持原子发布时，应用会拒绝启动。生产部署需把该目录挂载到持久卷，不能依赖容器可写层。
 
 ## 9. 当前状态与后续优化方向
 

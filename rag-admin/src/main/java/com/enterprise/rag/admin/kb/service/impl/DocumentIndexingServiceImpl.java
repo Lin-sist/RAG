@@ -6,6 +6,10 @@ import com.enterprise.rag.admin.kb.entity.DocumentStatus;
 import com.enterprise.rag.admin.kb.service.DocumentIndexingService;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
+import com.enterprise.rag.admin.kb.storage.IndexInputState;
+import com.enterprise.rag.admin.kb.storage.IndexInputStore;
+import com.enterprise.rag.admin.kb.storage.IndexInputStorageException;
+import com.enterprise.rag.admin.kb.storage.StoredIndexInput;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
@@ -27,12 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -64,6 +64,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     private final EmbeddingService embeddingService;
     private final VectorStore vectorStore;
     private final KeywordIndex keywordIndex;
+    private final IndexInputStore indexInputStore;
 
     @Override
     @Idempotent(keyPrefix = "kb:upload", required = false, ttlSeconds = 3600)
@@ -82,7 +83,12 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                             + "，支持的类型: " + documentParserFactory.getSupportedTypes());
         }
 
-        Path tempFilePath = createTempFile(file, fileType);
+        StoredIndexInput storedInput;
+        try {
+            storedInput = indexInputStore.put(file.getInputStream());
+        } catch (IOException e) {
+            throw new BusinessException("DOC_007", "上传文件读取失败", e);
+        }
 
         // 创建文档记录（PENDING 状态），控制器日志由调用方记录
         Document document = new Document();
@@ -90,18 +96,36 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         document.setUploaderId(uploaderId);
         document.setTitle(title != null ? title : fileName);
         document.setFileType(fileType);
+        document.setFilePath(storedInput.storageKey());
+        document.setInputSizeBytes(storedInput.sizeBytes());
+        document.setInputSha256(storedInput.sha256());
+        document.setInputState(IndexInputState.AVAILABLE.name());
         document.setStatus(DocumentStatus.PENDING.name());
-        document = documentService.create(document);
+        try {
+            document = documentService.create(document);
+        } catch (RuntimeException e) {
+            cleanupUnacceptedInput(storedInput.storageKey());
+            throw e;
+        }
 
         final Long documentId = document.getId();
         final String documentTitle = document.getTitle();
 
         // 提交异步索引任务
-        TaskHandle<ProcessResult> taskHandle = asyncTaskManager.submit(
-                "DOCUMENT_INDEX",
-                uploaderId,
-                progressCallback -> doIndex(kbId, documentId, fileName, documentTitle, fileType, tempFilePath,
-                        progressCallback));
+        TaskHandle<ProcessResult> taskHandle;
+        try {
+            taskHandle = asyncTaskManager.submit(
+                    "DOCUMENT_INDEX",
+                    uploaderId,
+                    progressCallback -> doIndex(
+                            kbId, documentId, fileName, documentTitle, fileType,
+                            storedInput.storageKey(), storedInput.sizeBytes(), storedInput.sha256(),
+                            progressCallback));
+        } catch (RuntimeException e) {
+            documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
+            cleanupCompletedInput(documentId, storedInput.storageKey());
+            throw e;
+        }
 
         log.info("文档索引任务已提交: documentId={}, taskId={}", documentId, taskHandle.taskId());
 
@@ -117,12 +141,14 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
      * 异步索引核心逻辑（解析 → 去重 → 向量化 → 持久化）
      */
     private ProcessResult doIndex(Long kbId, Long documentId, String fileName, String documentTitle, String fileType,
-            Path tempFilePath,
+            String storageKey,
+            long inputSizeBytes,
+            String inputSha256,
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
         try {
             progressCallback.accept(AsyncTask.TaskProgress.of(10, "开始解析文档"));
 
-            try (InputStream inputStream = Files.newInputStream(tempFilePath)) {
+            try (InputStream inputStream = indexInputStore.openVerified(storageKey, inputSizeBytes, inputSha256)) {
                 DocumentInput input = DocumentInput.of(
                         inputStream,
                         fileName,
@@ -148,6 +174,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                         documentService.updateChunkCount(documentId, existing.getChunkCount());
                         documentService.updateContentHash(documentId, result.contentHash());
                         progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档内容已存在，复用已有索引"));
+                        cleanupCompletedInput(documentId, storageKey);
                         return result;
                     }
                     log.warn(
@@ -167,25 +194,27 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                         .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
                         .getVectorCollection();
 
-                return indexWithRetry(kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
+                ProcessResult indexed = indexWithRetry(
+                        kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
                         progressCallback);
+                cleanupCompletedInput(documentId, storageKey);
+                return indexed;
             }
 
         } catch (Exception e) {
             log.error("文档处理失败: documentId={}, errorType={}",
                     documentId, e.getClass().getSimpleName());
+            if (e instanceof IndexInputStorageException storageException) {
+                String inputState = "INDEX_INPUT_CORRUPT".equals(storageException.getErrorCode())
+                        ? IndexInputState.CORRUPT.name()
+                        : IndexInputState.MISSING.name();
+                documentService.updateInputState(documentId, inputState);
+            }
             documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
             if (e instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             }
             throw new RuntimeException(e);
-        } finally {
-            try {
-                Files.deleteIfExists(tempFilePath);
-            } catch (IOException e) {
-                log.warn("清理临时上传文件失败: documentId={}, errorType={}",
-                        documentId, e.getClass().getSimpleName());
-            }
         }
     }
 
@@ -358,15 +387,40 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         return text.length();
     }
 
-    private Path createTempFile(MultipartFile file, String fileType) {
+    private void cleanupCompletedInput(Long documentId, String storageKey) {
         try {
-            Path tempFilePath = Files.createTempFile("rag-upload-", "." + fileType.toLowerCase());
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, tempFilePath, StandardCopyOption.REPLACE_EXISTING);
+            documentService.updateInputState(documentId, IndexInputState.CLEANUP_PENDING.name());
+        } catch (RuntimeException e) {
+            log.warn("索引输入清理状态待协调: documentId={}, errorType={}",
+                    documentId, e.getClass().getSimpleName());
+            return;
+        }
+        try {
+            IndexInputStore.DeleteResult deleteResult = indexInputStore.delete(storageKey);
+            if (deleteResult != IndexInputStore.DeleteResult.DELETED
+                    && deleteResult != IndexInputStore.DeleteResult.ALREADY_MISSING) {
+                log.warn("索引输入等待后续清理: documentId={}, result={}",
+                        documentId, IndexInputStore.DeleteResult.FAILED);
+                return;
             }
-            return tempFilePath;
-        } catch (IOException e) {
-            throw new BusinessException("DOC_007", "上传文件暂存失败", e);
+        } catch (RuntimeException e) {
+            log.warn("索引输入等待后续清理: documentId={}, errorType={}",
+                    documentId, e.getClass().getSimpleName());
+            return;
+        }
+        try {
+            documentService.updateInputState(documentId, IndexInputState.CLEANED.name());
+        } catch (RuntimeException e) {
+            log.warn("索引输入已清理但状态待协调: documentId={}, errorType={}",
+                    documentId, e.getClass().getSimpleName());
+        }
+    }
+
+    private void cleanupUnacceptedInput(String storageKey) {
+        try {
+            indexInputStore.delete(storageKey);
+        } catch (RuntimeException e) {
+            log.warn("未接受索引输入清理失败: errorType={}", e.getClass().getSimpleName());
         }
     }
 }

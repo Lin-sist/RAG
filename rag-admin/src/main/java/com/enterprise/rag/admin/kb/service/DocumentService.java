@@ -77,6 +77,14 @@ public interface DocumentService {
     void updateContentHash(Long id, String contentHash);
 
     /**
+     * 更新持久化索引输入状态。
+     *
+     * @param id         文档ID
+     * @param inputState 输入状态
+     */
+    void updateInputState(Long id, String inputState);
+
+    /**
      * 删除文档（级联删除分块和向量数据）
      *
      * @param id 文档ID

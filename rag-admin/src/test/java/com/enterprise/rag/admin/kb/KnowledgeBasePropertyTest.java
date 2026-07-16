@@ -535,6 +535,13 @@ class KnowledgeBasePropertyTest {
         }
 
         @Override
+        public void updateInputState(Long id, String inputState) {
+            Document doc = docStorage.get(id);
+            if (doc != null)
+                doc.setInputState(inputState);
+        }
+
+        @Override
         public boolean delete(Long id) {
             Document doc = docStorage.get(id);
             if (doc == null)

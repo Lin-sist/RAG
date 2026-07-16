@@ -166,6 +166,11 @@ retrieval:
 
 # Document indexing chunking controls
 document:
+  input-storage:
+    # Production must set RAG_INDEX_INPUT_ROOT to a mounted, non-temporary path.
+    root: ${RAG_INDEX_INPUT_ROOT:}
+    max-file-size: ${RAG_INDEX_INPUT_MAX_FILE_SIZE:50MB}
+    minimum-usable-space: ${RAG_INDEX_INPUT_MIN_USABLE_SPACE:100MB}
   chunking:
     chunk-size: 420
     chunk-overlap: 80

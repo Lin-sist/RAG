@@ -6,6 +6,8 @@ import com.enterprise.rag.admin.kb.entity.DocumentStatus;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.kb.service.impl.DocumentIndexingServiceImpl;
+import com.enterprise.rag.admin.kb.storage.IndexInputStore;
+import com.enterprise.rag.admin.kb.storage.StoredIndexInput;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
@@ -53,6 +55,7 @@ import java.util.UUID;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CompletableFuture;
+import java.io.ByteArrayInputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -210,6 +213,7 @@ class MilvusFailureSemanticsIT {
         AsyncTaskManager taskManager = mock(AsyncTaskManager.class);
         EmbeddingService embeddingService = deterministicEmbedding();
         VectorStore unavailableVectorStore = mock(VectorStore.class);
+        IndexInputStore indexInputStore = mock(IndexInputStore.class);
         DocumentIndexingServiceImpl indexingService = new DocumentIndexingServiceImpl(
                 documentService,
                 knowledgeBaseService,
@@ -218,7 +222,8 @@ class MilvusFailureSemanticsIT {
                 taskManager,
                 embeddingService,
                 unavailableVectorStore,
-                new NoOpKeywordIndex());
+                new NoOpKeywordIndex(),
+                indexInputStore);
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "synthetic.md", "text/markdown", "synthetic content".getBytes());
@@ -232,6 +237,10 @@ class MilvusFailureSemanticsIT {
                 "doc-1", "hash-1", "synthetic content", List.of(chunk));
 
         when(parserFactory.isSupported("md")).thenReturn(true);
+        when(indexInputStore.put(any())).thenReturn(
+                new StoredIndexInput("objects/synthetic.bin", 17L, "synthetic-sha"));
+        when(indexInputStore.openVerified("objects/synthetic.bin", 17L, "synthetic-sha"))
+                .thenReturn(new ByteArrayInputStream("synthetic content".getBytes()));
         when(documentService.create(any(Document.class))).thenReturn(created);
         when(taskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))

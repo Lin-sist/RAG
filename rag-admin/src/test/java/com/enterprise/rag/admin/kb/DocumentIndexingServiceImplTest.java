@@ -7,6 +7,10 @@ import com.enterprise.rag.admin.kb.entity.DocumentStatus;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.kb.service.impl.DocumentIndexingServiceImpl;
+import com.enterprise.rag.admin.kb.storage.IndexInputState;
+import com.enterprise.rag.admin.kb.storage.IndexInputStore;
+import com.enterprise.rag.admin.kb.storage.IndexInputStorageException;
+import com.enterprise.rag.admin.kb.storage.StoredIndexInput;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
@@ -20,6 +24,7 @@ import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentProcessor;
 import com.enterprise.rag.document.processor.ProcessResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -29,6 +34,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.io.InputStream;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -44,8 +51,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.inOrder;
 
 class DocumentIndexingServiceImplTest {
+
+    @TempDir
+    Path durableRoot;
 
     private final DocumentService documentService = mock(DocumentService.class);
     private final KnowledgeBaseService knowledgeBaseService = mock(KnowledgeBaseService.class);
@@ -54,6 +65,7 @@ class DocumentIndexingServiceImplTest {
     private final AsyncTaskManager asyncTaskManager = mock(AsyncTaskManager.class);
     private final EmbeddingService embeddingService = mock(EmbeddingService.class);
     private final VectorStore vectorStore = mock(VectorStore.class);
+    private final IndexInputStore indexInputStore = mock(IndexInputStore.class);
 
     private final DocumentIndexingServiceImpl service = new DocumentIndexingServiceImpl(
             documentService,
@@ -63,7 +75,17 @@ class DocumentIndexingServiceImplTest {
             asyncTaskManager,
             embeddingService,
             vectorStore,
-            new NoOpKeywordIndex());
+            new NoOpKeywordIndex(),
+            indexInputStore);
+
+    private void stubStoredInput() {
+        when(indexInputStore.put(any(InputStream.class)))
+                .thenReturn(new StoredIndexInput("objects/input.bin", 12L, "abc123"));
+        when(indexInputStore.openVerified("objects/input.bin", 12L, "abc123"))
+                .thenAnswer(invocation -> new java.io.ByteArrayInputStream("durable-body".getBytes()));
+        when(indexInputStore.delete("objects/input.bin"))
+                .thenReturn(IndexInputStore.DeleteResult.DELETED);
+    }
 
     @Test
     void submitIndexingShouldRejectLegacyDocFiles() {
@@ -98,6 +120,7 @@ class DocumentIndexingServiceImplTest {
         created.setId(99L);
 
         when(documentParserFactory.isSupported("docx")).thenReturn(true);
+        stubStoredInput();
         when(documentService.create(any(Document.class))).thenReturn(created);
         when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
@@ -113,6 +136,41 @@ class DocumentIndexingServiceImplTest {
         verify(documentService).create(any(Document.class));
         verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any());
+    }
+
+    @Test
+    void submitIndexingShouldPersistDurableInputFactsBeforeAcceptingTask() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "durable.md", "text/markdown", "durable-body".getBytes());
+        StoredIndexInput stored = new StoredIndexInput("objects/durable.bin", 12L, "sha256-value");
+        Document created = new Document();
+        created.setId(120L);
+
+        when(documentParserFactory.isSupported("md")).thenReturn(true);
+        when(indexInputStore.put(any(InputStream.class))).thenReturn(stored);
+        when(documentService.create(any(Document.class))).thenAnswer(invocation -> {
+            Document document = invocation.getArgument(0);
+            document.setId(120L);
+            return document;
+        });
+        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
+                .thenReturn(new TaskHandle<>("task-120", CompletableFuture.completedFuture(mock(ProcessResult.class))));
+
+        service.submitIndexing(10L, 20L, file, "durable");
+
+        var order = inOrder(indexInputStore, documentService, asyncTaskManager);
+        order.verify(indexInputStore).put(any(InputStream.class));
+        ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.forClass(Document.class);
+        order.verify(documentService).create(documentCaptor.capture());
+        order.verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any());
+
+        Document persisted = documentCaptor.getValue();
+        assertEquals(stored.storageKey(), persisted.getFilePath());
+        assertEquals(stored.sizeBytes(), persisted.getInputSizeBytes());
+        assertEquals(stored.sha256(), persisted.getInputSha256());
+        assertEquals(IndexInputState.AVAILABLE.name(), persisted.getInputState());
     }
 
     @Test
@@ -183,6 +241,7 @@ class DocumentIndexingServiceImplTest {
         savedChunk.setVectorId("chunk-1");
 
         when(documentParserFactory.isSupported("md")).thenReturn(true);
+        stubStoredInput();
         when(documentService.create(any(Document.class))).thenReturn(created);
         when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
@@ -206,8 +265,100 @@ class DocumentIndexingServiceImplTest {
         verify(vectorStore, times(2)).upsert(eq("kb_retry"), anyList());
         verify(documentService, times(1)).saveChunks(anyList());
         verify(documentService, times(1)).updateStatus(99L, DocumentStatus.COMPLETED.name());
+        verify(documentService).updateInputState(99L, IndexInputState.CLEANUP_PENDING.name());
+        verify(indexInputStore).delete("objects/input.bin");
+        verify(documentService).updateInputState(99L, IndexInputState.CLEANED.name());
         verify(documentService, never()).updateStatus(99L, DocumentStatus.FAILED.name());
         verify(knowledgeBaseService, times(1)).updateDocumentCount(10L, 1);
+    }
+
+    @Test
+    void taskAcceptanceFailureCleansDurableInputAndDoesNotReturnFakeTask() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "task-failure.md", "text/markdown", "durable-body".getBytes());
+        Document created = new Document();
+        created.setId(130L);
+        created.setTitle("task-failure.md");
+
+        when(documentParserFactory.isSupported("md")).thenReturn(true);
+        stubStoredInput();
+        when(documentService.create(any(Document.class))).thenReturn(created);
+        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
+                .thenThrow(new BusinessException("REDIS_UNAVAILABLE", "任务状态不可用"));
+
+        assertThrows(BusinessException.class,
+                () -> service.submitIndexing(10L, 20L, file, "task-failure"));
+
+        verify(documentService).updateStatus(130L, DocumentStatus.FAILED.name());
+        verify(documentService).updateInputState(130L, IndexInputState.CLEANUP_PENDING.name());
+        verify(indexInputStore).delete("objects/input.bin");
+        verify(documentService).updateInputState(130L, IndexInputState.CLEANED.name());
+    }
+
+    @Test
+    void corruptDurableInputFailsBeforeParsingAndPersistsCorruptState() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "corrupt.md", "text/markdown", "durable-body".getBytes());
+        Document created = new Document();
+        created.setId(140L);
+        created.setTitle("corrupt.md");
+
+        when(documentParserFactory.isSupported("md")).thenReturn(true);
+        stubStoredInput();
+        when(indexInputStore.openVerified("objects/input.bin", 12L, "abc123"))
+                .thenThrow(IndexInputStorageException.corrupt());
+        when(documentService.create(any(Document.class))).thenReturn(created);
+        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
+                .thenReturn(new TaskHandle<>("task-140", CompletableFuture.completedFuture(mock(ProcessResult.class))));
+
+        service.submitIndexing(10L, 20L, file, "corrupt");
+        ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
+        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+
+        assertThrows(IndexInputStorageException.class,
+                () -> taskCaptor.getValue().execute(progress -> {
+                }));
+
+        verify(documentService).updateInputState(140L, IndexInputState.CORRUPT.name());
+        verify(documentService).updateStatus(140L, DocumentStatus.FAILED.name());
+        verify(documentProcessor, never()).process(any());
+        verify(embeddingService, never()).embedBatch(anyList());
+        verify(vectorStore, never()).upsert(any(), anyList());
+    }
+
+    @Test
+    void missingDurableInputFailsBeforeParsingAndPersistsMissingState() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "missing.md", "text/markdown", "durable-body".getBytes());
+        Document created = new Document();
+        created.setId(145L);
+        created.setTitle("missing.md");
+        var emptyStore = new com.enterprise.rag.admin.kb.storage.FileSystemIndexInputStore(durableRoot);
+
+        when(documentParserFactory.isSupported("md")).thenReturn(true);
+        stubStoredInput();
+        when(indexInputStore.openVerified("objects/input.bin", 12L, "abc123"))
+                .thenAnswer(invocation -> emptyStore.openVerified("objects/missing.bin", 12L, "abc123"));
+        when(documentService.create(any(Document.class))).thenReturn(created);
+        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
+                .thenReturn(new TaskHandle<>("task-145", CompletableFuture.completedFuture(mock(ProcessResult.class))));
+
+        service.submitIndexing(10L, 20L, file, "missing");
+        ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
+        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+
+        assertThrows(IndexInputStorageException.class,
+                () -> taskCaptor.getValue().execute(progress -> {
+                }));
+
+        verify(documentService).updateInputState(145L, IndexInputState.MISSING.name());
+        verify(documentService).updateStatus(145L, DocumentStatus.FAILED.name());
+        verify(documentProcessor, never()).process(any());
+        verify(embeddingService, never()).embedBatch(anyList());
+        verify(vectorStore, never()).upsert(any(), anyList());
     }
 
     @Test
@@ -223,6 +374,7 @@ class DocumentIndexingServiceImplTest {
         ProcessResult result = ProcessResult.newDocument("doc-1", "hash-1", "content", List.of(chunk));
 
         when(documentParserFactory.isSupported("md")).thenReturn(true);
+        stubStoredInput();
         when(documentService.create(any(Document.class))).thenReturn(created);
         when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
@@ -243,5 +395,20 @@ class DocumentIndexingServiceImplTest {
         verify(vectorStore, times(1)).upsert(eq("kb_vector_failure"), anyList());
         verify(documentService).updateStatus(101L, DocumentStatus.FAILED.name());
         verify(documentService, never()).saveChunks(anyList());
+        verify(indexInputStore, never()).delete("objects/input.bin");
+        verify(documentService, never()).updateInputState(101L, IndexInputState.CLEANUP_PENDING.name());
+    }
+
+    @Test
+    void completedResultRemainsCompletedWhenInputCleanupFails() {
+        when(indexInputStore.delete("objects/input.bin"))
+                .thenReturn(IndexInputStore.DeleteResult.FAILED);
+
+        ReflectionTestUtils.invokeMethod(service, "cleanupCompletedInput", 150L, "objects/input.bin");
+
+        verify(documentService).updateInputState(150L, IndexInputState.CLEANUP_PENDING.name());
+        verify(indexInputStore).delete("objects/input.bin");
+        verify(documentService, never()).updateInputState(150L, IndexInputState.CLEANED.name());
+        verify(documentService, never()).updateStatus(150L, DocumentStatus.FAILED.name());
     }
 }

@@ -590,3 +590,33 @@
 - 验证结果：C5a 四个必需 artifact 齐全；proposal 必需章节齐全；design 含 12 条决策记录，三类固定行各 12 条；spec delta 含 4 个 requirements / 14 个 scenarios；approval gate 0 项已勾选；唯一 active change 为 C5a。C4d delta 与 baseline exact match，四个 requirement 均只出现一次；旧 active 目录不存在、archive 存在；`git diff --check` 通过，OpenSpec CLI 当前不可用。
 - 跳过项：本轮仅规划与治理文件，因此不运行 Maven、Python、前端 build、Docker 或真实 provider；没有业务数据出站和费用。
 - Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-16｜C5a 规划批准与 TDD 实现启动
+
+- 用户决策：用户明确批准 C5a proposal、design、12 条决策记录、tasks 与 `rag-system` spec delta，并随后要求继续任务；据此进入实现阶段。
+- 已确认边界：首版本地 durable filesystem；opaque key + byte size + SHA-256 + input state；root 内 staging + atomic move；任务按稳定 key reopen；成功清理、失败/中断/outcome unknown 保留；production root fail-fast；C5b 自动协调、对象存储与公开 DTO/前端均 out_of_scope。
+- 执行方式：使用 `tdd` skill，按一个公开行为对应一个 RED → GREEN 切片推进，不批量预写全部测试。
+- 提交责任：用户手动提交；Agent 不暂存、不提交、不 push。Commit：`pending`。
+
+## 2026-07-16｜C5a durable index inputs 实现与验证完成
+
+- 范围与修改文件：新增 `IndexInputStore`、filesystem 实现、稳定输入状态/异常/结果类型与 V7 migration；扩展 document 持久化字段和状态更新；把上传链路改为 durable put → document association → Redis task acceptance，异步任务按 opaque key reopen + size/SHA-256 verify；把健康完成、失败/outcome unknown、task acceptance failure 与 canonical document delete 的输入生命周期显式化；新增 storage/service/migration/restart 测试，同步 README 部署配置及 proposal/design/tasks、ACTIVE_TASK。未接受 delta 进 baseline，未启动 C5b。
+- 已确认事实与关键决策：production 必须显式配置非 system-temp 的 `RAG_INDEX_INPUT_ROOT`；启动时执行可写/atomic move/可用空间 probe；store 自身执行 50MB 单文件上限和默认 100MB 可用空间低水位，不只依赖 multipart；storage key 限制在 root/objects 内并拒绝绝对路径、`.`/`..`、symlink/junction escape 和非 regular file；输入写入按 root 内 staging + atomic move 发布，保存原始 byte size/SHA-256；delete 明确区分 DELETED/ALREADY_MISSING/FAILED。
+- 生命周期结果：健康 COMPLETED 后执行 `AVAILABLE -> CLEANUP_PENDING -> CLEANED`；清理失败保留 COMPLETED 与 CLEANUP_PENDING；一般 FAILED/进程中断/vector outcome unknown 保持 AVAILABLE；missing/corrupt 在 parser/embedding/vector 前终止并写 MISSING/CORRUPT；canonical document delete 若输入清理失败则不删除 SQL document 记录。C5a 未新增 scanner、scheduler、lease/claim、replay、resume endpoint 或自动恢复。
+- TDD 证据：依次观察 store 类型缺失、上传持久事实缺失、normalized traversal 被接受、canonical delete 未注入 store、corrupt 未持久化状态、Windows junction escape 被误判为 corrupt、cleanup FAILED 结果缺失、store 大小/容量构造契约缺失、公开 Document JSON 泄露 storage key 等预期 RED；逐片最小实现后聚焦测试全部转 GREEN。新增测试覆盖原子发布/部分 staging 清理、跨实例 reopen、size/hash、防穿越/链接、幂等删除、production root、大小/容量拒绝、acceptance ordering、Redis 初始写失败、missing/corrupt 零下游调用、完成/失败/outcome unknown/清理失败、document delete 与内部输入字段序列化保护。
+- migration 与集成：`KnownSeedMigrationMySqlTest#v6DocumentRowsRemainCompatibleAfterDurableInputMigration` 使用真实 MySQL 8.0.36 从 V1..V6 升至 V7并验证旧行新增字段为 nullable；C3 `HappyPathIT` 首轮暴露测试自动发现了 C4c 嵌套 TestApplication，改为显式 `RagQaApplication` 后通过，1 test / 0 failures / 0 errors / 0 skipped；C4c `RedisFailureSemanticsIT` 1/0/0/0；C4d `MilvusFailureSemanticsIT` 1/0/0/0。集成数据均为合成数据。
+- 最终验证：C5a store/service 聚焦测试通过；`mvn -q test` 退出码 0，59 个 Surefire reports、278 tests、0 failures、0 errors、0 skipped；Python 33 tests / OK；SensitiveLogs 扫描 283 个源文件通过；`git diff --check` 通过，仅提示 3 个既有 CRLF 文件下次由 Git 转 LF；公开接口序列化、前端、解析/检索/评测生产模块、对象存储依赖和受保护路径扫描均无越界改动。
+- 外部调用与跳过项：真实 embedding、rerank、judge、ask/LLM 业务调用量均为 0，无业务数据出站和模型费用；无前端改动，因此未运行前端 build；最后一轮容量保护只影响 filesystem store/config，并已重新运行聚焦测试和完整 Maven，未重复耗时的 C3/C4c/C4d Failsafe。
+- 剩余风险：本地 filesystem 的跨容器持久性仍取决于部署方正确挂载 `RAG_INDEX_INPUT_ROOT`；filesystem/DB/Redis 间崩溃窗口、无主输入发现、失败输入保留期限、自动协调/重放与跨存储对账仍按批准边界留给 C5b。当前等待用户验收，ACTIVE_TASK 保持 C5a，spec delta 未接受、change 未归档。
+- Commit：`pending`；提交责任为用户手动提交，Agent 未暂存、未提交、未 push、未创建 PR、未部署或发布。
+
+## 2026-07-16｜C5a 用户验收、baseline 接受与归档收口
+
+- 用户决策：用户明确确认 C5a 实现验收通过，并授权 Agent 接受 spec delta、恢复 `IDLE`、归档 change 与完成本地提交。
+- 范围与修改文件：将 C5a `rag-system` delta 原文接受进 `openspec/specs/rag-system/spec.md`；勾选最终 closeout task；把 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`；将 change 归档至 `openspec/changes/archive/2026-07-16-durable-index-inputs/`；未进入 C5b。
+- 验证依据：C5a 最终 `mvn -q test` 为 59 个 Surefire reports、278 tests、0 failures、0 errors、0 skipped；Python 33 tests / OK；SensitiveLogs 283 个源文件通过；C3/C4c/C4d 相关集成与真实 MySQL V1-V7 兼容测试均已通过，真实 provider 业务调用量为 0。
+- 本轮收口验证：执行 delta-to-baseline exact-match、archive 结构、全部 tasks 完成、`ACTIVE_TASK=IDLE`、无未归档 active change、受保护路径与 `git diff --check` 检查；提交前复核 staged diff 仅含 C5a 计划内实现、测试、文档、baseline 与归档文件。
+- 跳过项：本轮只新增治理收口、baseline 接受与归档移动，不再修改 Java、migration、配置或测试，因此不重复运行 Maven、Python、前端 build、Docker/Failsafe 或 provider 调用；沿用同一工作区刚完成的最终验证证据。
+- 范围安全：不启动 C5b，不修改 embedding、分块、检索、prompt、citation、no-answer 或评测口径；不修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`；不 push、不创建 PR、不部署或发布。
+- 剩余风险：production 仍需把 `RAG_INDEX_INPUT_ROOT` 挂载至真实持久卷；filesystem/DB/Redis 崩溃窗口、无主输入发现、失败输入保留期限、自动协调/重放与跨存储对账留给后续 C5b change。
+- Commit：`pending`；用户已授权 Agent 完成本地提交。

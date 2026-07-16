@@ -2,24 +2,17 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
 ## Active Change
 
-- Change：`2026-07-16-durable-index-inputs`
-- 位置：`openspec/changes/2026-07-16-durable-index-inputs/`
-- 目标：让已接受的文档索引任务使用应用管理、可校验且跨进程存活的输入，不再依赖任务闭包捕获的系统临时文件。
-- 范围：proposal、design、tasks、决策记录与 `rag-system` spec delta 规划草案；用户批准前不修改生产代码、数据库 migration、配置或测试。
-- 非目标：孤儿任务扫描、自动重放/恢复、跨存储补偿、对象存储接入、公开 DTO/前端重做。
-- 验收入口：`openspec/changes/2026-07-16-durable-index-inputs/tasks.md`。
-- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push。
+无。开始新的重大变更前，必须先创建 OpenSpec change 并更新本文件。
 
 ## Last Completed
 
-- Change：`2026-07-15-milvus-failure-semantics`
-- 位置：`openspec/changes/archive/2026-07-15-milvus-failure-semantics/`
-- 结果：锁定默认 Milvus 的稳定故障分类、keyword-only 降级、mutation outcome unknown、生命周期 fail-closed 与安全诊断。
-- 实现提交：`545c8e7`。
+- Change：`2026-07-16-durable-index-inputs`
+- 位置：`openspec/changes/archive/2026-07-16-durable-index-inputs/`
+- 结果：让已接受的文档索引任务使用应用管理、原子发布、可校验且跨进程存活的 durable input，并锁定显式输入生命周期与部署边界。
 - 验收：用户已确认通过；delta 已接受进 `rag-system` baseline，change 已归档。
 
 ## Start A New Material Change

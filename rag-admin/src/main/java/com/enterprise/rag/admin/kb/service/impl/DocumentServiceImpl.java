@@ -9,6 +9,8 @@ import com.enterprise.rag.admin.kb.mapper.DocumentChunkMapper;
 import com.enterprise.rag.admin.kb.mapper.DocumentMapper;
 import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
+import com.enterprise.rag.admin.kb.storage.IndexInputStore;
+import com.enterprise.rag.admin.kb.storage.IndexInputStorageException;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
@@ -33,6 +35,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final VectorStore vectorStore;
     private final KeywordIndex keywordIndex;
+    private final IndexInputStore indexInputStore;
 
     @Override
     @Transactional
@@ -99,6 +102,15 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
+    public void updateInputState(Long id, String inputState) {
+        LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(Document::getId, id)
+                .set(Document::getInputState, inputState);
+        documentMapper.update(null, wrapper);
+    }
+
+    @Override
+    @Transactional
     public boolean delete(Long id) {
         Optional<Document> docOpt = getById(id);
         if (docOpt.isEmpty()) {
@@ -121,6 +133,14 @@ public class DocumentServiceImpl implements DocumentService {
                 log.warn("向量删除前无法确认知识库集合，拒绝继续删除文档: kbId={}, documentId={}",
                         document.getKbId(), id);
                 throw VectorDependencyException.indexUnavailable("delete", null);
+            }
+        }
+
+        if (document.getFilePath() != null && !document.getFilePath().isBlank()) {
+            IndexInputStore.DeleteResult deleteResult = indexInputStore.delete(document.getFilePath());
+            if (deleteResult != IndexInputStore.DeleteResult.DELETED
+                    && deleteResult != IndexInputStore.DeleteResult.ALREADY_MISSING) {
+                throw IndexInputStorageException.cleanupFailed();
             }
         }
 

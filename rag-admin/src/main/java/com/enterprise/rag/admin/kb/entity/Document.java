@@ -2,6 +2,7 @@ package com.enterprise.rag.admin.kb.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.enterprise.rag.common.model.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -29,9 +30,28 @@ public class Document extends BaseEntity {
     private String title;
 
     /**
-     * 文件路径
+     * 持久化索引输入的 opaque storage key；旧记录可为空
      */
+    @JsonIgnore
     private String filePath;
+
+    /**
+     * 持久化索引输入的字节长度
+     */
+    @JsonIgnore
+    private Long inputSizeBytes;
+
+    /**
+     * 持久化索引输入的原始字节 SHA-256
+     */
+    @JsonIgnore
+    private String inputSha256;
+
+    /**
+     * 持久化索引输入生命周期状态
+     */
+    @JsonIgnore
+    private String inputState;
 
     /**
      * 文件类型

@@ -115,6 +115,34 @@ class KnownSeedMigrationMySqlTest {
         }
     }
 
+    @Test
+    void v6DocumentRowsRemainCompatibleAfterDurableInputMigration() throws Exception {
+        Flyway v6Flyway = flyway(MigrationVersion.fromVersion("6"));
+        v6Flyway.clean();
+        v6Flyway.migrate();
+
+        try (Connection connection = MYSQL.createConnection("");
+                Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "INSERT INTO document (kb_id, uploader_id, title, file_path, file_type, status) "
+                            + "VALUES (10, 20, 'legacy', NULL, 'md', 'COMPLETED')");
+        }
+
+        Flyway latestFlyway = flyway(null);
+        latestFlyway.migrate();
+        latestFlyway.validate();
+
+        try (Connection connection = MYSQL.createConnection("");
+                Statement statement = connection.createStatement();
+                ResultSet result = statement.executeQuery(
+                        "SELECT input_size_bytes, input_sha256, input_state FROM document WHERE title = 'legacy'")) {
+            assertTrue(result.next());
+            assertEquals(null, result.getObject("input_size_bytes"));
+            assertEquals(null, result.getString("input_sha256"));
+            assertEquals(null, result.getString("input_state"));
+        }
+    }
+
     private static Flyway flyway(MigrationVersion target) {
         var configuration = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())

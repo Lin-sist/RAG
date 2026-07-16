@@ -1,5 +1,6 @@
 package com.enterprise.rag.integration;
 
+import com.enterprise.rag.RagQaApplication;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Testcontainers
 @ActiveProfiles("c3-integration")
 @Import(DeterministicEmbeddingTestConfig.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = RagQaApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class HappyPathIT {
 
     private static final String MYSQL_IMAGE = "mysql:8.0.36";
