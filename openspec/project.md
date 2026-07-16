@@ -17,6 +17,8 @@
 - 同步问答返回答案、contexts、citations、metadata；SSE 当前主要输出文本 chunk。
 - 评测集为 30 条开发样本，具备固定 KB、retrieval/generation/citation/no-answer 指标。
 - `c3-integration` Maven/Failsafe 入口可用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding 重复验证登录、上传、索引、retrieval 与删除主链路。
+- LLM、Redis 与默认 Milvus 的故障语义已分别被测试锁定；Milvus dense route 仅在关键词证据可用时显式降级，mutation outcome unknown、删除和统计均不伪造成功。
+- 文档索引输入目前仍是任务闭包捕获的系统临时文件，任务结束即删除；输入持久化与中断恢复尚未实现。
 
 ## 当前边界
 

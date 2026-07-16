@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-15
+> 状态日期：2026-07-16
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
@@ -22,8 +22,8 @@
 
 - 已实现：独立 `c3-integration` Maven/Failsafe 入口使用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding，覆盖登录、上传、异步索引、retrieval、删除与资源清理。
 - 验证：主链路重复运行通过；完整 Maven 203 tests、默认 Maven 202 tests、Python 33 tests 与 SensitiveLogs 门禁通过，均为 0 failures/errors/skipped。
-- 独立剩余债务：Redis/Milvus 故障语义和索引中断恢复不属于 happy-path，后续按独立 OpenSpec change 处理。
-- 证据：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`、`rag-admin/src/test/java/com/enterprise/rag/integration/HappyPathIT.java`。
+- 后续进展：LLM、Redis、Milvus 故障语义均已按独立 OpenSpec change 实现并接受进 baseline；当前剩余债务是索引输入持久化与中断恢复。
+- 证据：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`、`openspec/changes/archive/2026-07-15-llm-provider-resilience/`、`openspec/changes/archive/2026-07-15-redis-failure-semantics/`、`openspec/changes/archive/2026-07-15-milvus-failure-semantics/`。
 
 ## P1：下一轮 RAG 质量工程
 
@@ -49,10 +49,10 @@
 - 当前流式路径只输出文本 chunk，历史保存 citations 为空。
 - 需要设计兼容的结构化完成事件，明确 citations、contexts、metadata 和中断语义。
 
-### 5. 可观测性与故障演练
+### 5. 可观测性与恢复演练
 
 - 为 embedding、vector search、BM25、RRF、rerank、LLM 和 citation validation 建立统一 trace/metrics。
-- 演练 LLM 429/503/timeout、Redis/Milvus 不可用、索引任务中断恢复。
+- LLM 429/503/timeout、Redis/Milvus 不可用语义已完成；继续演练索引输入丢失、进程中断与恢复。
 
 ## P2：基线稳定后
 

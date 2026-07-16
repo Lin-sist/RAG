@@ -568,3 +568,25 @@
 - 范围安全：accepted baseline spec、公开 DTO/schema、Flyway migration、Qdrant/Elasticsearch、`.env.local`、`application-dev.yml`、`.agents/` 和 `docs/学习文档/` 均零改动；未进入 C5，未暂存、未提交、未 push、未创建 PR、未部署或发布。
 - 剩余风险：Milvus SDK 的生产默认 retry/timeout 仍沿用既有配置，本 change 只保证稳定语义，不承诺 outage 延迟上界；outcome unknown 的自动恢复、重放和跨存储对账仍留给 C5。实现与必需验证已完成，当前只等待用户验收；delta 尚未接受、change 尚未归档。
 - Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-16｜C4d 用户验收与 OpenSpec 收口
+
+- 用户决策：用户明确确认 C4d 实现验收通过，并要求完成收尾后启动 C5a。
+- 范围与修改文件：将 C4d `rag-system` delta 原文接受进 `openspec/specs/rag-system/spec.md`，勾选最终 closeout task，把 change 移入 `openspec/changes/archive/2026-07-15-milvus-failure-semantics/`，并同步 `openspec/project.md`、`docs/roadmap/technical-debt.md` 与活动任务交接。
+- 验证依据：实现提交 `545c8e7`；此前完整 Maven 257 tests / 0 failures / 0 errors / 0 skipped，隔离 `MilvusFailureSemanticsIT` 1 test / 0 failures / 0 errors / 0 skipped，Python 33 tests / OK，SensitiveLogs 277 个源文件通过，真实 provider 业务调用量为 0。
+- 跳过项：本次 C4d 收口不修改 Java、测试、POM、前端或生产配置，因此不重复运行 Maven、Python、前端 build、Docker/Milvus 或 provider 调用；执行 delta exact-match、归档结构、旧 active 路径与 `git diff --check` 验证。
+- 范围安全：未修改 API/DTO、数据库 schema、依赖、Qdrant/Elasticsearch、评测指标或受保护本地配置；未暂存、未提交、未 push、未创建 PR、未部署或发布。
+- 剩余风险：生产 Milvus SDK 默认 retry/timeout 仍无 outage 延迟上界；索引输入持久化、自动恢复与对账按边界进入 C5a/C5b。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-16｜C5a durable-index-inputs 启动与规格草案
+
+- 类型与用户决策：Type C 重大变更规格阶段；用户要求在 C4d 收口后启动 C5a。当前只建立 OpenSpec 事前闸门，尚未批准生产实现或 Agent 提交。
+- 范围与修改文件：`.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md`、`openspec/changes/2026-07-16-durable-index-inputs/{proposal.md,design.md,tasks.md,specs/rag-system/spec.md}`，并同步 C4d 收口后的项目/技术债说明；未修改生产 Java、migration、POM、配置、测试或 baseline 中的 C5a 契约。
+- 已确认事实：上传输入当前写入系统临时文件，异步闭包捕获绝对 `Path`，任务 finally 无条件删除；`document.file_path` 字段存在但生产代码未写入/读取；应用没有文档对象存储 adapter，C3 中 MinIO 仅为 Milvus 测试依赖；异步任务状态当前以 Redis 为事实源，自动协调与续跑属于 C5b。
+- 规划建议：C5a 先引入 `IndexInputStore` 边界与应用管理的本地 durable filesystem 实现；数据库只保存 opaque storage key、大小、SHA-256 与输入状态；写入采用同目录 staging + atomic move，任务按 key 重新打开输入；成功后转入可清理状态，失败/中断保留输入供 C5b，删除文档时清理；全部建议待用户在 approval gate 确认。
+- 边界：不实现 orphan scanner、lease/claim、自动 replay、resume API、跨存储补偿事务、S3/MinIO adapter、公开 DTO 或前端改造；不改变 embedding、分块、检索、prompt、citation、no-answer 或评测口径。
+- 外部调用：规划阶段真实 embedding、rerank、judge、ask/LLM 调用量均为 0；未启动容器、未上传数据、无模型费用。
+- 验证结果：C5a 四个必需 artifact 齐全；proposal 必需章节齐全；design 含 12 条决策记录，三类固定行各 12 条；spec delta 含 4 个 requirements / 14 个 scenarios；approval gate 0 项已勾选；唯一 active change 为 C5a。C4d delta 与 baseline exact match，四个 requirement 均只出现一次；旧 active 目录不存在、archive 存在；`git diff --check` 通过，OpenSpec CLI 当前不可用。
+- 跳过项：本轮仅规划与治理文件，因此不运行 Maven、Python、前端 build、Docker 或真实 provider；没有业务数据出站和费用。
+- Commit：`pending`；提交责任为用户手动提交。

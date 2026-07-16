@@ -82,7 +82,7 @@
 - [x] 运行 SensitiveLogs 门禁与 `git diff --check`。
 - [x] 扫描 baseline spec、公开 DTO/schema、Qdrant/Elasticsearch、生产配置和受保护路径无越界改动。
 - [x] 更新本 tasks、`.ai/ACTIVE_TASK.md` 与追加式 `.ai/AGENT_LOG.md`。
-- [ ] 用户完成实现验收后，才接受 spec delta、恢复 `IDLE` 并归档 change。
+- [x] 用户完成实现验收后，才接受 spec delta、恢复 `IDLE` 并归档 change。
 
 ## Commit Responsibility
 
