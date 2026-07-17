@@ -133,9 +133,9 @@
 - 用户故事：改之前依赖抖动行为不明、可能整体崩；改之后每种故障有明确、被测试锁定的降级行为。
 
 ### C5a~C5b. 索引恢复（拆分）
-- 现状校正：上传内容存临时文件、任务结束即删；进程中断后无持久化输入自动续跑。
-- C5a 先做输入持久化（位置、幂等边界）；C5b 做孤儿任务协调与中断续跑。
-- C5a 独立上线需在正式 design 中锁定：成功后的清理/保留策略、旧任务兼容、应用版本回滚后仍能读取或安全忽略持久输入（属 change 设计细节，不阻止蓝图冻结）。
+- 当前进展：C5a 已完成并接受进 baseline；上传输入使用应用管理的 durable filesystem，具备原子发布、完整性校验、显式输入状态与成功清理边界。
+- C5b 继续处理 durable task ledger、孤儿任务协调、跨实例 claim/lease 与安全续跑；不得因输入仍在就自动重放 vector outcome unknown。
+- C5b 必须在正式 design 中锁定：DB/Redis 事实源、可续跑 phase、lease 过期语义、旧任务兼容、provider 调用预算与 `RECONCILIATION_REQUIRED` 边界。
 
 ### C6. nvidia-reranker-adapter-and-attribution
 - 现状校正：当前 adapter 为通用 documents/results/relevance_score，registry 失败会 fallback 到 heuristic；现有单测只验证自建 mock 协议。

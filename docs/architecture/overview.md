@@ -26,7 +26,8 @@
 
 ```text
 上传文档
-  -> 创建文档与异步任务
+  -> durable input 原子发布并保存完整性事实
+  -> 创建文档与 Redis 异步任务
   -> 解析正文
   -> 按运行时配置分块
   -> 生成 Embedding
@@ -34,6 +35,8 @@
   -> 更新 BM25 关键词索引
   -> 更新任务和文档状态
 ```
+
+当前输入已可跨进程重新打开，但任务执行体仍是本进程内存中的 `CompletableFuture`/闭包，Redis 状态只有 24 小时 TTL；尚无 durable task ledger、跨实例 lease 或自动续跑，因此不能把 C5a 表述为已完成中断恢复。
 
 当前默认分块配置为 `chunk-size=420`、`chunk-overlap=80`。默认向量库是 Milvus；代码另有 Qdrant 与 Elasticsearch 适配，但当前正式评测对象是 Milvus。
 

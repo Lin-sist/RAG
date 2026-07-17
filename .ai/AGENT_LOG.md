@@ -620,3 +620,23 @@
 - 范围安全：不启动 C5b，不修改 embedding、分块、检索、prompt、citation、no-answer 或评测口径；不修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`；不 push、不创建 PR、不部署或发布。
 - 剩余风险：production 仍需把 `RAG_INDEX_INPUT_ROOT` 挂载至真实持久卷；filesystem/DB/Redis 崩溃窗口、无主输入发现、失败输入保留期限、自动协调/重放与跨存储对账留给后续 C5b change。
 - Commit：`pending`；用户已授权 Agent 完成本地提交。
+
+## 2026-07-17｜C5a 实现与收口提交补录
+
+- Commit：`b144bbb3c3d84b4dbec24dea04e22a7a87865d1d`。
+- 结论：C5a durable input 实现、最终验证、baseline 接受、`ACTIVE_TASK=IDLE` 与 change 归档已由 Agent 按用户授权完成中文本地提交。
+
+## 2026-07-17｜C5b readiness scan 与规格草案启动
+
+- Readiness：`GO`。扫描开始时 `main...origin/main` 工作区干净、C5a 提交为 `b144bbb`、C5a delta 已接受进 baseline、change 已归档、`ACTIVE_TASK=IDLE` 且没有其他 active change；C5a durable input/完整性/输入状态与 C4c/C4d fail-closed 契约满足 C5b 前置。
+- 类型与阶段：Type C 重大变更的 proposal 阶段；创建 `2026-07-17-index-task-reconciliation-and-resume` proposal、design、tasks 与 `rag-system` spec delta，并把 ACTIVE_TASK 指向该 change。当前只规划，用户批准前不修改生产 Java、migration、配置或测试。
+- 范围与修改文件：`.ai/ACTIVE_TASK.md`、追加式 `.ai/AGENT_LOG.md`、`openspec/changes/2026-07-17-index-task-reconciliation-and-resume/{proposal.md,design.md,tasks.md,specs/rag-system/spec.md}`；同步修正 C5a 后已过时的 `openspec/project.md`、`docs/roadmap/{iteration-blueprint.md,technical-debt.md}` 与 `docs/architecture/overview.md` 当前事实。
+- 已确认事实：真实上传直接使用 `RedisAsyncTaskManager.submit`；Redis status TTL 为 24 小时，executor/future/closure 仅存在于当前 JVM。V2 虽有 `async_task` 表，但生产 Java 零读写；本地 MQ 模板未接入真实上传，默认 consumer 不执行索引。document/input 状态缺 taskId/phase/lease/attempt；chunk/vector IDs 当前为随机 UUID；C4d 禁止 outcome unknown 自动重放。
+- 能力分类：`confirmed` 为 C5a durable input、Redis/JVM 生命周期、unused async_task/MQ 与 C4d mutation 边界；`partial` 为 document/input 候选事实和 VectorStore getByIds；`planned` 为 MySQL durable ledger、DB lease、phase checkpoint、deterministic new-task IDs、Redis projection fallback、安全 resume 和 cleanup reconciliation；`out_of_scope` 为 force resume、RabbitMQ/Kafka、exactly-once、非索引 task、对象存储与 provider failover；`unknown` 为默认开关/预算、lease 参数、ID contract 和 legacy 策略，等待事前闸门确认。
+- 规划建议：MySQL `async_task` 为 durable source、Redis 为投影；acceptance 先 ledger 后 scheduling；DB CAS lease/heartbeat；只恢复 SAFE_PRE_VECTOR 和 VECTOR_CONFIRMED 收尾；VECTOR_IN_FLIGHT/outcome unknown/legacy/mismatch 进入 `RECONCILIATION_REQUIRED`；reconciliation 与 auto resume 分开，auto resume 默认关闭；CLEANUP_PENDING 只做幂等 delete。
+- 规格草案：新增“文档索引任务的 durable ledger”“跨实例 claim 与孤儿任务协调”“Phase-aware safe resume”“Legacy 与 cleanup reconciliation”“恢复开关、调用预算与安全诊断”五组 requirements；仅为 change delta，用户实现验收前不得接受进 baseline。
+- 外部调用：规划阶段真实 embedding、rerank、judge、ask/LLM 调用量均为 0，无数据出站、限流或费用。实现测试建议只使用确定性 embedding 与合成数据；真实 provider 下批量 resume 必须另行披露候选数/chunks/模型/数据出站/费用并获授权。
+- 跳过项：本轮只写规划与当前事实文档，因此不运行 Maven、Python、前端 build、Docker/Failsafe 或 provider 调用；完成 artifact/决策记录/active pointer/baseline 零改动/受保护路径与 `git diff --check` 验证。
+- 范围安全：不修改 accepted baseline、生产 Java、migration、POM/依赖、application 配置、API/DTO、前端、检索/生成/评测、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；不暂存、不提交、不 push、不创建 PR、不部署或发布。
+- 剩余审批点：ledger/Redis 事实源、acceptance 顺序、lease 默认值、可恢复 phase、deterministic ID、vector ambiguity、resume 默认开关与 provider 预算、legacy 策略、cleanup 与公开入口边界。
+- Commit：`pending`；提交责任为用户手动提交。

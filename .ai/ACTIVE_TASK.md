@@ -2,11 +2,17 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
 ## Active Change
 
-无。开始新的重大变更前，必须先创建 OpenSpec change 并更新本文件。
+- Change：`2026-07-17-index-task-reconciliation-and-resume`
+- 位置：`openspec/changes/2026-07-17-index-task-reconciliation-and-resume/`
+- 目标：为文档索引建立 durable task ledger、孤儿任务协调、跨实例 lease 与安全续跑边界，使进程中断不再留下永久悬空任务。
+- 范围：当前仅创建 C5b proposal、design、tasks 与 `rag-system` spec delta 草案，等待用户审批；未批准前不修改生产 Java、migration、配置或测试。
+- 非目标：自动重放 vector outcome unknown、强制 resume API/UI、RabbitMQ/Kafka、对象存储、非文档索引任务恢复、分布式事务或 exactly-once 承诺。
+- 验收入口：`openspec/changes/2026-07-17-index-task-reconciliation-and-resume/tasks.md`。
+- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push。
 
 ## Last Completed
 

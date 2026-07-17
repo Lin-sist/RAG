@@ -22,8 +22,8 @@
 
 - 已实现：独立 `c3-integration` Maven/Failsafe 入口使用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding，覆盖登录、上传、异步索引、retrieval、删除与资源清理。
 - 验证：主链路重复运行通过；完整 Maven 203 tests、默认 Maven 202 tests、Python 33 tests 与 SensitiveLogs 门禁通过，均为 0 failures/errors/skipped。
-- 后续进展：LLM、Redis、Milvus 故障语义均已按独立 OpenSpec change 实现并接受进 baseline；当前剩余债务是索引输入持久化与中断恢复。
-- 证据：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`、`openspec/changes/archive/2026-07-15-llm-provider-resilience/`、`openspec/changes/archive/2026-07-15-redis-failure-semantics/`、`openspec/changes/archive/2026-07-15-milvus-failure-semantics/`。
+- 后续进展：LLM、Redis、Milvus 故障语义和 C5a 索引输入持久化均已按独立 OpenSpec change 实现并接受进 baseline；当前剩余债务收敛为 C5b durable task ledger、孤儿协调与安全续跑。
+- 证据：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`、`openspec/changes/archive/2026-07-15-llm-provider-resilience/`、`openspec/changes/archive/2026-07-15-redis-failure-semantics/`、`openspec/changes/archive/2026-07-15-milvus-failure-semantics/`、`openspec/changes/archive/2026-07-16-durable-index-inputs/`。
 
 ## P1：下一轮 RAG 质量工程
 
