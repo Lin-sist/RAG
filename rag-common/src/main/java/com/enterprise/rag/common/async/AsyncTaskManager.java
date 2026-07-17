@@ -44,6 +44,11 @@ public interface AsyncTaskManager {
     <T> TaskHandle<T> submit(String taskType, Long ownerId, AsyncTask<T> task);
 
     /**
+     * 使用调用方已经持久化的稳定 taskId 提交任务。
+     */
+    <T> TaskHandle<T> submit(String taskId, String taskType, Long ownerId, AsyncTask<T> task);
+
+    /**
      * 提交简单的异步任务（无进度回调）
      *
      * @param taskType 任务类型

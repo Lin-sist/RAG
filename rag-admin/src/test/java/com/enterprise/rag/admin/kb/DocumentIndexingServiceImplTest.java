@@ -11,6 +11,10 @@ import com.enterprise.rag.admin.kb.storage.IndexInputState;
 import com.enterprise.rag.admin.kb.storage.IndexInputStore;
 import com.enterprise.rag.admin.kb.storage.IndexInputStorageException;
 import com.enterprise.rag.admin.kb.storage.StoredIndexInput;
+import com.enterprise.rag.admin.kb.task.IndexTaskLedger;
+import com.enterprise.rag.admin.kb.task.IndexTaskRecord;
+import com.enterprise.rag.admin.kb.task.IndexTaskPhase;
+import com.enterprise.rag.admin.kb.task.DeterministicChunkIdentity;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
@@ -20,10 +24,12 @@ import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.document.chunker.DocumentChunk;
+import com.enterprise.rag.document.chunker.DocumentChunkingProperties;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentProcessor;
 import com.enterprise.rag.document.processor.ProcessResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
@@ -66,6 +72,7 @@ class DocumentIndexingServiceImplTest {
     private final EmbeddingService embeddingService = mock(EmbeddingService.class);
     private final VectorStore vectorStore = mock(VectorStore.class);
     private final IndexInputStore indexInputStore = mock(IndexInputStore.class);
+    private final IndexTaskLedger indexTaskLedger = mock(IndexTaskLedger.class);
 
     private final DocumentIndexingServiceImpl service = new DocumentIndexingServiceImpl(
             documentService,
@@ -76,7 +83,15 @@ class DocumentIndexingServiceImplTest {
             embeddingService,
             vectorStore,
             new NoOpKeywordIndex(),
-            indexInputStore);
+            indexInputStore,
+            indexTaskLedger,
+            new DocumentChunkingProperties());
+
+    @BeforeEach
+    void setUpAcceptedTaskId() {
+        when(indexTaskLedger.createAccepted(any(Long.class), any(Long.class)))
+                .thenAnswer(invocation -> "task-" + invocation.<Long>getArgument(0));
+    }
 
     private void stubStoredInput() {
         when(indexInputStore.put(any(InputStream.class)))
@@ -122,7 +137,7 @@ class DocumentIndexingServiceImplTest {
         when(documentParserFactory.isSupported("docx")).thenReturn(true);
         stubStoredInput();
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+        when(asyncTaskManager.submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-99", CompletableFuture.completedFuture(mock(ProcessResult.class))));
 
@@ -134,7 +149,7 @@ class DocumentIndexingServiceImplTest {
         assertEquals("docx", response.fileType());
         assertEquals("PROCESSING", response.status());
         verify(documentService).create(any(Document.class));
-        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L),
+        verify(asyncTaskManager).submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any());
     }
 
@@ -153,7 +168,7 @@ class DocumentIndexingServiceImplTest {
             document.setId(120L);
             return document;
         });
-        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+        when(asyncTaskManager.submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-120", CompletableFuture.completedFuture(mock(ProcessResult.class))));
 
@@ -163,7 +178,7 @@ class DocumentIndexingServiceImplTest {
         order.verify(indexInputStore).put(any(InputStream.class));
         ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.forClass(Document.class);
         order.verify(documentService).create(documentCaptor.capture());
-        order.verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L),
+        order.verify(asyncTaskManager).submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any());
 
         Document persisted = documentCaptor.getValue();
@@ -171,6 +186,32 @@ class DocumentIndexingServiceImplTest {
         assertEquals(stored.sizeBytes(), persisted.getInputSizeBytes());
         assertEquals(stored.sha256(), persisted.getInputSha256());
         assertEquals(IndexInputState.AVAILABLE.name(), persisted.getInputState());
+    }
+
+    @Test
+    void submitIndexingShouldPersistLedgerBeforeCreatingRedisProjection() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "ledger.md", "text/markdown", "durable-body".getBytes());
+        Document created = new Document();
+        created.setId(120L);
+
+        when(documentParserFactory.isSupported("md")).thenReturn(true);
+        stubStoredInput();
+        when(documentService.create(any(Document.class))).thenReturn(created);
+        when(asyncTaskManager.submit(eq("task-120"), eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
+                .thenReturn(new TaskHandle<>("task-120",
+                        CompletableFuture.completedFuture(mock(ProcessResult.class))));
+
+        DocumentUploadResponse response = service.submitIndexing(10L, 20L, file, "ledger");
+
+        assertEquals("task-120", response.taskId());
+        var order = inOrder(indexInputStore, documentService, indexTaskLedger, asyncTaskManager);
+        order.verify(indexInputStore).put(any(InputStream.class));
+        order.verify(documentService).create(any(Document.class));
+        order.verify(indexTaskLedger).createAccepted(120L, 20L);
+        order.verify(asyncTaskManager).submit(eq("task-120"), eq("DOCUMENT_INDEX"), eq(20L),
+                org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any());
     }
 
     @Test
@@ -243,7 +284,7 @@ class DocumentIndexingServiceImplTest {
         when(documentParserFactory.isSupported("md")).thenReturn(true);
         stubStoredInput();
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+        when(asyncTaskManager.submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-99", CompletableFuture.completedFuture(result)));
         when(documentProcessor.process(any())).thenReturn(result);
@@ -258,11 +299,12 @@ class DocumentIndexingServiceImplTest {
         service.submitIndexing(10L, 20L, file, "retry.md");
 
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
-        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+        verify(asyncTaskManager).submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
         taskCaptor.getValue().execute(progress -> {
         });
 
-        verify(vectorStore, times(2)).upsert(eq("kb_retry"), anyList());
+        verify(vectorStore, times(1)).upsert(eq("kb_retry"), anyList());
+        verify(indexTaskLedger).markVectorConfirmed("task-99");
         verify(documentService, times(1)).saveChunks(anyList());
         verify(documentService, times(1)).updateStatus(99L, DocumentStatus.COMPLETED.name());
         verify(documentService).updateInputState(99L, IndexInputState.CLEANUP_PENDING.name());
@@ -283,7 +325,7 @@ class DocumentIndexingServiceImplTest {
         when(documentParserFactory.isSupported("md")).thenReturn(true);
         stubStoredInput();
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+        when(asyncTaskManager.submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenThrow(new BusinessException("REDIS_UNAVAILABLE", "任务状态不可用"));
 
@@ -291,6 +333,7 @@ class DocumentIndexingServiceImplTest {
                 () -> service.submitIndexing(10L, 20L, file, "task-failure"));
 
         verify(documentService).updateStatus(130L, DocumentStatus.FAILED.name());
+        verify(indexTaskLedger).markAcceptanceFailed("task-130", "TASK_PROJECTION_FAILED");
         verify(documentService).updateInputState(130L, IndexInputState.CLEANUP_PENDING.name());
         verify(indexInputStore).delete("objects/input.bin");
         verify(documentService).updateInputState(130L, IndexInputState.CLEANED.name());
@@ -309,13 +352,13 @@ class DocumentIndexingServiceImplTest {
         when(indexInputStore.openVerified("objects/input.bin", 12L, "abc123"))
                 .thenThrow(IndexInputStorageException.corrupt());
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+        when(asyncTaskManager.submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-140", CompletableFuture.completedFuture(mock(ProcessResult.class))));
 
         service.submitIndexing(10L, 20L, file, "corrupt");
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
-        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+        verify(asyncTaskManager).submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
 
         assertThrows(IndexInputStorageException.class,
                 () -> taskCaptor.getValue().execute(progress -> {
@@ -342,13 +385,13 @@ class DocumentIndexingServiceImplTest {
         when(indexInputStore.openVerified("objects/input.bin", 12L, "abc123"))
                 .thenAnswer(invocation -> emptyStore.openVerified("objects/missing.bin", 12L, "abc123"));
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+        when(asyncTaskManager.submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-145", CompletableFuture.completedFuture(mock(ProcessResult.class))));
 
         service.submitIndexing(10L, 20L, file, "missing");
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
-        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+        verify(asyncTaskManager).submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
 
         assertThrows(IndexInputStorageException.class,
                 () -> taskCaptor.getValue().execute(progress -> {
@@ -376,7 +419,7 @@ class DocumentIndexingServiceImplTest {
         when(documentParserFactory.isSupported("md")).thenReturn(true);
         stubStoredInput();
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(asyncTaskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+        when(asyncTaskManager.submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-101", CompletableFuture.completedFuture(result)));
         when(documentProcessor.process(any())).thenReturn(result);
@@ -388,15 +431,97 @@ class DocumentIndexingServiceImplTest {
 
         service.submitIndexing(10L, 20L, file, "vector-failure.md");
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
-        verify(asyncTaskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+        verify(asyncTaskManager).submit(any(String.class), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
 
         assertThrows(RuntimeException.class, () -> taskCaptor.getValue().execute(progress -> {
         }));
         verify(vectorStore, times(1)).upsert(eq("kb_vector_failure"), anyList());
+        verify(indexTaskLedger).markVectorInFlight("task-101", "hash-1", 1);
+        verify(indexTaskLedger).markReconciliationRequired(
+                "task-101", VectorDependencyException.ERROR_CODE_OUTCOME_UNKNOWN);
         verify(documentService).updateStatus(101L, DocumentStatus.FAILED.name());
         verify(documentService, never()).saveChunks(anyList());
         verify(indexInputStore, never()).delete("objects/input.bin");
         verify(documentService, never()).updateInputState(101L, IndexInputState.CLEANUP_PENDING.name());
+    }
+
+    @Test
+    void vectorConfirmedResumeFinalizesWithoutEmbeddingOrVectorReplay() throws Exception {
+        Document document = new Document();
+        document.setId(160L);
+        document.setKbId(10L);
+        document.setUploaderId(20L);
+        document.setTitle("resume");
+        document.setFileType("md");
+        document.setFilePath("objects/input.bin");
+        document.setInputSizeBytes(12L);
+        document.setInputSha256("abc123");
+        DocumentChunk chunk = new DocumentChunk("random", "content", 0, 7, Map.of());
+        ProcessResult result = ProcessResult.newDocument("doc-160", "hash-160", "content", List.of(chunk));
+        KnowledgeBaseDTO kb = new KnowledgeBaseDTO();
+        kb.setVectorCollection("kb_resume");
+        IndexTaskRecord task = new IndexTaskRecord();
+        task.setTaskId("task-160");
+        task.setDocumentId(160L);
+        task.setExecutionPhase(IndexTaskPhase.VECTOR_CONFIRMED.name());
+        task.setIndexContractVersion(DeterministicChunkIdentity.CONTRACT_VERSION);
+        task.setChunkSize(500);
+        task.setChunkOverlap(50);
+        task.setPreparedContentHash("hash-160");
+        task.setPreparedChunkCount(1);
+
+        when(documentService.getById(160L)).thenReturn(Optional.of(document));
+        stubStoredInput();
+        when(documentProcessor.process(any())).thenReturn(result);
+        when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
+        when(documentService.getChunksByDocumentId(160L)).thenReturn(List.of());
+
+        service.resumeIndexTask(task);
+
+        verify(embeddingService, never()).embedBatch(anyList());
+        verify(vectorStore, never()).upsert(any(String.class), anyList());
+        verify(documentService).saveChunks(anyList());
+        verify(indexTaskLedger).markCompleted("task-160");
+        verify(indexInputStore).delete("objects/input.bin");
+    }
+
+    @Test
+    void safePreVectorResumeKeepsTaskIdAndPerformsOneVectorMutation() throws Exception {
+        Document document = new Document();
+        document.setId(170L);
+        document.setKbId(10L);
+        document.setUploaderId(20L);
+        document.setTitle("safe-resume");
+        document.setFileType("md");
+        document.setFilePath("objects/input.bin");
+        document.setInputSizeBytes(12L);
+        document.setInputSha256("abc123");
+        DocumentChunk chunk = new DocumentChunk("random", "content", 0, 7, Map.of());
+        ProcessResult result = ProcessResult.newDocument("doc-170", "hash-170", "content", List.of(chunk));
+        KnowledgeBaseDTO kb = new KnowledgeBaseDTO();
+        kb.setVectorCollection("kb_safe_resume");
+        IndexTaskRecord task = new IndexTaskRecord();
+        task.setTaskId("task-170");
+        task.setDocumentId(170L);
+        task.setExecutionPhase(IndexTaskPhase.SAFE_PRE_VECTOR.name());
+        task.setIndexContractVersion(DeterministicChunkIdentity.CONTRACT_VERSION);
+        task.setChunkSize(500);
+        task.setChunkOverlap(50);
+
+        when(documentService.getById(170L)).thenReturn(Optional.of(document));
+        stubStoredInput();
+        when(documentProcessor.process(any())).thenReturn(result);
+        when(documentService.getByKnowledgeBaseAndContentHash(10L, "hash-170")).thenReturn(Optional.empty());
+        when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
+        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] { 0.1f }));
+        when(documentService.getChunksByDocumentId(170L)).thenReturn(List.of());
+
+        service.resumeIndexTask(task);
+
+        verify(indexTaskLedger).markSafePreVector("task-170");
+        verify(indexTaskLedger).markVectorInFlight("task-170", "hash-170", 1);
+        verify(vectorStore, times(1)).upsert(eq("kb_safe_resume"), anyList());
+        verify(indexTaskLedger).markCompleted("task-170");
     }
 
     @Test

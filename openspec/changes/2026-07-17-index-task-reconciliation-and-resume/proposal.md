@@ -34,7 +34,7 @@ C5a 已让被接受的文档输入跨进程存活，但任务本身仍由当前 
 - `planned`：使用既有 `async_task` 表建立文档索引 durable ledger，以 MySQL phase/lease 为权威，Redis 退为可重建的查询投影。
 - `planned`：只对可证明未进入 vector mutation 或已明确 VECTOR_CONFIRMED 的任务执行安全续跑；in-flight/证据不一致进入 `RECONCILIATION_REQUIRED`。
 - `out_of_scope`：强制重放 outcome unknown、RabbitMQ/Kafka、exactly-once、对象存储、非索引任务恢复、恢复 UI、跨 provider failover。
-- `unknown`：自动 resume 默认是否开启、lease/scan/attempt 默认值、确定性 chunk ID 方案和 legacy task 处置方式，均需用户在事前闸门确认。
+- `confirmed`：用户已批准自动 resume 默认关闭、batch=20/concurrency=1/lease=5m/heartbeat=60s/maxAttempts=3 的初始默认，以及 versioned deterministic IDs、legacy 隔离与 cleanup reconciliation 边界。
 
 ## Scope
 
@@ -98,4 +98,4 @@ C5b 修改任务被接受后的持久性保证、task polling 事实源、跨实
 
 ## Commit Responsibility
 
-当前为 `用户手动提交`。本轮只进入 C5b 规划；Agent 不执行 `git add`、`git commit`、push、PR、部署或发布。
+当前为 `用户手动提交`。用户已批准进入实现；Agent 仍不执行 `git add`、`git commit`、push、PR、部署或发布。

@@ -175,6 +175,14 @@
 - 剩余风险：尚未在真实部署编排中验证 `prod` profile 与 `JWT_SECRET` 注入方式；secret manager 与轮换仍为明确 out_of_scope。需用户验收后才能将 ACTIVE_TASK 置为 `IDLE` 并归档 change。
 - Commit：`pending`；提交责任为用户手动提交。
 
+## 2026-07-17｜C5b 规划批准与 TDD 实现启动
+
+- 用户决策：用户明确批准 C5b proposal、design、13 条决策记录、tasks 与 `rag-system` spec delta；据此进入实现阶段。
+- 已确认边界：MySQL `async_task` durable ledger、Redis 可重建投影、DB CAS lease/heartbeat、只恢复 SAFE_PRE_VECTOR 与 VECTOR_CONFIRMED 收尾、VECTOR_IN_FLIGHT/outcome unknown/legacy/mismatch 进入 `RECONCILIATION_REQUIRED`、新任务 deterministic IDs、cleanup-only reconciliation、auto resume 默认关闭。
+- 执行方式：使用 `tdd` skill，按 durable ledger acceptance、lease/checkpoint、安全 resume、projection/legacy/cleanup 的垂直切片逐个 RED → GREEN → REFACTOR。
+- 外部调用：实现与验证继续禁止真实 embedding、rerank、judge、ask/LLM；只允许确定性 stub、合成数据和隔离 Testcontainers。真实 provider 下批量 resume 仍需单独授权。
+- 提交责任：用户手动提交；Agent 不暂存、不提交、不 push。Commit：`pending`。
+
 ## 2026-07-14｜C1 实现提交补录
 
 - Commit：`528a2cb16e11a54539c1ff602c62c74670026578`。
@@ -639,4 +647,16 @@
 - 跳过项：本轮只写规划与当前事实文档，因此不运行 Maven、Python、前端 build、Docker/Failsafe 或 provider 调用；完成 artifact/决策记录/active pointer/baseline 零改动/受保护路径与 `git diff --check` 验证。
 - 范围安全：不修改 accepted baseline、生产 Java、migration、POM/依赖、application 配置、API/DTO、前端、检索/生成/评测、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；不暂存、不提交、不 push、不创建 PR、不部署或发布。
 - 剩余审批点：ledger/Redis 事实源、acceptance 顺序、lease 默认值、可恢复 phase、deterministic ID、vector ambiguity、resume 默认开关与 provider 预算、legacy 策略、cleanup 与公开入口边界。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-17｜C5b 规划批准与首轮 TDD 实现
+
+- 用户决策与范围：用户批准 C5b proposal、design、13 条决策记录、tasks 与 `rag-system` spec delta；提交责任保持用户手动提交。本轮进入实现但不接受 delta、不恢复 IDLE、不归档、不暂存、不提交。
+- 已实现：V8 将既有 `async_task` 前向扩展为 document index durable ledger；上传顺序改为 durable input/document → ledger → Redis projection/schedule → response，并由 ledger 生成稳定 taskId；Redis 初始投影失败会把未启动 task 收敛为稳定失败且不返回假 task。
+- phase 与恢复：新增 ACCEPTED/SAFE_PRE_VECTOR/VECTOR_IN_FLIGHT/VECTOR_CONFIRMED/FINALIZING/TERMINAL checkpoint；新任务使用 `c5b-v1` deterministic chunk/vector ID，并持久化 contract/chunk config/content hash/chunk count。SAFE_PRE_VECTOR 可复用同一 taskId 重跑；VECTOR_IN_FLIGHT/outcome unknown 转 RECONCILIATION_REQUIRED 且不重放；VECTOR_CONFIRMED/FINALIZING 只重解析校验并完成 DB/keyword/input 收尾，embedding/vector 调用为 0。
+- 协调：新增 MySQL 条件 UPDATE claim/lease/heartbeat/release，过期判断使用数据库 `CURRENT_TIMESTAMP(6)`；有界 scan 默认 batch 20、lease 300 秒、heartbeat 60 秒、maxAttempts 3；reconciliation 默认开启、auto resume 默认关闭。Redis 正常 miss/TTL 回源 ledger 并重建投影，ownerId 保留；Redis outage 仍按 C4c fail closed。CLEANUP_PENDING 只执行有界幂等 input delete。
+- TDD 证据：依次观察 ledger 类型缺失、acceptance compensation 缺失、vector checkpoint 缺失、vector-confirmed 重复 upsert、deterministic identity 缺失、CAS claim 缺失、Redis durable fallback 缺失、安全 DTO 投影缺失、in-flight quarantine 缺失、confirmed/safe resume 缺失和 cleanup coordinator 缺失等 RED；逐片最小实现后全部转 GREEN。
+- 验证：C5b 聚焦测试及 C4c/C4d 故障回归通过；首次 `mvn -q test` 因新 Mapper 放在非 `*.mapper` 包导致 26 个 context 连锁错误，移动至标准 mapper 包后重跑退出码 0；Python `33 tests / OK`；敏感词定向扫描无命中；`git diff --check` 无 whitespace error，仅 3 个既有 CRLF→LF 提示。真实 embedding/rerank/judge/ask/LLM/provider 调用量均为 0。
+- 尚未完成/跳过：未运行真实 MySQL 8 的 V1/V7/legacy migration 与双 coordinator 并发验证；未完成 legacy 无 ledger document 标记、attempt exhausted/backoff 稳定终态和 DB finalize 事务/严格幂等；未做真实 crash-window/Redis restart 集成。Docker 型集成按现有环境条件自行跳过，未进行真实 provider resume（需另行预算授权）。
+- 范围安全：无前端、API/DTO、retrieval/generation/eval、POM/新依赖、对象存储、MQ、force-resume 入口改动；未修改 `.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`。
 - Commit：`pending`；提交责任为用户手动提交。

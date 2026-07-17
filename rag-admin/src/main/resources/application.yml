@@ -175,3 +175,12 @@ document:
     chunk-size: 420
     chunk-overlap: 80
     strategy: semantic
+  index-task-reconciliation:
+    enabled: true
+    resume-enabled: false
+    batch-size: 20
+    concurrency: 1
+    lease-seconds: 300
+    heartbeat-seconds: 60
+    max-attempts: 3
+    scan-interval-ms: 30000

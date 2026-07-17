@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +36,7 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
     private final Executor asyncTaskExecutor;
+    private final DurableTaskStatusStore durableTaskStatusStore;
 
     /**
      * 内存中的任务句柄缓存，用于取消任务
@@ -44,10 +46,26 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
     @Autowired
     public RedisAsyncTaskManager(StringRedisTemplate stringRedisTemplate,
             ObjectMapper objectMapper,
-            @Qualifier("asyncTaskExecutor") Executor asyncTaskExecutor) {
+            @Qualifier("asyncTaskExecutor") Executor asyncTaskExecutor,
+            ObjectProvider<DurableTaskStatusStore> durableTaskStatusStoreProvider) {
+        this(stringRedisTemplate, objectMapper, asyncTaskExecutor,
+                durableTaskStatusStoreProvider.getIfAvailable(DurableTaskStatusStore::empty));
+    }
+
+    public RedisAsyncTaskManager(StringRedisTemplate stringRedisTemplate,
+            ObjectMapper objectMapper,
+            Executor asyncTaskExecutor) {
+        this(stringRedisTemplate, objectMapper, asyncTaskExecutor, DurableTaskStatusStore.empty());
+    }
+
+    public RedisAsyncTaskManager(StringRedisTemplate stringRedisTemplate,
+            ObjectMapper objectMapper,
+            Executor asyncTaskExecutor,
+            DurableTaskStatusStore durableTaskStatusStore) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
         this.asyncTaskExecutor = asyncTaskExecutor;
+        this.durableTaskStatusStore = durableTaskStatusStore;
     }
 
     RedisAsyncTaskManager(StringRedisTemplate stringRedisTemplate, ObjectMapper objectMapper) {
@@ -66,7 +84,14 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
     @Override
     public <T> TaskHandle<T> submit(String taskType, Long ownerId, AsyncTask<T> task) {
-        String taskId = generateTaskId();
+        return submit(generateTaskId(), taskType, ownerId, task);
+    }
+
+    @Override
+    public <T> TaskHandle<T> submit(String taskId, String taskType, Long ownerId, AsyncTask<T> task) {
+        if (taskId == null || taskId.isBlank()) {
+            throw new IllegalArgumentException("taskId must not be blank");
+        }
 
         // 1. 创建初始状态并持久化
         TaskStatus initialStatus = TaskStatus.pending(taskId, taskType, ownerId);
@@ -110,7 +135,9 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
         }
 
         if (json == null) {
-            return Optional.empty();
+            Optional<TaskStatus> durableStatus = durableTaskStatusStore.find(taskId);
+            durableStatus.ifPresent(status -> saveStatus(taskId, status));
+            return durableStatus;
         }
 
         try {

@@ -7,6 +7,7 @@ import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.kb.service.impl.DocumentIndexingServiceImpl;
 import com.enterprise.rag.admin.kb.storage.IndexInputStore;
+import com.enterprise.rag.admin.kb.task.IndexTaskLedger;
 import com.enterprise.rag.admin.kb.storage.StoredIndexInput;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
@@ -28,6 +29,7 @@ import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.config.VectorStoreProperties;
 import com.enterprise.rag.core.vectorstore.milvus.MilvusVectorStore;
 import com.enterprise.rag.document.chunker.DocumentChunk;
+import com.enterprise.rag.document.chunker.DocumentChunkingProperties;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentProcessor;
 import com.enterprise.rag.document.processor.ProcessResult;
@@ -214,6 +216,7 @@ class MilvusFailureSemanticsIT {
         EmbeddingService embeddingService = deterministicEmbedding();
         VectorStore unavailableVectorStore = mock(VectorStore.class);
         IndexInputStore indexInputStore = mock(IndexInputStore.class);
+        IndexTaskLedger indexTaskLedger = mock(IndexTaskLedger.class);
         DocumentIndexingServiceImpl indexingService = new DocumentIndexingServiceImpl(
                 documentService,
                 knowledgeBaseService,
@@ -223,7 +226,9 @@ class MilvusFailureSemanticsIT {
                 embeddingService,
                 unavailableVectorStore,
                 new NoOpKeywordIndex(),
-                indexInputStore);
+                indexInputStore,
+                indexTaskLedger,
+                new DocumentChunkingProperties());
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "synthetic.md", "text/markdown", "synthetic content".getBytes());
@@ -242,7 +247,8 @@ class MilvusFailureSemanticsIT {
         when(indexInputStore.openVerified("objects/synthetic.bin", 17L, "synthetic-sha"))
                 .thenReturn(new ByteArrayInputStream("synthetic content".getBytes()));
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(taskManager.submit(eq("DOCUMENT_INDEX"), eq(20L),
+        when(indexTaskLedger.createAccepted(101L, 20L)).thenReturn("task-101");
+        when(taskManager.submit(eq("task-101"), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-101", CompletableFuture.completedFuture(processed)));
         when(documentProcessor.process(any())).thenReturn(processed);
@@ -252,7 +258,7 @@ class MilvusFailureSemanticsIT {
 
         indexingService.submitIndexing(10L, 20L, file, "synthetic.md");
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
-        verify(taskManager).submit(eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+        verify(taskManager).submit(eq("task-101"), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
 
         assertThrows(RuntimeException.class, () -> taskCaptor.getValue().execute(progress -> {
         }));

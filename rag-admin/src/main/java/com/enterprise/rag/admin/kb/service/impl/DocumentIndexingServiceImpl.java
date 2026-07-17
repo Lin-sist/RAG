@@ -10,6 +10,10 @@ import com.enterprise.rag.admin.kb.storage.IndexInputState;
 import com.enterprise.rag.admin.kb.storage.IndexInputStore;
 import com.enterprise.rag.admin.kb.storage.IndexInputStorageException;
 import com.enterprise.rag.admin.kb.storage.StoredIndexInput;
+import com.enterprise.rag.admin.kb.task.IndexTaskLedger;
+import com.enterprise.rag.admin.kb.task.DeterministicChunkIdentity;
+import com.enterprise.rag.admin.kb.task.IndexTaskRecord;
+import com.enterprise.rag.admin.kb.task.IndexTaskPhase;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
@@ -22,6 +26,7 @@ import com.enterprise.rag.core.vectorstore.VectorDocument;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.document.chunker.DocumentChunk;
+import com.enterprise.rag.document.chunker.DocumentChunkingProperties;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentInput;
 import com.enterprise.rag.document.processor.DocumentProcessor;
@@ -65,6 +70,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     private final VectorStore vectorStore;
     private final KeywordIndex keywordIndex;
     private final IndexInputStore indexInputStore;
+    private final IndexTaskLedger indexTaskLedger;
+    private final DocumentChunkingProperties chunkingProperties;
 
     @Override
     @Idempotent(keyPrefix = "kb:upload", required = false, ttlSeconds = 3600)
@@ -111,17 +118,29 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         final Long documentId = document.getId();
         final String documentTitle = document.getTitle();
 
-        // 提交异步索引任务
+        // durable ledger 必须先于 Redis projection 与实际调度。
         TaskHandle<ProcessResult> taskHandle;
+        String acceptedTaskId = null;
         try {
+            String taskId = indexTaskLedger.createAccepted(documentId, uploaderId);
+            acceptedTaskId = taskId;
             taskHandle = asyncTaskManager.submit(
+                    taskId,
                     "DOCUMENT_INDEX",
                     uploaderId,
                     progressCallback -> doIndex(
-                            kbId, documentId, fileName, documentTitle, fileType,
+                            taskId, kbId, documentId, fileName, documentTitle, fileType,
                             storedInput.storageKey(), storedInput.sizeBytes(), storedInput.sha256(),
                             progressCallback));
         } catch (RuntimeException e) {
+            if (acceptedTaskId != null) {
+                try {
+                    indexTaskLedger.markAcceptanceFailed(acceptedTaskId, "TASK_PROJECTION_FAILED");
+                } catch (RuntimeException ledgerFailure) {
+                    log.error("索引任务接受失败状态待协调: documentId={}, taskId={}, errorType={}",
+                            documentId, acceptedTaskId, ledgerFailure.getClass().getSimpleName());
+                }
+            }
             documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
             cleanupCompletedInput(documentId, storedInput.storageKey());
             throw e;
@@ -138,14 +157,80 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     }
 
     /**
+     * 恢复已确认完成 vector mutation 的任务，只执行可证明幂等的收尾。
+     */
+    public void resumeIndexTask(IndexTaskRecord task) {
+        validateResumeContract(task);
+        IndexTaskPhase phase = IndexTaskPhase.valueOf(task.getExecutionPhase());
+        if (phase != IndexTaskPhase.ACCEPTED
+                && phase != IndexTaskPhase.SAFE_PRE_VECTOR
+                && phase != IndexTaskPhase.VECTOR_CONFIRMED
+                && phase != IndexTaskPhase.FINALIZING) {
+            throw new IllegalArgumentException("Unsupported safe resume phase: " + phase);
+        }
+
+        Document document = documentService.getById(task.getDocumentId())
+                .orElseThrow(() -> new BusinessException("DOC_002", "文档不存在"));
+        String fileName = "document-" + document.getId() + "." + document.getFileType();
+        if (phase == IndexTaskPhase.ACCEPTED || phase == IndexTaskPhase.SAFE_PRE_VECTOR) {
+            doIndex(task.getTaskId(), document.getKbId(), document.getId(), fileName, document.getTitle(),
+                    document.getFileType(), document.getFilePath(), document.getInputSizeBytes(),
+                    document.getInputSha256(), ignored -> {
+                    });
+            return;
+        }
+        try (InputStream inputStream = indexInputStore.openVerified(
+                document.getFilePath(), document.getInputSizeBytes(), document.getInputSha256())) {
+            DocumentInput input = DocumentInput.of(
+                    inputStream,
+                    fileName,
+                    Map.of("kbId", document.getKbId(), "documentId", document.getId(),
+                            "sourceFileName", fileName,
+                            "documentTitle", document.getTitle(),
+                            "title", document.getTitle()));
+            ProcessResult result = documentProcessor.process(input);
+            if (!result.contentHash().equals(task.getPreparedContentHash())
+                    || result.chunks().size() != task.getPreparedChunkCount()) {
+                indexTaskLedger.markReconciliationRequired(task.getTaskId(), "PREPARED_FACTS_MISMATCH");
+                throw new IllegalStateException("Prepared index facts do not match durable checkpoint");
+            }
+            List<DocumentChunk> chunks = DeterministicChunkIdentity.remap(
+                    task.getIndexContractVersion(), document.getId(), result.contentHash(), result.chunks());
+            String collectionName = knowledgeBaseService.getById(document.getKbId())
+                    .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
+                    .getVectorCollection();
+            PreparedIndex prepared = prepareFinalization(
+                    document.getKbId(), document.getId(), fileName, document.getTitle(), chunks);
+            finalizeIndex(task.getTaskId(), document.getKbId(), document.getId(), result, chunks,
+                    collectionName, prepared, ignored -> {
+                    });
+            cleanupCompletedInput(document.getId(), document.getFilePath());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to close durable index input", e);
+        }
+    }
+
+    private void validateResumeContract(IndexTaskRecord task) {
+        boolean matches = DeterministicChunkIdentity.CONTRACT_VERSION.equals(task.getIndexContractVersion())
+                && Integer.valueOf(chunkingProperties.getChunkSize()).equals(task.getChunkSize())
+                && Integer.valueOf(chunkingProperties.getChunkOverlap()).equals(task.getChunkOverlap());
+        if (!matches) {
+            indexTaskLedger.markReconciliationRequired(task.getTaskId(), "INDEX_CONTRACT_MISMATCH");
+            throw new IllegalStateException("Index task contract does not match current runtime");
+        }
+    }
+
+    /**
      * 异步索引核心逻辑（解析 → 去重 → 向量化 → 持久化）
      */
-    private ProcessResult doIndex(Long kbId, Long documentId, String fileName, String documentTitle, String fileType,
+    private ProcessResult doIndex(String taskId, Long kbId, Long documentId, String fileName, String documentTitle,
+            String fileType,
             String storageKey,
             long inputSizeBytes,
             String inputSha256,
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
         try {
+            indexTaskLedger.markSafePreVector(taskId);
             progressCallback.accept(AsyncTask.TaskProgress.of(10, "开始解析文档"));
 
             try (InputStream inputStream = indexInputStore.openVerified(storageKey, inputSizeBytes, inputSha256)) {
@@ -189,13 +274,18 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 if (chunks == null || chunks.isEmpty()) {
                     throw new BusinessException("DOC_010", "文档解析未产生有效分块，无法建立索引");
                 }
+                chunks = DeterministicChunkIdentity.remap(
+                        DeterministicChunkIdentity.CONTRACT_VERSION,
+                        documentId,
+                        result.contentHash(),
+                        chunks);
 
                 String collectionName = knowledgeBaseService.getById(kbId)
                         .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
                         .getVectorCollection();
 
                 ProcessResult indexed = indexWithRetry(
-                        kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
+                        taskId, kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
                         progressCallback);
                 cleanupCompletedInput(documentId, storageKey);
                 return indexed;
@@ -210,6 +300,15 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                         : IndexInputState.MISSING.name();
                 documentService.updateInputState(documentId, inputState);
             }
+            if (e instanceof VectorDependencyException vectorException
+                    && VectorDependencyException.ERROR_CODE_OUTCOME_UNKNOWN.equals(vectorException.getErrorCode())) {
+                try {
+                    indexTaskLedger.markReconciliationRequired(taskId, vectorException.getErrorCode());
+                } catch (RuntimeException ledgerFailure) {
+                    log.error("向量结果未知任务隔离失败: documentId={}, taskId={}, errorType={}",
+                            documentId, taskId, ledgerFailure.getClass().getSimpleName());
+                }
+            }
             documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
             if (e instanceof RuntimeException runtimeException) {
                 throw runtimeException;
@@ -218,7 +317,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         }
     }
 
-    private ProcessResult indexWithRetry(Long kbId,
+    private ProcessResult indexWithRetry(String taskId,
+            Long kbId,
             Long documentId,
             String fileName,
             String documentTitle,
@@ -227,14 +327,22 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             String collectionName,
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
         RuntimeException lastException = null;
+        PreparedIndex preparedIndex = prepareIndex(
+                kbId, documentId, fileName, documentTitle, chunks, progressCallback);
+        boolean vectorConfirmed = false;
 
         for (int attempt = 1; attempt <= MAX_INDEX_ATTEMPTS; attempt++) {
             try {
                 if (attempt > 1) {
                     progressCallback.accept(AsyncTask.TaskProgress.of(45, "文档入库重试中，第 " + attempt + " 次"));
                 }
-                return indexOnce(kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
-                        progressCallback);
+                if (!vectorConfirmed) {
+                    writeVectorOnce(taskId, result, chunks, collectionName, preparedIndex.vectorDocuments(),
+                            progressCallback);
+                    vectorConfirmed = true;
+                }
+                return finalizeIndex(taskId, kbId, documentId, result, chunks, collectionName,
+                        preparedIndex, progressCallback);
             } catch (VectorDependencyException e) {
                 throw e;
             } catch (RuntimeException e) {
@@ -253,13 +361,11 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         throw lastException == null ? new RuntimeException("文档入库失败") : lastException;
     }
 
-    private ProcessResult indexOnce(Long kbId,
+    private PreparedIndex prepareIndex(Long kbId,
             Long documentId,
             String fileName,
             String documentTitle,
-            ProcessResult result,
             List<DocumentChunk> chunks,
-            String collectionName,
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
         List<String> chunkTexts = chunks.stream().map(DocumentChunk::content).toList();
 
@@ -290,23 +396,79 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             entityChunks.add(entityChunk);
         }
 
+        return new PreparedIndex(vectorDocs, entityChunks);
+    }
+
+    private PreparedIndex prepareFinalization(Long kbId,
+            Long documentId,
+            String fileName,
+            String documentTitle,
+            List<DocumentChunk> chunks) {
+        List<VectorDocument> vectorDocs = new ArrayList<>(chunks.size());
+        List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks = new ArrayList<>(chunks.size());
+        for (int i = 0; i < chunks.size(); i++) {
+            DocumentChunk chunk = chunks.get(i);
+            vectorDocs.add(new VectorDocument(
+                    chunk.id(), new float[0], chunk.content(),
+                    buildVectorMetadata(kbId, documentId, fileName, documentTitle, i, chunk)));
+            com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk =
+                    new com.enterprise.rag.admin.kb.entity.DocumentChunk();
+            entityChunk.setDocumentId(documentId);
+            entityChunk.setVectorId(chunk.id());
+            entityChunk.setContent(chunk.content());
+            entityChunk.setChunkIndex(i);
+            entityChunk.setStartPos(chunk.startIndex());
+            entityChunk.setEndPos(chunk.endIndex());
+            entityChunks.add(entityChunk);
+        }
+        return new PreparedIndex(vectorDocs, entityChunks);
+    }
+
+    private void writeVectorOnce(String taskId,
+            ProcessResult result,
+            List<DocumentChunk> chunks,
+            String collectionName,
+            List<VectorDocument> vectorDocs,
+            java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
         progressCallback.accept(AsyncTask.TaskProgress.of(70, "写入向量数据库"));
+        indexTaskLedger.markVectorInFlight(taskId, result.contentHash(), chunks.size());
         vectorStore.upsert(collectionName, vectorDocs);
         log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
+        try {
+            indexTaskLedger.markVectorConfirmed(taskId);
+        } catch (RuntimeException e) {
+            throw VectorDependencyException.outcomeUnknown("checkpoint_after_upsert", e);
+        }
+    }
 
+    private ProcessResult finalizeIndex(String taskId,
+            Long kbId,
+            Long documentId,
+            ProcessResult result,
+            List<DocumentChunk> chunks,
+            String collectionName,
+            PreparedIndex preparedIndex,
+            java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
+        indexTaskLedger.markFinalizing(taskId);
         // DOC-02: 持久化分块记录和 contentHash
         progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
-        saveChunksIfAbsent(documentId, entityChunks);
+        saveChunksIfAbsent(documentId, preparedIndex.entityChunks());
         documentService.updateContentHash(documentId, result.contentHash());
-        upsertKeywordIndex(collectionName, vectorDocs);
+        upsertKeywordIndex(collectionName, preparedIndex.vectorDocuments());
 
         progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
         documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
         documentService.updateChunkCount(documentId, chunks.size());
         knowledgeBaseService.updateDocumentCount(kbId, 1);
+        indexTaskLedger.markCompleted(taskId);
 
         progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档处理完成"));
         return result;
+    }
+
+    private record PreparedIndex(
+            List<VectorDocument> vectorDocuments,
+            List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks) {
     }
 
     private void saveChunksIfAbsent(Long documentId, List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks) {
