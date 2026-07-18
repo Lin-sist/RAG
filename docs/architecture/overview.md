@@ -1,6 +1,6 @@
 # RAG 项目当前架构
 
-> 状态日期：2026-07-12  
+> 状态日期：2026-07-17
 > 本文只描述当前代码中已确认的结构与能力。阶段指标以 `docs/optimization/` 和 `docs/eval/reports/` 中的当前文件为准。
 
 ## 1. 项目定位
@@ -27,7 +27,7 @@
 ```text
 上传文档
   -> durable input 原子发布并保存完整性事实
-  -> 创建文档与 Redis 异步任务
+  -> 创建文档、MySQL durable task ledger 与 Redis 状态投影
   -> 解析正文
   -> 按运行时配置分块
   -> 生成 Embedding
@@ -36,7 +36,7 @@
   -> 更新任务和文档状态
 ```
 
-当前输入已可跨进程重新打开，但任务执行体仍是本进程内存中的 `CompletableFuture`/闭包，Redis 状态只有 24 小时 TTL；尚无 durable task ledger、跨实例 lease 或自动续跑，因此不能把 C5a 表述为已完成中断恢复。
+新接受任务已有 MySQL durable ledger、稳定 taskId、数据库 claim/lease 原语与 phase checkpoint；Redis 保留 24 小时低延迟投影，正常 miss/TTL 可回源 DB 重建。`SAFE_PRE_VECTOR` 与 `VECTOR_CONFIRMED` 具备保守恢复路径，`VECTOR_IN_FLIGHT`/outcome unknown 只隔离不重放。provider auto resume 默认关闭；持续 heartbeat/backoff、legacy 无 ledger 协调和 finalize document-count 严格幂等仍未完成。
 
 当前默认分块配置为 `chunk-size=420`、`chunk-overlap=80`。默认向量库是 Milvus；代码另有 Qdrant 与 Elasticsearch 适配，但当前正式评测对象是 Milvus。
 

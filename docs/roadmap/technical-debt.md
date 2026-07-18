@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-16
+> 状态日期：2026-07-17
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
@@ -22,8 +22,16 @@
 
 - 已实现：独立 `c3-integration` Maven/Failsafe 入口使用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding，覆盖登录、上传、异步索引、retrieval、删除与资源清理。
 - 验证：主链路重复运行通过；完整 Maven 203 tests、默认 Maven 202 tests、Python 33 tests 与 SensitiveLogs 门禁通过，均为 0 failures/errors/skipped。
-- 后续进展：LLM、Redis、Milvus 故障语义和 C5a 索引输入持久化均已按独立 OpenSpec change 实现并接受进 baseline；当前剩余债务收敛为 C5b durable task ledger、孤儿协调与安全续跑。
+- 后续进展：LLM、Redis、Milvus 故障语义、C5a durable input 与 C5b 已实现范围均已按独立 OpenSpec change 接受进 baseline。
 - 证据：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`、`openspec/changes/archive/2026-07-15-llm-provider-resilience/`、`openspec/changes/archive/2026-07-15-redis-failure-semantics/`、`openspec/changes/archive/2026-07-15-milvus-failure-semantics/`、`openspec/changes/archive/2026-07-16-durable-index-inputs/`。
+
+### 4. C5b 后续协调完整性
+
+- legacy PENDING/FAILED + AVAILABLE 且无 ledger/phase 的记录尚未自动标记 `RECONCILIATION_REQUIRED`。
+- coordinator 具备 DB claim/lease/heartbeat 原语，但持续 heartbeat、实际 concurrency 执行、指数 backoff 与 attempt exhausted 稳定终态尚未闭环。
+- VECTOR_CONFIRMED 收尾可避免 vector replay，但 document count 与跨多表 finalize 尚缺事务性或严格幂等证明。
+- 尚缺真实 MySQL V1/V7/legacy migration、双 coordinator 并发、Redis restart 与 crash-window 集成验证。
+- 以上事项进入下一阶段规划候选；不得用 C5b 已归档声称它们已经完成。
 
 ## P1：下一轮 RAG 质量工程
 

@@ -133,9 +133,9 @@
 - 用户故事：改之前依赖抖动行为不明、可能整体崩；改之后每种故障有明确、被测试锁定的降级行为。
 
 ### C5a~C5b. 索引恢复（拆分）
-- 当前进展：C5a 已完成并接受进 baseline；上传输入使用应用管理的 durable filesystem，具备原子发布、完整性校验、显式输入状态与成功清理边界。
-- C5b 继续处理 durable task ledger、孤儿任务协调、跨实例 claim/lease 与安全续跑；不得因输入仍在就自动重放 vector outcome unknown。
-- C5b 必须在正式 design 中锁定：DB/Redis 事实源、可续跑 phase、lease 过期语义、旧任务兼容、provider 调用预算与 `RECONCILIATION_REQUIRED` 边界。
+- 当前进展：C5a 与 C5b 已实现范围均已接受进 baseline；上传输入使用 durable filesystem，新任务使用 MySQL ledger、稳定 taskId、phase checkpoint 与 Redis 可重建投影。
+- C5b 已锁定并实现保守边界：SAFE_PRE_VECTOR/VECTOR_CONFIRMED 才可在显式开关下恢复，VECTOR_IN_FLIGHT/outcome unknown 只进入协调状态，不自动重放。
+- 未闭环的 legacy、持续 heartbeat/backoff、attempt exhausted、finalize 严格幂等与真实 crash-window 验证已转入技术债，后续必须另建 change。
 
 ### C6. nvidia-reranker-adapter-and-attribution
 - 现状校正：当前 adapter 为通用 documents/results/relevance_score，registry 失败会 fallback 到 heuristic；现有单测只验证自建 mock 协议。

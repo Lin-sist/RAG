@@ -2,24 +2,18 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
 ## Active Change
 
-- Change：`2026-07-17-index-task-reconciliation-and-resume`
-- 位置：`openspec/changes/2026-07-17-index-task-reconciliation-and-resume/`
-- 目标：为文档索引建立 durable task ledger、孤儿任务协调、跨实例 lease 与安全续跑边界，使进程中断不再留下永久悬空任务。
-- 范围：用户已批准 proposal、design、13 条决策记录、tasks 与 `rag-system` spec delta；现按 TDD 进入 durable ledger、lease/checkpoint、安全 resume 与 reconciliation 实现，验收前不接受进 baseline。
-- 非目标：自动重放 vector outcome unknown、强制 resume API/UI、RabbitMQ/Kafka、对象存储、非文档索引任务恢复、分布式事务或 exactly-once 承诺。
-- 验收入口：`openspec/changes/2026-07-17-index-task-reconciliation-and-resume/tasks.md`。
-- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push。
+无。开始新的重大变更前，必须先创建 OpenSpec change 并更新本文件。
 
 ## Last Completed
 
-- Change：`2026-07-16-durable-index-inputs`
-- 位置：`openspec/changes/archive/2026-07-16-durable-index-inputs/`
-- 结果：让已接受的文档索引任务使用应用管理、原子发布、可校验且跨进程存活的 durable input，并锁定显式输入生命周期与部署边界。
-- 验收：用户已确认通过；delta 已接受进 `rag-system` baseline，change 已归档。
+- Change：`2026-07-17-index-task-reconciliation-and-resume`
+- 位置：`openspec/changes/archive/2026-07-17-index-task-reconciliation-and-resume/`
+- 结果：建立 document index durable ledger、稳定 taskId、数据库 claim 边界、phase checkpoint、保守 safe resume、Redis durable fallback 与 cleanup reconciliation。
+- 验收：用户已确认提交并要求归档；已实现范围的 delta 接受进 `rag-system` baseline，未完成保证转入技术债。
 
 ## Start A New Material Change
 

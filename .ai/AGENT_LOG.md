@@ -660,3 +660,19 @@
 - 尚未完成/跳过：未运行真实 MySQL 8 的 V1/V7/legacy migration 与双 coordinator 并发验证；未完成 legacy 无 ledger document 标记、attempt exhausted/backoff 稳定终态和 DB finalize 事务/严格幂等；未做真实 crash-window/Redis restart 集成。Docker 型集成按现有环境条件自行跳过，未进行真实 provider resume（需另行预算授权）。
 - 范围安全：无前端、API/DTO、retrieval/generation/eval、POM/新依赖、对象存储、MQ、force-resume 入口改动；未修改 `.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`。
 - Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-17｜C5b 用户收口、已实现 delta 接受与归档准备
+
+- 用户决策：用户确认 C5b 已提交，并明确要求归档 change、恢复空闲状态、等待下一阶段规划。实现提交为 `4c7e4a0 feat(索引): 实现C5b任务协调与安全续跑`；收口开始时工作区干净且 `main...origin/main` 无 ahead/behind。
+- 事实校正：active tasks 仍有 legacy 无 ledger 隔离、持续 heartbeat/backoff/attempt exhausted、finalize document-count 严格幂等及真实 MySQL/并发/crash-window 集成验证等未完成项。收口未将这些项目伪装为完成；原 spec delta 收窄为提交中可证明的 durable ledger、DB claim 边界、保守 phase resume、Redis fallback、cleanup 与默认关闭 auto resume，并把剩余项登记到技术债。
+- 收口范围：将已实现 delta 接受进 `openspec/specs/rag-system/spec.md`；同步 `.ai/ACTIVE_TASK.md`、`openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/{technical-debt.md,iteration-blueprint.md}` 与 tasks；待结构验证后归档至 `openspec/changes/archive/2026-07-17-index-task-reconciliation-and-resume/`。
+- 沿用验证：实现提交前最近一次 `mvn -q test` 退出码 0；Python 33 tests / OK；`git diff --check` 无 whitespace error；真实 provider 业务调用量为 0。本轮只做治理/spec/docs 收口，不修改 Java、migration、配置或测试，因此不重复运行 Maven、Python、Docker/Failsafe 或 provider 调用。
+- 范围安全：未修改 API/DTO、前端、POM/依赖、retrieval/generation/eval、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、未提交、未 push、未创建 PR、未部署或发布。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-17｜C5b 归档结构验证
+
+- 结果：active change 目录已移至 `openspec/changes/archive/2026-07-17-index-task-reconciliation-and-resume/`，源目录不存在；`.ai/ACTIVE_TASK.md` 为 `IDLE`。
+- 契约：归档 delta 的 4 个 requirements / 12 个 scenarios 与 `rag-system` baseline 接受内容逐行 exact match；未实现保证保留为未勾选 tasks，并已登记到技术债。
+- 验证：`git diff --check` 无错误；收口 diff 仅含 OpenSpec、活动指针、架构/路线图与追加式日志，未修改业务实现或受保护本地配置。
+- Commit：`pending`；提交责任为用户手动提交。

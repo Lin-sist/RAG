@@ -18,6 +18,8 @@
 
 > 用户已于 2026-07-17 批准完整规划；后续按 TDD 逐个可验证切片实现。
 
+> 收口说明（2026-07-17）：用户确认实现提交 `4c7e4a0` 并要求归档。未勾选项不伪装为完成；对应 legacy、持续 heartbeat/backoff、attempt exhausted、finalize 严格幂等与真实集成验证已转入技术债。接受进 baseline 的 delta 已收窄为当前实现可证明的契约。
+
 ## 1. Inventory And RED Tests
 
 - [x] 固化真实 upload → Redis submit → JVM future/closure → status TTL 的 consumer/lifecycle inventory。
@@ -72,8 +74,8 @@
 - [x] 运行 SensitiveLogs 与 `git diff --check`。
 - [x] 记录真实 provider/embedding/rerank/judge/ask 调用量；计划实现验证目标为全部 0。
 - [x] 扫描公开 DTO、前端、retrieval/generation/eval、对象存储、新依赖与受保护路径无越界改动。
-- [ ] 更新 tasks、`.ai/ACTIVE_TASK.md`、project/roadmap/architecture 与追加式 `.ai/AGENT_LOG.md`。
-- [ ] 用户完成实现验收后，才接受 spec delta、恢复 `IDLE` 并归档 change。
+- [x] 更新 tasks、`.ai/ACTIVE_TASK.md`、project/roadmap/architecture 与追加式 `.ai/AGENT_LOG.md`。
+- [x] 用户完成实现验收后，才接受 spec delta、恢复 `IDLE` 并归档 change。
 
 ## Commit Responsibility
 

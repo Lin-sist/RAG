@@ -18,7 +18,7 @@
 - 评测集为 30 条开发样本，具备固定 KB、retrieval/generation/citation/no-answer 指标。
 - `c3-integration` Maven/Failsafe 入口可用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding 重复验证登录、上传、索引、retrieval 与删除主链路。
 - LLM、Redis 与默认 Milvus 的故障语义已分别被测试锁定；Milvus dense route 仅在关键词证据可用时显式降级，mutation outcome unknown、删除和统计均不伪造成功。
-- 文档索引输入已由 C5a 改为应用管理、原子发布、可校验的 durable filesystem，并持久化 opaque key、byte size、SHA-256 与 input state；当前仍缺 durable task ledger、跨实例 claim/lease、孤儿任务协调与安全续跑。
+- 文档索引已具备 C5a durable input 与 C5b MySQL durable task ledger：新任务使用稳定 taskId、phase checkpoint 与 deterministic chunk/vector IDs；Redis 是可重建状态投影，正常 miss 可回源 DB。reconciliation 默认开启而 provider auto resume 默认关闭；legacy 无 ledger 隔离、持续 heartbeat/backoff、attempt exhausted 与 finalize document-count 严格幂等仍是后续债务。
 
 ## 当前边界
 
