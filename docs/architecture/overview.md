@@ -36,7 +36,7 @@
   -> 更新任务和文档状态
 ```
 
-新接受任务已有 MySQL durable ledger、稳定 taskId、数据库 claim/lease 原语与 phase checkpoint；Redis 保留 24 小时低延迟投影，正常 miss/TTL 可回源 DB 重建。`SAFE_PRE_VECTOR` 与 `VECTOR_CONFIRMED` 具备保守恢复路径，`VECTOR_IN_FLIGHT`/outcome unknown 只隔离不重放。provider auto resume 默认关闭；持续 heartbeat/backoff、legacy 无 ledger 协调和 finalize document-count 严格幂等仍未完成。
+新接受任务已有 MySQL durable ledger、稳定 taskId、数据库 claim/lease 与 phase checkpoint；Redis 保留 24 小时低延迟投影，正常 miss/TTL 可回源 DB 重建。`SAFE_PRE_VECTOR` 与 `VECTOR_CONFIRMED` 具备保守恢复路径，`VECTOR_IN_FLIGHT`/outcome unknown 只隔离不重放。C5 收口实现新增 legacy 无 ledger 隔离、固定有界 executor、持续 heartbeat、DB-time backoff/attempt 终态和事务化 SQL finalize；provider auto resume 默认继续关闭，相关 delta 尚待用户验收后接受。
 
 当前默认分块配置为 `chunk-size=420`、`chunk-overlap=80`。默认向量库是 Milvus；代码另有 Qdrant 与 Elasticsearch 适配，但当前正式评测对象是 Milvus。
 

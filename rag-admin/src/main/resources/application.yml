@@ -183,4 +183,6 @@ document:
     lease-seconds: 300
     heartbeat-seconds: 60
     max-attempts: 3
+    initial-backoff-seconds: 30
+    max-backoff-seconds: 1800
     scan-interval-ms: 30000

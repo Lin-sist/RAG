@@ -5,5 +5,5 @@ package com.enterprise.rag.admin.kb.task;
  */
 public interface IndexTaskRecoveryExecutor {
 
-    void resume(IndexTaskRecord task);
+    void resume(IndexTaskRecord task, IndexTaskLeaseGuard leaseGuard);
 }

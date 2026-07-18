@@ -16,5 +16,7 @@ public class IndexTaskReconciliationProperties {
     private int leaseSeconds = 300;
     private int heartbeatSeconds = 60;
     private int maxAttempts = 3;
+    private int initialBackoffSeconds = 30;
+    private int maxBackoffSeconds = 1800;
     private long scanIntervalMs = 30_000L;
 }

@@ -2,11 +2,17 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
 ## Active Change
 
-无。开始新的重大变更前，必须先创建 OpenSpec change 并更新本文件。
+- Change：`2026-07-18-c5-recovery-debt-closeout`
+- 位置：`openspec/changes/2026-07-18-c5-recovery-debt-closeout/`
+- 目标：闭环 C5 legacy 隔离、持续 lease heartbeat、有界 backoff/attempt 终态、SQL finalize 严格幂等与真实依赖验证，为 C6 规划清空 P0 恢复债务。
+- 范围：只修复 C5 已登记债务；真实 provider 调用为 0，auto resume 默认关闭。
+- 非目标：C6 reranker、retrieval/generation/evaluation 改动、force-resume API/UI、MQ、对象存储或 exactly-once。
+- 验收入口：`openspec/changes/2026-07-18-c5-recovery-debt-closeout/tasks.md`。
+- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push。
 
 ## Last Completed
 

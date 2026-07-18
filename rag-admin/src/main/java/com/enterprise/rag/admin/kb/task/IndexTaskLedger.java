@@ -43,9 +43,19 @@ public interface IndexTaskLedger {
 
     Optional<IndexTaskRecord> find(String taskId);
 
-    List<IndexTaskRecord> scanClaimable(int limit);
+    List<IndexTaskRecord> scanClaimable(int limit, int maxAttempts);
 
     boolean release(String taskId, String workerId);
 
     boolean heartbeat(String taskId, String workerId, int leaseSeconds);
+
+    /**
+     * 当前 owner 的最后一次恢复尝试已耗尽，收敛到不再扫描的稳定终态。
+     */
+    boolean markAttemptsExhausted(String taskId, String workerId, String failureCode);
+
+    /**
+     * 使用数据库当前时间设置下一次尝试时间并释放当前 lease。
+     */
+    boolean scheduleRetry(String taskId, String workerId, String failureCode, int backoffSeconds);
 }

@@ -6,7 +6,11 @@ import com.enterprise.rag.auth.dto.LoginRequest;
 import com.enterprise.rag.auth.model.UserPrincipal;
 import com.enterprise.rag.auth.service.AuthService;
 import com.enterprise.rag.common.async.RedisAsyncTaskManager;
+import com.enterprise.rag.common.async.DurableTaskStatusStore;
+import com.enterprise.rag.common.async.TaskStatus;
 import com.enterprise.rag.common.async.TaskHandle;
+import com.enterprise.rag.common.constant.RedisKeyConstants;
+import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.enterprise.rag.common.exception.GlobalExceptionHandler;
 import com.enterprise.rag.common.ratelimit.RateLimitInterceptor;
 import com.enterprise.rag.common.ratelimit.RateLimitWebConfig;
@@ -18,6 +22,7 @@ import com.enterprise.rag.core.embedding.EmbeddingServiceImpl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -57,11 +62,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -92,6 +101,17 @@ class RedisFailureSemanticsIT {
 
     @Autowired
     private RedisAsyncTaskManager taskManager;
+
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Autowired
+    private SyntheticDurableTaskStatusStore durableTaskStatusStore;
+
+    @BeforeEach
+    void resetSyntheticState() {
+        authService.loginCalls.set(0);
+    }
 
     @Autowired
     private SyntheticAuthService authService;
@@ -147,6 +167,31 @@ class RedisFailureSemanticsIT {
         ResponseEntity<JsonNode> recoveredLogin = awaitApplicationRedisRecovery();
         assertEquals(HttpStatus.OK, recoveredLogin.getStatusCode());
         assertEquals(2, authService.loginCalls.get());
+    }
+
+    @Test
+    void restartThenProjectionMissRebuildsOwnerStatusFromDurableStore() {
+        String taskId = "c5-durable-restart-" + UUID.randomUUID();
+        durableTaskStatusStore.put(TaskStatus.running(
+                taskId, "DOCUMENT_INDEX", 65, "durable-running", 77L));
+        stringRedisTemplate.delete(RedisKeyConstants.taskStatusKey(taskId));
+
+        TaskStatus initialFallback = taskManager.getStatus(taskId).orElseThrow();
+        assertEquals(77L, initialFallback.ownerId());
+        assertNotNull(stringRedisTemplate.opsForValue().get(RedisKeyConstants.taskStatusKey(taskId)));
+
+        stopOnlyThisTestContainer();
+        assertThrows(RedisDependencyException.class, () -> taskManager.getStatus(taskId));
+
+        startOnlyThisTestContainer();
+        awaitRedisRecovery();
+        awaitApplicationRedisRecovery();
+        stringRedisTemplate.delete(RedisKeyConstants.taskStatusKey(taskId));
+
+        TaskStatus rebuilt = taskManager.getStatus(taskId).orElseThrow();
+        assertEquals(77L, rebuilt.ownerId());
+        assertEquals(65, rebuilt.progress());
+        assertNotNull(stringRedisTemplate.opsForValue().get(RedisKeyConstants.taskStatusKey(taskId)));
     }
 
     private ResponseEntity<JsonNode> login() {
@@ -304,9 +349,15 @@ class RedisFailureSemanticsIT {
         @Bean
         RedisAsyncTaskManager taskManager(
                 StringRedisTemplate stringRedisTemplate,
-                ObjectMapper objectMapper) {
+                ObjectMapper objectMapper,
+                SyntheticDurableTaskStatusStore durableTaskStatusStore) {
             return new RedisAsyncTaskManager(
-                    stringRedisTemplate, objectMapper, Runnable::run);
+                    stringRedisTemplate, objectMapper, Runnable::run, durableTaskStatusStore);
+        }
+
+        @Bean
+        SyntheticDurableTaskStatusStore durableTaskStatusStore() {
+            return new SyntheticDurableTaskStatusStore();
         }
 
         @Bean
@@ -358,6 +409,20 @@ class RedisFailureSemanticsIT {
         @Override
         public UserPrincipal validateToken(String token) {
             throw new UnsupportedOperationException("not used");
+        }
+    }
+
+    static class SyntheticDurableTaskStatusStore implements DurableTaskStatusStore {
+
+        private final Map<String, TaskStatus> statuses = new ConcurrentHashMap<>();
+
+        void put(TaskStatus status) {
+            statuses.put(status.taskId(), status);
+        }
+
+        @Override
+        public Optional<TaskStatus> find(String taskId) {
+            return Optional.ofNullable(statuses.get(taskId));
         }
     }
 

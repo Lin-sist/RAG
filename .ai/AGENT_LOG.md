@@ -676,3 +676,24 @@
 - 契约：归档 delta 的 4 个 requirements / 12 个 scenarios 与 `rag-system` baseline 接受内容逐行 exact match；未实现保证保留为未勾选 tasks，并已登记到技术债。
 - 验证：`git diff --check` 无错误；收口 diff 仅含 OpenSpec、活动指针、架构/路线图与追加式日志，未修改业务实现或受保护本地配置。
 - Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-18｜C5 recovery debt closeout 启动
+
+- 用户决策：用户要求检查 C5 阶段债务；若存在则直接修复收口，以便后续进入 C6 规划。审计确认 C5b 归档时登记的 legacy 隔离、持续 heartbeat/backoff/attempt exhausted、DB finalize 严格幂等与真实集成验证仍是当前代码事实。
+- 类型与范围：Type C 重大变更 `2026-07-18-c5-recovery-debt-closeout`；不进入 C6，不修改 RAG 质量口径或公开 API。沿用 C5b outcome unknown 禁止重放、auto resume 默认关闭与真实 provider 调用量 0 的批准边界。
+- 计划：按 TDD 依次闭环 legacy/稳定终态、有界 coordinator、transactional finalizer，再运行隔离 MySQL/Redis 与 crash-window 验证；只有验证通过后才接受 delta、移除技术债并归档。
+- 外部调用：计划中的 embedding 使用 deterministic stub；真实 embedding、rerank、judge、ask/LLM/provider 调用量为 0，无业务数据出站或模型费用。
+- 范围安全：当前只新增 OpenSpec 与活动指针/追加式日志；未修改 Java、migration、配置、测试、baseline 或受保护本地文件。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-18｜C5 recovery debt closeout 实现与验收准备
+
+- 范围与修改：完成 legacy 无 ledger document 原子隔离；修复 contract mismatch 跨非终态 phase 的稳定 quarantine；协调器改为固定有界 executor、持续 heartbeat、mutation 前 lease guard、DB-time 指数 backoff 与 max-attempt `FAILED/TERMINAL`；新增独立 `IndexTaskSqlFinalizer`、document row lock、V9 status 扩容与 `(document_id, chunk_index)` 唯一约束。同步 change artifacts、project/architecture/roadmap 与测试。
+- TDD 证据：依次观察 legacy 协调 API 缺失、contract mismatch 只允许 VECTOR_IN_FLIGHT、attempt exhausted/retry API 缺失、持续 heartbeat/lease guard 缺失、重复 finalize 无事务 bean 等 RED；每个切片最小实现后聚焦 GREEN。全量真实 MySQL 首轮进一步暴露 `document.status VARCHAR(20)` 无法保存 `RECONCILIATION_REQUIRED`，将 V9 扩为 VARCHAR(32) 后转 GREEN。
+- MySQL 真实验证：Docker Desktop 28.4.0 + `mysql:8.0.36` Testcontainers；`C5RecoveryMySqlTest` 4 tests / 0 failures / 0 errors / 0 skipped。覆盖 fresh/V1/V7→V9、legacy generic task 与重复 chunks 兼容、legacy document 实际隔离、双 claimant、heartbeat owner/expiry、DB-time backoff、attempt exhausted、SQL finalize 重复幂等和同事务 rollback；Flyway 9 migrations validate 通过。
+- Redis 真实验证：`redis:7-alpine` 隔离容器 stop/start；`RedisFailureSemanticsIT` 2 tests / 0 failures / 0 errors / 0 skipped。覆盖 outage 503、Lettuce 重连、restart 后 projection miss 从 durable store 回源并重建 owner/progress。
+- 回归：最终 `mvn -q test` 退出码 0；Surefire 68 reports / 302 tests / 0 failures / 0 errors / 1 skipped，唯一 skip 为需要独立 Milvus 故障环境的 `MilvusFailureSemanticsIT`，C5 MySQL 4 tests 均真实执行且 0 skipped。Python 33 tests / OK；SensitiveLogs 扫描 301 source files / PASS；`git diff --check` 无 whitespace error，仅既有 CRLF→LF 提示。
+- 跳过项：未运行前端 build，因为本 change 没有前端改动；未运行真实 embedding/rerank/judge/ask/LLM/provider 调用，实际调用量为 0，无业务数据出站、费用或限流风险；Milvus fault IT 不属于本 change，完整 Maven 中按其既有环境门禁跳过。
+- 范围安全：baseline `openspec/specs/` 尚未修改；未修改 API/DTO、前端、retrieval/generation/evaluation、POM/依赖、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险与闸门：实现债务已清空；V9 部署会保留同一 document/chunk_index 的最早行并删除历史重复行，已在 design 决策记录和 V7→V9 真实迁移中验证。仍需用户验收后才能接受 delta、归档 change、恢复 `IDLE` 并进入 C6 规划。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(索引): 收口C5任务恢复与事务幂等债务`。

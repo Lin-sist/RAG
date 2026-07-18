@@ -25,4 +25,28 @@ class MySqlIndexTaskLedgerTest {
         verify(mapper).claim("task-1", "worker-a", 300, 3);
         verify(mapper).claim("task-1", "worker-b", 300, 3);
     }
+
+    @Test
+    void reconciliationTransitionIsNotRestrictedToVectorInFlight() {
+        IndexTaskMapper mapper = mock(IndexTaskMapper.class);
+        MySqlIndexTaskLedger ledger = new MySqlIndexTaskLedger(mapper, new DocumentChunkingProperties());
+        when(mapper.markReconciliationRequired(
+                "task-contract-mismatch", "INDEX_CONTRACT_MISMATCH")).thenReturn(1);
+
+        ledger.markReconciliationRequired("task-contract-mismatch", "INDEX_CONTRACT_MISMATCH");
+
+        verify(mapper).markReconciliationRequired(
+                "task-contract-mismatch", "INDEX_CONTRACT_MISMATCH");
+    }
+
+    @Test
+    void scanExcludesAttemptsAtConfiguredMaximum() {
+        IndexTaskMapper mapper = mock(IndexTaskMapper.class);
+        MySqlIndexTaskLedger ledger = new MySqlIndexTaskLedger(mapper, new DocumentChunkingProperties());
+        when(mapper.scanClaimable(20, 3)).thenReturn(java.util.List.of());
+
+        ledger.scanClaimable(20, 3);
+
+        verify(mapper).scanClaimable(20, 3);
+    }
 }

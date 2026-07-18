@@ -8,6 +8,7 @@ import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.kb.service.impl.DocumentIndexingServiceImpl;
 import com.enterprise.rag.admin.kb.storage.IndexInputStore;
 import com.enterprise.rag.admin.kb.task.IndexTaskLedger;
+import com.enterprise.rag.admin.kb.task.IndexTaskSqlFinalizer;
 import com.enterprise.rag.admin.kb.storage.StoredIndexInput;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
@@ -228,6 +229,7 @@ class MilvusFailureSemanticsIT {
                 new NoOpKeywordIndex(),
                 indexInputStore,
                 indexTaskLedger,
+                mock(IndexTaskSqlFinalizer.class),
                 new DocumentChunkingProperties());
 
         MockMultipartFile file = new MockMultipartFile(

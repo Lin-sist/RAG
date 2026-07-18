@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-17
+> 状态日期：2026-07-18
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
@@ -25,13 +25,12 @@
 - 后续进展：LLM、Redis、Milvus 故障语义、C5a durable input 与 C5b 已实现范围均已按独立 OpenSpec change 接受进 baseline。
 - 证据：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`、`openspec/changes/archive/2026-07-15-llm-provider-resilience/`、`openspec/changes/archive/2026-07-15-redis-failure-semantics/`、`openspec/changes/archive/2026-07-15-milvus-failure-semantics/`、`openspec/changes/archive/2026-07-16-durable-index-inputs/`。
 
-### 4. C5b 后续协调完整性
+### 4. C5 恢复债务（实现完成，待 change 验收）
 
-- legacy PENDING/FAILED + AVAILABLE 且无 ledger/phase 的记录尚未自动标记 `RECONCILIATION_REQUIRED`。
-- coordinator 具备 DB claim/lease/heartbeat 原语，但持续 heartbeat、实际 concurrency 执行、指数 backoff 与 attempt exhausted 稳定终态尚未闭环。
-- VECTOR_CONFIRMED 收尾可避免 vector replay，但 document count 与跨多表 finalize 尚缺事务性或严格幂等证明。
-- 尚缺真实 MySQL V1/V7/legacy migration、双 coordinator 并发、Redis restart 与 crash-window 集成验证。
-- 以上事项进入下一阶段规划候选；不得用 C5b 已归档声称它们已经完成。
+- 已实现：legacy 无 ledger 文档有界隔离；固定有界 coordinator、持续 heartbeat、DB-time 指数 backoff、attempt exhausted `FAILED/TERMINAL`；lease 丢失在 embedding/vector mutation 前 fail closed。
+- 已实现：独立 `@Transactional` SQL finalizer 使用 document row lock，原子覆盖 chunks、document 状态/哈希/计数、knowledge-base document count 与 durable task completion；V9 增加 `(document_id, chunk_index)` 唯一约束并兼容清理历史重复行。
+- 真实验证：MySQL 8.0.36 覆盖 fresh/V1/V7→V9、legacy 数据、双 claimant、owner/expiry heartbeat、backoff、attempt 终态、finalize 幂等与 rollback；Redis 7 stop/start 覆盖 outage 503 与 durable owner 投影重建。
+- 当前只剩治理闸门：`2026-07-18-c5-recovery-debt-closeout` 尚待用户验收后接受 delta、归档并恢复 `IDLE`；不再登记为 C6 实现债务。
 
 ## P1：下一轮 RAG 质量工程
 

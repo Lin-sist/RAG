@@ -22,5 +22,10 @@ public enum DocumentStatus {
     /**
      * 处理失败
      */
-    FAILED
+    FAILED,
+
+    /**
+     * 需要人工或显式恢复决策；协调器不得自动重放
+     */
+    RECONCILIATION_REQUIRED
 }

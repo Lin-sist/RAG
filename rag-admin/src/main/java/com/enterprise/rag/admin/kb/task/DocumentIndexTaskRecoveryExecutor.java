@@ -11,7 +11,7 @@ public class DocumentIndexTaskRecoveryExecutor implements IndexTaskRecoveryExecu
     private final DocumentIndexingServiceImpl indexingService;
 
     @Override
-    public void resume(IndexTaskRecord task) {
-        indexingService.resumeIndexTask(task);
+    public void resume(IndexTaskRecord task, IndexTaskLeaseGuard leaseGuard) {
+        indexingService.resumeIndexTask(task, leaseGuard);
     }
 }

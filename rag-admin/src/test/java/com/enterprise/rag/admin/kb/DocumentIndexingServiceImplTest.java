@@ -14,6 +14,8 @@ import com.enterprise.rag.admin.kb.storage.StoredIndexInput;
 import com.enterprise.rag.admin.kb.task.IndexTaskLedger;
 import com.enterprise.rag.admin.kb.task.IndexTaskRecord;
 import com.enterprise.rag.admin.kb.task.IndexTaskPhase;
+import com.enterprise.rag.admin.kb.task.IndexTaskLeaseLostException;
+import com.enterprise.rag.admin.kb.task.IndexTaskSqlFinalizer;
 import com.enterprise.rag.admin.kb.task.DeterministicChunkIdentity;
 import com.enterprise.rag.common.async.AsyncTask;
 import com.enterprise.rag.common.async.AsyncTaskManager;
@@ -73,6 +75,7 @@ class DocumentIndexingServiceImplTest {
     private final VectorStore vectorStore = mock(VectorStore.class);
     private final IndexInputStore indexInputStore = mock(IndexInputStore.class);
     private final IndexTaskLedger indexTaskLedger = mock(IndexTaskLedger.class);
+    private final IndexTaskSqlFinalizer sqlFinalizer = mock(IndexTaskSqlFinalizer.class);
 
     private final DocumentIndexingServiceImpl service = new DocumentIndexingServiceImpl(
             documentService,
@@ -85,6 +88,7 @@ class DocumentIndexingServiceImplTest {
             new NoOpKeywordIndex(),
             indexInputStore,
             indexTaskLedger,
+            sqlFinalizer,
             new DocumentChunkingProperties());
 
     @BeforeEach
@@ -291,10 +295,10 @@ class DocumentIndexingServiceImplTest {
         when(documentService.getByKnowledgeBaseAndContentHash(10L, "hash-1")).thenReturn(Optional.empty());
         when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
         when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] { 0.1f, 0.2f }));
-        when(documentService.getChunksByDocumentId(99L)).thenReturn(List.of(), List.of(savedChunk));
         doThrow(new RuntimeException("db glitch"))
                 .doNothing()
-                .when(documentService).updateContentHash(99L, "hash-1");
+                .when(sqlFinalizer).finalizeSql(eq("task-99"), eq(10L), eq(99L),
+                        eq("hash-1"), anyList());
 
         service.submitIndexing(10L, 20L, file, "retry.md");
 
@@ -305,13 +309,13 @@ class DocumentIndexingServiceImplTest {
 
         verify(vectorStore, times(1)).upsert(eq("kb_retry"), anyList());
         verify(indexTaskLedger).markVectorConfirmed("task-99");
-        verify(documentService, times(1)).saveChunks(anyList());
-        verify(documentService, times(1)).updateStatus(99L, DocumentStatus.COMPLETED.name());
+        verify(sqlFinalizer, times(2)).finalizeSql(eq("task-99"), eq(10L), eq(99L),
+                eq("hash-1"), anyList());
         verify(documentService).updateInputState(99L, IndexInputState.CLEANUP_PENDING.name());
         verify(indexInputStore).delete("objects/input.bin");
         verify(documentService).updateInputState(99L, IndexInputState.CLEANED.name());
         verify(documentService, never()).updateStatus(99L, DocumentStatus.FAILED.name());
-        verify(knowledgeBaseService, times(1)).updateDocumentCount(10L, 1);
+        verify(knowledgeBaseService, never()).updateDocumentCount(10L, 1);
     }
 
     @Test
@@ -480,8 +484,8 @@ class DocumentIndexingServiceImplTest {
 
         verify(embeddingService, never()).embedBatch(anyList());
         verify(vectorStore, never()).upsert(any(String.class), anyList());
-        verify(documentService).saveChunks(anyList());
-        verify(indexTaskLedger).markCompleted("task-160");
+        verify(sqlFinalizer).finalizeSql(eq("task-160"), eq(10L), eq(160L),
+                eq("hash-160"), anyList());
         verify(indexInputStore).delete("objects/input.bin");
     }
 
@@ -521,7 +525,48 @@ class DocumentIndexingServiceImplTest {
         verify(indexTaskLedger).markSafePreVector("task-170");
         verify(indexTaskLedger).markVectorInFlight("task-170", "hash-170", 1);
         verify(vectorStore, times(1)).upsert(eq("kb_safe_resume"), anyList());
-        verify(indexTaskLedger).markCompleted("task-170");
+        verify(sqlFinalizer).finalizeSql(eq("task-170"), eq(10L), eq(170L),
+                eq("hash-170"), anyList());
+    }
+
+    @Test
+    void lostLeaseStopsBeforeEmbeddingAndVectorMutation() throws Exception {
+        Document document = new Document();
+        document.setId(171L);
+        document.setKbId(10L);
+        document.setTitle("lost-lease");
+        document.setFileType("md");
+        document.setFilePath("objects/input.bin");
+        document.setInputSizeBytes(12L);
+        document.setInputSha256("abc123");
+        DocumentChunk chunk = new DocumentChunk("random", "content", 0, 7, Map.of());
+        ProcessResult result = ProcessResult.newDocument("doc-171", "hash-171", "content", List.of(chunk));
+        KnowledgeBaseDTO kb = new KnowledgeBaseDTO();
+        kb.setVectorCollection("kb_lost_lease");
+        IndexTaskRecord task = new IndexTaskRecord();
+        task.setTaskId("task-171");
+        task.setDocumentId(171L);
+        task.setExecutionPhase(IndexTaskPhase.SAFE_PRE_VECTOR.name());
+        task.setIndexContractVersion(DeterministicChunkIdentity.CONTRACT_VERSION);
+        task.setChunkSize(500);
+        task.setChunkOverlap(50);
+
+        when(documentService.getById(171L)).thenReturn(Optional.of(document));
+        stubStoredInput();
+        when(documentProcessor.process(any())).thenReturn(result);
+        when(documentService.getByKnowledgeBaseAndContentHash(10L, "hash-171"))
+                .thenReturn(Optional.empty());
+        when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
+        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] {0.1f}));
+
+        assertThrows(IndexTaskLeaseLostException.class,
+                () -> service.resumeIndexTask(task,
+                        () -> { throw new IndexTaskLeaseLostException(task.getTaskId()); }));
+
+        verify(embeddingService, never()).embedBatch(anyList());
+        verify(vectorStore, never()).upsert(any(String.class), anyList());
+        verify(indexTaskLedger, never()).markVectorInFlight(any(), any(),
+                org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test

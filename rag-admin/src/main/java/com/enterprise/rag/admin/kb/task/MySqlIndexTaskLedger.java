@@ -112,13 +112,7 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
 
     @Override
     public void markReconciliationRequired(String taskId, String failureCode) {
-        int updated = mapper.update(null, Wrappers.<IndexTaskRecord>lambdaUpdate()
-                .eq(IndexTaskRecord::getTaskId, taskId)
-                .eq(IndexTaskRecord::getExecutionPhase, IndexTaskPhase.VECTOR_IN_FLIGHT.name())
-                .set(IndexTaskRecord::getStatus, IndexTaskStatus.RECONCILIATION_REQUIRED.name())
-                .set(IndexTaskRecord::getFailureCode, failureCode)
-                .set(IndexTaskRecord::getLeaseOwner, null)
-                .set(IndexTaskRecord::getLeaseUntil, null));
+        int updated = mapper.markReconciliationRequired(taskId, failureCode);
         if (updated != 1) {
             throw new IllegalStateException("Index task was not quarantined: " + taskId);
         }
@@ -136,8 +130,8 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     }
 
     @Override
-    public List<IndexTaskRecord> scanClaimable(int limit) {
-        return mapper.scanClaimable(limit);
+    public List<IndexTaskRecord> scanClaimable(int limit, int maxAttempts) {
+        return mapper.scanClaimable(limit, maxAttempts);
     }
 
     @Override
@@ -148,6 +142,16 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     @Override
     public boolean heartbeat(String taskId, String workerId, int leaseSeconds) {
         return mapper.heartbeat(taskId, workerId, leaseSeconds) == 1;
+    }
+
+    @Override
+    public boolean markAttemptsExhausted(String taskId, String workerId, String failureCode) {
+        return mapper.markAttemptsExhausted(taskId, workerId, failureCode) == 1;
+    }
+
+    @Override
+    public boolean scheduleRetry(String taskId, String workerId, String failureCode, int backoffSeconds) {
+        return mapper.scheduleRetry(taskId, workerId, failureCode, backoffSeconds) == 1;
     }
 
     private void requireSingleUpdate(int updated, String message, String taskId) {
