@@ -41,8 +41,8 @@
 - [x] `python -B -m unittest discover -s scripts -p 'test_*.py'`。
 - [x] SensitiveLogs、受保护路径、公开 DTO/前端/retrieval/eval 与 `git diff --check`。
 - [x] 更新 project/architecture/roadmap/AGENT_LOG，将已完成 C5 实现债务改为待验收治理闸门。
-- [ ] 用户验收后接受 spec delta 进入 baseline。
-- [ ] 用户验收后归档 change、恢复 `IDLE`。
+- [x] 用户验收后接受 spec delta 进入 baseline。
+- [x] 用户验收后归档 change、恢复 `IDLE`。
 
 ## Commit Responsibility
 

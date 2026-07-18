@@ -697,3 +697,19 @@
 - 范围安全：baseline `openspec/specs/` 尚未修改；未修改 API/DTO、前端、retrieval/generation/evaluation、POM/依赖、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险与闸门：实现债务已清空；V9 部署会保留同一 document/chunk_index 的最早行并删除历史重复行，已在 design 决策记录和 V7→V9 真实迁移中验证。仍需用户验收后才能接受 delta、归档 change、恢复 `IDLE` 并进入 C6 规划。
 - Commit：`pending`；提交责任为用户手动提交。建议 `feat(索引): 收口C5任务恢复与事务幂等债务`。
+
+## 2026-07-18｜C5 recovery debt closeout 验收、baseline 接受与归档
+
+- 用户决策：用户明确确认 C5 债务收口验收通过，并要求更新相关文档状态；本轮不规划 C6。
+- 契约与治理：将 change 中 3 个 requirements / 7 个 scenarios 原文接受进 `openspec/specs/rag-system/spec.md`；完成 closeout tasks；同步 `openspec/project.md`、架构与路线图状态；恢复 `.ai/ACTIVE_TASK.md` 为 `IDLE`，并将 change 归档至 `openspec/changes/archive/2026-07-18-c5-recovery-debt-closeout/`。
+- 验证依据：沿用同一工作区验收前最终证据——`mvn -q test` 302 tests / 0 failures / 0 errors / 1 个既有 Milvus 环境门禁 skip；C5 MySQL 4 tests 与 Redis 2 tests 均真实执行且 0 skipped；Python 33 tests / OK；SensitiveLogs 301 source files / PASS；真实 provider 调用量为 0。
+- 本轮验证：检查归档源/目标、全部 tasks、`ACTIVE_TASK=IDLE`、无未归档 active change、delta-to-baseline exact match、受保护路径与 `git diff --check`。
+- 跳过项：本轮只做已验收能力的 baseline 接受、文档状态同步与归档，不修改 Java、migration、配置或测试，因此不重复运行 Maven、Python、前端 build、Docker/Failsafe 或 provider 调用。
+- 范围安全：未创建 C6 proposal/change，未改动 C6 规划；未修改 API/DTO、前端、retrieval/generation/evaluation、POM/依赖、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：C5 已登记实现债务清零；V9 部署仍会保留同一 document/chunk_index 的最早行并删除历史重复行，该行为已在 design 与 V7→V9 真实迁移中验证。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 验收归档C5恢复债务收口`。
+
+## 2026-07-18｜C5 recovery debt closeout 实现提交补录
+
+- Commit：`666dd9bb4e8185a8b56f86cc9178b01aa152b837`（`feat(索引): 收口C5任务恢复与事务幂等债务`）。
+- 结论：C5 legacy 隔离、有界协调、lease/backoff/attempt 终态、事务幂等收尾及真实 MySQL/Redis 验证已由用户手动提交；本条只补录上一执行提交的真实 hash，不记录本次治理收口提交。

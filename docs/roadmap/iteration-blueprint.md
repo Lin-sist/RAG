@@ -135,7 +135,7 @@
 ### C5a~C5b. 索引恢复（拆分）
 - 当前进展：C5a 与 C5b 已实现范围均已接受进 baseline；上传输入使用 durable filesystem，新任务使用 MySQL ledger、稳定 taskId、phase checkpoint 与 Redis 可重建投影。
 - C5b 已锁定并实现保守边界：SAFE_PRE_VECTOR/VECTOR_CONFIRMED 才可在显式开关下恢复，VECTOR_IN_FLIGHT/outcome unknown 只进入协调状态，不自动重放。
-- C5 遗留的 legacy 隔离、持续 heartbeat/backoff、attempt exhausted、finalize 严格幂等与真实 MySQL/Redis/crash-window 验证已在 `2026-07-18-c5-recovery-debt-closeout` 实现，待用户验收后接受并归档；C6 不再承接这些实现债务。
+- C5 遗留的 legacy 隔离、持续 heartbeat/backoff、attempt exhausted、finalize 严格幂等与真实 MySQL/Redis/crash-window 验证已在 `2026-07-18-c5-recovery-debt-closeout` 完成；用户验收通过后，delta 已接受并归档，上述 C5 实现债务已清零。
 
 ### C6. nvidia-reranker-adapter-and-attribution
 - 现状校正：当前 adapter 为通用 documents/results/relevance_score，registry 失败会 fallback 到 heuristic；现有单测只验证自建 mock 协议。
