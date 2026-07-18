@@ -713,3 +713,16 @@
 
 - Commit：`666dd9bb4e8185a8b56f86cc9178b01aa152b837`（`feat(索引): 收口C5任务恢复与事务幂等债务`）。
 - 结论：C5 legacy 隔离、有界协调、lease/backoff/attempt 终态、事务幂等收尾及真实 MySQL/Redis 验证已由用户手动提交；本条只补录上一执行提交的真实 hash，不记录本次治理收口提交。
+
+## 2026-07-18｜C6 NVIDIA reranker adapter 与 attribution 规划启动
+
+- 用户决策与提交责任：用户确认 C5 债务已经收口，并明确允许开始 C6 阶段规划；本轮建立 Type C OpenSpec 事前闸门，不进入生产实现。提交责任为 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 `main...origin/main [ahead 3]`、工作区干净，HEAD 为 `4fe45c0 docs(openspec): 验收归档C5恢复债务收口`；`.ai/ACTIVE_TASK.md=IDLE`，C5 recovery delta 已接受进 `rag-system` baseline，change 已归档，技术债明确标记 C5 已登记实现债务清零，允许进入 C6 规划。
+- 范围与修改文件：新增 `openspec/changes/2026-07-18-nvidia-reranker-adapter-and-attribution/{proposal.md,design.md,tasks.md,specs/rag-system/spec.md}`，并把 `.ai/ACTIVE_TASK.md` 指向该 change；未修改 Java、Python runner、配置、测试、baseline spec、架构/路线图或受保护本地文件。
+- 已确认事实：默认 reranker 仍是 heuristic；既有 `ModelReranker` 使用自建 `query + documents / results[].relevance_score` 协议，只有 fake server 单测；registry fallback 主要落日志，debug retrieval 丢失 `RetrievalResult.diagnostics`，因此现有 `enableRerank=true` 报告不能逐样本证明 requested/effective provider 与 fallback 覆盖。
+- 规划决策：建议新增独立 `nvidia` provider并保留通用 `model`；使用 typed outcome 把 requested/effective provider、fallback taxonomy、model calls、candidate/scored coverage、latency、model/protocol 合入 retrieval diagnostics；NVIDIA partial/invalid rankings 整次 fallback；raw logit 只决定排序、不伪装概率；debug、同步 QA 和 runner 共用同一归因；C7 才做收益 A/B。12 条真实岔路口已按三行决策记录写入 design，均等待用户事前闸门确认。
+- External calls：规划与离线实现测试的真实 embedding/rerank/judge/ask/LLM/provider 调用量均为 0；本轮未读取凭据、无数据出站、费用和限流风险。proposal 仅预留最多 1 次纯合成 NVIDIA ranking smoke 的独立授权闸门，当前未授权、未执行。
+- 验证结果：四个必需 artifacts 齐全；唯一未归档 active change 为 C6；design 为 12 decisions / 12 choice / 12 selected / 12 tradeoff lines；spec delta 为 4 requirements / 11 scenarios；tasks 为 3 项已完成、33 项待批准/实现；`ACTIVE_TASK=ACTIVE` 且 change id/path 一致；旧 Gherkin 粘连与 trailing whitespace 扫描无命中；`git diff --check` 通过。OpenSpec CLI 当前不在 PATH，因此未声称 CLI validation 通过。
+- 跳过项：本轮仅修改规划/治理文档，没有 Java、Python 或前端实现改动，未重复运行 Maven、Python、前端 build、Docker/Failsafe 或真实 provider smoke；最近一次已验收 C5 证据仍为 Maven 302 tests / 0 failures / 0 errors / 1 个既有 Milvus 环境 skip、Python 33 tests / OK、C5 MySQL/Redis 真实测试通过。
+- 范围安全与剩余风险：未修改默认 heuristic、retrieval/generation/citation/no-answer/judge 指标、数据库、索引状态机、POM/依赖、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`。proposal/design/tasks/spec delta 尚未获实现批准；实际 NVIDIA deployment/base URL/model/凭据与 live smoke 授权仍未知，未批准前不得写生产代码或产生外调。
+- Commit：`pending`。建议用户手动提交：`docs(openspec): 启动C6 NVIDIA重排适配与归因规划`。
