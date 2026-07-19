@@ -142,7 +142,7 @@
 - 目标：适配 NVIDIA ranking 真实协议；**逐样本**记录 requested/effective provider、fallback count/reason、model 调用数与实际覆盖样本数。
 - 用户故事：改之前无法证明重排是否真用了模型（失败静默 fallback）；改之后每次可看清用了哪种重排、fallback 几次。
 - 非目标：本 change 不下收益结论（留 C7）。
-- 当前进展：已实现独立 NVIDIA ranking adapter、typed outcome、整样本 fallback、同步 QA/debug/runner attribution，并通过本地合成协议测试与完整回归；用户已验收，delta 已接受并归档。默认仍为 heuristic，真实 NVIDIA endpoint smoke 未执行，边界为 protocol-tested/real-endpoint-unverified。
+- 当前进展：已实现独立 NVIDIA ranking adapter、typed outcome、整样本 fallback、同步 QA/debug/runner attribution，并通过本地合成协议测试与完整回归；用户已验收，delta 已接受并归档。归档后 1 次纯合成 hosted smoke 已验证当前 endpoint/auth/schema 与完整候选覆盖；默认仍为 heuristic，不下收益结论，C7 继续负责固定身份 A/B。
 
 ### C7. reranker-ab-evaluation
 - 目标：固定 KB/fixture/配置/Git HEAD，对比 heuristic 与 model 的 Recall@5、MRR、Top1、**逐样本延迟 P50/P95** 与降级行为。

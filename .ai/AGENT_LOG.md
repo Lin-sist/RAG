@@ -757,3 +757,18 @@
 - 能力边界：默认 provider 继续为 heuristic；本轮只证明 official schema、本地 HTTP contract、fallback 与 attribution 链路，不证明真实 NVIDIA endpoint/auth/deployment 可用，也不提供 NVIDIA 相对 heuristic 的收益结论；C7 A/B 仍需独立 change 与外调授权。
 - 范围安全：未修改 embedding、分块、hybrid/RRF、prompt、citation、no-answer、judge 指标、数据库/迁移、索引状态机、POM/依赖、前端、SSE、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未 push、创建 PR、部署或发布。
 - Commit：`pending`；提交责任为 Agent。计划提交信息：`feat(检索): 实现并验收C6 NVIDIA重排归因`。
+
+## 2026-07-19｜C6 归档提交补录
+
+- Commit：`33a1e26c999b2412164bd3e1359bc78009a51cba`（`feat(检索): 实现并验收C6 NVIDIA重排归因`）。本条只补录上一执行提交的真实 hash，不记录本次验证文档提交。
+
+## 2026-07-19｜C6 真实 NVIDIA hosted rerank smoke 与依赖复验
+
+- 范围与用户授权：用户独立授权 1 次 NVIDIA 纯合成 rerank smoke，并手动启动 Docker Desktop。本轮只验证 C6 真实 endpoint/auth/schema、项目 adapter 解析和依赖回归；不进入 C7 批量 A/B，不修改默认 provider。
+- 外部调用：真实 rerank 请求严格为 1 次、无自动或测试重试；模型 `nvidia/llama-nemotron-rerank-1b-v2`，hosted endpoint 为模型专属 `/v1/retrieval/nvidia/llama-nemotron-rerank-1b-v2/reranking`，timeout 为 20000ms，truncate 为 `END`。出站数据仅为 1 条合成英文问题和 3 条短合成 passages，不含用户、知识库、凭据或业务数据；embedding/ask/judge/LLM 调用量均为 0。
+- Smoke 结果：`NvidiaRerankerLiveSmokeTest` 1 test / 0 failures / 0 errors / 0 skipped，退出码 0；真实 response 完整覆盖 3 个候选，合成相关项排第一，requested/effective provider 均为 `nvidia`，fallback=0、model calls=1、coverage=100%，model/protocol 归因为预期值。无 4xx/5xx、timeout、network 或 provider failure；key 仅从 `.env.local` 读入进程环境，未输出或写入 tracked file。
+- Docker 与全量回归：Docker Engine 28.4.0 可用；compose 的 MySQL、Redis、Milvus、etcd、MinIO 均为 running/healthy。随后 `mvn -q test` 退出码 0；仅统计本轮新写入的 67 份 Surefire XML reports，共 312 tests / 0 failures / 0 errors / 0 skipped。`C5RecoveryMySqlTest` 4 项与 `KnownSeedMigrationMySqlTest` 4 项均真实执行通过；7 月 17 日遗留的 Milvus skip XML 属于陈旧 build artifact，未计入本轮结果。
+- 其他门禁：C6 聚焦 Java 49 tests / 0 failures / 0 errors / 0 skipped；Python 35 tests / OK；SensitiveLogs 扫描 305 source files / PASS；`git diff --check` 通过。临时 live smoke 测试文件已删除，未保留测试专用 endpoint、model 或调用脚手架。
+- 跳过与边界：未启动 backend 或执行 debug/QA 业务入口，避免在只授权 1 次 rerank 的情况下额外触发 embedding/rerank/ask；未运行前端 build，因为无前端改动。单次合成 smoke 只确认当前 key、hosted endpoint、schema 与 adapter 可用，不证明生产 SLA、配额长期稳定或 NVIDIA 相对 heuristic 的收益。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、数据库/迁移、索引状态机、retrieval/generation/citation/no-answer/judge 指标或生产默认 provider；未暂存、提交、push、创建 PR、部署或发布。C7 仍须独立 OpenSpec change、固定 KB/fixture/config/Git HEAD 与批量外调授权。
+- Commit：`pending`；本轮未获得新的 Agent 提交授权，默认由用户手动提交。建议：`docs(验收): 记录C6真实NVIDIA smoke结果`。

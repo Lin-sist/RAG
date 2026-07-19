@@ -12,7 +12,7 @@
 - 前端是 Vue 3 + TypeScript + Vite + Element Plus。
 - 默认向量库是 Milvus；另有 Qdrant、Elasticsearch adapter。
 - 默认检索是 dense vector + BM25 + RRF。
-- 默认 reranker 仍是 heuristic；除既有通用 HTTP model adapter 外，C6 已实现默认关闭的 NVIDIA `/v1/ranking` adapter、整样本 heuristic fallback 与逐次 requested/effective provider 归因，但真实 endpoint 和收益 A/B 尚未验证。
+- 默认 reranker 仍是 heuristic；除既有通用 HTTP model adapter 外，C6 已实现默认关闭的 NVIDIA ranking adapter、整样本 heuristic fallback 与逐次 requested/effective provider 归因。归档后单次纯合成 hosted smoke 已验证当前 key、模型专属 endpoint、真实响应 schema 与 adapter 解析；收益 A/B 尚未验证。
 - 默认分块为 `420/80`。
 - 同步问答返回答案、contexts、citations、metadata；SSE 当前主要输出文本 chunk。
 - 评测集为 30 条开发样本，具备固定 KB、retrieval/generation/citation/no-answer 指标。
@@ -20,7 +20,7 @@
 - LLM、Redis 与默认 Milvus 的故障语义已分别被测试锁定；Milvus dense route 仅在关键词证据可用时显式降级，mutation outcome unknown、删除和统计均不伪造成功。
 - 文档索引已具备 C5a durable input、MySQL durable task ledger 与 C5 恢复债务收口实现：新任务使用稳定 taskId、phase checkpoint 与 deterministic chunk/vector IDs；Redis 是可重建状态投影。legacy 无 ledger 只隔离不合成任务；协调器使用有界 concurrency、持续 heartbeat、DB-time backoff 与 attempt 终态；SQL finalize 以 document row lock 和单一事务保证 chunks/document count/task completion 幂等。provider auto resume 默认继续关闭；相关契约已接受进 `rag-system` baseline，change 已归档。
 - C6 rerank diagnostics 已通过显式 outcome 合入 `RetrievalResult`，同步问答 metadata、debug retrieval 与 Python eval details/report 可区分 requested/effective provider、fallback taxonomy、model calls、候选覆盖与延迟；不记录 query/passages/raw body/凭据。
-- C6 的 4 个 requirements / 11 个 scenarios 已接受进 `rag-system` baseline并归档；用户确认 protocol-tested/real-endpoint-unverified 边界，真实 NVIDIA endpoint 与收益仍留待后续独立授权和 C7 A/B。
+- C6 的 4 个 requirements / 11 个 scenarios 已接受进 `rag-system` baseline 并归档；归档后用户独立授权的 1 次纯合成 NVIDIA hosted rerank smoke 已通过，无重试且未使用知识库/用户数据。该结果只确认当前 endpoint/auth/protocol 可用，不替代 C7 的固定身份收益 A/B。
 
 ## 当前边界
 
