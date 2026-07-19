@@ -7,6 +7,8 @@ import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.rerank.HeuristicReranker;
 import com.enterprise.rag.core.rag.rerank.ModelReranker;
+import com.enterprise.rag.core.rag.rerank.NvidiaReranker;
+import com.enterprise.rag.core.rag.rerank.RerankOutcome;
 import com.enterprise.rag.core.rag.rerank.RerankerRegistry;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.SearchResult;
@@ -84,7 +86,10 @@ public class QueryEngineImpl implements QueryEngine {
             RetrievalProperties retrievalProperties) {
         this(embeddingService, vectorStore, keywordIndex, retrievalProperties,
                 new RerankerRegistry(
-                        List.of(new HeuristicReranker(), new ModelReranker(retrievalProperties)),
+                        List.of(
+                                new HeuristicReranker(),
+                                new ModelReranker(retrievalProperties),
+                                new NvidiaReranker(retrievalProperties)),
                         retrievalProperties));
     }
 
@@ -147,20 +152,30 @@ public class QueryEngineImpl implements QueryEngine {
             throw vectorFailure;
         }
 
+        Map<String, Object> rerankDiagnostics;
         // 3. 如果启用重排序，执行重排序
         if (options.enableRerank() && !contexts.isEmpty()) {
-            contexts = rerankerRegistry.rerank(query, contexts.stream()
+            RerankOutcome rerankOutcome = rerankerRegistry.rerankWithDiagnostics(query, contexts.stream()
                     .limit(rerankTopN())
                     .toList());
+            contexts = rerankOutcome.contexts();
+            rerankDiagnostics = rerankOutcome.diagnostics().toMap();
             log.debug("Reranked {} contexts", contexts.size());
+        } else {
+            rerankDiagnostics = rerankerRegistry
+                    .diagnosticsWithoutExecution(options.enableRerank(), contexts.size())
+                    .toMap();
         }
 
         List<RetrievedContext> finalContexts = contexts.stream()
                 .limit(finalTopK(options.topK()))
                 .toList();
-        return vectorFailure == null
-                ? RetrievalResult.complete(finalContexts)
-                : RetrievalResult.keywordOnly(finalContexts);
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        if (vectorFailure != null) {
+            diagnostics.putAll(RetrievalResult.keywordOnly(finalContexts).diagnostics());
+        }
+        diagnostics.putAll(rerankDiagnostics);
+        return new RetrievalResult(finalContexts, diagnostics);
     }
 
     private boolean isHybridEnabled() {

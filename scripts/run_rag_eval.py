@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -435,6 +436,39 @@ def parse_bool(value: Any) -> bool | None:
     return None
 
 
+def extract_rerank_attribution(debug_response: dict[str, Any] | None) -> dict[str, Any]:
+    diagnostics = debug_response.get("diagnostics", {}) if isinstance(debug_response, dict) else {}
+    if not isinstance(diagnostics, dict):
+        diagnostics = {}
+
+    def integer(key: str) -> int:
+        try:
+            return max(0, int(diagnostics.get(key, 0)))
+        except (TypeError, ValueError):
+            return 0
+
+    def number(key: str) -> float:
+        try:
+            value = float(diagnostics.get(key, 0.0))
+            return value if math.isfinite(value) else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+
+    return {
+        "requestedProvider": str(diagnostics.get("rerankRequestedProvider", "unknown")),
+        "effectiveProvider": str(diagnostics.get("rerankEffectiveProvider", "unknown")),
+        "fallbackCount": integer("rerankFallbackCount"),
+        "fallbackReason": str(diagnostics.get("rerankFallbackReason", "unknown")),
+        "modelCallCount": integer("rerankModelCallCount"),
+        "candidateCount": integer("rerankCandidateCount"),
+        "scoredCount": integer("rerankScoredCount"),
+        "candidateCoverage": min(1.0, max(0.0, number("rerankCoverage"))),
+        "latencyMillis": integer("rerankLatencyMillis"),
+        "model": str(diagnostics.get("rerankModel", "")),
+        "protocol": str(diagnostics.get("rerankProtocol", "unknown")),
+    }
+
+
 def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> SampleResult:
     question = sample["question"]
     debug_response: dict[str, Any] | None = None
@@ -561,6 +595,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             "answer_points": sample.get("expected_answer_points") or [],
         },
         "debugRetrieveRawResponse": debug_response,
+        "rerankAttribution": extract_rerank_attribution(debug_response),
         "normalizedSources": normalized_sources,
         "askRawResponse": ask_response,
         "judgeRawResponse": judge_response,
@@ -980,7 +1015,49 @@ def normalized_source_candidates(item: dict[str, Any] | None) -> set[str]:
     return forms
 
 
-def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
+def aggregate_rerank_attributions(attributions: list[dict[str, Any]]) -> dict[str, Any]:
+    effective_counts: dict[str, int] = {}
+    fallback_reasons: dict[str, int] = {}
+    total_fallbacks = 0
+    total_model_calls = 0
+    total_candidates = 0
+    total_scored = 0
+    effective_model_samples = 0
+    attributed_samples = 0
+
+    for attribution in attributions:
+        if not isinstance(attribution, dict):
+            continue
+        effective = str(attribution.get("effectiveProvider", "unknown"))
+        if effective != "unknown":
+            attributed_samples += 1
+        effective_counts[effective] = effective_counts.get(effective, 0) + 1
+        if effective not in {"heuristic", "disabled", "not_run", "unknown"}:
+            effective_model_samples += 1
+
+        fallback_count = max(0, int(attribution.get("fallbackCount", 0) or 0))
+        total_fallbacks += fallback_count
+        reason = str(attribution.get("fallbackReason", "unknown"))
+        if fallback_count > 0:
+            fallback_reasons[reason] = fallback_reasons.get(reason, 0) + fallback_count
+        total_model_calls += max(0, int(attribution.get("modelCallCount", 0) or 0))
+        total_candidates += max(0, int(attribution.get("candidateCount", 0) or 0))
+        total_scored += max(0, int(attribution.get("scoredCount", 0) or 0))
+
+    return {
+        "attributedSamples": attributed_samples,
+        "effectiveProviderCounts": effective_counts,
+        "modelCoverage": ratio(effective_model_samples, attributed_samples),
+        "fallbackCount": total_fallbacks,
+        "fallbackReasonHistogram": fallback_reasons,
+        "totalModelCalls": total_model_calls,
+        "candidateCoverage": ratio(total_scored, total_candidates),
+        "candidateCount": total_candidates,
+        "scoredCount": total_scored,
+    }
+
+
+def aggregate(results: list[SampleResult]) -> dict[str, Any]:
     answerable = [result for result in results if result.sample.get("should_answer", True)]
     no_answer = [result for result in results if not result.sample.get("should_answer", True)]
     ask_success = [
@@ -1024,6 +1101,9 @@ def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
     generation_skipped = ask_skipped == len(results) if results else False
     judge_skipped = sum(1 for result in results if result.skipped_judge) == len(results) if results else False
     no_answer_ok_count = sum(1 for value in no_answer_values if value)
+    rerank_attribution = aggregate_rerank_attributions([
+        result.details.get("rerankAttribution", {}) for result in results
+    ])
 
     return {
         "samples": len(results),
@@ -1057,6 +1137,7 @@ def aggregate(results: list[SampleResult]) -> dict[str, float | int | str]:
         "no_answer_evaluable_total": len(no_answer_values),
         "judge_pass_count": sum(1 for value in judge_pass_values if value),
         "judge_pass_total": len(judge_pass_values),
+        "rerank_attribution": rerank_attribution,
     }
 
 
@@ -1228,6 +1309,20 @@ def write_report(
     lines.append(f"| LLM judge pass rate | {pct(metrics['judge_pass_rate'])} ({metrics['judge_pass_count']}/{metrics['judge_pass_total']}) |")
     lines.append(f"| Faithfulness average | {pct(metrics['faithfulness_avg'])} |")
     lines.append(f"| Relevance average | {pct(metrics['relevance_avg'])} |")
+    lines.append("")
+
+    rerank = metrics["rerank_attribution"]
+    lines.append("## Rerank Attribution")
+    lines.append("")
+    lines.append("| Fact | Value |")
+    lines.append("|---|---:|")
+    lines.append(f"| Attributed samples | {rerank['attributedSamples']} |")
+    lines.append(f"| Effective provider counts | `{json.dumps(rerank['effectiveProviderCounts'], sort_keys=True)}` |")
+    lines.append(f"| Effective model coverage | {pct(rerank['modelCoverage'])} |")
+    lines.append(f"| Fallback count | {rerank['fallbackCount']} |")
+    lines.append(f"| Fallback reason histogram | `{json.dumps(rerank['fallbackReasonHistogram'], sort_keys=True)}` |")
+    lines.append(f"| Total model calls | {rerank['totalModelCalls']} |")
+    lines.append(f"| Candidate coverage | {pct(rerank['candidateCoverage'])} ({rerank['scoredCount']}/{rerank['candidateCount']}) |")
     lines.append("")
 
     lines.append("## Sample Results")

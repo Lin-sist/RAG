@@ -91,7 +91,8 @@ public class RAGServiceImpl implements RAGService {
 
             // 3. 处理无结果情况
             if (contexts.isEmpty()) {
-                contexts = retryExplanatoryRetrieval(question, request, collectionName);
+                retrievalResult = retryExplanatoryRetrieval(question, request, collectionName, retrievalResult);
+                contexts = retrievalResult.contexts();
             }
 
             if (contexts.isEmpty()) {
@@ -169,7 +170,8 @@ public class RAGServiceImpl implements RAGService {
             long retrievalLatencyMs = System.currentTimeMillis() - retrievalStartTime;
 
             if (contexts.isEmpty()) {
-                contexts = retryExplanatoryRetrieval(question, request, collectionName);
+                retrievalResult = retryExplanatoryRetrieval(question, request, collectionName, retrievalResult);
+                contexts = retrievalResult.contexts();
             }
 
             log.info("stream_retrieval_done collection={}, retrievalLatencyMs={}, contextCount={}, topScores={}",
@@ -354,14 +356,18 @@ public class RAGServiceImpl implements RAGService {
         }
     }
 
-    private List<RetrievedContext> retryExplanatoryRetrieval(String question, QARequest request, String collectionName) {
+    private RetrievalResult retryExplanatoryRetrieval(
+            String question,
+            QARequest request,
+            String collectionName,
+            RetrievalResult initialResult) {
         if (!isExplanatoryQuestion(question)) {
-            return List.of();
+            return initialResult;
         }
 
         List<String> fallbackQueries = buildExplanatoryFallbackQueries(question);
         if (fallbackQueries.isEmpty()) {
-            return List.of();
+            return initialResult;
         }
 
         float fallbackMinScore = Math.min(request.minScore(), EXPLANATORY_FALLBACK_MIN_SCORE);
@@ -369,7 +375,8 @@ public class RAGServiceImpl implements RAGService {
             fallbackMinScore = request.minScore();
         }
 
-        List<RetrievedContext> merged = new ArrayList<>();
+        List<RetrievalResult> attempts = new ArrayList<>();
+        attempts.add(initialResult);
         for (String fallbackQuery : fallbackQueries) {
             RetrieveOptions fallbackOptions = new RetrieveOptions(
                     collectionName,
@@ -377,18 +384,51 @@ public class RAGServiceImpl implements RAGService {
                     fallbackMinScore,
                     request.filter(),
                     true);
-            List<RetrievedContext> fallbackContexts = queryEngine.retrieve(fallbackQuery, fallbackOptions);
+            RetrievalResult fallbackResult = retrieveWithDiagnostics(fallbackQuery, fallbackOptions);
+            attempts.add(fallbackResult);
+            List<RetrievedContext> fallbackContexts = fallbackResult.contexts();
             if (!fallbackContexts.isEmpty()) {
                 log.info("explanatory_retrieval_fallback_hit fallbackMinScore={}, contextCount={}",
                         fallbackMinScore, fallbackContexts.size());
+                List<RetrievedContext> contexts = fallbackContexts.stream()
+                        .sorted(Comparator.comparingDouble(RetrievedContext::relevanceScore).reversed())
+                        .limit(request.topK())
+                        .toList();
+                return withAccumulatedRerankFacts(new RetrievalResult(contexts, fallbackResult.diagnostics()), attempts);
             }
-            mergeDistinctContexts(merged, fallbackContexts);
         }
 
-        return merged.stream()
-                .sorted(Comparator.comparingDouble(RetrievedContext::relevanceScore).reversed())
-                .limit(request.topK())
-                .toList();
+        RetrievalResult lastAttempt = attempts.get(attempts.size() - 1);
+        return withAccumulatedRerankFacts(lastAttempt, attempts);
+    }
+
+    private RetrievalResult withAccumulatedRerankFacts(
+            RetrievalResult effectiveResult,
+            List<RetrievalResult> attempts) {
+        Map<String, Object> diagnostics = new LinkedHashMap<>(effectiveResult.diagnostics());
+        diagnostics.put("rerankModelCallCount", attempts.stream()
+                .map(RetrievalResult::diagnostics)
+                .mapToInt(facts -> intDiagnostic(facts, "rerankModelCallCount"))
+                .sum());
+        diagnostics.put("rerankFallbackCount", attempts.stream()
+                .map(RetrievalResult::diagnostics)
+                .mapToInt(facts -> intDiagnostic(facts, "rerankFallbackCount"))
+                .sum());
+        diagnostics.put("rerankLatencyMillis", attempts.stream()
+                .map(RetrievalResult::diagnostics)
+                .mapToLong(facts -> longDiagnostic(facts, "rerankLatencyMillis"))
+                .sum());
+        return new RetrievalResult(effectiveResult.contexts(), diagnostics);
+    }
+
+    private int intDiagnostic(Map<String, Object> diagnostics, String key) {
+        Object value = diagnostics.get(key);
+        return value instanceof Number number ? Math.max(0, number.intValue()) : 0;
+    }
+
+    private long longDiagnostic(Map<String, Object> diagnostics, String key) {
+        Object value = diagnostics.get(key);
+        return value instanceof Number number ? Math.max(0L, number.longValue()) : 0L;
     }
 
     private boolean isExplanatoryQuestion(String question) {
@@ -471,30 +511,6 @@ public class RAGServiceImpl implements RAGService {
         return question.trim()
                 .replaceAll("[\\s？?！!。,.，；;：:]+$", "")
                 .replaceAll("\\s+", " ");
-    }
-
-    private void mergeDistinctContexts(List<RetrievedContext> merged, List<RetrievedContext> additions) {
-        if (additions == null || additions.isEmpty()) {
-            return;
-        }
-        for (RetrievedContext addition : additions) {
-            boolean exists = merged.stream().anyMatch(existing -> sameContext(existing, addition));
-            if (!exists) {
-                merged.add(addition);
-            }
-        }
-    }
-
-    private boolean sameContext(RetrievedContext left, RetrievedContext right) {
-        if (left == null || right == null) {
-            return false;
-        }
-
-        String leftSource = left.source() == null ? "" : left.source().trim();
-        String rightSource = right.source() == null ? "" : right.source().trim();
-        String leftContent = left.content() == null ? "" : left.content().trim();
-        String rightContent = right.content() == null ? "" : right.content().trim();
-        return leftSource.equalsIgnoreCase(rightSource) && leftContent.equalsIgnoreCase(rightContent);
     }
 
     @Override

@@ -19,6 +19,7 @@ import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.generator.LLMException;
 import com.enterprise.rag.core.rag.query.QueryEngine;
+import com.enterprise.rag.core.rag.query.RetrievalResult;
 import com.enterprise.rag.core.rag.service.RAGService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -66,6 +67,18 @@ public class QAController {
     private static final ObjectMapper DEBUG_OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> STRING_OBJECT_MAP = new TypeReference<>() {
     };
+    private static final List<String> RERANK_DIAGNOSTIC_KEYS = List.of(
+            "rerankRequestedProvider",
+            "rerankEffectiveProvider",
+            "rerankFallbackCount",
+            "rerankFallbackReason",
+            "rerankModelCallCount",
+            "rerankCandidateCount",
+            "rerankScoredCount",
+            "rerankCoverage",
+            "rerankLatencyMillis",
+            "rerankModel",
+            "rerankProtocol");
 
     private final RAGService ragService;
     private final KnowledgeBaseService knowledgeBaseService;
@@ -283,8 +296,11 @@ public class QAController {
         List<String> warnings = new ArrayList<>();
         List<QueryVariantDebugItem> queryVariants = safeExplainQueryVariants(request.question(), warnings);
         List<RetrievedContext> contexts;
+        Map<String, Object> diagnostics;
         try {
-            contexts = queryEngine.retrieve(request.question(), retrieveOptions);
+            RetrievalResult retrievalResult = queryEngine.retrieveWithDiagnostics(request.question(), retrieveOptions);
+            contexts = retrievalResult.contexts();
+            diagnostics = sanitizeRetrievalDiagnostics(retrievalResult.diagnostics());
             if (contexts == null) {
                 warnings.add("QueryEngine returned null contexts; treated as empty result.");
                 contexts = List.of();
@@ -308,6 +324,7 @@ public class QAController {
                     "retrieve_failed",
                     message,
                     warnings,
+                    failedRetrievalDiagnostics(),
                     List.of());
 
             return ResponseEntity.ok(ApiResponse.success(response, "debug retrieve failed"));
@@ -398,9 +415,39 @@ public class QAController {
                 "ok",
                 null,
                 warnings,
+                diagnostics,
                 items);
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    private Map<String, Object> sanitizeRetrievalDiagnostics(Map<String, Object> diagnostics) {
+        if (diagnostics == null || diagnostics.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> sanitized = new LinkedHashMap<>();
+        for (String key : RERANK_DIAGNOSTIC_KEYS) {
+            Object value = diagnostics.get(key);
+            if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+                sanitized.put(key, value);
+            }
+        }
+        return Map.copyOf(sanitized);
+    }
+
+    private Map<String, Object> failedRetrievalDiagnostics() {
+        return Map.ofEntries(
+                Map.entry("rerankRequestedProvider", "unknown"),
+                Map.entry("rerankEffectiveProvider", "not_run"),
+                Map.entry("rerankFallbackCount", 0),
+                Map.entry("rerankFallbackReason", "none"),
+                Map.entry("rerankModelCallCount", 0),
+                Map.entry("rerankCandidateCount", 0),
+                Map.entry("rerankScoredCount", 0),
+                Map.entry("rerankCoverage", 0.0d),
+                Map.entry("rerankLatencyMillis", 0),
+                Map.entry("rerankModel", ""),
+                Map.entry("rerankProtocol", "unknown"));
     }
 
     private void logStreamDiagnostics(String event,
@@ -1039,6 +1086,7 @@ public class QAController {
             String status,
             String message,
             List<String> warnings,
+            Map<String, Object> diagnostics,
             List<RetrievedContextDebugItem> contexts) {
     }
 

@@ -726,3 +726,34 @@
 - 跳过项：本轮仅修改规划/治理文档，没有 Java、Python 或前端实现改动，未重复运行 Maven、Python、前端 build、Docker/Failsafe 或真实 provider smoke；最近一次已验收 C5 证据仍为 Maven 302 tests / 0 failures / 0 errors / 1 个既有 Milvus 环境 skip、Python 33 tests / OK、C5 MySQL/Redis 真实测试通过。
 - 范围安全与剩余风险：未修改默认 heuristic、retrieval/generation/citation/no-answer/judge 指标、数据库、索引状态机、POM/依赖、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`。proposal/design/tasks/spec delta 尚未获实现批准；实际 NVIDIA deployment/base URL/model/凭据与 live smoke 授权仍未知，未批准前不得写生产代码或产生外调。
 - Commit：`pending`。建议用户手动提交：`docs(openspec): 启动C6 NVIDIA重排适配与归因规划`。
+
+## 2026-07-18｜C6 规划批准与 TDD 实现启动
+
+- 用户决策：用户批准 C6 proposal scope/non-goals、design 12 条决策记录、tasks 与 `rag-system` spec delta，并明确要求开始实现；C6/C7 边界保持不变。
+- 提交责任：继续为`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 外部调用：真实 NVIDIA live smoke 未获单独授权，当前 rerank/embedding/ask/judge/LLM/provider 真实调用预算均为 0；实现与验证仅使用本地合成 HTTP server。
+- 实现顺序：按 TDD 小切片依次完成 NVIDIA `/v1/ranking` 协议适配、typed outcome 与整样本 fallback、retrieval/debug/同步 QA attribution、Python runner 逐样本与聚合归因。
+- 范围安全：本条只同步批准状态与实现入口；未接受 baseline delta、未恢复 `IDLE`、未归档 change，未修改受保护本地配置。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-18｜C6 NVIDIA reranker adapter 与 attribution 实现完成、待验收
+
+- 实现范围：新增默认关闭的独立 `nvidia` provider，按 `/v1/ranking` 发送 `model + query.text + passages[].text + truncate` 并解析完整唯一的 `rankings[].index/logit`；raw logit 仅决定顺序，原 retrieval score 保留，logit/rank 写独立 metadata。配置使用独立 `NVIDIA_RERANK_*` 变量，不覆盖既有通用 `model` adapter，默认 provider 仍为 heuristic。
+- fallback 与归因：新增 typed `RerankOutcome/RerankDiagnostics/RerankProviderException`；registry 统一处理 not_configured、health_check_failed、timeout、http_4xx/http_5xx、network、invalid_response、incomplete_rankings、invalid_input 与 provider_failure。NVIDIA partial/invalid response 整次使用 heuristic，单次 retrieval 不自动 retry，model call count 为 0/1；diagnostics 合入 `RetrievalResult`，与 keyword-only/Milvus degradation 同时保留。
+- API 与评测：debug retrieval 改用 `retrieveWithDiagnostics` 并白名单返回 diagnostics；同步 QA metadata 透传实际 contexts 的 attribution。explanatory retry 改为首个非空 fallback 即停止，采用该 retrieval 的 effective provider，并累计初始与 fallback 的真实 model calls、fallbacks、latency；该实现期新增决策 13 待用户验收确认。Python runner 新增逐样本 `rerankAttribution` 与 Markdown/JSON aggregate，不改变既有 Report status 或 retrieval/generation/citation/no-answer/judge 指标公式。
+- TDD 证据：依次观察 NVIDIA 类型/配置缺失、typed outcome 缺失、retrieval diagnostics 丢失、debug response 无 diagnostics、runner 无归因提取/聚合、explanatory retry 使用首次 diagnostics 等 RED；最小实现后聚焦 GREEN。NVIDIA adapter 覆盖合法协议、未选择/禁用零调用、重复/越界/缺失/非有限 logit、候选上限、不完整响应整样本 fallback、health、timeout、network、4xx 与 5xx。
+- 验证：最终 `mvn -q test` 退出码 0，72 个 XML reports / 318 tests / 0 failures / 0 errors / 1 skipped；唯一 skip 仍为既有 Milvus 独立故障环境门禁。`NvidiaRerankerTest` 8 tests / 0 failures / 0 errors / 0 skipped；Python 35 tests / OK；SensitiveLogs 扫描 305 source files / PASS；`git diff --check` 通过，受保护路径改动 0。
+- 外部调用与跳过：真实 NVIDIA live smoke 未获单独授权，明确 `SKIPPED`；本轮真实 embedding/rerank/judge/ask/LLM/provider 调用量均为 0，无业务数据出站、模型费用或限流风险。当前结论仅为 official-schema + local contract tested，真实 endpoint/auth/deployment 未验证，不能宣称真实 NVIDIA 可用或优于 heuristic。
+- 范围安全：未修改默认 heuristic、embedding、分块、hybrid/RRF、prompt、citation、no-answer、judge 指标、数据库/迁移、索引状态机、POM/依赖、前端、SSE、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余闸门：用户需确认新增 design 决策 13，并决定 live smoke 是授权最多 1 次纯合成 ranking 请求还是接受 real-endpoint-unverified 边界；在用户验收前不接受 delta、不恢复 `IDLE`、不归档 change。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(检索): 实现C6 NVIDIA重排适配与逐样本归因`。
+
+## 2026-07-19｜C6 用户验收、baseline 接受与归档
+
+- 用户决策与提交责任：用户确认实现期新增决策 13，同意 explanatory fallback 首个非空结果即停止；本轮不授权真实 NVIDIA smoke，明确接受 protocol-tested/real-endpoint-unverified 边界。用户将提交责任改为 `Agent 提交`，授权计划内暂存与中文 commit，不包含 push、PR、部署或发布。
+- 复验结果：C6 adapter/registry/query/sync QA/debug 聚焦回归退出码 0；最终 `mvn -q test` 退出码 0，72 个 XML reports / 318 tests / 0 failures / 0 errors / 9 skipped。当前 Docker 不可用，C5RecoveryMySqlTest 4 项与 KnownSeedMigrationMySqlTest 4 项按 `disabledWithoutDocker` 跳过；MilvusFailureSemanticsIT 1 项仍按既有独立故障环境门禁跳过。上述跳过均不涉及 C6，NVIDIA adapter 8 tests 全部真实执行通过。
+- 其他门禁：Python `35 tests / OK`；SensitiveLogs 扫描 305 source files / PASS；真实 embedding/rerank/judge/ask/LLM/provider 调用量为 0，无数据出站、模型费用或限流风险。前端无改动，因此未运行 frontend build。
+- 契约与治理：C6 delta 的 4 个 requirements / 11 个 scenarios 已原文接受进 `openspec/specs/rag-system/spec.md`，delta-to-baseline exact match；同步 `openspec/project.md`、架构、路线图、proposal/design/tasks 与活动指针，恢复 `ACTIVE_TASK=IDLE`，并将 change 归档至 `openspec/changes/archive/2026-07-18-nvidia-reranker-adapter-and-attribution/`。
+- 能力边界：默认 provider 继续为 heuristic；本轮只证明 official schema、本地 HTTP contract、fallback 与 attribution 链路，不证明真实 NVIDIA endpoint/auth/deployment 可用，也不提供 NVIDIA 相对 heuristic 的收益结论；C7 A/B 仍需独立 change 与外调授权。
+- 范围安全：未修改 embedding、分块、hybrid/RRF、prompt、citation、no-answer、judge 指标、数据库/迁移、索引状态机、POM/依赖、前端、SSE、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未 push、创建 PR、部署或发布。
+- Commit：`pending`；提交责任为 Agent。计划提交信息：`feat(检索): 实现并验收C6 NVIDIA重排归因`。

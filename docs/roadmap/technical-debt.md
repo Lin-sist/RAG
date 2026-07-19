@@ -36,7 +36,7 @@
 
 ### 1. 真实 reranker A/B
 
-- 适配真实 provider 协议。
+- C6 已实现 NVIDIA `/v1/ranking` 协议、fallback taxonomy 与逐样本归因；真实 endpoint smoke 尚未执行，不能据此宣称 provider 可用或收益成立。
 - 固定 KB、fixture、配置和 Git HEAD，对比 heuristic/model 的 Recall@5、MRR、Top1、延迟和降级行为。
 - 没有 provider/凭据时继续保持默认 heuristic，不用 mock 宣称业务收益。
 

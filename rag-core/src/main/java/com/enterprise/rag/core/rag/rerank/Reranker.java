@@ -10,5 +10,9 @@ public interface Reranker {
 
     boolean available();
 
+    default String unavailableReason() {
+        return "not_configured";
+    }
+
     List<RetrievedContext> rerank(String query, List<RetrievedContext> contexts);
 }

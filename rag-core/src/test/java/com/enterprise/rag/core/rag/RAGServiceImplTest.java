@@ -68,17 +68,36 @@ class RAGServiceImplTest {
                 0.28f,
                 Map.of("title", "RAG 原理"));
 
-        when(queryEngine.retrieve(eq("你认为RAG是如何运作的？"), org.mockito.ArgumentMatchers.<RetrieveOptions>any()))
-                .thenReturn(List.of());
-        when(queryEngine.retrieve(eq("RAG 工作原理"), org.mockito.ArgumentMatchers.<RetrieveOptions>any()))
-                .thenReturn(List.of(fallbackContext));
+        doReturn(new RetrievalResult(List.of(), Map.of(
+                "rerankRequestedProvider", "nvidia",
+                "rerankEffectiveProvider", "nvidia",
+                "rerankFallbackCount", 0,
+                "rerankFallbackReason", "none",
+                "rerankModelCallCount", 1,
+                "rerankLatencyMillis", 20)))
+                .when(queryEngine).retrieveWithDiagnostics(
+                        eq("你认为RAG是如何运作的？"), org.mockito.ArgumentMatchers.<RetrieveOptions>any());
+        doReturn(new RetrievalResult(List.of(fallbackContext), Map.of(
+                "rerankRequestedProvider", "nvidia",
+                "rerankEffectiveProvider", "heuristic",
+                "rerankFallbackCount", 1,
+                "rerankFallbackReason", "timeout",
+                "rerankModelCallCount", 1,
+                "rerankLatencyMillis", 30)))
+                .when(queryEngine).retrieveWithDiagnostics(
+                        eq("RAG 工作原理"), org.mockito.ArgumentMatchers.<RetrieveOptions>any());
 
         QAResponse response = ragService.ask(QARequest.of("你认为RAG是如何运作的？", "kb_rag"));
 
         assertTrue(response.hasResult());
         assertEquals(1, response.contexts().size());
         assertEquals("rag-doc", response.contexts().get(0).source());
-        verify(queryEngine).retrieve(eq("RAG 工作原理"),
+        assertEquals("heuristic", response.metadata().get("rerankEffectiveProvider"));
+        assertEquals("timeout", response.metadata().get("rerankFallbackReason"));
+        assertEquals(1, response.metadata().get("rerankFallbackCount"));
+        assertEquals(2, response.metadata().get("rerankModelCallCount"));
+        assertEquals(50L, response.metadata().get("rerankLatencyMillis"));
+        verify(queryEngine).retrieveWithDiagnostics(eq("RAG 工作原理"),
                 argThat((RetrieveOptions options) -> options.minScore() <= 0.15f));
     }
 
@@ -175,7 +194,14 @@ class RAGServiceImplTest {
                 "keyword-doc",
                 0.72f,
                 Map.of());
-        doReturn(RetrievalResult.keywordOnly(List.of(context)))
+        doReturn(new RetrievalResult(List.of(context), Map.of(
+                "retrievalMode", "keyword_only",
+                "retrievalDegraded", true,
+                "degradedDependency", "milvus",
+                "rerankRequestedProvider", "nvidia",
+                "rerankEffectiveProvider", "heuristic",
+                "rerankFallbackReason", "timeout",
+                "rerankModelCallCount", 1)))
                 .when(queryEngine).retrieveWithDiagnostics(eq("Milvus 故障时还能回答吗？"),
                         org.mockito.ArgumentMatchers.<RetrieveOptions>any());
 
@@ -185,6 +211,10 @@ class RAGServiceImplTest {
         assertEquals("keyword_only", response.metadata().get("retrievalMode"));
         assertEquals(true, response.metadata().get("retrievalDegraded"));
         assertEquals("milvus", response.metadata().get("degradedDependency"));
+        assertEquals("nvidia", response.metadata().get("rerankRequestedProvider"));
+        assertEquals("heuristic", response.metadata().get("rerankEffectiveProvider"));
+        assertEquals("timeout", response.metadata().get("rerankFallbackReason"));
+        assertEquals(1, response.metadata().get("rerankModelCallCount"));
         verify(answerGenerator).generate(eq("Milvus 故障时还能回答吗？"), eq(List.of(context)));
         verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
     }

@@ -14,7 +14,7 @@
 - `.ai/ACTIVE_TASK.md` 在启动前为 `IDLE`，工作区干净，没有其他 active change。
 - `docs/roadmap/technical-debt.md` 已明确 C5 登记实现债务清零，C6 不再受前置 P0 债务阻断。
 - 默认 heuristic、通用 model adapter、fallback、`RetrievalResult.diagnostics`、同步 QA metadata 与可复现 runner 已存在，C6 可在这些边界上增量实现。
-- 当前阻断项是待批准的 provider/diagnostics 契约，不阻止创建 proposal；未获事前闸门批准前不得修改生产实现。
+- provider/diagnostics 契约已获批准并完成离线实现；当前 closeout 闸门是实现验收、实现期新增决策 13 与 live smoke/real-endpoint-unverified 边界确认。
 
 ## 用户故事（大白话：改前坏事 → 改后不同）
 
@@ -24,15 +24,13 @@
 
 - `confirmed`：`retrieval.rerank.provider` 默认是 `heuristic`，model adapter 默认关闭，不会因正常启动产生外部 rerank 调用。
 - `confirmed`：现有 `ModelReranker` 发送 `model/query/documents`，解析 `results[].index` 与 `relevance_score/score`，并非 NVIDIA `/v1/ranking` typed contract。
-- `confirmed`：`RerankerRegistry` 在 requested provider unavailable 或调用异常时回退 heuristic，但只在日志记录 provider/error type。
-- `confirmed`：model 成功时 context metadata 含 `originalRelevanceScore`、`rerankScore`、`rerankProvider=model`；fallback 后没有样本级 requested/effective/fallback diagnostics。
-- `confirmed`：`RetrievalResult.diagnostics` 已承载 Milvus keyword-only 降级事实，同步 QA 会把它复制到 response metadata。
-- `confirmed`：debug retrieval 当前调用 `queryEngine.retrieve(...)`，响应没有 request-level diagnostics；retrieval-only runner 因此无法可靠归因 reranker。
-- `confirmed`：评测 runner 会保存 `debugRetrieveRawResponse` 与 `askRawResponse`，但当前不提取 reranker coverage/fallback 聚合。
-- `partial`：既有通用 model adapter、健康检查、timeout 与 fallback 可复用设计经验，但协议、provider identity 和 logit 语义不满足 NVIDIA C6 契约。
-- `planned`：新增显式 `nvidia` provider、typed ranking client、typed rerank outcome、稳定 fallback taxonomy、debug/QA attribution 与 runner 聚合。
+- `confirmed`：`RerankerRegistry` 现在返回 typed outcome；requested/effective provider、fallback taxonomy、model calls、candidate/scored coverage、latency、model/protocol 会显式进入 diagnostics，partial/invalid NVIDIA rankings 整次回退 heuristic。
+- `confirmed`：独立 `NvidiaReranker` 已实现 `/v1/ranking` typed contract；logit 只决定排序，原 retrieval score 保留，默认 provider 仍为 heuristic。
+- `confirmed`：`RetrievalResult.diagnostics` 会无覆盖合并 Milvus keyword-only 与 rerank fallback；同步 QA 采用实际生成 contexts 的 attribution，explanatory fallback 累计真实调用事实。
+- `confirmed`：debug retrieval 已改用 `retrieveWithDiagnostics(...)` 并白名单输出；Python runner 逐样本保存 attribution，并在 Markdown/JSON 聚合 effective provider、model coverage、fallback、model calls 与 candidate coverage。
+- `partial`：official schema、本地合成 HTTP contract、Java/Python 与完整质量门禁已验证；真实 NVIDIA endpoint/auth/deployment 未验证，不能宣称真实 provider 可用或收益成立。
 - `out_of_scope`：真实收益 A/B、默认 provider 切换、批量真实调用、SSE 结构化事件、数据库/前端/索引恢复改动、跨 provider model failover。
-- `unknown`：最终使用的 NVIDIA deployment/base URL、model、凭据可用性及是否批准一次纯合成 live smoke，等待事前闸门或 closeout 前确认。
+- `partial`：最终 NVIDIA deployment/base URL、model 与凭据可用性仍未知；用户已确认本轮不执行 live smoke，并接受 protocol-tested/real-endpoint-unverified 边界。
 
 ## Scope
 
@@ -66,7 +64,7 @@ C6 修改 reranker provider identity、真实 NVIDIA 协议、fallback 可观察
 
 | 调用类型 | 规划阶段 | 离线实现/测试 | 可选 live smoke | 数据出站 | 费用/限流 | 授权状态 |
 |---|---:|---:|---:|---|---|---|
-| rerank | 0 | 0 真实调用；仅 `127.0.0.1` fake server | 最多 1 次 ranking 请求，1 个合成 query + 3 个合成 passages | 仅纯合成英文短句；不发送项目/用户数据 | 取决于届时 provider/model/账户条款；调用前重新披露 | 未授权；需用户单独批准 |
+| rerank | 0 | 0 真实调用；仅 `127.0.0.1` fake server | 0；用户确认延期 | 无 | 0 | 用户已接受 protocol-tested/real-endpoint-unverified 边界 |
 | embedding | 0 | 0 | 0 | 无 | 0 | 不适用 |
 | ask/LLM | 0 | 0 | 0 | 无 | 0 | 不适用 |
 | judge | 0 | 0 | 0 | 无 | 0 | 不适用 |
@@ -96,14 +94,14 @@ C6 修改 reranker provider identity、真实 NVIDIA 协议、fallback 可观察
 
 ## Approval Gate
 
-当前仅获准创建规划草案。进入生产实现前，用户需要确认：
+用户已于 2026-07-18 批准 proposal、design、tasks 与 spec delta，并授权开始实现。事前闸门结论如下：
 
 1. proposal 的 scope/non-goals 与 C6/C7 边界；
 2. design 中 12 条决策记录；
 3. `rag-system` spec delta 的 4 个 requirements / 11 个 scenarios；
 4. 提交责任继续为 `用户手动提交`；
-5. live smoke 是授权最多 1 次纯合成调用，还是明确延期并保留 protocol-tested 边界。
+5. 用户于 2026-07-19 确认本轮不授权 live smoke，真实调用预算保持 0，并接受 protocol-tested/real-endpoint-unverified 边界。
 
 ## Commit Responsibility
 
-`用户手动提交`。Agent 不执行 `git add`、`git commit`、push、PR、部署或发布。
+`Agent 提交`。用户已于 2026-07-19 授权 Agent 对本 change 计划内文件执行 `git add` 与中文 `git commit`；不授权 push、PR、部署或发布。

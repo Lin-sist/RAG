@@ -47,20 +47,22 @@
   -> 规则化 query variants
   -> dense vector + BM25 双路召回
   -> RRF 融合
-  -> heuristic/model reranker 抽象
+  -> heuristic/model/NVIDIA ranking reranker 抽象与显式 attribution
   -> prompt 构造与 LLM 生成
   -> citation extraction/fallback/validation
   -> 返回答案、contexts、citations、metadata
   -> 保存历史与反馈
 ```
 
-当前 hybrid 与 keyword route 默认开启，RRF 参数为 `rrf-k=60`。真实 `ModelReranker` 已有 HTTP adapter、健康检查、超时和 heuristic 降级，但默认仍使用 heuristic，真实 provider 收益尚未验证。
+当前 hybrid 与 keyword route 默认开启，RRF 参数为 `rrf-k=60`。reranker 默认仍使用 heuristic；既有 `ModelReranker` 保留通用 HTTP 协议，独立 `NvidiaReranker` 使用 `/v1/ranking` 的 `query.text + passages[].text / rankings[].index+logit` 契约。registry 通过 typed outcome 报告 requested/effective provider、fallback、model calls、候选覆盖与延迟；partial/invalid NVIDIA rankings 整次回退 heuristic，不形成混合排序。真实 endpoint 与收益 A/B 尚未验证。
 
 同步问答返回完整答案、contexts、citations 和 metadata。SSE 路径当前使用 `SseEmitter` 输出文本流；流式历史保存的 citations 仍为空，这是已确认的能力边界。
 
 ## 4. 质量工程现状
 
 - v3 已完成固定评测 KB、分块矩阵和 reranker adapter 工程接入。
+- C6 已把 reranker attribution 透传到同步问答 metadata、debug retrieval 与评测 runner 的逐样本/聚合报告；这只证明协议与覆盖，不代表 NVIDIA 优于 heuristic。
+- C6 provider/attribution 契约已接受进 `rag-system` baseline；真实 NVIDIA endpoint smoke 未执行，当前能力边界为 protocol-tested/real-endpoint-unverified。
 - 当前可靠 retrieval 指标：Recall@5 `68.63%`、MRR `0.7346`、Top1 source accuracy `96.30%`。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。

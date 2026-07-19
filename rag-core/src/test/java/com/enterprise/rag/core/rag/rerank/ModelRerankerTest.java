@@ -69,12 +69,15 @@ class ModelRerankerTest {
         });
         RetrievalProperties properties = configuredProperties();
         properties.getRerank().getModel().setHealthCheckEnabled(false);
+        properties.getRerank().setProvider("model");
         ModelReranker reranker = new ModelReranker(properties);
+        RerankerRegistry registry = new RerankerRegistry(List.of(new HeuristicReranker(), reranker), properties);
         List<RetrievedContext> contexts = List.of(
                 new RetrievedContext("first document", "first", 0.8f, Map.of("rank", 1)),
                 new RetrievedContext("second document", "second", 0.7f, Map.of("rank", 2)));
 
-        List<RetrievedContext> reranked = reranker.rerank("query text", contexts);
+        RerankOutcome outcome = registry.rerankWithDiagnostics("query text", contexts);
+        List<RetrievedContext> reranked = outcome.contexts();
 
         assertEquals("second", reranked.get(0).source());
         assertEquals("first", reranked.get(1).source());
@@ -85,6 +88,11 @@ class ModelRerankerTest {
         assertTrue(requestBody.get().contains("\"model\":\"test-reranker\""));
         assertTrue(requestBody.get().contains("\"query\":\"query text\""));
         assertTrue(requestBody.get().contains("first document"));
+        assertEquals("model", outcome.diagnostics().requestedProvider());
+        assertEquals("model", outcome.diagnostics().effectiveProvider());
+        assertEquals(1, outcome.diagnostics().modelCallCount());
+        assertEquals(2, outcome.diagnostics().scoredCount());
+        assertEquals(1.0d, outcome.diagnostics().coverage());
     }
 
     @Test

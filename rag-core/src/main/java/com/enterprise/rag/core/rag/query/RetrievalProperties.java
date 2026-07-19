@@ -30,6 +30,7 @@ public class RetrievalProperties {
         private int topN = 20;
         private int topK = 5;
         private ModelReranker model = new ModelReranker();
+        private NvidiaReranker nvidia = new NvidiaReranker();
     }
 
     @Data
@@ -41,6 +42,21 @@ public class RetrievalProperties {
         private String model = "";
         private int timeoutMillis = 3000;
         private boolean healthCheckEnabled = true;
+        private String healthPath = "/health";
+        private long healthCacheMillis = 60000;
+    }
+
+    @Data
+    public static class NvidiaReranker {
+        private boolean enabled = false;
+        private String baseUrl = "";
+        private String endpointPath = "/v1/ranking";
+        private String apiKey = "";
+        private String model = "";
+        private String truncate = "NONE";
+        private int timeoutMillis = 3000;
+        private int maxCandidates = 100;
+        private boolean healthCheckEnabled = false;
         private String healthPath = "/health";
         private long healthCacheMillis = 60000;
     }

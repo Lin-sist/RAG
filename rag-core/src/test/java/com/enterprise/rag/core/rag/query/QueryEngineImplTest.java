@@ -202,12 +202,14 @@ class QueryEngineImplTest {
         when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any())).thenReturn(List.of(
                 new RetrievedContext("缓存穿透 是指查询不存在的数据导致请求打到数据库", "shared", 1.0f, Map.of())));
 
-        List<RetrievedContext> contexts = queryEngine.retrieve(
+        RetrievalResult result = queryEngine.retrieveWithDiagnostics(
                 "缓存穿透",
                 new RetrieveOptions("kb_test", 2, 0.0f, Map.of(), false));
 
-        assertEquals(2, contexts.size());
-        assertEquals("shared", contexts.get(0).source());
+        assertEquals(2, result.contexts().size());
+        assertEquals("shared", result.contexts().get(0).source());
+        assertEquals("disabled", result.diagnostics().get("rerankEffectiveProvider"));
+        assertEquals(0, result.diagnostics().get("rerankModelCallCount"));
         verify(keywordIndex).search(eq("kb_test"), eq("缓存穿透"), eq(4), eq(Map.of()));
     }
 
@@ -231,6 +233,33 @@ class QueryEngineImplTest {
         assertEquals("milvus", result.diagnostics().get("degradedDependency"));
         verify(vectorStore, times(1)).search(anyString(), any(float[].class), any(SearchOptions.class));
         verify(keywordIndex, times(1)).search(eq("kb_test"), eq("什么是JWT？"), eq(10), eq(Map.of()));
+    }
+
+    @Test
+    void shouldKeepMilvusDegradationAndRerankFallbackDiagnosticsTogether() {
+        KeywordIndex keywordIndex = mock(KeywordIndex.class);
+        RetrievalProperties properties = new RetrievalProperties();
+        properties.getRerank().setProvider("nvidia");
+        RerankerRegistry registry = new RerankerRegistry(
+                List.of(new HeuristicReranker()),
+                properties);
+        queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties, registry);
+        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class)))
+                .thenThrow(VectorDependencyException.unavailable("search", new IllegalStateException("raw-marker")));
+        when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
+                .thenReturn(List.of(new RetrievedContext(
+                        "spring security authentication best practices", "keyword-doc", 0.8f, Map.of())));
+
+        RetrievalResult result = queryEngine.retrieveWithDiagnostics(
+                "spring security auth",
+                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+
+        assertEquals("keyword_only", result.diagnostics().get("retrievalMode"));
+        assertEquals(true, result.diagnostics().get("retrievalDegraded"));
+        assertEquals("nvidia", result.diagnostics().get("rerankRequestedProvider"));
+        assertEquals("heuristic", result.diagnostics().get("rerankEffectiveProvider"));
+        assertEquals("not_configured", result.diagnostics().get("rerankFallbackReason"));
+        assertEquals(0, result.diagnostics().get("rerankModelCallCount"));
     }
 
     @Test
@@ -270,10 +299,15 @@ class QueryEngineImplTest {
                 new SearchResult("a", "mysql index tuning guide", 0.88f, Map.of()),
                 new SearchResult("b", "spring security authentication best practices", 0.72f, Map.of())));
 
-        List<RetrievedContext> contexts = queryEngine.retrieve(
+        RetrievalResult result = queryEngine.retrieveWithDiagnostics(
                 "spring security auth",
                 new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
 
-        assertEquals("b", contexts.get(0).source());
+        assertEquals("b", result.contexts().get(0).source());
+        assertEquals("model", result.diagnostics().get("rerankRequestedProvider"));
+        assertEquals("heuristic", result.diagnostics().get("rerankEffectiveProvider"));
+        assertEquals(1, result.diagnostics().get("rerankFallbackCount"));
+        assertEquals("not_configured", result.diagnostics().get("rerankFallbackReason"));
+        assertEquals(0, result.diagnostics().get("rerankModelCallCount"));
     }
 }

@@ -108,6 +108,64 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         self.assertIn("timeoutSeconds=120", summary)
         self.assertIn("llmErrorCategory=timeout", summary)
 
+    def test_extract_rerank_attribution_keeps_only_stable_facts(self) -> None:
+        debug_response = {
+            "diagnostics": {
+                "rerankRequestedProvider": "nvidia",
+                "rerankEffectiveProvider": "heuristic",
+                "rerankFallbackCount": 1,
+                "rerankFallbackReason": "timeout",
+                "rerankModelCallCount": 1,
+                "rerankCandidateCount": 20,
+                "rerankScoredCount": 20,
+                "rerankCoverage": 1.0,
+                "rerankLatencyMillis": 125,
+                "rerankModel": "nvidia/test",
+                "rerankProtocol": "nvidia-ranking-v1",
+                "query": "must-not-leak",
+                "Authorization": "must-not-leak",
+            }
+        }
+
+        attribution = runner.extract_rerank_attribution(debug_response)
+
+        self.assertEqual("nvidia", attribution["requestedProvider"])
+        self.assertEqual("heuristic", attribution["effectiveProvider"])
+        self.assertEqual("timeout", attribution["fallbackReason"])
+        self.assertEqual(1, attribution["modelCallCount"])
+        self.assertEqual(1.0, attribution["candidateCoverage"])
+        self.assertNotIn("query", attribution)
+        self.assertNotIn("Authorization", attribution)
+
+    def test_aggregate_rerank_attributions_separates_effective_provider_and_fallback(self) -> None:
+        summary = runner.aggregate_rerank_attributions([
+            {
+                "requestedProvider": "nvidia",
+                "effectiveProvider": "nvidia",
+                "fallbackCount": 0,
+                "fallbackReason": "none",
+                "modelCallCount": 1,
+                "candidateCount": 10,
+                "scoredCount": 10,
+            },
+            {
+                "requestedProvider": "nvidia",
+                "effectiveProvider": "heuristic",
+                "fallbackCount": 1,
+                "fallbackReason": "timeout",
+                "modelCallCount": 1,
+                "candidateCount": 20,
+                "scoredCount": 20,
+            },
+        ])
+
+        self.assertEqual({"nvidia": 1, "heuristic": 1}, summary["effectiveProviderCounts"])
+        self.assertEqual(0.5, summary["modelCoverage"])
+        self.assertEqual(1, summary["fallbackCount"])
+        self.assertEqual({"timeout": 1}, summary["fallbackReasonHistogram"])
+        self.assertEqual(2, summary["totalModelCalls"])
+        self.assertEqual(1.0, summary["candidateCoverage"])
+
 
 if __name__ == "__main__":
     unittest.main()

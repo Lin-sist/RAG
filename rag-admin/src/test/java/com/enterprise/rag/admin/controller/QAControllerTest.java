@@ -9,6 +9,7 @@ import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.query.QueryEngine;
+import com.enterprise.rag.core.rag.query.RetrievalResult;
 import com.enterprise.rag.core.rag.model.QAResponse;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
@@ -94,6 +95,14 @@ class QAControllerTest {
                                 assertEquals(Map.of(), options.filter());
                                 assertEquals(true, options.enableRerank());
                                 return debugContexts;
+                        }
+
+                        @Override
+                        public RetrievalResult retrieveWithDiagnostics(String query, RetrieveOptions options) {
+                                return new RetrievalResult(retrieve(query, options), Map.of(
+                                                "rerankRequestedProvider", "nvidia",
+                                                "rerankEffectiveProvider", "heuristic",
+                                                "rerankFallbackReason", "timeout"));
                         }
 
                         @Override
@@ -257,6 +266,9 @@ class QAControllerTest {
                 assertEquals("第一段内容 包含 空格", data.contexts().get(0).snippet());
                 assertEquals(11, data.contexts().get(0).contentLength());
                 assertEquals("Doc A", data.contexts().get(0).metadata().get("title"));
+                assertEquals("nvidia", data.diagnostics().get("rerankRequestedProvider"));
+                assertEquals("heuristic", data.diagnostics().get("rerankEffectiveProvider"));
+                assertEquals("timeout", data.diagnostics().get("rerankFallbackReason"));
                 assertEquals(true, queryEngineCalled.get());
                 verify(documentService, times(1)).getById(4L);
                 verify(knowledgeBaseService, times(0)).incrementQueryCount(anyLong());
@@ -469,6 +481,9 @@ class QAControllerTest {
                 assertEquals("retrieve_failed", data.status());
                 assertTrue(data.contexts().isEmpty());
                 assertTrue(data.message().contains("向量集合不存在"));
+                assertEquals("unknown", data.diagnostics().get("rerankRequestedProvider"));
+                assertEquals("not_run", data.diagnostics().get("rerankEffectiveProvider"));
+                assertEquals(0, data.diagnostics().get("rerankModelCallCount"));
                 assertNull(data.contexts().stream().findFirst().orElse(null));
         }
 }

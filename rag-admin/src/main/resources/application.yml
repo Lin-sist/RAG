@@ -163,6 +163,18 @@ retrieval:
       health-check-enabled: true
       health-path: /health
       health-cache-millis: 60000
+    nvidia:
+      enabled: ${NVIDIA_RERANK_ENABLED:false}
+      base-url: ${NVIDIA_RERANK_BASE_URL:}
+      endpoint-path: ${NVIDIA_RERANK_ENDPOINT_PATH:/v1/ranking}
+      api-key: ${NVIDIA_RERANK_API_KEY:}
+      model: ${NVIDIA_RERANK_MODEL:}
+      truncate: ${NVIDIA_RERANK_TRUNCATE:NONE}
+      timeout-millis: ${NVIDIA_RERANK_TIMEOUT_MILLIS:3000}
+      max-candidates: ${NVIDIA_RERANK_MAX_CANDIDATES:100}
+      health-check-enabled: ${NVIDIA_RERANK_HEALTH_CHECK_ENABLED:false}
+      health-path: ${NVIDIA_RERANK_HEALTH_PATH:/health}
+      health-cache-millis: ${NVIDIA_RERANK_HEALTH_CACHE_MILLIS:60000}
 
 # Document indexing chunking controls
 document:
