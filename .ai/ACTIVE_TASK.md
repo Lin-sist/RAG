@@ -2,11 +2,19 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
 ## Active Change
 
-- 当前无 active change。
+- Change：`2026-07-20-reranker-ab-evaluation`
+- 位置：`openspec/changes/2026-07-20-reranker-ab-evaluation/`
+- 类型：Type C 重大变更；当前仅完成事前规划，等待用户审阅与实现授权。
+- 目标：固定 heuristic/model 两个 retrieval-only arm 的评测身份、provider 覆盖与样本配对，离线比较 Recall@5、MRR、Top1、rerank/retrieval P50/P95，并对 fallback 或身份漂移明确判为不可比较。
+- 范围：Python eval runner、可复现 metadata、sanitized arm manifest、离线 comparator、单元测试、评测指南与经授权后的 C7 evidence。
+- 非目标：不修改默认 heuristic，不新增按请求切换 provider 的 API，不修改 Java provider/检索/分块/prompt/citation/no-answer/judge，不扩充评测集，不建立 C10 通用门禁，不调用 ask/judge/LLM。
+- 外部调用：规划与离线实现预算为 0；真实 canary/full A/B 必须分别披露调用量、模型、数据出站、限流和费用并取得用户单独授权。
+- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 验收入口：`proposal.md`、`design.md` 的 15 条决策记录、`tasks.md`、`specs/evaluation/spec.md` 的 4 个 requirements / 11 个 scenarios。
 
 ## Last Completed
 

@@ -772,3 +772,26 @@
 - 跳过与边界：未启动 backend 或执行 debug/QA 业务入口，避免在只授权 1 次 rerank 的情况下额外触发 embedding/rerank/ask；未运行前端 build，因为无前端改动。单次合成 smoke 只确认当前 key、hosted endpoint、schema 与 adapter 可用，不证明生产 SLA、配额长期稳定或 NVIDIA 相对 heuristic 的收益。
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、数据库/迁移、索引状态机、retrieval/generation/citation/no-answer/judge 指标或生产默认 provider；未暂存、提交、push、创建 PR、部署或发布。C7 仍须独立 OpenSpec change、固定 KB/fixture/config/Git HEAD 与批量外调授权。
 - Commit：`pending`；本轮未获得新的 Agent 提交授权，默认由用户手动提交。建议：`docs(验收): 记录C6真实NVIDIA smoke结果`。
+
+## 2026-07-20｜C7 reranker A/B evaluation 规划启动
+
+- 用户决策与提交责任：用户要求建立 C7 规划文档，待其审阅后再授意执行。提交责任为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 `main` 与 `origin/main` 同步、工作区干净，`.ai/ACTIVE_TASK.md=IDLE`，C6 的 NVIDIA adapter/attribution 契约已接受并归档，归档后单次合成 hosted smoke 已验证 endpoint/auth/schema；默认 provider 仍为 heuristic，收益 A/B 尚未验证，C7 是冻结路线图下一阶段。
+- 类型与范围：建立 Type C change `2026-07-20-reranker-ab-evaluation`，新增 proposal/design/tasks 与 `evaluation` spec delta，并激活活动任务指针。规划范围限定为 Python retrieval-only runner、可复现身份、sanitized arm manifest、离线 comparator、P50/P95、单元测试与评测文档；未进入实现。
+- 已确认事实：现有 runner 已保存逐样本 requested/effective provider、fallback、model calls、candidate coverage、model/protocol 与 rerank latency；现有 aggregate 尚无 P50/P95，reproducible metadata 尚无 eval-set hash/runtime arm identity，也没有两 arm identity/coverage/pairing comparator。
+- 规划决策：建议两个独立 arm + 离线 comparator；strict identity 只对白名单 provider 字段放行；model arm 对全部 rerank-eligible observations 要求 100% effective-model 与 0 fallback；zero-candidate 配对保留但不计 coverage；per-run 继续为 `RETRIEVAL_ONLY`，另设 comparison validity；rerank latency 为主、retrieval wall-clock 为辅；不删失败样本、不自动切默认 provider、不吞并 C8/C9/C10。design 共 15 条决策，均等待用户确认。
+- 外部调用：本轮只写规划文档，真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0，无数据出站、费用或限流风险。最低执行候选 `R=1,W=0` 上限为 60 debug retrieval / 60 query embedding / 30 model rerank；建议 latency 候选 `R=3,W=3` 上限为 186 / 186 / 93，仅供审阅，均未获执行授权。
+- 验证计划：规划文件结构、requirements/scenarios/decision 数量、活动指针、断链/旧字段/受保护路径与 `git diff --check`；本轮不重复 Maven/Python/前端测试，因为没有代码改动。上一只读 readiness 已验证 Python 35 tests / OK，Maven 312 tests / 0 failures / 0 errors / 8 Docker-unavailable skips，但不把该结果当作 C7 实现验证。
+- 范围安全：未修改 baseline spec、Java、Python runner、测试、默认 provider、评测集、fixture、数据库、前端、POM/依赖、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未启动 backend、Docker 或真实评测。
+- 剩余闸门：用户需审阅并批准 proposal scope/non-goals、15 条 design decisions、4 requirements / 11 scenarios、离线实现授权，以及后续 canary/full 的独立外调预算；批准前不得改 runner 或产生真实调用。
+- Commit：`pending`。建议用户手动提交：`docs(openspec): 启动C7重排A-B评测规划`。
+
+## 2026-07-20｜C7 规划文档验证完成、待用户审阅
+
+- 验证范围：只验证 `2026-07-20-reranker-ab-evaluation` 的 proposal/design/tasks/evaluation spec delta、活动任务指针与追加式日志；未验证任何尚未实现的 runner/comparator 能力。
+- 结构结果：4 个必需 artifacts 均存在；proposal 含唯一“用户故事（大白话）”；design 决策编号 1~15 连续，choice/selected/tradeoff 三行各 15 条且全部标为待用户确认；spec delta 为 4 requirements / 11 scenarios，WHEN/THEN 各 11 条；tasks 为 4 项已完成的规划事实、54 项待批准/实现/执行。
+- 指针与范围结果：`.ai/ACTIVE_TASK.md` 精确为 `ACTIVE` 并指向本 change；`openspec/changes/` 下唯一未归档 change 为 C7；baseline `openspec/specs/` 无 diff；受保护路径改动 0。
+- 文档门禁：`git diff --check` 通过；Git 仅输出用户级 ignore 文件无权限的既有 warning，不影响仓库 diff。OpenSpec CLI 当前不在 PATH，因此未声称 CLI validation 通过。
+- 跳过项：本轮没有 Java、Python runner、前端、依赖或配置实现改动，因此未运行 Maven、Python、前端 build、Docker/Failsafe、backend preflight 或真实 A/B。真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0。
+- 剩余风险：规划中的 runtime arm manifest 仍依赖实际启动流程提供，并需 observed attribution 交叉校验；30 条开发样本外推有限；正式 repeats/warm-up、provider 配额、费用与限流尚待用户审阅和执行前单独授权。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C7重排A-B评测规划`。
