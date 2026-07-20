@@ -486,6 +486,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
     relevance_score = None
     judge_pass = None
 
+    retrieval_started_at = time.monotonic()
     try:
         debug_response = api_data(call_json(
             "POST",
@@ -502,6 +503,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         ))
     except Exception as exc:  # noqa: BLE001 - keep runner resilient per sample
         retrieval_error = str(exc)
+    retrieve_latency_millis = max(0.0, (time.monotonic() - retrieval_started_at) * 1000.0)
 
     if not args.skip_ask:
         try:
@@ -595,6 +597,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             "answer_points": sample.get("expected_answer_points") or [],
         },
         "debugRetrieveRawResponse": debug_response,
+        "retrieveLatencyMillis": round(retrieve_latency_millis, 3),
         "rerankAttribution": extract_rerank_attribution(debug_response),
         "normalizedSources": normalized_sources,
         "askRawResponse": ask_response,
@@ -1015,6 +1018,27 @@ def normalized_source_candidates(item: dict[str, Any] | None) -> set[str]:
     return forms
 
 
+def latency_summary(values: list[int | float]) -> dict[str, int | float | None]:
+    ordered = sorted(
+        float(value)
+        for value in values
+        if isinstance(value, (int, float)) and math.isfinite(float(value)) and float(value) >= 0
+    )
+    if not ordered:
+        return {"count": 0, "min": None, "p50": None, "p95": None, "max": None}
+
+    def nearest_rank(percentile: float) -> float:
+        return ordered[max(0, math.ceil(percentile * len(ordered)) - 1)]
+
+    return {
+        "count": len(ordered),
+        "min": ordered[0],
+        "p50": nearest_rank(0.50),
+        "p95": nearest_rank(0.95),
+        "max": ordered[-1],
+    }
+
+
 def aggregate_rerank_attributions(attributions: list[dict[str, Any]]) -> dict[str, Any]:
     effective_counts: dict[str, int] = {}
     fallback_reasons: dict[str, int] = {}
@@ -1024,6 +1048,7 @@ def aggregate_rerank_attributions(attributions: list[dict[str, Any]]) -> dict[st
     total_scored = 0
     effective_model_samples = 0
     attributed_samples = 0
+    latencies: list[int | float] = []
 
     for attribution in attributions:
         if not isinstance(attribution, dict):
@@ -1043,6 +1068,8 @@ def aggregate_rerank_attributions(attributions: list[dict[str, Any]]) -> dict[st
         total_model_calls += max(0, int(attribution.get("modelCallCount", 0) or 0))
         total_candidates += max(0, int(attribution.get("candidateCount", 0) or 0))
         total_scored += max(0, int(attribution.get("scoredCount", 0) or 0))
+        if "latencyMillis" in attribution:
+            latencies.append(attribution["latencyMillis"])
 
     return {
         "attributedSamples": attributed_samples,
@@ -1054,6 +1081,7 @@ def aggregate_rerank_attributions(attributions: list[dict[str, Any]]) -> dict[st
         "candidateCoverage": ratio(total_scored, total_candidates),
         "candidateCount": total_candidates,
         "scoredCount": total_scored,
+        "latencyMillis": latency_summary(latencies),
     }
 
 
@@ -1104,6 +1132,11 @@ def aggregate(results: list[SampleResult]) -> dict[str, Any]:
     rerank_attribution = aggregate_rerank_attributions([
         result.details.get("rerankAttribution", {}) for result in results
     ])
+    retrieval_latency = latency_summary([
+        result.details.get("retrieveLatencyMillis")
+        for result in results
+        if "retrieveLatencyMillis" in result.details
+    ])
 
     return {
         "samples": len(results),
@@ -1138,6 +1171,7 @@ def aggregate(results: list[SampleResult]) -> dict[str, Any]:
         "judge_pass_count": sum(1 for value in judge_pass_values if value),
         "judge_pass_total": len(judge_pass_values),
         "rerank_attribution": rerank_attribution,
+        "retrieval_latency_millis": retrieval_latency,
     }
 
 
@@ -1165,6 +1199,22 @@ def pct(value: float | int | str) -> str:
     if isinstance(value, str):
         return value
     return f"{float(value) * 100:.2f}%"
+
+
+def latency_fact_rows(metrics: dict[str, Any]) -> list[str]:
+    retrieval = metrics.get("retrieval_latency_millis") or {}
+    rerank = (metrics.get("rerank_attribution") or {}).get("latencyMillis") or {}
+
+    def row(label: str, summary: dict[str, Any]) -> str:
+        return (
+            f"| {label} | count={summary.get('count', 0)}, min={summary.get('min')}, "
+            f"P50={summary.get('p50')}, P95={summary.get('p95')}, max={summary.get('max')} ms |"
+        )
+
+    return [
+        row("Client-observed debug retrieval latency", retrieval),
+        row("Server-side rerank stage latency", rerank),
+    ]
 
 
 def load_run_metadata(path_value: str) -> dict[str, Any]:
@@ -1323,6 +1373,15 @@ def write_report(
     lines.append(f"| Fallback reason histogram | `{json.dumps(rerank['fallbackReasonHistogram'], sort_keys=True)}` |")
     lines.append(f"| Total model calls | {rerank['totalModelCalls']} |")
     lines.append(f"| Candidate coverage | {pct(rerank['candidateCoverage'])} ({rerank['scoredCount']}/{rerank['candidateCount']}) |")
+    lines.append("")
+
+    lines.append("## Latency")
+    lines.append("")
+    lines.append("| Scope | Observation distribution |")
+    lines.append("|---|---|")
+    lines.extend(latency_fact_rows(metrics))
+    lines.append("")
+    lines.append("Rerank latency is the server-side rerank stage measurement; retrieval latency is client-observed debug retrieval wall-clock time. Both use nearest-rank percentiles over measured observations.")
     lines.append("")
 
     lines.append("## Sample Results")

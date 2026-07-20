@@ -262,6 +262,8 @@ raw debug/ask response details 与重复运行的完整大文件默认留在 `tm
 
 ## 决策记录
 
+> 审批状态：用户已于 2026-07-20 一次性批准本节 15 条建议，选择推荐的 `R=3,W=3`、arm 交替和 canary→full 方案。下文原始“待用户在事前闸门确认”措辞作为规划审阅痕迹保留，不再表示未决。
+
 ### 决策 1：采用两个独立 arm 加离线 comparator
 - **面临的选择**：给 debug API 增加按请求 provider override；让 Python 自动重启 backend 并跑两个 arm；由明确启动流程产生两个独立 arm，再离线比较。
 - **选了哪个 + 为什么**：建议两个独立 arm加离线 comparator；它不扩大运行时 API 权限，也让每组配置、日志和失败边界清楚，待用户在事前闸门确认。
@@ -336,4 +338,3 @@ raw debug/ask response details 与重复运行的完整大文件默认留在 `tm
 - **面临的选择**：顺便扩 debug API/config endpoint与 provider retry；把后续评测治理一次做完；把改动限制在 Python runner/comparator与评测文档。
 - **选了哪个 + 为什么**：建议 Python/evaluation-only；C6 已提供足够 attribution，最小范围即可完成 C7，待用户在事前闸门确认。
 - **放弃的代价**：扩 Java/API/retry 会改变调用量与生产契约；吞并后续阶段会扩大回归面并破坏串行路线图。
-

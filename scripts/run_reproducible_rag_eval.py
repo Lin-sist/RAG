@@ -7,6 +7,7 @@ to run_rag_eval.py without changing metric definitions.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -37,6 +38,23 @@ DEFAULT_CONFIG_SNAPSHOT = [
 ]
 DEFAULT_KB_NAME = "codex-stage1-repro-eval"
 DEFAULT_KB_MARKER = "codex reproducible retrieval-only eval fixture"
+C7_ARM_SCHEMA = "c7-reranker-ab-v1"
+C7_ARM_MANIFEST_FIELDS = {
+    "schemaVersion",
+    "armId",
+    "expectedRequestedProvider",
+    "expectedEffectiveProvider",
+    "model",
+    "protocol",
+    "topN",
+    "topK",
+    "truncate",
+    "timeoutMillis",
+    "healthCheckEnabled",
+    "endpointPath",
+    "measuredRepeats",
+    "warmupCalls",
+}
 TERMINAL_TASK_STATES = {"COMPLETED", "FAILED", "CANCELLED"}
 SUCCESS_DOCUMENT_STATES = {"COMPLETED"}
 FAILED_DOCUMENT_STATES = {"FAILED", "CANCELLED"}
@@ -80,6 +98,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--poll-interval-seconds", type=float, default=2.0)
     parser.add_argument("--index-timeout-seconds", type=float, default=180.0)
     parser.add_argument("--repeat", type=int, default=1, help="Run retrieval-only eval repeatedly against the same prepared KB.")
+    parser.add_argument(
+        "--run-index",
+        action="append",
+        type=int,
+        dest="run_indexes",
+        help="Run only this measured repeat index while retaining manifest repeat identity. Repeatable.",
+    )
+    parser.add_argument(
+        "--skip-warmup",
+        action="store_true",
+        help="Skip this invocation's C7 warm-up because the same logical arm was already warmed up.",
+    )
+    parser.add_argument(
+        "--arm-manifest",
+        default="",
+        help="Optional C7 sanitized reranker arm manifest JSON. Required for official C7 A/B arms.",
+    )
     parser.add_argument(
         "--keep-existing",
         action="store_true",
@@ -394,6 +429,73 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def load_arm_manifest(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ApiError(f"Arm manifest not found: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ApiError(f"Arm manifest JSON is invalid: {path}") from exc
+    if not isinstance(value, dict):
+        raise ApiError("Arm manifest must be a JSON object")
+
+    missing = sorted(C7_ARM_MANIFEST_FIELDS - set(value))
+    unexpected = sorted(set(value) - C7_ARM_MANIFEST_FIELDS)
+    if missing or unexpected:
+        raise ApiError(
+            f"Arm manifest fields invalid: missing={missing}, unexpected={unexpected}"
+        )
+    if value.get("schemaVersion") != C7_ARM_SCHEMA:
+        raise ApiError(f"Arm manifest schemaVersion must be {C7_ARM_SCHEMA}")
+    if value.get("armId") not in {"heuristic", "model"}:
+        raise ApiError("Arm manifest armId must be heuristic or model")
+    for field in (
+        "expectedRequestedProvider",
+        "expectedEffectiveProvider",
+        "model",
+        "protocol",
+        "truncate",
+        "endpointPath",
+    ):
+        if not isinstance(value.get(field), str):
+            raise ApiError(f"Arm manifest {field} must be a string")
+    for field in ("topN", "topK", "timeoutMillis", "measuredRepeats", "warmupCalls"):
+        item = value.get(field)
+        if isinstance(item, bool) or not isinstance(item, int):
+            raise ApiError(f"Arm manifest {field} must be an integer")
+    if value["topN"] < 1 or value["topK"] < 1 or value["timeoutMillis"] < 0:
+        raise ApiError("Arm manifest topN/topK must be positive and timeoutMillis non-negative")
+    if value["topK"] > value["topN"]:
+        raise ApiError("Arm manifest topK must not exceed topN")
+    if value["measuredRepeats"] < 1 or value["warmupCalls"] < 0:
+        raise ApiError("Arm manifest measuredRepeats must be positive and warmupCalls non-negative")
+    if not isinstance(value.get("healthCheckEnabled"), bool):
+        raise ApiError("Arm manifest healthCheckEnabled must be boolean")
+    if value["truncate"] not in {"NONE", "END"}:
+        raise ApiError("Arm manifest truncate must be NONE or END")
+    if value["armId"] == "heuristic" and (
+        value["expectedRequestedProvider"] != "heuristic"
+        or value["expectedEffectiveProvider"] != "heuristic"
+        or value["model"] != ""
+        or value["protocol"] != "heuristic-v1"
+        or value["endpointPath"] != ""
+        or value["timeoutMillis"] != 0
+        or value["healthCheckEnabled"]
+    ):
+        raise ApiError("Heuristic arm manifest contains model-specific values")
+    if value["armId"] == "model" and (
+        value["expectedRequestedProvider"] in {"", "heuristic"}
+        or value["expectedEffectiveProvider"] in {"", "heuristic"}
+        or not value["model"]
+        or not value["protocol"]
+        or not value["endpointPath"].startswith("/")
+    ):
+        raise ApiError("Model arm manifest is incomplete")
+
+    canonical = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return {**value, "sha256": hashlib.sha256(canonical).hexdigest()}
+
+
 def git_head() -> str:
     try:
         return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
@@ -406,12 +508,30 @@ def build_metadata(
     kb: dict[str, Any],
     docs: list[dict[str, Any]],
     fixtures: list[Path],
+    selected_samples: list[dict[str, Any]] | None = None,
+    arm_manifest: dict[str, Any] | None = None,
+    run_index: int = 1,
 ) -> dict[str, Any]:
     chunk_count = sum(int(doc.get("chunkCount") or 0) for doc in docs)
+    eval_path = Path(args.eval_set)
+    repeat_total = int(
+        (arm_manifest or {}).get("measuredRepeats")
+        or getattr(args, "repeat", 1)
+    )
     return {
+        "evaluationSchema": C7_ARM_SCHEMA if arm_manifest else "rag-eval-v1",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "baseUrl": args.base_url,
         "evalSet": args.eval_set,
+        "evalSetIdentity": {
+            "path": str(eval_path),
+            "sha256": sha256_file(eval_path),
+            "bytes": eval_path.stat().st_size,
+        },
+        "sampleSelection": {
+            "ids": [str(sample.get("id")) for sample in (selected_samples or [])],
+            "count": len(selected_samples or []),
+        },
         "topK": args.top_k,
         "minScore": args.min_score,
         "enableRerank": args.enable_rerank,
@@ -448,6 +568,9 @@ def build_metadata(
             if path.exists()
         },
         "git": {"head": git_head()},
+        "armManifest": dict(arm_manifest) if arm_manifest else None,
+        "repeat": {"index": run_index, "total": repeat_total},
+        "warmup": {"calls": int((arm_manifest or {}).get("warmupCalls", 0))},
     }
 
 
@@ -458,11 +581,77 @@ def repeat_path(path_value: str, repeat: int, index: int) -> Path:
     return path.with_name(f"{path.stem}-run{index}{path.suffix}")
 
 
+def selected_run_indexes(requested: list[int] | None, repeat: int) -> list[int]:
+    indexes = requested or list(range(1, repeat + 1))
+    if len(set(indexes)) != len(indexes):
+        raise ApiError("--run-index values must be unique")
+    invalid = [index for index in indexes if index < 1 or index > repeat]
+    if invalid:
+        raise ApiError(f"--run-index must be between 1 and {repeat}: {invalid}")
+    return indexes
+
+
 def write_json(path: Path, payload: dict[str, Any], no_overwrite: bool) -> None:
     if no_overwrite and path.exists():
         raise ApiError(f"--no-overwrite refused to overwrite {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def run_c7_warmup(
+    args: argparse.Namespace,
+    kb_id: int,
+    kb: dict[str, Any],
+    docs: list[dict[str, Any]],
+    fixtures: list[Path],
+    selected_samples: list[dict[str, Any]],
+    output_dir: Path = Path("tmp/eval"),
+) -> dict[str, Any]:
+    manifest = getattr(args, "arm_manifest_data", None)
+    warmup_calls = int((manifest or {}).get("warmupCalls", 0) or 0)
+    if not isinstance(manifest, dict) or warmup_calls <= 0:
+        return {"sampleIds": [], "skipped": True}
+    if warmup_calls > len(selected_samples):
+        raise ApiError(
+            f"C7 warm-up requires {warmup_calls} fixed samples but only {len(selected_samples)} were selected"
+        )
+    warmup_samples = selected_samples[:warmup_calls]
+    selection_bytes = json.dumps(
+        [str(sample.get("id")) for sample in selected_samples],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    selection_hash = hashlib.sha256(selection_bytes).hexdigest()[:12]
+    prefix = f"c7-{manifest['armId']}-{manifest['sha256'][:12]}-warmup-{selection_hash}"
+    metadata_path = output_dir / f"{prefix}-metadata.json"
+    report_path = output_dir / f"{prefix}-report.md"
+    details_path = output_dir / f"{prefix}-details.json"
+    metadata = build_metadata(
+        args,
+        kb,
+        docs,
+        fixtures,
+        selected_samples=warmup_samples,
+        arm_manifest=manifest,
+        run_index=0,
+    )
+    metadata["phase"] = "warmup"
+    metadata["warmup"] = {
+        "calls": warmup_calls,
+        "excludedFromMeasured": True,
+    }
+    write_json(metadata_path, metadata, args.no_overwrite)
+    warmup_args = copy.copy(args)
+    warmup_args.sample_ids = [str(sample.get("id")) for sample in warmup_samples]
+    warmup_args.sample_limit = warmup_calls
+    run_eval(warmup_args, kb_id, report_path, details_path, metadata_path)
+    return {
+        "sampleIds": warmup_args.sample_ids,
+        "metadataPath": metadata_path,
+        "reportPath": report_path,
+        "detailsPath": details_path,
+        "skipped": False,
+    }
 
 
 def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, details: Path, metadata: Path) -> list[str]:
@@ -566,11 +755,24 @@ def estimate_live_calls(args: argparse.Namespace, samples: list[dict[str, Any]],
     answerable_count = sum(1 for sample in samples if sample.get("should_answer", True))
     ask_calls = len(samples) * repeat if args.include_ask else 0
     judge_calls = answerable_count * repeat if args.include_ask and args.judge_mode == "llm" else 0
-    return {
+    calls = {
         "debugRetrieve": len(samples) * repeat,
         "ask": ask_calls,
         "llmJudge": judge_calls,
     }
+    manifest = getattr(args, "arm_manifest_data", None)
+    if isinstance(manifest, dict):
+        warmup_calls = (
+            0
+            if getattr(args, "skip_warmup", False)
+            else max(0, int(manifest.get("warmupCalls", 0) or 0))
+        )
+        calls["debugRetrieve"] += warmup_calls
+        calls["queryEmbeddingUpperBound"] = calls["debugRetrieve"]
+        calls["modelRerankUpperBound"] = (
+            calls["debugRetrieve"] if manifest.get("armId") == "model" else 0
+        )
+    return calls
 
 
 def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, metadata: Path) -> None:
@@ -597,12 +799,13 @@ def build_plan(
     fixtures: list[Path],
     selected_samples: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    repeat = max(1, args.repeat)
+    run_indexes = selected_run_indexes(getattr(args, "run_indexes", None), max(1, args.repeat))
+    execution_count = len(run_indexes)
     if selected_samples is None:
         selected_samples = select_eval_samples(read_eval_samples(Path(args.eval_set)), args.sample_ids, args.sample_limit)
     answerable_count = sum(1 for sample in selected_samples if sample.get("should_answer", True))
     no_answer_count = len(selected_samples) - answerable_count
-    return {
+    plan = {
         "mode": "generation/citation" if args.include_ask else "retrieval-only",
         "baseUrl": args.base_url,
         "fixtureCount": len(fixtures),
@@ -620,12 +823,19 @@ def build_plan(
         "askTimeout": args.ask_timeout,
         "retryAskTimeouts": args.retry_ask_timeouts,
         "repeat": args.repeat,
-        "estimatedLiveCalls": estimate_live_calls(args, selected_samples, repeat),
-        "outputSetCount": repeat,
+        "runIndexes": run_indexes,
+        "estimatedLiveCalls": estimate_live_calls(args, selected_samples, execution_count),
+        "outputSetCount": execution_count,
         "childCommandShape": redact_command(
             build_eval_command(args, 0, Path(args.report), Path(args.details_json), Path(args.metadata_json))
         ),
     }
+    manifest = getattr(args, "arm_manifest_data", None)
+    if isinstance(manifest, dict):
+        plan["armId"] = manifest.get("armId")
+        plan["armManifestSha256"] = manifest.get("sha256")
+        plan["warmupCalls"] = 0 if getattr(args, "skip_warmup", False) else manifest.get("warmupCalls", 0)
+    return plan
 
 
 def print_plan(plan: dict[str, Any]) -> None:
@@ -672,6 +882,22 @@ def main() -> int:
     if args.repeat < 1:
         print("--repeat must be >= 1", file=sys.stderr)
         return 2
+    try:
+        run_indexes = selected_run_indexes(args.run_indexes, args.repeat)
+    except ApiError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    args.arm_manifest_data = load_arm_manifest(Path(args.arm_manifest)) if args.arm_manifest else None
+    if args.arm_manifest_data:
+        if args.repeat != int(args.arm_manifest_data["measuredRepeats"]):
+            print("--repeat must match arm manifest measuredRepeats", file=sys.stderr)
+            return 2
+        if args.top_k != int(args.arm_manifest_data["topK"]):
+            print("--top-k must match arm manifest topK", file=sys.stderr)
+            return 2
+        if not args.enable_rerank or args.include_ask:
+            print("C7 arm manifest requires retrieval-only with rerank enabled", file=sys.stderr)
+            return 2
     selected_samples = select_eval_samples(read_eval_samples(Path(args.eval_set)), args.sample_ids, args.sample_limit)
     if not selected_samples:
         print("No eval samples selected. Check --sample-id/--sample-limit.", file=sys.stderr)
@@ -714,12 +940,26 @@ def main() -> int:
         if len(docs) < len(fixtures):
             raise ApiError("--keep-existing KB does not contain all expected fixture documents")
 
-    for index in range(1, args.repeat + 1):
+    if args.arm_manifest_data and not args.skip_warmup:
+        warmup = run_c7_warmup(args, kb_id, kb, docs, fixtures, selected_samples)
+        print(
+            "Completed C7 warm-up: "
+            f"arm={args.arm_manifest_data['armId']} calls={len(warmup['sampleIds'])} excludedFromMeasured=true"
+        )
+
+    for index in run_indexes:
         metadata_path = repeat_path(args.metadata_json, args.repeat, index)
         report_path = repeat_path(args.report, args.repeat, index)
         details_path = repeat_path(args.details_json, args.repeat, index)
-        metadata = build_metadata(args, kb, docs, fixtures)
-        metadata["repeat"] = {"index": index, "total": args.repeat}
+        metadata = build_metadata(
+            args,
+            kb,
+            docs,
+            fixtures,
+            selected_samples=selected_samples,
+            arm_manifest=args.arm_manifest_data,
+            run_index=index,
+        )
         write_json(metadata_path, metadata, args.no_overwrite)
         run_eval(args, kb_id, report_path, details_path, metadata_path)
 

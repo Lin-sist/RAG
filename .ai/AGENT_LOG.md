@@ -795,3 +795,42 @@
 - 跳过项：本轮没有 Java、Python runner、前端、依赖或配置实现改动，因此未运行 Maven、Python、前端 build、Docker/Failsafe、backend preflight 或真实 A/B。真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0。
 - 剩余风险：规划中的 runtime arm manifest 仍依赖实际启动流程提供，并需 observed attribution 交叉校验；30 条开发样本外推有限；正式 repeats/warm-up、provider 配额、费用与限流尚待用户审阅和执行前单独授权。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C7重排A-B评测规划`。
+
+## 2026-07-20｜C7 规划提交补录
+
+- Commit：`3a6b328f11bf2d04a65345897091c4a090232be7`（`docs(openspec): 启动C7重排A-B评测规划`）。
+- 结论：C7 proposal/design/tasks/evaluation delta 与活动指针已由用户手动提交；本条只补录上一规划提交的真实 hash，不记录本次实现提交。
+
+## 2026-07-20｜C7 规划批准与 TDD 实现启动
+
+- 用户决策：用户批准 proposal scope/non-goals、15 条 design decisions、4 requirements / 11 scenarios，并要求按推荐方案执行；选择 `R=3,W=3`、arm 顺序交替、canary→full。遇到 fallback、429、身份漂移或调用量异常时停止并在对话中请示。
+- 提交责任：继续为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 费用与限流：用户明确确认 NVIDIA NIM 免费、无需支付费用；该信息作为用户提供的外部依据记录，不包装成代码可证事实。速率/并发限制可能存在，因此实现与真实执行保持串行、C6 零自动 rerank retry，canary 先验证再进入 full。
+- 实现范围：按 TDD 纵向切片依次完成 per-sample retrieval latency/P50/P95、C7 sanitized arm manifest与可复现 identity、离线 comparator 与 compact evidence、评测指南；不修改 Java/API、默认 heuristic、评测集或后续 C8/C9/C10 范围。
+- 外部调用：当前仅启动离线实现，真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0。正式 `R=3,W=3` 上限仍为 186 debug retrieval / 186 query embedding / 93 model rerank；ask/judge/LLM generation=0，固定问题与 fixture passages 之外不出站。
+- Commit：`pending`；提交责任为用户手动提交。
+
+## 2026-07-20｜C7 离线实现与质量门禁完成
+
+- 范围与修改：在 `run_rag_eval.py` 增加成功/失败均记录的 monotonic debug retrieval wall-clock，以及 retrieval/rerank 独立 nearest-rank count/min/P50/P95/max；在 reproducible runner 增加 exact-whitelist arm manifest、eval-set/sample/run/warm-up identity、独立 warm-up outputs 与可交替执行的 `--run-index/--skip-warmup`；新增严格离线 comparator、四份 canary/full 脱敏 manifest、单元测试和 C7 操作指南。未修改 Java/API、默认 heuristic、评测集、fixture、依赖或前端。
+- TDD 证据：先后观察 latency helper/metadata/manifest/warm-up/comparator 模块缺失、identity 漂移未拒绝、fallback/zero-candidate/missing-pair 未拒绝、compact schema/source hash/跨 repeat paired median 缺失等 RED；最小实现后全部 GREEN。comparator 只在 `COMPARABLE` 时输出 Recall@5/MRR/Top1 delta，并在 `NOT_COMPARABLE` 时保留 provider/fallback/missing-pair 诊断但隐藏收益。
+- 离线调用计划：plan-only 固定 30 条、`R=3,W=3`，heuristic/model 分别为 93 次 debug retrieval/query embedding 上限，model arm 另有 93 次 NVIDIA rerank 上限，合计 186/186/93；3 样本 canary 两 arm 合计为 12/12/6。ask/judge/generation 均为 0。上述均为计划计算，本轮真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0，无数据出站。
+- 验证：聚焦 comparator/latency/metadata 测试通过；`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 59 tests / OK；SensitiveLogs 扫描 306 source files / PASS；`mvn -q test` 最终退出码 0，70 份 Surefire XML / 315 tests / 0 failures / 0 errors / 1 skipped，唯一 skip 为既有独立 Milvus 故障环境门禁。Maven 首次在沙箱内因本机依赖缓存权限失败，首次沙箱外运行仅因 120 秒工具超时终止，延长到 5 分钟后 108.8 秒通过。
+- 文档与安全：4 requirements / 11 scenarios、15 条决策结构保持不变；`git diff --check` 通过；changed Markdown 无待解析相对链接；脱敏 manifests 的 sensitive key/field 扫描 0，受保护路径改动 0。compact evidence 单测确认不复制 question、contexts、passages 或 raw response。前端无改动，正式 build 按计划 `SKIPPED`。
+- 执行口径：指南按已批准总预算将 warm-up 解释为每个 logical arm 总计 3 次，通过 `H1/N1、N2/H2、H3/N3` 和后续 `--skip-warmup` 保持 model 上限 93。若改为每次 backend 重启都做 3 次 warm-up，model 上限会升至 99，必须重新取得用户授权。
+- 剩余闸门：正式 canary 不能在当前未提交实现上形成可靠 Git HEAD 证据。提交责任为用户手动提交，因此需用户先审阅并提交本轮 runner/comparator/manifests/docs；提交后再披露 canary 精确 provider/model/12 debug/12 embedding/6 rerank、固定 3 个问题与 fixture passages 出站、免费依据与限流风险，并执行 mutation-free preflight。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、数据库/迁移、索引状态机、embedding、分块、hybrid/RRF、prompt、citation、no-answer、judge、生产默认 provider；未暂存、提交、push、创建 PR、部署或发布。
+- Commit：`pending`；建议用户手动提交 `feat(评测): 实现C7重排A-B离线评测工具`。
+
+## 2026-07-20｜C7 离线实现复核补录与 canary 前置状态
+
+- 复核补录：在上一条日志后新增 details 自一致性/retrieval error 与 unreadable-schema `FAILED` evidence 两条 comparator 回归，最终 Python 为 61 tests / OK；SensitiveLogs 仍为 306 source files / PASS，`git diff --check` 仍通过。上一条的 59 tests 是补测前的阶段结果，本条以 61 为当前最终值；Maven 315/0/0/1 结果未受纯 Python 补测影响。
+- Readiness：沙箱外只读 `docker compose ps` 显示 MySQL、Redis、Milvus、etcd、MinIO 均已运行且 healthy；本机 8080 当前没有 backend listener。`.env.local` 存在，但本轮只检查存在性，没有输出或写入任何凭据；当前 Codex 进程环境未直接设置 eval username/password 或 NVIDIA key。
+- 当前阻塞：工作区包含未提交的 C7 runner/comparator/manifest/docs 实现。由于提交责任为用户手动提交，必须先由用户提交并回复真实 hash，随后才能让 canary metadata 的 Git HEAD 锚定本次实现。真实外部调用量仍为 0。
+- Commit：`pending`；建议 `feat(评测): 实现C7重排A-B离线评测工具`。
+
+## 2026-07-20｜C7 canary 凭据存在性预检
+
+- 只读结果：`.env.local` 中存在 `NVIDIA_API_KEY`，并将 embedding model 配置为 `nvidia/llama-nemotron-embed-1b-v2`；没有独立 `NVIDIA_RERANK_API_KEY`，后续启动时可在进程内将 rerank key 映射到已有 NVIDIA key，不写回文件。未读取、输出或记录任何 key 值。
+- 阻塞项：`.env.local` 与当前进程均没有 `RAG_EVAL_USERNAME/RAG_EVAL_PASSWORD`。runner 按安全契约拒绝隐式或默认登录凭据；用户需在本地安全文件补齐这两个变量，不能在对话中粘贴密码。
+- 外部调用：本预检只读取允许的非秘密配置值与 credential presence boolean，真实 embedding/rerank/ask/judge/LLM/provider 调用量仍为 0。

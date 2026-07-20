@@ -3,7 +3,7 @@
 ## Status
 
 - Change type：Type C 重大变更。
-- 当前阶段：规划待用户事前闸门审阅；未进入实现或真实 A/B。
+- 当前阶段：用户已于 2026-07-20 批准规划、15 条设计决策、spec delta 与离线实现；采用建议的 `R=3,W=3`、arm 交替、canary→full 路径。真实 A/B 尚未执行。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 
 ## Summary
@@ -135,7 +135,7 @@ C7 不修改默认 provider，也不把一次单样本 smoke 或含 fallback 的
 - model rerank 上限：`N × R + W`；
 - ask、judge、LLM generation：0。
 
-最低功能比较 `R=1, W=0` 时，上限为 60 次 debug retrieval、60 次 query embedding、30 次 model rerank。建议 latency 证据候选为 `R=3, W=3`，上限为 186 次 debug retrieval、186 次 query embedding、93 次 model rerank；该候选预算仅供审阅，当前未获授权。
+最低功能比较 `R=1, W=0` 时，上限为 60 次 debug retrieval、60 次 query embedding、30 次 model rerank。用户已于 2026-07-20 选择 latency 证据方案 `R=3, W=3`，上限为 186 次 debug retrieval、186 次 query embedding、93 次 model rerank；NVIDIA NIM 费用依据为用户确认的免费使用，但速率与并发限制仍需通过串行 canary 观察。
 
 出站数据包括 30 条固定评测问题；model arm 还会把固定 fixture 检索得到的候选 passages 发送给批准的 rerank provider。不得发送其他知识库、用户或生产数据。执行前还必须记录 provider、model、endpoint path、timeout、truncate、限流、费用及零费用依据、是否 retry；API key 和 Authorization 不得进入 tracked file、日志或回复。
 
@@ -178,4 +178,3 @@ C7 不修改默认 provider，也不把一次单样本 smoke 或含 fallback 的
 - 离线 runner/comparator 改动可独立回退，不影响 backend 数据与默认 provider。
 - 真实 A/B 只复用固定 KB，不创建、上传、删除或重建资源。
 - 若 model provider 不可用，停止 live run并保留 `NOT_COMPARABLE` 证据；无需回滚业务数据。
-

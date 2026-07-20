@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "c7-reranker-ab-v1",
+  "armId": "model",
+  "expectedRequestedProvider": "nvidia",
+  "expectedEffectiveProvider": "nvidia",
+  "model": "nvidia/llama-nemotron-rerank-1b-v2",
+  "protocol": "nvidia-ranking-v1",
+  "topN": 20,
+  "topK": 5,
+  "truncate": "END",
+  "timeoutMillis": 20000,
+  "healthCheckEnabled": false,
+  "endpointPath": "/v1/retrieval/nvidia/llama-nemotron-rerank-1b-v2/reranking",
+  "measuredRepeats": 3,
+  "warmupCalls": 3
+}

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import tempfile
 import unittest
 from unittest import mock
@@ -27,6 +28,12 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             runner.repeat_path("docs/eval/reports/stage1.md", 2, 2),
         )
 
+    def test_selected_run_indexes_supports_interleaved_single_run_invocations(self) -> None:
+        self.assertEqual([1, 2, 3], runner.selected_run_indexes([], 3))
+        self.assertEqual([2], runner.selected_run_indexes([2], 3))
+        with self.assertRaisesRegex(runner.ApiError, "between 1 and 3"):
+            runner.selected_run_indexes([4], 3)
+
     def test_docs_for_expected_files_matches_title_file_name_or_path_name(self) -> None:
         docs = [
             {"title": "springboot-basics.md", "status": "COMPLETED"},
@@ -47,6 +54,8 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             tmp = Path(tmp_dir)
             fixture = tmp / "fixture.md"
             fixture.write_text("# Fixture\ncontent\n", encoding="utf-8")
+            eval_set = tmp / "eval.jsonl"
+            eval_set.write_text('{"id":"fact-001"}\n', encoding="utf-8")
             config = tmp / "application.yml"
             config.write_text("retrieval:\n  rerank:\n    provider: heuristic\n", encoding="utf-8")
 
@@ -55,7 +64,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
                 runner.DEFAULT_CONFIG_SNAPSHOT = [config]
                 args = argparse.Namespace(
                     base_url="http://localhost:8080",
-                    eval_set="docs/eval/rag_eval_set.jsonl",
+                    eval_set=str(eval_set),
                     top_k=5,
                     min_score=0.3,
                     enable_rerank=True,
@@ -84,6 +93,106 @@ class ReproducibleRagEvalTest(unittest.TestCase):
 
             with self.assertRaises(runner.ApiError):
                 runner.write_json(path, {"second": True}, no_overwrite=True)
+
+    def test_load_arm_manifest_validates_schema_and_returns_stable_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "model-arm.json"
+            path.write_text(
+                """{
+                  "schemaVersion": "c7-reranker-ab-v1",
+                  "armId": "model",
+                  "expectedRequestedProvider": "nvidia",
+                  "expectedEffectiveProvider": "nvidia",
+                  "model": "nvidia/test",
+                  "protocol": "nvidia-ranking-v1",
+                  "topN": 20,
+                  "topK": 5,
+                  "truncate": "END",
+                  "timeoutMillis": 20000,
+                  "healthCheckEnabled": false,
+                  "endpointPath": "/reranking",
+                  "measuredRepeats": 3,
+                  "warmupCalls": 3
+                }""",
+                encoding="utf-8",
+            )
+
+            manifest = runner.load_arm_manifest(path)
+
+        self.assertEqual("model", manifest["armId"])
+        self.assertEqual("nvidia", manifest["expectedEffectiveProvider"])
+        self.assertRegex(manifest["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_load_arm_manifest_rejects_secret_or_unknown_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "unsafe-arm.json"
+            path.write_text(json.dumps({
+                "schemaVersion": runner.C7_ARM_SCHEMA,
+                "armId": "model",
+                "expectedRequestedProvider": "nvidia",
+                "expectedEffectiveProvider": "nvidia",
+                "model": "nvidia/test",
+                "protocol": "nvidia-ranking-v1",
+                "topN": 20,
+                "topK": 5,
+                "truncate": "END",
+                "timeoutMillis": 20000,
+                "healthCheckEnabled": False,
+                "endpointPath": "/reranking",
+                "measuredRepeats": 3,
+                "warmupCalls": 3,
+                "apiKey": "must-not-be-accepted",
+            }), encoding="utf-8")
+
+            with self.assertRaisesRegex(runner.ApiError, "fields invalid"):
+                runner.load_arm_manifest(path)
+
+    def test_build_metadata_adds_c7_eval_identity_sample_order_and_arm_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            eval_set = tmp / "eval.jsonl"
+            fixture = tmp / "fixture.md"
+            eval_set.write_text('{"id":"fact-001"}\n{"id":"fact-002"}\n', encoding="utf-8")
+            fixture.write_text("fixture", encoding="utf-8")
+            args = argparse.Namespace(
+                base_url="http://localhost:8080",
+                eval_set=str(eval_set),
+                top_k=5,
+                min_score=0.3,
+                enable_rerank=True,
+            )
+            manifest = {
+                "schemaVersion": runner.C7_ARM_SCHEMA,
+                "armId": "model",
+                "expectedRequestedProvider": "nvidia",
+                "expectedEffectiveProvider": "nvidia",
+                "model": "nvidia/test",
+                "protocol": "nvidia-ranking-v1",
+                "topN": 20,
+                "topK": 5,
+                "truncate": "END",
+                "timeoutMillis": 20000,
+                "healthCheckEnabled": False,
+                "endpointPath": "/reranking",
+                "measuredRepeats": 3,
+                "warmupCalls": 3,
+                "sha256": "a" * 64,
+            }
+
+            metadata = runner.build_metadata(
+                args,
+                {"id": 9, "name": "eval", "description": "marker", "vectorCollection": "kb_test"},
+                [{"id": 1, "title": "fixture.md", "status": "COMPLETED", "chunkCount": 1, "contentHash": "h"}],
+                [fixture],
+                selected_samples=[{"id": "fact-001"}, {"id": "fact-002"}],
+                arm_manifest=manifest,
+                run_index=2,
+            )
+
+        self.assertRegex(metadata["evalSetIdentity"]["sha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual(["fact-001", "fact-002"], metadata["sampleSelection"]["ids"])
+        self.assertEqual("model", metadata["armManifest"]["armId"])
+        self.assertEqual({"index": 2, "total": 3}, metadata["repeat"])
 
     def test_build_eval_command_defaults_to_retrieval_only(self) -> None:
         command = runner.build_eval_command(
@@ -206,6 +315,64 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertFalse(plan["willUploadFixtures"])
         self.assertEqual(0, plan["expectedFixtureUploads"])
 
+    def test_build_plan_c7_model_arm_includes_warmup_embedding_and_rerank_budget(self) -> None:
+        args = self.eval_command_args(include_ask=False)
+        args.repeat = 3
+        args.arm_manifest_data = {
+            "armId": "model",
+            "expectedEffectiveProvider": "nvidia",
+            "measuredRepeats": 3,
+            "warmupCalls": 1,
+        }
+
+        plan = runner.build_plan(
+            args,
+            [Path("test-data/springboot-basics.md")],
+            [{"id": "fact-001", "should_answer": True}, {"id": "fact-002", "should_answer": True}],
+        )
+
+        self.assertEqual("model", plan["armId"])
+        self.assertEqual(7, plan["estimatedLiveCalls"]["debugRetrieve"])
+        self.assertEqual(7, plan["estimatedLiveCalls"]["queryEmbeddingUpperBound"])
+        self.assertEqual(7, plan["estimatedLiveCalls"]["modelRerankUpperBound"])
+
+    def test_run_c7_warmup_uses_fixed_samples_and_separate_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            eval_set = tmp / "eval.jsonl"
+            fixture = tmp / "fixture.md"
+            eval_set.write_text('{"id":"fact-001"}\n{"id":"fact-002"}\n', encoding="utf-8")
+            fixture.write_text("fixture", encoding="utf-8")
+            args = self.eval_command_args(include_ask=False)
+            args.eval_set = str(eval_set)
+            args.no_overwrite = True
+            args.arm_manifest_data = {
+                "schemaVersion": runner.C7_ARM_SCHEMA,
+                "armId": "model",
+                "expectedRequestedProvider": "nvidia",
+                "expectedEffectiveProvider": "nvidia",
+                "model": "nvidia/test",
+                "protocol": "nvidia-ranking-v1",
+                "measuredRepeats": 3,
+                "warmupCalls": 2,
+                "sha256": "d" * 64,
+            }
+            samples = [{"id": "fact-001"}, {"id": "fact-002"}]
+            kb = {"id": 7, "name": "eval", "description": "marker", "vectorCollection": "kb_eval"}
+            docs = [{"id": 1, "title": "fixture.md", "status": "COMPLETED", "chunkCount": 1, "contentHash": "h"}]
+
+            with mock.patch.object(runner, "run_eval") as run_eval:
+                outputs = runner.run_c7_warmup(args, 7, kb, docs, [fixture], samples, tmp / "warmup")
+
+            self.assertEqual(["fact-001", "fact-002"], outputs["sampleIds"])
+            self.assertIn("c7-model-dddddddddddd-warmup", str(outputs["metadataPath"]))
+            metadata = json.loads(Path(outputs["metadataPath"]).read_text(encoding="utf-8"))
+            self.assertEqual("warmup", metadata["phase"])
+            self.assertTrue(metadata["warmup"]["excludedFromMeasured"])
+            child_args = run_eval.call_args.args[0]
+            self.assertEqual(["fact-001", "fact-002"], child_args.sample_ids)
+            self.assertEqual(2, child_args.sample_limit)
+
     def test_build_preflight_reports_ready_without_eval_calls(self) -> None:
         args = self.eval_command_args(include_ask=True)
         result = runner.build_preflight(
@@ -280,6 +447,47 @@ class ReproducibleRagEvalTest(unittest.TestCase):
 
             with mock.patch("sys.argv", argv), mock.patch.object(runner, "login") as login:
                 self.assertEqual(2, runner.main())
+
+            login.assert_not_called()
+
+    def test_main_plan_only_loads_c7_arm_manifest_without_backend_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            eval_set = tmp / "eval.jsonl"
+            fixture = tmp / "fixture.md"
+            manifest = tmp / "heuristic-arm.json"
+            eval_set.write_text('{"id":"fact-001","should_answer":true}\n', encoding="utf-8")
+            fixture.write_text("# Fixture\n", encoding="utf-8")
+            manifest.write_text(
+                json.dumps({
+                    "schemaVersion": runner.C7_ARM_SCHEMA,
+                    "armId": "heuristic",
+                    "expectedRequestedProvider": "heuristic",
+                    "expectedEffectiveProvider": "heuristic",
+                    "model": "",
+                    "protocol": "heuristic-v1",
+                    "topN": 20,
+                    "topK": 5,
+                    "truncate": "NONE",
+                    "timeoutMillis": 0,
+                    "healthCheckEnabled": False,
+                    "endpointPath": "",
+                    "measuredRepeats": 3,
+                    "warmupCalls": 3,
+                }),
+                encoding="utf-8",
+            )
+            argv = [
+                "run_reproducible_rag_eval.py",
+                "--plan-only",
+                "--eval-set", str(eval_set),
+                "--fixture", str(fixture),
+                "--repeat", "3",
+                "--arm-manifest", str(manifest),
+            ]
+
+            with mock.patch("sys.argv", argv), mock.patch.object(runner, "login") as login:
+                self.assertEqual(0, runner.main())
 
             login.assert_not_called()
 

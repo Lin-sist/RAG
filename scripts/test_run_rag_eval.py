@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import unittest
+from unittest import mock
 
 import run_rag_eval as runner
 
@@ -165,6 +166,124 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         self.assertEqual({"timeout": 1}, summary["fallbackReasonHistogram"])
         self.assertEqual(2, summary["totalModelCalls"])
         self.assertEqual(1.0, summary["candidateCoverage"])
+
+    def test_latency_summary_uses_nearest_rank_and_ignores_invalid_values(self) -> None:
+        summary = runner.latency_summary([30, 10, float("nan"), -1, 20])
+
+        self.assertEqual(
+            {"count": 3, "min": 10.0, "p50": 20.0, "p95": 30.0, "max": 30.0},
+            summary,
+        )
+        self.assertEqual(10.0, runner.latency_summary([10])["p95"])
+        self.assertEqual(20.0, runner.latency_summary([10, 20, 30, 40])["p50"])
+        self.assertEqual(
+            {"count": 0, "min": None, "p50": None, "p95": None, "max": None},
+            runner.latency_summary([]),
+        )
+
+    def test_aggregate_rerank_attributions_reports_latency_percentiles(self) -> None:
+        summary = runner.aggregate_rerank_attributions([
+            {"effectiveProvider": "nvidia", "latencyMillis": 10},
+            {"effectiveProvider": "nvidia", "latencyMillis": 20},
+            {"effectiveProvider": "nvidia", "latencyMillis": 40},
+        ])
+
+        self.assertEqual(
+            {"count": 3, "min": 10.0, "p50": 20.0, "p95": 40.0, "max": 40.0},
+            summary["latencyMillis"],
+        )
+
+    def test_run_sample_records_debug_retrieval_wall_clock_latency(self) -> None:
+        args = argparse.Namespace(
+            base_url="http://localhost:8080",
+            kb_id=7,
+            top_k=5,
+            min_score=0.3,
+            enable_rerank=True,
+            timeout=60.0,
+            skip_ask=True,
+            judge_mode="off",
+        )
+        sample = {"id": "no-answer-001", "question": "q", "should_answer": False}
+
+        with (
+            mock.patch.object(runner.time, "monotonic", side_effect=[1.0, 1.125]),
+            mock.patch.object(runner, "call_json", return_value={"data": {"status": "ok", "contexts": []}}),
+        ):
+            result = runner.run_sample(sample, args, "token")
+
+        self.assertEqual(125.0, result.details["retrieveLatencyMillis"])
+
+    def test_run_sample_records_latency_when_debug_retrieval_fails(self) -> None:
+        args = argparse.Namespace(
+            base_url="http://localhost:8080",
+            kb_id=7,
+            top_k=5,
+            min_score=0.3,
+            enable_rerank=True,
+            timeout=60.0,
+            skip_ask=True,
+            judge_mode="off",
+        )
+        sample = {"id": "no-answer-001", "question": "q", "should_answer": False}
+
+        with (
+            mock.patch.object(runner.time, "monotonic", side_effect=[1.0, 1.050]),
+            mock.patch.object(runner, "call_json", side_effect=TimeoutError("timed out")),
+        ):
+            result = runner.run_sample(sample, args, "token")
+
+        self.assertEqual(50.0, result.details["retrieveLatencyMillis"])
+        self.assertIn("timed out", result.retrieval_error)
+
+    def test_aggregate_reports_retrieval_latency_separately_from_rerank_latency(self) -> None:
+        result = argparse.Namespace(
+            sample={"should_answer": False},
+            skipped_ask=True,
+            ask_error=None,
+            ask_response=None,
+            skipped_judge=True,
+            judge_error=None,
+            judge_pass=None,
+            faithfulness_score=None,
+            relevance_score=None,
+            recall_total=0,
+            recall3_hits=0,
+            recall5_hits=0,
+            first_match_rank=None,
+            top1_source_hit=None,
+            keyword_hits=0,
+            keyword_total=0,
+            citation_hits=0,
+            citation_total=0,
+            citation_snippet_hits=0,
+            citation_snippet_total=0,
+            unsupported_citation_count=0,
+            no_answer_citation_violation_count=0,
+            no_answer_ok=None,
+            details={
+                "retrieveLatencyMillis": 250,
+                "rerankAttribution": {"effectiveProvider": "heuristic", "latencyMillis": 15},
+            },
+        )
+
+        summary = runner.aggregate([result])
+
+        self.assertEqual(250.0, summary["retrieval_latency_millis"]["p50"])
+        self.assertEqual(15.0, summary["rerank_attribution"]["latencyMillis"]["p50"])
+
+    def test_latency_fact_rows_names_retrieval_and_rerank_separately(self) -> None:
+        rows = runner.latency_fact_rows({
+            "retrieval_latency_millis": {"count": 3, "min": 80.0, "p50": 90.0, "p95": 110.0, "max": 110.0},
+            "rerank_attribution": {
+                "latencyMillis": {"count": 3, "min": 10.0, "p50": 20.0, "p95": 40.0, "max": 40.0},
+            },
+        })
+
+        rendered = "\n".join(rows)
+        self.assertIn("Client-observed debug retrieval latency", rendered)
+        self.assertIn("Server-side rerank stage latency", rendered)
+        self.assertIn("count=3, min=80.0, P50=90.0, P95=110.0, max=110.0 ms", rendered)
 
 
 if __name__ == "__main__":

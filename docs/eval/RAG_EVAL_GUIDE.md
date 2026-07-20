@@ -432,7 +432,126 @@ python scripts/run_rag_eval.py --kb-id <kb-id> --report tmp/eval/experiment-afte
 
 这样才能判断指标变化来自哪里。
 
-## 8. 下一步接入方向
+## 8. C7：Heuristic 与 NVIDIA Reranker 固定身份 A/B
+
+C7 只比较 retrieval 指标与两类 latency，不调用 `/api/qa/ask`、LLM judge 或生成模型。正式结论必须来自 `comparisonStatus=COMPARABLE`；任何 identity 漂移、retrieve error、fallback、provider/model/protocol 不符、候选覆盖不完整或单侧零候选都会抑制 quality delta。
+
+### 8.1 脱敏 arm manifest
+
+仓库提供四份不含 key、Authorization 和完整 base URL 的 manifest：
+
+- `docs/eval/config/c7-canary-heuristic-arm.json`
+- `docs/eval/config/c7-canary-nvidia-arm.json`
+- `docs/eval/config/c7-heuristic-arm.json`
+- `docs/eval/config/c7-nvidia-arm.json`
+
+canary 固定 3 个样本、每 arm 1 个 measured run + 3 次 warm-up；上限为 12 次 debug retrieval、12 次 query embedding、6 次 NVIDIA rerank。正式 full 固定 30 个样本、每 arm 3 个 measured runs + 每 arm 总计 3 次 warm-up；上限为 186 次 debug retrieval、186 次 query embedding、93 次 NVIDIA rerank。两阶段的 ask、judge 和 generation 调用量均为 0。
+
+NVIDIA arm 固定模型 `nvidia/llama-nemotron-rerank-1b-v2`、协议 `nvidia-ranking-v1`、模型专属 endpoint path `/v1/retrieval/nvidia/llama-nemotron-rerank-1b-v2/reranking`、`truncate=END`、timeout `20000ms`、关闭 health check。费用为用户提供的外部事实：本账号 NIM 免费；这不消除速率、并发和配额风险，因此 runner 串行调用且 rerank 不做自动重试。
+
+### 8.2 启动配置与只读预检
+
+每次切换 arm 都要停止旧后端，再以相同 tracked Git HEAD 启动新后端。Heuristic arm 只设置：
+
+```powershell
+$env:RETRIEVAL_RERANK_PROVIDER="heuristic"
+```
+
+NVIDIA arm 使用本地凭据环境变量，禁止把真实 key 写入 manifest、命令历史、报告或 tracked 文件：
+
+```powershell
+$env:RETRIEVAL_RERANK_PROVIDER="nvidia"
+$env:NVIDIA_RERANK_ENABLED="true"
+$env:NVIDIA_RERANK_BASE_URL="https://integrate.api.nvidia.com"
+$env:NVIDIA_RERANK_ENDPOINT_PATH="/v1/retrieval/nvidia/llama-nemotron-rerank-1b-v2/reranking"
+$env:NVIDIA_RERANK_MODEL="nvidia/llama-nemotron-rerank-1b-v2"
+$env:NVIDIA_RERANK_TRUNCATE="END"
+$env:NVIDIA_RERANK_TIMEOUT_MILLIS="20000"
+$env:NVIDIA_RERANK_HEALTH_CHECK_ENABLED="false"
+# NVIDIA_RERANK_API_KEY 由本地安全环境提供；不要在日志中打印它。
+```
+
+每次 backend 启动后先做 mutation-free preflight。它只复用已有固定 KB，不创建、上传、删除或重建资源：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --preflight-only `
+  --keep-existing `
+  --username $env:RAG_EVAL_USERNAME `
+  --password $env:RAG_EVAL_PASSWORD
+```
+
+### 8.3 Canary
+
+固定 canary IDs 为 `fact-001`、`fact-006`、`definition-001`。先在 heuristic backend 运行：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --keep-existing --repeat 1 `
+  --arm-manifest docs\eval\config\c7-canary-heuristic-arm.json `
+  --sample-id fact-001 --sample-id fact-006 --sample-id definition-001 `
+  --report tmp\eval\c7-canary-heuristic.md `
+  --details-json tmp\eval\c7-canary-heuristic-details.json `
+  --metadata-json tmp\eval\c7-canary-heuristic-metadata.json `
+  --username $env:RAG_EVAL_USERNAME --password $env:RAG_EVAL_PASSWORD `
+  --no-overwrite
+```
+
+重启为 NVIDIA backend 后，用 `c7-canary-nvidia-arm.json` 和 `c7-canary-nvidia.*` 输出名运行相同 3 个 IDs。然后离线比较：
+
+```powershell
+python -B scripts\compare_reranker_ab.py `
+  --heuristic-details tmp\eval\c7-canary-heuristic-details.json `
+  --model-details tmp\eval\c7-canary-nvidia-details.json `
+  --output-json tmp\eval\c7-canary-comparison.json `
+  --output-markdown tmp\eval\c7-canary-comparison.md
+```
+
+只有 canary 为 `COMPARABLE`、model eligible coverage 为 100%、fallback 为 0、无 429/timeout/provider drift，才可请求 full 预算确认；否则停止并保留诊断，不自动重试或删样本。
+
+### 8.4 Full 的交替顺序
+
+full 使用 `--run-index` 把 measured runs 按 `H1/N1、N2/H2、H3/N3` 执行。首次运行每个 logical arm 时执行 3 次 warm-up；同一 arm 的后续 run index 加 `--skip-warmup`，从而保持已批准的每 arm 总计 `W=3` 和模型上限 93 次。若改为每次 backend 重启都 warm-up，模型上限将升为 99 次，必须重新取得用户授权。
+
+每次 invocation 均使用同一组通用参数，并为 arm/run index 设置独立输出基名：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --keep-existing --repeat 3 --run-index 1 `
+  --arm-manifest docs\eval\config\c7-heuristic-arm.json `
+  --report tmp\eval\c7-heuristic.md `
+  --details-json tmp\eval\c7-heuristic-details.json `
+  --metadata-json tmp\eval\c7-heuristic-metadata.json `
+  --username $env:RAG_EVAL_USERNAME --password $env:RAG_EVAL_PASSWORD `
+  --no-overwrite
+```
+
+这会生成带 `-run1` 后缀的 measured outputs。后续调用把 `--run-index` 改为 `2` 或 `3` 并加 `--skip-warmup`；NVIDIA arm 改用 `c7-nvidia-arm.json` 和 `c7-nvidia.*` 输出基名。每次切换 backend 后都先执行 8.2 的 preflight。
+
+三轮完成后离线比较全部六份 details：
+
+```powershell
+python -B scripts\compare_reranker_ab.py `
+  --heuristic-details tmp\eval\c7-heuristic-details-run1.json `
+  --heuristic-details tmp\eval\c7-heuristic-details-run2.json `
+  --heuristic-details tmp\eval\c7-heuristic-details-run3.json `
+  --model-details tmp\eval\c7-nvidia-details-run1.json `
+  --model-details tmp\eval\c7-nvidia-details-run2.json `
+  --model-details tmp\eval\c7-nvidia-details-run3.json `
+  --output-json tmp\eval\c7-comparison.json `
+  --output-markdown tmp\eval\c7-comparison.md
+```
+
+compact comparison 不复制 question、contexts、passages、raw provider response 或凭据。它分别报告 Recall@5、MRR、Top1 source accuracy，以及 server-side rerank stage latency 和 client-observed debug retrieval wall-clock latency 的 observation count、P50、P95；warm-up 不进入 measured metrics。
+
+### 8.5 结论边界
+
+- `RETRIEVAL_ONLY` 是单次报告状态，`COMPARABLE / NOT_COMPARABLE / FAILED` 是独立比较状态。
+- 只有 `COMPARABLE` 才展示 model - heuristic 的质量差值；不可比较时不计算成功子集收益。
+- 30 条开发样本只能证明本 eval-set、fixture、KB、配置、provider/model 和 Git HEAD 下的观察结果。
+- C7 不证明 generation、citation、no-answer 或 judge 改善，不建立生产 SLA，也不自动修改默认 reranker。
+
+## 9. 下一步接入方向
 
 ### Hybrid Search
 
@@ -479,7 +598,7 @@ python scripts/run_rag_eval.py --kb-id <kb-id> --report tmp/eval/experiment-afte
 3. 对 unsupported claim 做标记或触发重答。
 4. 用 eval runner 新增 claim support rate。
 
-## 9. 当前 baseline 的边界
+## 10. 当前 baseline 的边界
 
 - 评测集只有 30 条，适合做开发 baseline，不适合当作最终论文级评测。
 - `contentPreview` 只有片段预览，可能低估长上下文命中。

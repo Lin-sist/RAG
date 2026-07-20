@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "c7-reranker-ab-v1",
+  "armId": "heuristic",
+  "expectedRequestedProvider": "heuristic",
+  "expectedEffectiveProvider": "heuristic",
+  "model": "",
+  "protocol": "heuristic-v1",
+  "topN": 20,
+  "topK": 5,
+  "truncate": "NONE",
+  "timeoutMillis": 0,
+  "healthCheckEnabled": false,
+  "endpointPath": "",
+  "measuredRepeats": 1,
+  "warmupCalls": 3
+}

@@ -8,7 +8,7 @@
 
 - Change：`2026-07-20-reranker-ab-evaluation`
 - 位置：`openspec/changes/2026-07-20-reranker-ab-evaluation/`
-- 类型：Type C 重大变更；当前仅完成事前规划，等待用户审阅与实现授权。
+- 类型：Type C 重大变更；用户已于 2026-07-20 批准规划、15 条决策、spec delta、离线实现与建议的 `R=3,W=3` 路径，当前进入 TDD 实现。
 - 目标：固定 heuristic/model 两个 retrieval-only arm 的评测身份、provider 覆盖与样本配对，离线比较 Recall@5、MRR、Top1、rerank/retrieval P50/P95，并对 fallback 或身份漂移明确判为不可比较。
 - 范围：Python eval runner、可复现 metadata、sanitized arm manifest、离线 comparator、单元测试、评测指南与经授权后的 C7 evidence。
 - 非目标：不修改默认 heuristic，不新增按请求切换 provider 的 API，不修改 Java provider/检索/分块/prompt/citation/no-answer/judge，不扩充评测集，不建立 C10 通用门禁，不调用 ask/judge/LLM。
