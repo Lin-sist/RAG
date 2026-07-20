@@ -12,7 +12,7 @@
 - [x] 用户授权进入离线实现；真实外调仍按 canary/full 边界记录实际事实并在异常时停止请示。
 - [x] 用户选择正式 latency 预算 `R=3,W=3`，并批准 arm 交替与 canary→full 推荐路径。
 - [x] 真实 canary 前单独披露并获批 provider/model、调用量、出站数据、限流、费用及零费用依据；首轮批准上限为 12/12/6。
-- [ ] full A/B 前基于 canary 结果再次确认调用预算；未获授权不得执行。
+- [x] full A/B 前基于 canary 结果再次确认调用预算；用户已批准新增 186/186/93 上限后才执行。
 
 ## 1. Per-sample Latency And Safe Aggregation
 
@@ -81,5 +81,5 @@
 - [x] 生成并验证六 measured runs 的 offline comparison=`COMPARABLE`，再陈述质量/延迟 delta。
 - [x] 明确 30 条开发样本的外推限制、免费依据、限流事实、H1 冷启动延迟异常和默认 provider 不变。
 - [x] 更新 proposal/design/tasks、`openspec/project.md`、架构/路线图/技术债与 `.ai/AGENT_LOG.md`。
-- [ ] 用户验收实现、live evidence 与结论边界。
-- [ ] 用户验收后接受 delta 进 `evaluation` baseline、恢复 `ACTIVE_TASK=IDLE` 并归档 change。
+- [x] 用户验收实现、live evidence 与结论边界，并确认默认 provider 保持 heuristic。
+- [x] 用户验收后接受 delta 进 `evaluation` baseline、恢复 `ACTIVE_TASK=IDLE` 并归档 change。

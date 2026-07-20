@@ -6,6 +6,7 @@
 - NVIDIA 在本固定开发集上观察到正向 retrieval 质量差异：Recall@5 +7.84pp、MRR +0.0895、Top1 source accuracy +3.70pp。
 - 三个 repeat 的质量指标完全一致；answerable 样本没有观察到 Recall@5、MRR 或 Top1 回退。
 - 默认 reranker 保持 heuristic；本 evidence 不自动授权切换默认 provider。
+- 用户已于 2026-07-20 验收本 evidence 与结论边界；4 个 requirements / 11 个 scenarios 已接受进 `evaluation` baseline，C7 change 已归档。
 
 ## 严格身份与覆盖
 

@@ -884,3 +884,17 @@
 - 安全与边界：四个 backend 均已停止，8080 已释放；未修改 `.env.local`、application 配置、Java/provider/API、默认 heuristic、评测集、fixture、数据库、索引、embedding、prompt、citation、no-answer、judge、依赖或前端。30 条开发样本不外推生产收益；C7 不自动切换默认 provider、不接受 delta、不归档。
 - 剩余闸门：用户需验收 full evidence、延迟异常解释、默认 provider 不变与外推边界；确认后才能接受 evaluation delta、恢复 `ACTIVE_TASK=IDLE` 并归档 change。
 - Commit：`pending`；建议 `docs(评测): 记录C7 full A-B可比较证据`。
+
+## 2026-07-20｜C7 full evidence 提交补录
+
+- Commit：`b56f22c8eeece0826499ec6851a1495b40e9650e`（`docs(评测): 记录C7 full A-B可比较证据`）。本条只补录上一 full evidence 提交的真实 hash，不记录本次验收归档提交。
+
+## 2026-07-20｜C7 用户验收、evaluation baseline 接受与归档
+
+- 用户决策：用户验收 C7 full evidence、质量/延迟结论与外推边界，接受 `evaluation` delta 并授权归档；默认 reranker 明确继续保持 heuristic，未来如需切换须另立 Type C change。
+- 契约与治理：C7 delta 的 4 个 requirements / 11 个 scenarios 已原文接受进 `openspec/specs/evaluation/spec.md`；`2026-07-20-reranker-ab-evaluation` 已移入 `openspec/changes/archive/`，tasks 全部完成，`.ai/ACTIVE_TASK.md` 已恢复 `IDLE`，当前无未归档 change。同步 `openspec/project.md`、架构、技术债、优化索引与 full evidence 的 accepted 状态。
+- 验证：delta-to-baseline exact match 通过（4 requirements / 11 scenarios）；archive structure、必需 artifacts、tasks 全勾选、`ACTIVE_TASK=IDLE`、无未归档 change 均通过；Python 全量为 61 tests / OK；SensitiveLogs 扫描 306 source files / PASS；`git diff --check` 通过；11 个 changed Markdown 文件的本地相对链接检查通过；当前事实源无“待用户验收/尚未接受”残留；8080 无监听。
+- 跳过项：OpenSpec CLI 不在 PATH，因此只执行文件级 exact-match、结构与状态校验，未声称 CLI validation 通过。本轮仅接受契约与归档文档，无 Java、Python、前端、依赖或运行时配置改动，因此未重复运行 Maven、frontend build、Docker/Testcontainers 或 live provider；本轮真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0。
+- 范围安全：默认配置仍为 `rag-admin/src/main/resources/application.yml` 中 `provider: heuristic`；未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、Java/provider/API、评测脚本、评测集、fixture、数据库/迁移、索引、embedding、分块、hybrid/RRF、prompt、citation、no-answer、judge、依赖或前端；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：30 条开发样本只支持当前固定身份下的 retrieval 观察结论；NVIDIA 长期速率、配额、并发与生产 SLA 未由 C7 证明。H1 冷启动污染 aggregate retrieval P95，不能据此宣称 model 尾延迟更快。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 验收并归档C7重排A-B评测`。

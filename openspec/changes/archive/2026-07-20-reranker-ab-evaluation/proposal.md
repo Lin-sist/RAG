@@ -3,7 +3,7 @@
 ## Status
 
 - Change type：Type C 重大变更。
-- 当前阶段：corrected-host canary 与 full `R=3,W=3` 均已完成。Full 的 heuristic/model 各 3 个 measured runs、每 arm 总计 3 次 warm-up，comparison=`COMPARABLE`；当前等待用户验收 live evidence 与结论边界，尚未接受 delta 或归档。
+- 当前阶段：用户已验收 corrected-host canary 与 full `R=3,W=3` evidence、结论边界和默认 provider 保持 heuristic；4 个 requirements / 11 个 scenarios 已接受进 `evaluation` baseline，change 已归档。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 
 ## Summary

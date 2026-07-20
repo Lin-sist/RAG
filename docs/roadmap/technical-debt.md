@@ -34,11 +34,11 @@
 
 ## P1：下一轮 RAG 质量工程
 
-### 1. 真实 reranker A/B（执行完成，待 C7 验收归档）
+### 1. 真实 reranker A/B（已完成：2026-07-20）
 
 - C7 已固定 KB、fixture、配置、eval-set 与 Git HEAD，按 `R=3,W=3` 完成 heuristic/NVIDIA 六个 measured runs；comparison=`COMPARABLE`，model 90/90 effective nvidia、fallback=0。
 - NVIDIA 相对 heuristic 的 Recall@5/MRR/Top1 观察提升为 +7.84pp/+0.0895/+3.70pp；server-side rerank P50/P95 为 363/688ms，overall P50 增加 188ms。H1 冷启动污染 aggregate P95，不能据此宣称 model 尾延迟更快。
-- 30 条开发样本不能外推生产收益；默认仍保持 heuristic。待用户验收 C7 evidence 与结论边界后再接受 delta、归档并决定是否另立默认切换 change。
+- 30 条开发样本不能外推生产收益；用户已验收 C7 evidence 与结论边界，delta 已接受进 `evaluation` baseline，change 已归档。默认仍保持 heuristic；若未来切换默认 provider，须另立 Type C change。
 
 ### 2. 分块结构专项
 

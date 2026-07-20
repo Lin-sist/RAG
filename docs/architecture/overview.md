@@ -72,7 +72,7 @@
 ## 5. 当前边界
 
 - `UserDetailsServiceImpl` 从数据库加载未删除用户及其有效角色；运行时不再初始化固定默认账号。
-- 真实 model reranker 已完成 30 条开发样本 A/B，但 C7 delta 尚待用户验收归档，默认 provider 仍为 heuristic。
+- 真实 model reranker 已完成并验收 30 条开发样本 A/B，C7 delta 已接受进 `evaluation` baseline 并归档；默认 provider 仍为 heuristic。
 - 30 条评测集是开发基线，不是生产数据集或论文级基准。
 - 标题感知、长代码块和长段落专项仍待验证。
 - 当前只有请求日志与诊断字段，尚未形成完整 GenAI trace、指标和告警体系。

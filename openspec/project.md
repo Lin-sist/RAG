@@ -12,7 +12,7 @@
 - 前端是 Vue 3 + TypeScript + Vite + Element Plus。
 - 默认向量库是 Milvus；另有 Qdrant、Elasticsearch adapter。
 - 默认检索是 dense vector + BM25 + RRF。
-- 默认 reranker 仍是 heuristic；除既有通用 HTTP model adapter 外，C6 已实现默认关闭的 NVIDIA ranking adapter、整样本 heuristic fallback 与逐次 requested/effective provider 归因。C7 已在固定 30 条开发样本上完成 clean `R=3,W=3` A/B：NVIDIA Recall@5/MRR/Top1 为 76.47%/0.8241/100%，相对 heuristic 提升 7.84pp/0.0895/3.70pp；该 evidence 尚待用户接受进 baseline，不自动修改默认 provider。
+- 默认 reranker 仍是 heuristic；除既有通用 HTTP model adapter 外，C6 已实现默认关闭的 NVIDIA ranking adapter、整样本 heuristic fallback 与逐次 requested/effective provider 归因。C7 已在固定 30 条开发样本上完成 clean `R=3,W=3` A/B：NVIDIA Recall@5/MRR/Top1 为 76.47%/0.8241/100%，相对 heuristic 提升 7.84pp/0.0895/3.70pp；该 evidence 已获用户验收并接受进 `evaluation` baseline，不自动修改默认 provider。
 - 默认分块为 `420/80`。
 - 同步问答返回答案、contexts、citations、metadata；SSE 当前主要输出文本 chunk。
 - 评测集为 30 条开发样本，具备固定 KB、retrieval/generation/citation/no-answer 指标。
@@ -28,7 +28,7 @@
 - 不是生产级多租户系统。
 - 登录与 refresh 已使用数据库用户、状态和角色；bootstrap 默认关闭，运行时不提供固定默认账号。
 - LLM judge 默认关闭，未完成逐 claim faithfulness 结论。
-- C7 真实 model reranker A/B 已执行完成但尚待用户接受 delta/归档；标题感知长块专项、完整 GenAI 可观测性仍未完成。
+- C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项、完整 GenAI 可观测性仍未完成。
 
 ## 长期规格
 

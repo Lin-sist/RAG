@@ -2,26 +2,18 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
 ## Active Change
 
-- Change：`2026-07-20-reranker-ab-evaluation`
-- 位置：`openspec/changes/2026-07-20-reranker-ab-evaluation/`
-- 类型：Type C 重大变更；full `R=3,W=3` 已执行完成，六个 measured runs 的 comparison 为 `COMPARABLE`。当前等待用户验收 live evidence、结论边界与默认 provider 不变，再接受 delta 并归档。
-- 目标：固定 heuristic/model 两个 retrieval-only arm 的评测身份、provider 覆盖与样本配对，离线比较 Recall@5、MRR、Top1、rerank/retrieval P50/P95，并对 fallback 或身份漂移明确判为不可比较。
-- 范围：Python eval runner、可复现 metadata、sanitized arm manifest、离线 comparator、单元测试、评测指南与经授权后的 C7 evidence。
-- 非目标：不修改默认 heuristic，不新增按请求切换 provider 的 API，不修改 Java provider/检索/分块/prompt/citation/no-answer/judge，不扩充评测集，不建立 C10 通用门禁，不调用 ask/judge/LLM。
-- 外部调用：full A/B 实际 186 次 debug retrieval、至多 186 次 query embedding、93 次 NVIDIA rerank；全部 C7 canary + full 累计 204/至多 204/105。Ask/judge/LLM generation 为 0、无 retry，未超出任何已批准预算。
-- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-- 验收入口：`proposal.md`、`design.md` 的 15 条决策记录、`tasks.md`、`specs/evaluation/spec.md` 的 4 个 requirements / 11 个 scenarios。
+- 当前无 active change。
 
 ## Last Completed
 
-- Change：`2026-07-18-nvidia-reranker-adapter-and-attribution`
-- 位置：`openspec/changes/archive/2026-07-18-nvidia-reranker-adapter-and-attribution/`
-- 结果：实现独立 NVIDIA `/v1/ranking` adapter、typed rerank outcome、稳定 fallback taxonomy，以及同步 QA、debug retrieval 和评测 runner 的逐样本/聚合归因。
-- 验收：用户已确认决策 13；4 个 requirements / 11 个 scenarios 已接受进 `rag-system` baseline，change 已归档。归档后用户另行授权 1 次纯合成 NVIDIA hosted rerank smoke，真实 endpoint/auth/schema 与 adapter 解析均通过；默认 provider 仍保持 heuristic，收益 A/B 留给 C7。
+- Change：`2026-07-20-reranker-ab-evaluation`
+- 位置：`openspec/changes/archive/2026-07-20-reranker-ab-evaluation/`
+- 结果：完成严格 identity、provider coverage、sample pairing 与 latency 分口径的 retrieval-only reranker A/B；full `R=3,W=3` 六个 measured runs comparison=`COMPARABLE`。
+- 验收：用户已验收 C7 full evidence 与结论边界；4 个 requirements / 11 个 scenarios 已接受进 `evaluation` baseline，change 已归档。当前默认 provider 继续保持 heuristic；如需切换必须另立 Type C change。
 
 ## Start A New Material Change
 
