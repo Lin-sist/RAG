@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-18
+> 状态日期：2026-07-20
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
@@ -34,11 +34,11 @@
 
 ## P1：下一轮 RAG 质量工程
 
-### 1. 真实 reranker A/B
+### 1. 真实 reranker A/B（执行完成，待 C7 验收归档）
 
-- C6 已实现 NVIDIA ranking 协议、fallback taxonomy 与逐样本归因；归档后 1 次纯合成 hosted smoke 已验证当前 key、模型专属 endpoint、真实响应 schema 与 adapter 解析可用。单样本 smoke 不证明生产稳定性或相对 heuristic 的收益，C7 仍须固定 KB/fixture/config/Git HEAD 做可复现 A/B。
-- 固定 KB、fixture、配置和 Git HEAD，对比 heuristic/model 的 Recall@5、MRR、Top1、延迟和降级行为。
-- 没有 provider/凭据时继续保持默认 heuristic，不用 mock 宣称业务收益。
+- C7 已固定 KB、fixture、配置、eval-set 与 Git HEAD，按 `R=3,W=3` 完成 heuristic/NVIDIA 六个 measured runs；comparison=`COMPARABLE`，model 90/90 effective nvidia、fallback=0。
+- NVIDIA 相对 heuristic 的 Recall@5/MRR/Top1 观察提升为 +7.84pp/+0.0895/+3.70pp；server-side rerank P50/P95 为 363/688ms，overall P50 增加 188ms。H1 冷启动污染 aggregate P95，不能据此宣称 model 尾延迟更快。
+- 30 条开发样本不能外推生产收益；默认仍保持 heuristic。待用户验收 C7 evidence 与结论边界后再接受 delta、归档并决定是否另立默认切换 change。
 
 ### 2. 分块结构专项
 

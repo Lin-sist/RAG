@@ -76,10 +76,10 @@
 
 ## 7. Gated Full A/B And Closeout
 
-- [ ] 用户基于 canary 明确批准 full budget 与 repeats/warm-up。
-- [ ] 按批准顺序运行 heuristic/model arms，固定 KB/fixture/config/Git HEAD 与样本全集。
-- [ ] 生成并验证 offline comparison；只有 `COMPARABLE` 才陈述质量/延迟 delta。
-- [ ] 明确 30 条开发样本的外推限制、费用/限流事实和默认 provider 不变。
-- [ ] 更新 proposal/design/tasks、`openspec/project.md`、架构/路线图/技术债与 `.ai/AGENT_LOG.md`。
+- [x] 用户基于 canary 明确批准 full `R=3,W=3` 与新增 186/186/93 上限。
+- [x] 按 `H1/N1、N2/H2、H3/N3` 运行 arms，固定 KB/fixture/config/Git HEAD 与 30 样本全集。
+- [x] 生成并验证六 measured runs 的 offline comparison=`COMPARABLE`，再陈述质量/延迟 delta。
+- [x] 明确 30 条开发样本的外推限制、免费依据、限流事实、H1 冷启动延迟异常和默认 provider 不变。
+- [x] 更新 proposal/design/tasks、`openspec/project.md`、架构/路线图/技术债与 `.ai/AGENT_LOG.md`。
 - [ ] 用户验收实现、live evidence 与结论边界。
 - [ ] 用户验收后接受 delta 进 `evaluation` baseline、恢复 `ACTIVE_TASK=IDLE` 并归档 change。

@@ -867,3 +867,20 @@
 - 证据与安全：corrected raw outputs 使用独立 `c7-canary-nvidia-ai-host*` / `c7-canary-ai-host-comparison*` 文件名，首轮失败证据未覆盖；8 份 raw evidence 的 bytes/SHA-256 已写入 `docs/eval/reports/c7-canary-corrected-host-2026-07-20.md`。Backend 已停止、8080 已释放；未修改 `.env.local`、application 配置、Java/provider/API、默认 heuristic、评测集、fixture、数据库、索引、embedding、prompt、citation、no-answer、judge、依赖或前端。
 - 剩余闸门：Full `R=3,W=3` 仍需用户基于 canary 单独批准新增上限 186 debug retrieval / 186 query embedding / 93 NVIDIA rerank，以及相同出站、免费依据与限流风险；未获授权不得执行。
 - Commit：`pending`；建议 `docs(评测): 记录C7 corrected-host canary通过证据`。
+
+## 2026-07-20｜C7 corrected-host canary 证据提交补录
+
+- Commit：`fb18b6bd5448db6e0985f98f44268da84195bb1b`（`docs(评测): 记录C7 corrected-host canary通过证据`）。本条只补录上一文档提交的真实 hash，不记录本次 full A/B evidence 提交。
+
+## 2026-07-20｜C7 full `R=3,W=3` reranker A/B 完成
+
+- 用户授权：用户批准 full 新增上限 186 次 debug retrieval / 186 次 query embedding / 93 次 NVIDIA rerank；固定 30 条问题与 fixture passages，ask/judge/LLM generation=0，串行、无自动 rerank retry，遇 fallback/429/身份漂移/超额立即停止。费用依据继续为用户确认的 NVIDIA NIM 免费，可能存在速率/配额限制。
+- Readiness：首次继续时 Docker Desktop Engine 未运行，调用量为 0 并请用户启动；恢复后 MySQL、Redis、Milvus、etcd、MinIO 均 running/healthy。主工作区 HEAD `fb18b6bd5448db6e0985f98f44268da84195bb1b`、工作区干净、凭据存在、8080 空闲。四次 backend 启动后的 mutation-free preflight 均复用 KB 15、collection `kb_ff06e2ea3de24fb4`、3 documents / 50 chunks，未创建、上传、删除或重建资源。
+- 执行顺序与覆盖：按 `H1/N1、N2/H2、H3/N3` 完成。Heuristic warm-up 3/3 与 measured 90/90 均 requested/effective heuristic、fallback=0、model calls=0；NVIDIA warm-up 3/3 与 measured 90/90 均 requested/effective nvidia、fallback=0、model calls=1、candidate coverage=100%。六个 measured reports 均 `RETRIEVAL_ONLY`、retrieve errors=0，missing pair/zero-candidate mismatch=0。
+- Comparator：`COMPARABLE`，三次 repeat 均复现 heuristic Recall@5/MRR/Top1=`68.63%/0.7346/96.30%`，NVIDIA=`76.47%/0.8241/100%`；delta 为 +7.84pp/+0.0895/+3.70pp。样本级首次 run 中 Recall 改善 `reasoning-003/reasoning-006`，MRR 改善 `definition-003/fact-008/reasoning-003/reasoning-006`，Top1 改善 `reasoning-006`，answerable 样本未观察到对应回退。
+- 延迟：90 observations 聚合的 heuristic/model retrieval P50/P95 为 797/5203ms 与 985/2796ms；model rerank stage P50/P95 为 363/688ms。H1 在 Docker 刚启动后即使 warm-up 3 次仍出现 P95=14484ms，而 H2/H3 为 2016/2031ms；因此 aggregate model P95 较低只作为冷启动诊断，不解释为 model 尾延迟收益。可信成本信号为 rerank stage 363/688ms 与 overall P50 +188ms。
+- 实际调用：四个 backend 运行段分别记录 33、60、63、30 次 debug retrieval 200，总计 186；query embedding 不超过 186；NVIDIA model calls 精确为 93。Ask/judge/LLM generation=0、自动 retry=0、fallback warning=0、`RerankProviderException`=0，未观察到真实 HTTP 429。全部 C7 canary + full 累计 204/至多 204/105，均在分次授权内。
+- 文档与证据：新增 `docs/eval/reports/c7-reranker-ab-full-2026-07-20.md`，同步 proposal/design/tasks、`openspec/project.md`、架构、优化索引与技术债；18 份 raw details/metadata/comparison 的 bytes/SHA-256 记录在 compact evidence，raw files 继续保留在 Git-ignored `tmp/eval/`。
+- 安全与边界：四个 backend 均已停止，8080 已释放；未修改 `.env.local`、application 配置、Java/provider/API、默认 heuristic、评测集、fixture、数据库、索引、embedding、prompt、citation、no-answer、judge、依赖或前端。30 条开发样本不外推生产收益；C7 不自动切换默认 provider、不接受 delta、不归档。
+- 剩余闸门：用户需验收 full evidence、延迟异常解释、默认 provider 不变与外推边界；确认后才能接受 evaluation delta、恢复 `ACTIVE_TASK=IDLE` 并归档 change。
+- Commit：`pending`；建议 `docs(评测): 记录C7 full A-B可比较证据`。

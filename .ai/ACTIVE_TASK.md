@@ -8,11 +8,11 @@
 
 - Change：`2026-07-20-reranker-ab-evaluation`
 - 位置：`openspec/changes/2026-07-20-reranker-ab-evaluation/`
-- 类型：Type C 重大变更；corrected-host model-only canary 已通过，clean heuristic/model pair 的 comparison 为 `COMPARABLE`。当前等待用户审阅 canary 证据并单独批准 full `R=3,W=3` 外调预算。
+- 类型：Type C 重大变更；full `R=3,W=3` 已执行完成，六个 measured runs 的 comparison 为 `COMPARABLE`。当前等待用户验收 live evidence、结论边界与默认 provider 不变，再接受 delta 并归档。
 - 目标：固定 heuristic/model 两个 retrieval-only arm 的评测身份、provider 覆盖与样本配对，离线比较 Recall@5、MRR、Top1、rerank/retrieval P50/P95，并对 fallback 或身份漂移明确判为不可比较。
 - 范围：Python eval runner、可复现 metadata、sanitized arm manifest、离线 comparator、单元测试、评测指南与经授权后的 C7 evidence。
 - 非目标：不修改默认 heuristic，不新增按请求切换 provider 的 API，不修改 Java provider/检索/分块/prompt/citation/no-answer/judge，不扩充评测集，不建立 C10 通用门禁，不调用 ask/judge/LLM。
-- 外部调用：首轮失败 canary 使用 12/至多 12/6，corrected-host model-only rerun 使用 6/至多 6/6，累计 18 次 debug retrieval、至多 18 次 query embedding、12 次 NVIDIA rerank；ask/judge/LLM generation 为 0、无 retry。Full A/B 仍须单独披露并取得用户授权。
+- 外部调用：full A/B 实际 186 次 debug retrieval、至多 186 次 query embedding、93 次 NVIDIA rerank；全部 C7 canary + full 累计 204/至多 204/105。Ask/judge/LLM generation 为 0、无 retry，未超出任何已批准预算。
 - 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 - 验收入口：`proposal.md`、`design.md` 的 15 条决策记录、`tasks.md`、`specs/evaluation/spec.md` 的 4 个 requirements / 11 个 scenarios。
 

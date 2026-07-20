@@ -12,7 +12,7 @@
 - 前端是 Vue 3 + TypeScript + Vite + Element Plus。
 - 默认向量库是 Milvus；另有 Qdrant、Elasticsearch adapter。
 - 默认检索是 dense vector + BM25 + RRF。
-- 默认 reranker 仍是 heuristic；除既有通用 HTTP model adapter 外，C6 已实现默认关闭的 NVIDIA ranking adapter、整样本 heuristic fallback 与逐次 requested/effective provider 归因。归档后单次纯合成 hosted smoke 已验证当前 key、模型专属 endpoint、真实响应 schema 与 adapter 解析；收益 A/B 尚未验证。
+- 默认 reranker 仍是 heuristic；除既有通用 HTTP model adapter 外，C6 已实现默认关闭的 NVIDIA ranking adapter、整样本 heuristic fallback 与逐次 requested/effective provider 归因。C7 已在固定 30 条开发样本上完成 clean `R=3,W=3` A/B：NVIDIA Recall@5/MRR/Top1 为 76.47%/0.8241/100%，相对 heuristic 提升 7.84pp/0.0895/3.70pp；该 evidence 尚待用户接受进 baseline，不自动修改默认 provider。
 - 默认分块为 `420/80`。
 - 同步问答返回答案、contexts、citations、metadata；SSE 当前主要输出文本 chunk。
 - 评测集为 30 条开发样本，具备固定 KB、retrieval/generation/citation/no-answer 指标。
@@ -21,13 +21,14 @@
 - 文档索引已具备 C5a durable input、MySQL durable task ledger 与 C5 恢复债务收口实现：新任务使用稳定 taskId、phase checkpoint 与 deterministic chunk/vector IDs；Redis 是可重建状态投影。legacy 无 ledger 只隔离不合成任务；协调器使用有界 concurrency、持续 heartbeat、DB-time backoff 与 attempt 终态；SQL finalize 以 document row lock 和单一事务保证 chunks/document count/task completion 幂等。provider auto resume 默认继续关闭；相关契约已接受进 `rag-system` baseline，change 已归档。
 - C6 rerank diagnostics 已通过显式 outcome 合入 `RetrievalResult`，同步问答 metadata、debug retrieval 与 Python eval details/report 可区分 requested/effective provider、fallback taxonomy、model calls、候选覆盖与延迟；不记录 query/passages/raw body/凭据。
 - C6 的 4 个 requirements / 11 个 scenarios 已接受进 `rag-system` baseline 并归档；归档后用户独立授权的 1 次纯合成 NVIDIA hosted rerank smoke 已通过，无重试且未使用知识库/用户数据。该结果只确认当前 endpoint/auth/protocol 可用，不替代 C7 的固定身份收益 A/B。
+- C7 full 六个 measured runs 的 strict identity、pairing 与 provider coverage 已通过，comparison=`COMPARABLE`；model 90/90 effective nvidia、fallback=0、coverage=100%。Server-side rerank P50/P95 为 363/688ms；overall latency 受 H1 冷启动异常影响，不能据 aggregate P95 宣称模型更快。
 
 ## 当前边界
 
 - 不是生产级多租户系统。
 - 登录与 refresh 已使用数据库用户、状态和角色；bootstrap 默认关闭，运行时不提供固定默认账号。
 - LLM judge 默认关闭，未完成逐 claim faithfulness 结论。
-- 真实 model reranker A/B、标题感知长块专项、完整 GenAI 可观测性尚未完成。
+- C7 真实 model reranker A/B 已执行完成但尚待用户接受 delta/归档；标题感知长块专项、完整 GenAI 可观测性仍未完成。
 
 ## 长期规格
 

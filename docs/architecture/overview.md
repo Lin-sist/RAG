@@ -1,6 +1,6 @@
 # RAG 项目当前架构
 
-> 状态日期：2026-07-17
+> 状态日期：2026-07-20
 > 本文只描述当前代码中已确认的结构与能力。阶段指标以 `docs/optimization/` 和 `docs/eval/reports/` 中的当前文件为准。
 
 ## 1. 项目定位
@@ -54,7 +54,7 @@
   -> 保存历史与反馈
 ```
 
-当前 hybrid 与 keyword route 默认开启，RRF 参数为 `rrf-k=60`。reranker 默认仍使用 heuristic；既有 `ModelReranker` 保留通用 HTTP 协议，独立 `NvidiaReranker` 使用 `query.text + passages[].text / rankings[].index+logit` 契约，并允许通过 base URL 与 endpoint path 覆盖自托管 `/v1/ranking` 或托管模型专属 `/reranking` 路径。registry 通过 typed outcome 报告 requested/effective provider、fallback、model calls、候选覆盖与延迟；partial/invalid NVIDIA rankings 整次回退 heuristic，不形成混合排序。单次纯合成 hosted smoke 已验证当前 endpoint/auth/schema，收益 A/B 尚未验证。
+当前 hybrid 与 keyword route 默认开启，RRF 参数为 `rrf-k=60`。reranker 默认仍使用 heuristic；既有 `ModelReranker` 保留通用 HTTP 协议，独立 `NvidiaReranker` 使用 `query.text + passages[].text / rankings[].index+logit` 契约，并允许通过 base URL 与 endpoint path 覆盖自托管 `/v1/ranking` 或托管模型专属 `/reranking` 路径。registry 通过 typed outcome 报告 requested/effective provider、fallback、model calls、候选覆盖与延迟；partial/invalid NVIDIA rankings 整次回退 heuristic，不形成混合排序。C7 full 已在固定开发集完成 clean A/B，但默认 provider 不随评测自动改变。
 
 同步问答返回完整答案、contexts、citations 和 metadata。SSE 路径当前使用 `SseEmitter` 输出文本流；流式历史保存的 citations 仍为空，这是已确认的能力边界。
 
@@ -63,7 +63,8 @@
 - v3 已完成固定评测 KB、分块矩阵和 reranker adapter 工程接入。
 - C6 已把 reranker attribution 透传到同步问答 metadata、debug retrieval 与评测 runner 的逐样本/聚合报告；这只证明协议与覆盖，不代表 NVIDIA 优于 heuristic。
 - C6 provider/attribution 契约已接受进 `rag-system` baseline；归档后 1 次纯合成 NVIDIA hosted smoke 已通过，确认当前 key、模型专属 endpoint、真实响应解析和完整候选覆盖。该证据不代表生产 SLA 或 NVIDIA 相对 heuristic 的收益成立。
-- 当前可靠 retrieval 指标：Recall@5 `68.63%`、MRR `0.7346`、Top1 source accuracy `96.30%`。
+- C7 full `R=3,W=3` comparison 为 `COMPARABLE`；heuristic 继续复现 Recall@5 `68.63%`、MRR `0.7346`、Top1 `96.30%`，NVIDIA 为 `76.47%`、`0.8241`、`100%`，三个 repeat 一致且无 fallback。
+- NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
 - LLM judge 默认关闭，因此不能宣称已经验证逐 claim faithfulness/relevance。
@@ -71,7 +72,7 @@
 ## 5. 当前边界
 
 - `UserDetailsServiceImpl` 从数据库加载未删除用户及其有效角色；运行时不再初始化固定默认账号。
-- 真实 model reranker 尚未完成 A/B。
+- 真实 model reranker 已完成 30 条开发样本 A/B，但 C7 delta 尚待用户验收归档，默认 provider 仍为 heuristic。
 - 30 条评测集是开发基线，不是生产数据集或论文级基准。
 - 标题感知、长代码块和长段落专项仍待验证。
 - 当前只有请求日志与诊断字段，尚未形成完整 GenAI trace、指标和告警体系。

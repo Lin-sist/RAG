@@ -1,6 +1,6 @@
 # RAG 优化文档索引
 
-> 状态日期：2026-07-14
+> 状态日期：2026-07-20
 
 本目录只保留三类内容：当前 v3 证据、已关闭的 v4 阶段证据、历史演进证据。阶段编号只在所属版本目录内解释。
 
@@ -18,6 +18,10 @@
 - `v4/plan.md`：已关闭的 v4 计划快照；Stage 3 已转入技术债 P1，不再从该文件继续执行。
 - `v4/stage1-generation-citation.md`：两轮 CLEAN generation/citation/no-answer baseline。
 - `v4/stage2-rerank-decision.md`：缺真实 provider 时的正式跳过结论。
+
+### C7：当前 reranker A/B evidence
+
+- `../eval/reports/c7-reranker-ab-full-2026-07-20.md`：固定 30 条开发样本、`R=3,W=3` 的 clean heuristic/NVIDIA 比较、provider coverage、质量 delta 与延迟边界；尚待用户验收归档。
 
 ## 历史材料
 

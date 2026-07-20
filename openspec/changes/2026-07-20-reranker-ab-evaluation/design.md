@@ -252,6 +252,14 @@ raw debug/ask response details 与重复运行的完整大文件默认留在 `tm
 10. 不运行前端 build，除非 change 实际修改前端。
 11. 未获单独授权时，真实 embedding/rerank/ask/judge/LLM/provider 调用量保持 0。
 
+## Execution Outcome
+
+- Full 按设计的 `H1/N1、N2/H2、H3/N3` 交替顺序完成；每 arm 只执行一次 3-call warm-up，measured run 各 3 次、每次固定 30 样本。
+- 六个 measured details 的 strict identity、sample pairing 与 report status 均通过；heuristic 90/90 clean，NVIDIA 90/90 clean，model coverage=100%、fallback=0。
+- Comparator 为 `COMPARABLE`；Recall@5 +7.84pp、MRR +0.0895、Top1 +3.70pp，三个 repeat 的质量指标一致。
+- Server-side NVIDIA rerank P50/P95 为 363/688ms；overall retrieval P50 增加 188ms。H1 冷启动异常污染 overall P95，因此不把 aggregate P95 下降解释为模型性能收益。
+- 设计中的安全边界保持成立：默认 provider 不变、ask/judge/generation=0、不剔除样本、不吞并 C8/C9/C10。
+
 ## Rollout And Compatibility
 
 - 现有单 run CLI 与报告字段保持兼容；新增字段为 additive。

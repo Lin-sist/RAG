@@ -3,7 +3,7 @@
 ## Status
 
 - Change type：Type C 重大变更。
-- 当前阶段：首轮 3 样本 canary 因 rerank hosted host 误配而 `NOT_COMPARABLE`；修正为当前官方 `ai.api.nvidia.com` 后，model-only canary 6/6 clean model coverage，既有 heuristic 与 corrected model pair 的 comparison 为 `COMPARABLE`。当前等待用户审阅 canary 证据并单独批准 full `R=3,W=3`，full A/B 尚未执行。
+- 当前阶段：corrected-host canary 与 full `R=3,W=3` 均已完成。Full 的 heuristic/model 各 3 个 measured runs、每 arm 总计 3 次 warm-up，comparison=`COMPARABLE`；当前等待用户验收 live evidence 与结论边界，尚未接受 delta 或归档。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 
 ## Summary
@@ -142,6 +142,8 @@ C7 不修改默认 provider，也不把一次单样本 smoke 或含 fallback 的
 首轮 canary 实际使用 12 次 debug retrieval、至多 12 次 query embedding、6 次 NVIDIA rerank，ask/judge/LLM generation 为 0，串行且无自动 retry。Heuristic 的 3 次 warm-up + 3 次 measured 均为 requested/effective heuristic、fallback=0、model calls=0；NVIDIA 的 3 次 warm-up + 3 次 measured 均 requested nvidia，但 effective heuristic、fallback=`http_4xx`、model calls=1，因此不能陈述收益。运行时使用了 `https://integrate.api.nvidia.com` 作为 rerank base URL，而 NVIDIA 当前官方模型 API reference 指向 `https://ai.api.nvidia.com`；这是高置信根因推断，仍须通过获批的 corrected-host model-only canary 证明，不能把推断写成已确认修复。
 
 Corrected-host model-only canary 另使用 6 次 debug retrieval、至多 6 次 query embedding、6 次 NVIDIA rerank，ask/judge/LLM generation 为 0，串行且无自动 retry。Warm-up 与 measured 合计 6/6 requested/effective nvidia、fallback=0、model calls=1、candidate coverage=100%；clean pair comparator 为 `COMPARABLE`，证明 host 修正确实恢复了当前模型调用链。3 样本 canary 的 Recall@5/MRR/Top1 delta 均为 0，model rerank P50/P95 为 349/351ms；该小样本只用于 provider/身份闸门，不能替代 30 样本 full 结论。
+
+Full A/B 在 Git HEAD `fb18b6bd5448db6e0985f98f44268da84195bb1b`、固定 KB 15、相同 fixture/config/eval-set 下按 `H1/N1、N2/H2、H3/N3` 执行。Heuristic measured 90/90 为 effective heuristic、model calls=0；NVIDIA measured 90/90 为 effective nvidia、model calls=1、coverage=100%；两 arm warm-up 各 3 次也 clean，fallback/retrieve error/missing pair 均为 0。Model 相对 heuristic 的 Recall@5 从 68.63% 升至 76.47%（+7.84pp），MRR 从 0.7346 升至 0.8241（+0.0895），Top1 从 96.30% 升至 100%（+3.70pp），三个 repeat 的质量指标完全一致。Model rerank stage P50/P95 为 363/688ms；overall retrieval P50 为 985ms，较 heuristic 797ms 增加 188ms。Heuristic H1 在 Docker 冷启动后出现 P95=14484ms 的异常，导致 aggregate heuristic/model retrieval P95 为 5203/2796ms；该 aggregate P95 不能解释为 model 尾延迟更快。
 
 ## Acceptance Criteria
 
