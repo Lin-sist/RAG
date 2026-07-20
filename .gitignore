@@ -21,6 +21,9 @@ data/
 *test-data/
 *diagnostics/
 
+# Local evaluation runtime evidence; commit only compact summaries from docs/eval/reports.
+/tmp/eval/
+
 # Local docker overrides (machine-specific, do not commit)
 .env
 .env.local

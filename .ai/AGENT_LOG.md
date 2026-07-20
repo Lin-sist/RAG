@@ -834,3 +834,20 @@
 - 只读结果：`.env.local` 中存在 `NVIDIA_API_KEY`，并将 embedding model 配置为 `nvidia/llama-nemotron-embed-1b-v2`；没有独立 `NVIDIA_RERANK_API_KEY`，后续启动时可在进程内将 rerank key 映射到已有 NVIDIA key，不写回文件。未读取、输出或记录任何 key 值。
 - 阻塞项：`.env.local` 与当前进程均没有 `RAG_EVAL_USERNAME/RAG_EVAL_PASSWORD`。runner 按安全契约拒绝隐式或默认登录凭据；用户需在本地安全文件补齐这两个变量，不能在对话中粘贴密码。
 - 外部调用：本预检只读取允许的非秘密配置值与 credential presence boolean，真实 embedding/rerank/ask/judge/LLM/provider 调用量仍为 0。
+
+## 2026-07-20｜C7 离线实现提交补录
+
+- Commit：`40f94068c28173f938b55ddfc9e54385c781270e`（`feat(评测): 实现C7重排A-B离线评测工具`）。本条只补录上一执行提交的真实 hash，不记录本次 canary 证据修正提交。
+
+## 2026-07-20｜C7 首轮 3 样本 reranker A/B canary
+
+- 授权与范围：用户确认凭据已补齐并批准 canary 上限 12 次 debug retrieval / 12 次 query embedding / 6 次 NVIDIA rerank；固定 `fact-001`、`fact-006`、`definition-001`，每 arm 3 次 warm-up + 3 次 measured。出站只含固定评测问题，NVIDIA arm 另含固定 fixture 检索 passages；ask/judge/LLM generation 为 0。
+- Readiness：Docker 的 MySQL、Redis、Milvus、etcd、MinIO 均 running/healthy；mutation-free preflight 复用 KB 15、collection `kb_ff06e2ea3de24fb4`、3 documents / 50 chunks，未创建、上传、删除或重建资源。Git HEAD 为 `40f94068c28173f938b55ddfc9e54385c781270e`，eval-set SHA-256 为 `d17bde69db58848fe79069709a7b7c3c927da916661faa8caf1bd71efcd6d7fe`。
+- Heuristic arm：warm-up 与 measured 合计 6/6 requested/effective heuristic、fallback=0、model calls=0、candidate coverage=100%；measured 为 `RETRIEVAL_ONLY`，retrieve errors=0、Recall@5=0.8333、MRR=1.0、Top1=1.0、retrieval P50=765ms、rerank P50=0ms。
+- NVIDIA arm：模型 `nvidia/llama-nemotron-rerank-1b-v2`、protocol `nvidia-ranking-v1`、timeout 20000ms、truncate END、串行且 retry=0。warm-up 与 measured 合计 6/6 requested nvidia、effective heuristic、fallback=`http_4xx`、model calls=1、candidate coverage=100%；measured 为 `RETRIEVAL_ONLY`、retrieve errors=0，指标来自 fallback 后 heuristic，不是模型收益。
+- Comparator：`NOT_COMPARABLE`，原因 `model_provider_mismatch`、`model_fallback_observed`、`model_coverage_incomplete`、`manifest_observation_mismatch`；收益 delta 被正确隐藏。raw evidence 保留在本地 `tmp/eval/`，compact summary 为 `docs/eval/reports/c7-canary-2026-07-20.md`，其中记录 5 个原始文件的 bytes 与 SHA-256。
+- 实际调用：12 次 debug retrieval、至多 12 次 query embedding、6 次 NVIDIA rerank，ask/judge/LLM generation=0；无自动 retry，未超过授权。Runner 的 rate-limit counter 为 0，但不区分 rerank 4xx；当前安全归因只记录 `http_4xx`，因此精确状态（包括是否 429/402/422）未知。
+- 停止与诊断：触发 fallback 停止条件后未进入 full A/B，并停止本轮 backend。首轮 runtime 使用 `https://integrate.api.nvidia.com` 作为 rerank base URL；NVIDIA 当前官方模型 API reference 指向 `https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-nemotron-rerank-1b-v2/reranking`，官方 Retriever quickstart 也区分 embedding 的 integrate host 与 reranker 的 ai host。因此 host 漂移/误配为高置信推断，仍须获批的 corrected-host model-only canary 证明。
+- 文档修正：将指南的 rerank base URL 改为当前官方 `https://ai.api.nvidia.com`，新增 `/tmp/eval/` Git ignore，避免 raw questions/passages/response evidence 被误提交；同步 proposal、tasks 与活动任务指针。本轮未修改 Java/provider/API、默认 heuristic、评测集、fixture、数据库、索引、embedding、prompt、citation、no-answer、judge、依赖或前端。
+- 剩余闸门：由用户手动提交本次修正后，再单独授权相同 3 样本的 corrected-host model-only canary；建议新增上限 6 debug retrieval / 6 query embedding / 6 NVIDIA rerank，ask/judge/LLM generation=0、串行、无 retry、不覆盖首轮 raw evidence。Full A/B 继续禁止。
+- Commit：`pending`；建议 `docs(评测): 记录C7 canary失败证据并修正NVIDIA主机`。

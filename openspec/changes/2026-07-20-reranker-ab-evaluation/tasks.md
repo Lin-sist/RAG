@@ -11,7 +11,7 @@
 - [x] 用户批准 `evaluation` spec delta 的 4 个 requirements / 11 个 scenarios。
 - [x] 用户授权进入离线实现；真实外调仍按 canary/full 边界记录实际事实并在异常时停止请示。
 - [x] 用户选择正式 latency 预算 `R=3,W=3`，并批准 arm 交替与 canary→full 推荐路径。
-- [ ] 真实 canary 前单独披露并获批 provider/model、调用量、出站数据、限流、费用及零费用依据。
+- [x] 真实 canary 前单独披露并获批 provider/model、调用量、出站数据、限流、费用及零费用依据；首轮批准上限为 12/12/6。
 - [ ] full A/B 前基于 canary 结果再次确认调用预算；未获授权不得执行。
 
 ## 1. Per-sample Latency And Safe Aggregation
@@ -50,7 +50,7 @@
 - [x] 验证 compact evidence 不包含 question、contexts、passages、raw response、异常 message 或 secret marker。
 - [x] raw repeat details 默认写入 `tmp/eval/`，tracked compact evidence 只记录 hash。
 - [x] 更新 `docs/eval/RAG_EVAL_GUIDE.md` 的 arm manifest、preflight、canary、full、compare 与恢复说明。
-- [ ] 若用户批准 live evidence，记录每次 run 的 Report status、errors、retry、rate limit、metadata 与 Git HEAD，不以文件名代替结论。
+- [x] 首轮 canary 已记录每次 run 的 Report status、errors、retry、rate-limit 可见事实、metadata 与 Git HEAD，不以文件名代替结论；NVIDIA 4xx 精确状态因当前安全归因折叠而未知。
 
 ## 5. Offline Verification
 
@@ -65,12 +65,13 @@
 
 ## 6. Gated Live Canary
 
-- [ ] 用户批准 canary 的精确 sample IDs、arm 次数、provider/model、出站、限流与费用说明。
-- [ ] 确认 Docker/backend ready；运行 mutation-free `--preflight-only`，不得创建、上传、删除或重建 KB。
-- [ ] heuristic canary 验证 requested/effective heuristic、fallback=0、model calls=0。
-- [ ] model canary 验证 requested/effective model、fallback=0、model calls=1、candidate coverage=100%。
-- [ ] canary 任一 mismatch/fallback/error 时停止，不自动进入 full run。
-- [ ] 记录 canary 实际 embedding/rerank 调用量、timeout、retry、error category 与 rate limit；ask/judge/LLM generation=0。
+- [x] 用户批准 canary 的固定 IDs `fact-001`、`fact-006`、`definition-001`，每 arm 3 warm-up + 3 measured，以及 provider/model、出站、限流、免费依据和 12/12/6 上限。
+- [x] 确认 Docker/backend ready；mutation-free `--preflight-only` 复用 KB 15，未创建、上传、删除或重建 KB。
+- [x] heuristic canary 验证 requested/effective heuristic、fallback=0、model calls=0。
+- [ ] model canary 尚未通过：首轮 6/6 requested nvidia、effective heuristic、fallback=`http_4xx`、model calls=1、candidate coverage=100%；等待 corrected-host model-only canary。
+- [x] 首轮 model mismatch/fallback 后立即停止，未自动进入 full run。
+- [x] 首轮实际调用为 12 次 debug retrieval、至多 12 次 query embedding、6 次 NVIDIA rerank；timeout=20000ms、retry=0、error category=`http_4xx`，ask/judge/LLM generation=0。精确 4xx（含是否 429）因当前安全归因折叠而未知。
+- [ ] 修正 rerank base URL 为当前官方 `https://ai.api.nvidia.com` 后，重新披露并获得 model-only canary 新增上限授权；不得复用或覆盖首轮 raw evidence。
 
 ## 7. Gated Full A/B And Closeout
 

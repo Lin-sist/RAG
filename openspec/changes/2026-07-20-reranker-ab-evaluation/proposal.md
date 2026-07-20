@@ -3,7 +3,7 @@
 ## Status
 
 - Change type：Type C 重大变更。
-- 当前阶段：用户已于 2026-07-20 批准规划、15 条设计决策、spec delta 与离线实现；采用建议的 `R=3,W=3`、arm 交替、canary→full 路径。真实 A/B 尚未执行。
+- 当前阶段：离线实现已由用户手动提交。首轮 3 样本 canary 已执行：heuristic arm 干净，NVIDIA arm 6/6 触发 `http_4xx` 并整样本 fallback，comparison 为 `NOT_COMPARABLE`，已按闸门停止。当前等待修正 hosted rerank 主机后的 model-only canary 重新授权，full A/B 尚未执行。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 
 ## Summary
@@ -138,6 +138,8 @@ C7 不修改默认 provider，也不把一次单样本 smoke 或含 fallback 的
 最低功能比较 `R=1, W=0` 时，上限为 60 次 debug retrieval、60 次 query embedding、30 次 model rerank。用户已于 2026-07-20 选择 latency 证据方案 `R=3, W=3`，上限为 186 次 debug retrieval、186 次 query embedding、93 次 model rerank；NVIDIA NIM 费用依据为用户确认的免费使用，但速率与并发限制仍需通过串行 canary 观察。
 
 出站数据包括 30 条固定评测问题；model arm 还会把固定 fixture 检索得到的候选 passages 发送给批准的 rerank provider。不得发送其他知识库、用户或生产数据。执行前还必须记录 provider、model、endpoint path、timeout、truncate、限流、费用及零费用依据、是否 retry；API key 和 Authorization 不得进入 tracked file、日志或回复。
+
+首轮 canary 实际使用 12 次 debug retrieval、至多 12 次 query embedding、6 次 NVIDIA rerank，ask/judge/LLM generation 为 0，串行且无自动 retry。Heuristic 的 3 次 warm-up + 3 次 measured 均为 requested/effective heuristic、fallback=0、model calls=0；NVIDIA 的 3 次 warm-up + 3 次 measured 均 requested nvidia，但 effective heuristic、fallback=`http_4xx`、model calls=1，因此不能陈述收益。运行时使用了 `https://integrate.api.nvidia.com` 作为 rerank base URL，而 NVIDIA 当前官方模型 API reference 指向 `https://ai.api.nvidia.com`；这是高置信根因推断，仍须通过获批的 corrected-host model-only canary 证明，不能把推断写成已确认修复。
 
 ## Acceptance Criteria
 

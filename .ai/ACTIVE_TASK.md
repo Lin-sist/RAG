@@ -8,11 +8,11 @@
 
 - Change：`2026-07-20-reranker-ab-evaluation`
 - 位置：`openspec/changes/2026-07-20-reranker-ab-evaluation/`
-- 类型：Type C 重大变更；用户已于 2026-07-20 批准规划、15 条决策、spec delta、离线实现与建议的 `R=3,W=3` 路径，当前进入 TDD 实现。
+- 类型：Type C 重大变更；离线实现已由用户手动提交。首轮 `3+3` canary 已执行并因 NVIDIA arm 6/6 `http_4xx` fallback 停止，当前等待修正 hosted rerank 主机后的 model-only canary 重新授权。
 - 目标：固定 heuristic/model 两个 retrieval-only arm 的评测身份、provider 覆盖与样本配对，离线比较 Recall@5、MRR、Top1、rerank/retrieval P50/P95，并对 fallback 或身份漂移明确判为不可比较。
 - 范围：Python eval runner、可复现 metadata、sanitized arm manifest、离线 comparator、单元测试、评测指南与经授权后的 C7 evidence。
 - 非目标：不修改默认 heuristic，不新增按请求切换 provider 的 API，不修改 Java provider/检索/分块/prompt/citation/no-answer/judge，不扩充评测集，不建立 C10 通用门禁，不调用 ask/judge/LLM。
-- 外部调用：规划与离线实现预算为 0；真实 canary/full A/B 必须分别披露调用量、模型、数据出站、限流和费用并取得用户单独授权。
+- 外部调用：首轮 canary 已使用获批上限 12 次 debug retrieval、至多 12 次 query embedding、6 次 NVIDIA rerank；ask/judge/LLM generation 为 0、无 retry。后续 corrected-host canary 与 full A/B 必须分别重新披露并取得用户授权。
 - 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 - 验收入口：`proposal.md`、`design.md` 的 15 条决策记录、`tasks.md`、`specs/evaluation/spec.md` 的 4 个 requirements / 11 个 scenarios。
 
