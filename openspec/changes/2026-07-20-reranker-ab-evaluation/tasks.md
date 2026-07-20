@@ -68,10 +68,11 @@
 - [x] 用户批准 canary 的固定 IDs `fact-001`、`fact-006`、`definition-001`，每 arm 3 warm-up + 3 measured，以及 provider/model、出站、限流、免费依据和 12/12/6 上限。
 - [x] 确认 Docker/backend ready；mutation-free `--preflight-only` 复用 KB 15，未创建、上传、删除或重建 KB。
 - [x] heuristic canary 验证 requested/effective heuristic、fallback=0、model calls=0。
-- [ ] model canary 尚未通过：首轮 6/6 requested nvidia、effective heuristic、fallback=`http_4xx`、model calls=1、candidate coverage=100%；等待 corrected-host model-only canary。
+- [x] model canary 已通过：首轮 6/6 因 host 误配 fallback；corrected-host rerun 6/6 requested/effective nvidia、fallback=0、model calls=1、candidate coverage=100%。
 - [x] 首轮 model mismatch/fallback 后立即停止，未自动进入 full run。
 - [x] 首轮实际调用为 12 次 debug retrieval、至多 12 次 query embedding、6 次 NVIDIA rerank；timeout=20000ms、retry=0、error category=`http_4xx`，ask/judge/LLM generation=0。精确 4xx（含是否 429）因当前安全归因折叠而未知。
-- [ ] 修正 rerank base URL 为当前官方 `https://ai.api.nvidia.com` 后，重新披露并获得 model-only canary 新增上限授权；不得复用或覆盖首轮 raw evidence。
+- [x] 修正 rerank base URL 为当前官方 `https://ai.api.nvidia.com` 后，获得并执行 model-only canary 新增 6/6/6 上限；首轮 raw evidence 未复用或覆盖。
+- [x] Clean heuristic/corrected-model pair comparator 为 `COMPARABLE`；3 样本 Recall@5/MRR/Top1 delta 均为 0，model rerank P50/P95 为 349/351ms，仅作为 canary 证据。
 
 ## 7. Gated Full A/B And Closeout
 

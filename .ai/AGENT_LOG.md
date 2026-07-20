@@ -851,3 +851,19 @@
 - 文档修正：将指南的 rerank base URL 改为当前官方 `https://ai.api.nvidia.com`，新增 `/tmp/eval/` Git ignore，避免 raw questions/passages/response evidence 被误提交；同步 proposal、tasks 与活动任务指针。本轮未修改 Java/provider/API、默认 heuristic、评测集、fixture、数据库、索引、embedding、prompt、citation、no-answer、judge、依赖或前端。
 - 剩余闸门：由用户手动提交本次修正后，再单独授权相同 3 样本的 corrected-host model-only canary；建议新增上限 6 debug retrieval / 6 query embedding / 6 NVIDIA rerank，ask/judge/LLM generation=0、串行、无 retry、不覆盖首轮 raw evidence。Full A/B 继续禁止。
 - Commit：`pending`；建议 `docs(评测): 记录C7 canary失败证据并修正NVIDIA主机`。
+
+## 2026-07-20｜C7 首轮 canary 证据修正提交补录
+
+- Commit：`8f297a818e26855d2873488abcdd2d780d03439c`（`docs(评测): 记录C7 canary失败证据并修正NVIDIA主机`）。本条只补录上一文档提交的真实 hash，不记录本次 corrected-host canary 证据提交。
+
+## 2026-07-20｜C7 corrected-host model-only canary 通过
+
+- 用户授权：用户批准以 `https://ai.api.nvidia.com` 重跑 model-only canary，新增上限为 6 次 debug retrieval / 6 次 query embedding / 6 次 NVIDIA rerank；不重复 heuristic，ask/judge/LLM generation=0、串行、无自动 retry，异常立即停止。
+- 身份处理：主工作区在首轮证据提交后 HEAD 为 `8f297a818e26855d2873488abcdd2d780d03439c`，既有 heuristic arm 为 `40f94068c28173f938b55ddfc9e54385c781270e`。为不伪造 metadata 且保持 strict Git identity，从临时 detached worktree `40f9406` 启动 backend 与 runner；该 commit 与当前 HEAD 在 runner/Java/config 上无差异，执行后临时 worktree 已安全移除。
+- Readiness：Docker 的 MySQL、Redis、Milvus、etcd、MinIO 均 running/healthy；mutation-free preflight 两次通过，复用 KB 15、collection `kb_ff06e2ea3de24fb4`、3 documents / 50 chunks，未创建、上传、删除或重建资源。第一次在沙箱内运行 runner 因临时 worktree ACL 在创建 `tmp/eval` 前失败，未进入 warm-up、未产生业务外调；随后获准在沙箱外执行。
+- Model arm：模型 `nvidia/llama-nemotron-rerank-1b-v2`、protocol `nvidia-ranking-v1`、base URL `https://ai.api.nvidia.com`、模型专属 endpoint path、timeout 20000ms、truncate END。Warm-up 与 measured 合计 6/6 requested/effective nvidia、fallback=0、model calls=1、candidate coverage=100%；两轮 report status 均为 `RETRIEVAL_ONLY`、retrieve errors=0、retry=0。
+- Comparator：既有 clean heuristic 与 corrected model arm 为 `COMPARABLE`，strict identity、pairing、provider coverage 均通过，无 missing/zero-candidate mismatch/fallback。3 样本 Recall@5=0.8333、MRR=1.0、Top1=1.0，三项 delta 均为 0；model retrieval P50/P95=1172/1187ms，rerank P50/P95=349/351ms。该 canary 只证明调用链与比较闸门，不代表 30 样本收益或生产 SLA。
+- 调用事实：本次实际 6 次 debug retrieval、至多 6 次 query embedding、6 次 NVIDIA rerank；ask/judge/LLM generation=0、自动 retry=0。Backend 记录 6 次 debug retrieval 200，fallback warning=0、`RerankProviderException`=0、runtime 429 marker=0。全部 C7 canary 尝试累计为 18 次 debug retrieval、至多 18 次 query embedding、12 次 NVIDIA rerank，均在各自授权内。
+- 证据与安全：corrected raw outputs 使用独立 `c7-canary-nvidia-ai-host*` / `c7-canary-ai-host-comparison*` 文件名，首轮失败证据未覆盖；8 份 raw evidence 的 bytes/SHA-256 已写入 `docs/eval/reports/c7-canary-corrected-host-2026-07-20.md`。Backend 已停止、8080 已释放；未修改 `.env.local`、application 配置、Java/provider/API、默认 heuristic、评测集、fixture、数据库、索引、embedding、prompt、citation、no-answer、judge、依赖或前端。
+- 剩余闸门：Full `R=3,W=3` 仍需用户基于 canary 单独批准新增上限 186 debug retrieval / 186 query embedding / 93 NVIDIA rerank，以及相同出站、免费依据与限流风险；未获授权不得执行。
+- Commit：`pending`；建议 `docs(评测): 记录C7 corrected-host canary通过证据`。
