@@ -898,3 +898,16 @@
 - 范围安全：默认配置仍为 `rag-admin/src/main/resources/application.yml` 中 `provider: heuristic`；未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、Java/provider/API、评测脚本、评测集、fixture、数据库/迁移、索引、embedding、分块、hybrid/RRF、prompt、citation、no-answer、judge、依赖或前端；未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险：30 条开发样本只支持当前固定身份下的 retrieval 观察结论；NVIDIA 长期速率、配额、并发与生产 SLA 未由 C7 证明。H1 冷启动污染 aggregate retrieval P95，不能据此宣称 model 尾延迟更快。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 验收并归档C7重排A-B评测`。
+
+## 2026-07-21｜C8a eval dataset schema/versioning 规划启动
+
+- 用户决策与提交责任：用户要求开启 C8a 规划。提交责任按仓库默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 `main` 与 `origin/main` 同步、工作区干净，`.ai/ACTIVE_TASK.md=IDLE`，C7 的 4 requirements / 11 scenarios 已接受进 `evaluation` baseline 并归档，当前无未归档 change；C8a 是冻结路线图下一项，C8b 继续串行等待。
+- 范围与修改：建立 Type C change `2026-07-21-eval-dataset-schema-and-versioning` 的 proposal/design/tasks 与 `evaluation` spec delta，并把 `.ai/ACTIVE_TASK.md` 激活。规划只覆盖 dataset release/schema/annotation/fixture version、共享本地 validator、runner fail-fast/metadata、版本演进、测试与评测指南；未进入实现，未修改 baseline spec、runner、评测集、fixture、Java/API、配置、数据库、前端或依赖。
+- 已确认事实：当前 eval-set 为 30 条，类型分布 fact 10 / definition 8 / reasoning 6 / multi_hop 3 / no_answer 3，SHA-256 为 `d17bde69db58848fe79069709a7b7c3c927da916661faa8caf1bd71efcd6d7fe`；现有 runner 已记录 eval/fixture/config/Git/KB identity，但只做 JSON/object 解析，缺少统一 schema/version/conditional semantics validator。
+- 规划 artifacts：proposal 明确用户故事、scope/non-goals、零外调与验收门禁；design 提供 16 条待用户确认的真实岔路决策；delta 为 4 requirements / 13 scenarios；tasks 把用户批准与实现授权保留为未完成闸门。`.ai/ACTIVE_TASK.md` 只指向本 change。
+- 验证：change 下 4 个必需文件齐全；decision/requirement/scenario 计数为 16/4/13；baseline spec diff 0、受保护路径 diff 0；`git diff --check` 通过；SensitiveLogs 扫描 306 source files / PASS；规划阶段真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0、数据出站为 0。
+- 跳过项：OpenSpec CLI 不在 PATH，因此未声称 CLI validation 通过；本轮为 doc-only 规划且未改 Python/Java/POM/前端/运行时配置，未运行 Python/Maven/frontend build、Docker/Testcontainers 或 live provider。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、`openspec/specs/`、评测集、fixture、业务代码、生产默认 provider 或历史报告；未创建 C8b 内容或提前声称 C8a 已实现。
+- 剩余风险：用户尚未批准 proposal、16 条 design decisions 和 4/13 delta；version 命名、严格 unknown-field、逻辑 KB identity 与是否保留显式 `UNVERSIONED` 诊断模式仍在事前闸门等待确认。
+- Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C8a评测数据版本治理规划`。
