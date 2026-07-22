@@ -140,6 +140,13 @@ C8b 不修改指标公式。runner 继续从 manifest 得到 question set 和 re
 8. 回归：Python 全量、SensitiveLogs、secret/path/link、`git diff --check`；Java/POM/前端无改动时记录跳过。
 9. 默认不运行 backend/provider；若用户另行批准 baseline，只能在数据冻结后执行并单独记录调用量和结论边界。
 
+## Implemented Facts（待用户验收）
+
+- release layout 按批准方案落地；默认 manifest 保持 v1，显式 v1/v2 manifests 可并存验证。
+- sample schema 与 fixture corpus bytes 未变，故分别保持 `rag-eval-sample-v1`、`fixtures-v1`；question/annotation/release 升为 v2。
+- expanded validator 实际输出 quota、seed、fixture coverage、grounding、duplicate、review 与 seed release compatibility facts；正式 `rag-eval-dev-v2` 的批准 quota 作为代码内 fail-closed contract 固定。
+- 构建器只读取 tracked v1/fixture 并生成确定性 artifacts，不联网、不调用 provider；review sidecar 不复制完整 question、expected content 或 fixture 正文。
+
 ## Rollout And Compatibility
 
 - v2 在验收前通过显式 manifest 路径验证，默认 manifest 继续保持 v1。
@@ -148,6 +155,8 @@ C8b 不修改指标公式。runner 继续从 manifest 得到 question set 和 re
 - 回滚只需恢复默认 manifest 到 v1；不修改业务数据库、KB 或 runtime API。
 
 ## 决策记录
+
+> 2026-07-22：用户已批准以下 18 条决策；实现按各条“选了哪个”执行，默认零外调，默认 manifest 延迟到验收后切换。
 
 ### 决策 1：expanded release 总量
 - **面临的选择**：只做到路线图下限 100；采用中间规模 150；直接做到上限 300。

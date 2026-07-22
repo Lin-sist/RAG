@@ -974,3 +974,27 @@
 - 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划仅修改 OpenSpec/ACTIVE_TASK/AGENT_LOG，未改 Python/Java/POM/前端/运行时配置，因此未运行 Python/Maven/frontend build、Docker/Testcontainers 或 live provider。
 - 范围与闸门：未写入、删除、重排或重新标注任何评测样本，未创建 v2 release、review sidecar 或切换默认 manifest。下一步必须由用户先批准 proposal、18 条决策、4/12 delta 和实现授权；本轮真实业务外调与数据出站均为 0。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C8b评测数据扩充规划`。
+
+## 2026-07-22｜C8b 规划提交补录
+
+- Commit：`501222a`（`docs(openspec): 启动C8b评测数据扩充规划`）。本条只补录上一规划提交的真实 hash，不记录本次 C8b 实现提交。
+
+## 2026-07-22｜C8b 决策批准并进入 TDD 实现
+
+- 用户批准：proposal、18 条 design 决策、`evaluation` delta 的 4 requirements / 12 scenarios 与 TDD 实现授权全部通过；总量、exact quota、现有 3 份 fixture、review sidecar、manifest schema v2、v1/v2 共存及延迟切默认方案生效。
+- 提交与外调边界：提交责任继续为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。未授权外部 LLM/provider 辅助，embedding/rerank/ask/judge/LLM/provider 调用量与数据出站保持 0。
+- 当前阶段：先写失败测试，再实现 manifest v2、seed/quota/grounding/duplicate/review 门禁；expanded v2 完成后仍需用户验收，不能在本实现轮次接受 baseline、切默认 manifest 或归档。
+- Commit：`pending`。
+
+## 2026-07-22｜C8b expanded dataset 与 annotation TDD 实现完成（待验收）
+
+- 范围与 artifacts：新增确定性本地构建器 `scripts/build_eval_dataset_v2.py`、显式 v1 release manifest、v2 question set/manifest 和 150 条 review sidecar；扩展共享 dataset validator 与聚焦测试；同步评测指南、OpenSpec change、项目上下文、架构、技术债、优化索引和活动任务指针。默认 `docs/eval/dataset-manifest.json` 保持 v1，未提前切换。
+- 数据事实：`rag-eval-dev-v2`=150 条，前 30 条保持 v1 raw line bytes、解析对象、标注、ID 与顺序，追加 120 条。type=fact 35、definition 30、reasoning 40、multi_hop 25、no_answer 20；difficulty=easy 50、medium 65、hard 35；answerable/no-answer=130/20；批准的 15 格 type×difficulty matrix 全部 exact match。
+- Grounding/review：三份 fixture answerable coverage 为 Java 49、RAG 43、Spring Boot 44，均在 [35, 45%] 边界内；103 条新增 answerable 的 242 个 context 全部 exact 命中；新增 multi-hop 至少两个独立 evidence points；150/150 review records 完整，17 条新增 no-answer 记录全 corpus 复核。normalized exact duplicate=0，阈值 0.82 下 near-duplicate candidate=0。
+- Release identity：v1 manifest SHA-256=`91a03152ede5cd421650c5034158c1035248512bf38d1e2281079c6987a4a380`；v2 question SHA-256=`cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d`；review SHA-256=`ef9a28b145aeb09bd40d10d789d03a221c1fd61348e6c3f647a9e64f54f75f86`；v2 manifest SHA-256=`404d896afc4bdacd54f5372d014b40b2a2779db42cdb966d4a2d869c9bb67b08`。构建器重复运行四份 artifact hash 不变；v1/v2 分别显式验证为 `VALID`。
+- TDD 与回归：RED→GREEN 覆盖 manifest v2/review identity、fixture coverage、context grounding、normalized duplicate、version reuse、quota drift、seed drift、multi-hop evidence、review gap、near-duplicate review 及 schema/fixture version bump；Python 全量 `python -B -m unittest discover -s scripts -p 'test_*.py'` 为 98 tests / OK。direct/reproducible v2 plan-only 均返回 `VALID`，选取 1 条时 estimated debugRetrieve=1、ask=0、judge=0，但 plan-only 实际业务调用=0。
+- 安全与文档验证：SensitiveLogs 扫描 308 source files / PASS；changed Markdown 10 个、missing local links=0；review 150 条均只有六个批准字段且不含 question key；定向 secret/private-key/absolute-user-path 扫描 PASS；default manifest 与显式 v1 manifest byte-identical；v1 question/schema、3 fixtures、baseline spec 及受保护配置 diff=0；`git diff --check` 通过。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；无 Java/POM/前端/依赖/运行时配置改动，因此 Maven、frontend build、Docker/Testcontainers 与 live backend/provider smoke 均 `SKIPPED`。未授权外部业务调用，实现阶段真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0、数据出站为 0。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、v1 question/schema/fixture bytes、`openspec/specs/` baseline、Java/API、数据库、前端、依赖、默认 provider、retrieval/chunking/rerank/prompt/citation/no-answer/judge 公式或历史报告；未进入 C9/C10/C14，未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险与闸门：150 条仍来自 3 份 tracked fixture，是开发数据而非隐藏 benchmark、生产分布或论文级数据集；自动门禁不能替代用户对题意和标注的最终语义验收。用户验收前必须继续保持默认 manifest=v1，不接受 baseline、不归档；验收后才可切默认 v2、原文接受 4/12 delta、恢复 `ACTIVE_TASK=IDLE` 并归档。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(评测): 实现C8b评测数据扩充与标注`。

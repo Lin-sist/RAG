@@ -3,7 +3,7 @@
 ## Status
 
 - Change type：Type C 重大变更。
-- 当前阶段：规划草案，等待用户批准 proposal、design 决策与 `evaluation` spec delta；未进入样本实现。
+- 当前阶段：proposal、18 条 design 决策与 `evaluation` delta 的 4 requirements / 12 scenarios 已获用户批准；TDD 实现与本地冻结验证已完成，expanded v2 等待用户验收，尚未切换为默认 release、接受 baseline 或归档。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 - 外部调用：规划阶段真实 embedding、rerank、ask、judge、LLM/provider 调用量为 0，数据出站为 0。
 
@@ -61,11 +61,14 @@ C8b 只扩大当前固定知识域下的数据覆盖，不修改 retrieval、chu
 
 ### unknown
 
-- 150 条是否作为最终批准总量，还是选择 100、120、200 或 300。
-- C8b 是否只使用现有 3 份 fixture，还是同时扩充 fixture corpus。
-- quota 是否采用本文建议值，以及是否需要对 type×difficulty 做每格硬下限。
-- annotation review evidence 使用独立 sidecar、Markdown checklist，还是扩展 manifest contract。
-- 是否允许任何外部 LLM 辅助生成或复核；默认按 0 外调规划。
+- 新增样本的语义复核是否会发现必须废弃并换号的 draft ID；如发生，必须在 review evidence 说明，不能回收 ID。
+- 仅使用现有 3 份 fixture 扩到 150 条后，最终 near-duplicate 候选数量与复核结论需由本地确定性扫描得出。
+
+## Approval Record
+
+- 2026-07-22：用户批准目标总量 150、type/difficulty/answerability 与 type×difficulty exact quota、现有 3 份 fixture 边界、review sidecar、manifest schema v2、v1/v2 共存、默认 manifest 延迟切换、零外调及全部 18 条 design 决策。
+- 同轮批准 `evaluation` delta 的 4 requirements / 12 scenarios，并授权进入 TDD 实现。
+- 提交责任保持 `用户手动提交`；未授权暂存、提交、push、PR、部署或任何外部业务调用。
 
 ## 用户故事（大白话）
 
@@ -157,6 +160,14 @@ C8b 规划默认全部本地完成：
 - 为填 quota 硬造低质量问题会污染 baseline；允许在 review 阶段拒绝样本并重新选材，但不得通过降低规则凑数。
 - 同时改变 question、annotation、fixture 和 schema 会难以定位漂移；默认建议只 bump question/annotation/release，其他轴按真实变化决定。
 - tracked eval data 对开发者可见，不是隐藏 benchmark；C8b 只提高开发评测覆盖，不解决训练污染或独立盲测问题。
+
+## Implementation Outcome（待用户验收）
+
+- 已生成 `rag-eval-dev-v2`：150 条总量，前 30 条 v1 seed 的原始行 bytes、解析对象、标注、ID 与顺序保持一致，后续追加 120 条。
+- exact quota 与批准矩阵完全匹配：type=35/30/40/25/20，difficulty=50/65/35，answerable/no-answer=130/20；三份 fixture coverage 为 Java 49、RAG 43、Spring Boot 44。
+- 103 条新增 answerable 共绑定并校验 242 个 exact fixture contexts；新增 22 条 multi-hop 均至少两个独立 evidence points；新增 17 条 no-answer 已记录三份 fixture 全 corpus 复核事实。
+- review sidecar 覆盖 150/150；normalized exact duplicate=0，0.82 阈值下 near-duplicate candidate=0。manifest schema v2 同时固定 v1 seed release、v2 question、review 与 expanded contract identity。
+- `docs/eval/dataset-manifest.json` 仍为 byte-identical v1 默认 manifest；v1/v2 通过各自显式 manifest 同时得到 `VALID`。实现阶段外部业务调用与数据出站均为 0。
 
 ## Rollback
 
