@@ -63,7 +63,7 @@
 
 - [x] 更新 proposal/design/tasks 的实际实现与验证结果。
 - [x] 同步 `openspec/project.md`、架构、技术债、优化索引和 `.ai/AGENT_LOG.md`。
-- [ ] 用户验收 schema/manifest、bump rules、validator、runner compatibility 与结论边界。
-- [ ] 用户验收后将 4 requirements / 13 scenarios 原文接受进 `openspec/specs/evaluation/spec.md`。
-- [ ] 恢复 `.ai/ACTIVE_TASK.md=IDLE` 并把 change 归档。
-- [ ] C8a 收口后另行 readiness，再决定是否启动 C8b；不得在本 change 直接扩样本。
+- [x] 用户验收 schema/manifest、bump rules、validator、runner compatibility 与结论边界。
+- [x] 用户验收后将 4 requirements / 13 scenarios 原文接受进 `openspec/specs/evaluation/spec.md`。
+- [x] 恢复 `.ai/ACTIVE_TASK.md=IDLE` 并把 change 归档。
+- [x] C8a 收口后另行 readiness，再决定是否启动 C8b；不得在本 change 直接扩样本。

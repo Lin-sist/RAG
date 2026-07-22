@@ -22,7 +22,7 @@
 - C6 rerank diagnostics 已通过显式 outcome 合入 `RetrievalResult`，同步问答 metadata、debug retrieval 与 Python eval details/report 可区分 requested/effective provider、fallback taxonomy、model calls、候选覆盖与延迟；不记录 query/passages/raw body/凭据。
 - C6 的 4 个 requirements / 11 个 scenarios 已接受进 `rag-system` baseline 并归档；归档后用户独立授权的 1 次纯合成 NVIDIA hosted rerank smoke 已通过，无重试且未使用知识库/用户数据。该结果只确认当前 endpoint/auth/protocol 可用，不替代 C7 的固定身份收益 A/B。
 - C7 full 六个 measured runs 的 strict identity、pairing 与 provider coverage 已通过，comparison=`COMPARABLE`；model 90/90 effective nvidia、fallback=0、coverage=100%。Server-side rerank P50/P95 为 363/688ms；overall latency 受 H1 冷启动异常影响，不能据 aggregate P95 宣称模型更快。
-- C8a 已实现首个 `rag-eval-dev-v1` dataset manifest、`rag-eval-sample-v1` contract 和两个 runner 共用的本地 fail-fast validator；正式路径固定当前 30 条 question set 与 3 份 fixture，custom 输入只能显式降级为 `UNVERSIONED`。该 change 正等待用户实现验收，delta 尚未接受、尚未归档。
+- C8a 已验收归档：首个 `rag-eval-dev-v1` dataset manifest、`rag-eval-sample-v1` contract 和两个 runner 共用的本地 fail-fast validator 已落地；正式路径固定当前 30 条 question set 与 3 份 fixture，custom 输入只能显式降级为 `UNVERSIONED`。4 个 requirements / 13 个 scenarios 已接受进 `evaluation` baseline。
 
 ## 当前边界
 

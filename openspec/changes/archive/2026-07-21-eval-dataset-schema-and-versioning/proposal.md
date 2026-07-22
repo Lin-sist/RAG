@@ -3,7 +3,7 @@
 ## Status
 
 - Change type：Type C 重大变更。
-- 当前阶段：用户已批准 proposal、16 条 design 决策和 4 requirements / 13 scenarios；TDD 实现与本地验证已完成，正在等待用户实现验收。
+- 当前阶段：用户已验收实现与结论边界；4 requirements / 13 scenarios 已接受进 `evaluation` baseline，change 已归档。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 - 外部调用：规划与实现阶段真实 embedding、rerank、ask、judge、LLM/provider 调用量均为 0，数据出站为 0。
 
@@ -155,13 +155,13 @@ C8a 的规划、实现和验收均应可在本地完成：
 - change 归档并将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`。
 - C8a 归档后只表示版本治理完成，不表示 C8b 样本扩充、C9 claim/judge 或 C10 quality gate 已完成。
 
-## Implementation Result（待用户验收）
+## Implementation Result（已验收）
 
 - 新增 `docs/eval/dataset-manifest.json` 与 `docs/eval/schema/rag-eval-sample-v1.json`，固定 `rag-eval-dev-v1`、30 条 question set、3 份 fixture、逻辑 KB contract 与 distribution；现有 JSONL/fixture bytes 和 C7 hash 未改变。
 - 新增标准库 validator，覆盖 safe repo path、artifact bytes/hash、sample count/order、allowed/required/type/enum/ID、answerable/no-answer、fixture source 与 distribution；错误只输出稳定 code 和安全定位字段。
 - direct/reproducible runner 在 login、preflight、KB mutation 与 provider 前共用 validation；正式路径输出 `VALID` release identity，custom 输入默认拒绝，显式诊断标为 `UNVERSIONED` 且不可比较。
 - 聚焦测试、Python 全量 86 tests、两条 current-release plan、SensitiveLogs、secret/protected-path/断链扫描和 `git diff --check` 均通过；Maven、frontend、Docker/live provider 因无对应改动且 acceptance 为纯本地而跳过。
-- 尚未完成用户验收、delta 接受、归档和 `ACTIVE_TASK=IDLE`；这些 closeout 动作不在本轮提前执行。
+- 用户验收、delta 接受、归档和 `ACTIVE_TASK=IDLE` 已完成；C8b/C9/C10/C14 仍保持独立后续 change。
 
 ## Risks
 

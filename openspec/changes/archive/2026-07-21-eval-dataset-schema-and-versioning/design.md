@@ -232,12 +232,12 @@ C7 和更早报告保留原样。它们已经记录 eval-set hash、fixture/conf
 - validation failure 只停止评测，不修改 KB、文件或业务数据。
 - 回滚移除 runner integration 后，manifest/schema/validator仍可作为离线工具保留；不需要数据迁移。
 
-## Implementation Outcome（待用户验收）
+## Implementation Outcome（已验收）
 
 - 16 条决策均按批准方案实现：sidecar manifest、有限 schema vocabulary、四轴加 question-set version、严格 unknown-field、safe repo path、静态/运行时 identity 分层和显式 `UNVERSIONED` 诊断模式均已落地。
 - 两个 runner 共享 `eval_dataset_contract.py`；validation 顺序位于 credentials、login、preflight、KB create/upload、warm-up 和 measured run 之前。既有 C7 arm manifest、metadata 字段、plan/preflight/keep-existing 行为与指标公式保持兼容。
 - 正式 metadata/report 记录 dataset release identity 与 validation status；direct runner 会拒绝 wrapper metadata 与本地 validation 的同 version/identity mismatch。`UNVERSIONED` 报告固定不安全用于 comparison。
-- 当前实现与离线验证完成，但 baseline delta 尚未接受，change 尚未归档，活动任务仍保持 `ACTIVE` 等待用户验收。
+- 当前实现与离线验证已获用户验收，baseline delta 已接受，change 已归档且活动任务恢复 `IDLE`。
 
 ## 决策记录
 

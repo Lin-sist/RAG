@@ -2,26 +2,18 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
 ## Active Change
 
-- Change：`2026-07-21-eval-dataset-schema-and-versioning`
-- 位置：`openspec/changes/2026-07-21-eval-dataset-schema-and-versioning/`
-- 类型：Type C 重大变更。
-- 当前阶段：TDD 实现与纯本地验证已完成，等待用户验收 schema/manifest、version bump、validator 与 runner compatibility；delta 尚未接受，change 尚未归档。
-- 目标：把当前 question set、fixture corpus、sample schema 与 annotation 建成版本化 release identity，并让评测 runner 在任何 backend/provider 调用前统一 fail-fast 校验。
-- 范围：dataset release manifest、项目级样本 schema contract、共享本地 validator、runner metadata/compatibility、version bump 规则、单元测试与评测指南。
-- 非目标：不扩充或重新标注当前 30 条样本；不进入 C8b/C9/C10/C14；不修改 Java/API、指标公式、默认 provider、数据库、前端或部署；不执行真实业务外调。
-- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-- 验收入口：完成 RED→GREEN、Python/SensitiveLogs/diff/范围验证后等待用户验收；只有用户验收后才接受 delta、归档并恢复 `IDLE`。
+- 当前无 active change。
 
 ## Last Completed
 
-- Change：`2026-07-20-reranker-ab-evaluation`
-- 位置：`openspec/changes/archive/2026-07-20-reranker-ab-evaluation/`
-- 结果：完成严格 identity、provider coverage、sample pairing 与 latency 分口径的 retrieval-only reranker A/B；full `R=3,W=3` 六个 measured runs comparison=`COMPARABLE`。
-- 验收：用户已验收 C7 full evidence 与结论边界；4 个 requirements / 11 个 scenarios 已接受进 `evaluation` baseline，change 已归档。当前默认 provider 继续保持 heuristic；如需切换必须另立 Type C change。
+- Change：`2026-07-21-eval-dataset-schema-and-versioning`
+- 位置：`openspec/changes/archive/2026-07-21-eval-dataset-schema-and-versioning/`
+- 结果：完成首个 `rag-eval-dev-v1` release manifest、sample schema contract、共享 fail-fast validator、runner identity metadata 与 version bump/drift recovery 规则。
+- 验收：用户已验收 C8a schema/manifest、bump rules、validator、runner compatibility 与结论边界；4 个 requirements / 13 个 scenarios 已接受进 `evaluation` baseline，change 已归档。C8a 不代表 C8b 数据扩充或 C9/C10/C14 已完成。
 
 ## Start A New Material Change
 

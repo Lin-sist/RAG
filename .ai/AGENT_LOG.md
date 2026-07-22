@@ -934,3 +934,19 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、`openspec/specs/` baseline、Java/API、数据库/迁移、前端、依赖、生产默认 provider、retrieval/chunking/rerank/prompt/citation/no-answer/judge 公式或历史 C7 报告；未进入 C8b/C9/C10/C14，未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险与闸门：30 条开发数据仍不能外推生产分布或 SLA；Git 保证已提交 release 的历史不可变性，运行时 metadata mismatch 额外 fail closed，但正式 release 演进仍依赖评审时遵守 bump matrix。等待用户验收后才能把 4 requirements / 13 scenarios 接受进 baseline、归档并恢复 `ACTIVE_TASK=IDLE`。
 - Commit：`pending`；提交责任为用户手动提交。建议 `feat(评测): 实现C8a评测数据版本治理`。
+
+## 2026-07-22｜C8a TDD 实现提交补录
+
+- Commit：`2065ed2`（`feat(评测): 实现C8a评测数据版本治理`）。本条只补录上一实现提交的真实 hash，不记录本次验收归档提交。
+
+## 2026-07-22｜C8a 用户验收、evaluation baseline 接受、归档与 C8b readiness
+
+- 用户决策：用户验收 C8a schema/manifest、version bump、validator、runner compatibility 与结论边界，并要求按流程完成 baseline 接受、归档和后续 C8b readiness 判断。
+- 契约与治理：C8a delta 的 4 requirements / 13 scenarios 已原文接受进 `openspec/specs/evaluation/spec.md`；`2026-07-21-eval-dataset-schema-and-versioning` 已移入 `openspec/changes/archive/`，tasks 全部完成，`.ai/ACTIVE_TASK.md=IDLE`，当前无未归档 change。同步 `openspec/project.md`、架构、技术债与优化索引的 accepted 状态。
+- 验证：delta-to-baseline ordinal exact match 通过（4 requirements / 13 scenarios）；archive structure、必需 artifacts、tasks 全勾选、`ACTIVE_TASK=IDLE`、无未归档 change 和当前事实源待验收残留检查通过；Python 全量为 86 tests / OK；current release reproducible plan 返回 `VALID`、30 samples、3 fixtures 和完整 version/hash/distribution，实际业务调用为 0；SensitiveLogs 扫描 307 source files / PASS；`git diff --check` 通过。
+- C8b readiness 分类：`confirmed` 为 C8a 治理前置已接受、当前 release 可验证、路线图下一串行 change 明确为 `eval-dataset-expansion-and-annotation`；`partial` 为 C8b 目前只有“扩充至 100～300 条并明确分类配额”的意图卡；`planned` 为独立 Type C proposal/design/tasks/evaluation delta；`out_of_scope` 为 C9 claim/judge、C10 quality gate、C14 权限隔离/恶意文档样本以及默认 provider/指标公式变更；`unknown` 为目标总量、type/difficulty/answerability 配额、fixture 扩展策略、题目来源、标注复核与去重/泄漏规则。
+- Readiness 结论：C8b **可以启动规划，但不能在本收口工作区直接开始实现**。唯一流程性前置是用户先手动提交本次 C8a 验收归档，使工作区恢复干净；提交后可创建独立 `2026-07-22-eval-dataset-expansion-and-annotation` change，先审 proposal、配额与数据/标注来源，再决定是否授权写入新 release。当前未知项是 C8b 设计输入，不阻塞规划启动。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；本轮仅 baseline/归档/长期文档改动，无 Java、Python 实现、POM、前端、依赖或运行时配置变化，因此 Maven、frontend build、Docker/Testcontainers 与 live provider smoke 均 `SKIPPED`。真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0，数据出站为 0。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、评测 JSONL/fixture/schema/manifest、Java/API、数据库、前端、依赖、生产默认 provider、retrieval/chunking/rerank/prompt/citation/no-answer/judge 公式或历史报告；未创建 C8b change、未新增/重写样本，未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：当前 30 条开发样本仍不能外推生产分布；C8b 若新增或修改 question/annotation/fixture，必须按 C8a baseline 同时 bump 对应 question/annotation/corpus 与 release version。若 C8b 使用外部 LLM 辅助生成或审核，必须另行披露调用量、出站内容、模型、费用与限流风险并获授权。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 验收归档C8a并确认C8b规划就绪`。

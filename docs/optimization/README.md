@@ -23,11 +23,11 @@
 
 - `../eval/reports/c7-reranker-ab-full-2026-07-20.md`：固定 30 条开发样本、`R=3,W=3` 的 clean heuristic/NVIDIA 比较、provider coverage、质量 delta 与延迟边界；用户已验收，delta 已接受并归档。
 
-### C8a：评测数据版本治理（实现完成，待验收）
+### C8a：评测数据版本治理（已验收归档）
 
 - `../eval/dataset-manifest.json`：首个 `rag-eval-dev-v1` release identity，固定 question/schema/annotation/corpus version 与当前 artifact hash。
 - `../eval/schema/rag-eval-sample-v1.json`：allowed/required fields、类型、enum、ID pattern 与 answerable/no-answer 条件契约。
-- `../eval/RAG_EVAL_GUIDE.md`：formal/UNVERSIONED 边界、零外调 plan、version bump matrix 与 drift recovery。change 尚未验收归档，长期 `evaluation` baseline 尚未接受该 delta。
+- `../eval/RAG_EVAL_GUIDE.md`：formal/UNVERSIONED 边界、零外调 plan、version bump matrix 与 drift recovery。4 个 requirements / 13 个 scenarios 已接受进长期 `evaluation` baseline，change 已归档。
 
 ## 历史材料
 
