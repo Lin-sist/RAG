@@ -950,3 +950,27 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、评测 JSONL/fixture/schema/manifest、Java/API、数据库、前端、依赖、生产默认 provider、retrieval/chunking/rerank/prompt/citation/no-answer/judge 公式或历史报告；未创建 C8b change、未新增/重写样本，未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险：当前 30 条开发样本仍不能外推生产分布；C8b 若新增或修改 question/annotation/fixture，必须按 C8a baseline 同时 bump 对应 question/annotation/corpus 与 release version。若 C8b 使用外部 LLM 辅助生成或审核，必须另行披露调用量、出站内容、模型、费用与限流风险并获授权。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 验收归档C8a并确认C8b规划就绪`。
+
+## 2026-07-22｜C8a 验收归档提交补录
+
+- Commit：`83912d2`（`docs(openspec): 验收归档C8a并确认C8b规划就绪`）。本条只补录上一验收归档提交的真实 hash，不记录本次 C8b 规划提交。
+
+## 2026-07-22｜C8b eval dataset expansion/annotation 规划启动
+
+- 用户决策与提交责任：用户确认 C8a 验收完毕并要求开启 C8b 规划。提交责任按仓库默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 HEAD 为 `83912d2`、工作区干净、`.ai/ACTIVE_TASK.md=IDLE`、C8a 4 requirements / 13 scenarios 已接受进 `evaluation` baseline并归档、当前无未归档 change。冻结路线图下一串行 change 为 `eval-dataset-expansion-and-annotation`。
+- 已确认数据事实：当前 release=`rag-eval-dev-v1`，30 samples / 3 fixtures，type=fact 10、definition 8、reasoning 6、multi_hop 3、no_answer 3；difficulty=easy 15、medium 12、hard 3；answerable/no-answer=27/3；source 引用 Java 12、RAG 11、Spring Boot 7；duplicate ID/question 均为 0。当前 type 与 difficulty 高度耦合，仍是开发数据而非生产分布。
+- 规划范围：建立 Type C change `2026-07-22-eval-dataset-expansion-and-annotation` 的 proposal/design/tasks 与 `evaluation` spec delta，并激活 `.ai/ACTIVE_TASK.md`。草案建议 150 条总量、原 30 条 seed 不变、新增 120 条、五类×三难度 exact quota、现有 fixture coverage、grounding/review sidecar、v1/v2 共存和数据冻结边界。
+- 规划 artifacts：change 下 proposal/design/tasks/spec delta 共 4 文件；design 18 条待用户确认的真实决策；delta 为 4 requirements / 12 scenarios。用户尚未批准总量、quota、corpus boundary、review/manifest v2 方案或实现授权。
+- 外部调用与范围安全：规划阶段真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0、数据出站为 0；未修改 baseline spec、eval JSONL、fixture、dataset manifest/schema、runner、Java/API、配置、数据库、前端、依赖、默认 provider 或历史报告，未进入 C9/C10/C14。
+- 验证：启动提交与 clean-worktree readiness 通过；4 个必需 artifacts 齐全，decision/requirement/scenario 计数为 18/4/12；baseline spec 与数据/manifest/schema/fixture diff 为 0。其余 diff/link/SensitiveLogs 检查在规划收口时执行。
+- 剩余风险：150 条与 quota 仍是建议值；仅用 3 份 fixture 可能造成题意重复，若扩 corpus 又会增加 fixture/KB/version 变量；annotation semantic review 不能仅靠结构校验。任何外部 LLM 辅助必须单独授权，不能从本规划自动推定。
+- Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C8b评测数据扩充规划`。
+
+## 2026-07-22｜C8b 规划门禁验证
+
+- 结构与状态：proposal/design/tasks/spec delta 共 4 文件；18 条 design decisions 均满足三行决策结构；delta 为 4 requirements / 12 scenarios；`.ai/ACTIVE_TASK.md=ACTIVE` 且只指向 C8b，当前只有一个未归档 change。
+- 验证：baseline spec、eval JSONL、3 份 fixture、dataset manifest/schema 与两个 runner diff 均为 0；SensitiveLogs 扫描 307 source files / PASS；changed Markdown 本地链接、定向 secret value pattern 与规划受保护 artifact 检查通过；`git diff --check` 通过。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划仅修改 OpenSpec/ACTIVE_TASK/AGENT_LOG，未改 Python/Java/POM/前端/运行时配置，因此未运行 Python/Maven/frontend build、Docker/Testcontainers 或 live provider。
+- 范围与闸门：未写入、删除、重排或重新标注任何评测样本，未创建 v2 release、review sidecar 或切换默认 manifest。下一步必须由用户先批准 proposal、18 条决策、4/12 delta 和实现授权；本轮真实业务外调与数据出站均为 0。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C8b评测数据扩充规划`。

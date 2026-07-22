@@ -2,11 +2,19 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
 ## Active Change
 
-- 当前无 active change。
+- Change：`2026-07-22-eval-dataset-expansion-and-annotation`
+- 位置：`openspec/changes/2026-07-22-eval-dataset-expansion-and-annotation/`
+- 类型：Type C 重大变更。
+- 当前阶段：C8b 规划草案，等待用户批准 proposal、18 条 design 决策和 `evaluation` delta 的 4 requirements / 12 scenarios；未进入样本实现。
+- 目标：在 C8a 版本治理基础上扩充并复核开发评测 question/annotation，建立明确 quota、seed immutability、grounding/review evidence 与可回退的 v2 release。
+- 范围：目标总量与 type×difficulty 配额、question/annotation 扩充、fixture coverage、duplicate/near-duplicate、review sidecar、v1/v2 release compatibility、离线 validator/tests 与评测指南。
+- 非目标：不进入 C9/C10/C14；不修改 Java/API、指标公式、默认 provider、数据库、前端或部署；规划阶段不修改 eval JSONL、fixture、manifest/schema、runner，也不执行真实业务外调。
+- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 验收入口：用户先批准总量、quota、corpus boundary、release/review 方案、18 条决策、4/12 delta 与实现授权；涉及外部 LLM 辅助时还须另行授权调用量、出站、模型、费用和限流风险。
 
 ## Last Completed
 
