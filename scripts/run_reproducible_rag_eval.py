@@ -20,9 +20,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import eval_dataset_contract as dataset_contract
+
 
 DEFAULT_BASE_URL = "http://localhost:8080"
 DEFAULT_EVAL_SET = Path("docs/eval/rag_eval_set.jsonl")
+DEFAULT_DATASET_MANIFEST = Path("docs/eval/dataset-manifest.json")
 DEFAULT_REPORT = Path("docs/eval/reports/stage1-reproducible-eval.md")
 DEFAULT_DETAILS_JSON = Path("docs/eval/reports/stage1-reproducible-eval-details.json")
 DEFAULT_METADATA_JSON = Path("docs/eval/reports/stage1-reproducible-eval-metadata.json")
@@ -72,6 +75,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--kb-name", default=os.getenv("RAG_EVAL_KB_NAME", DEFAULT_KB_NAME))
     parser.add_argument("--kb-description", default=os.getenv("RAG_EVAL_KB_DESCRIPTION", DEFAULT_KB_MARKER))
     parser.add_argument("--eval-set", default=os.getenv("RAG_EVAL_SET", str(DEFAULT_EVAL_SET)))
+    parser.add_argument(
+        "--dataset-manifest",
+        default=os.getenv("RAG_EVAL_DATASET_MANIFEST", str(DEFAULT_DATASET_MANIFEST)),
+        help="Repo-relative versioned eval dataset manifest. Required for formal evidence.",
+    )
+    parser.add_argument(
+        "--allow-unversioned-eval-set",
+        action="store_true",
+        help="Allow custom eval/fixtures only as UNVERSIONED local diagnosis.",
+    )
     parser.add_argument("--report", default=os.getenv("RAG_EVAL_REPORT", str(DEFAULT_REPORT)))
     parser.add_argument("--details-json", default=os.getenv("RAG_EVAL_DETAILS_JSON", str(DEFAULT_DETAILS_JSON)))
     parser.add_argument("--metadata-json", default=os.getenv("RAG_EVAL_METADATA_JSON", str(DEFAULT_METADATA_JSON)))
@@ -518,7 +531,7 @@ def build_metadata(
         (arm_manifest or {}).get("measuredRepeats")
         or getattr(args, "repeat", 1)
     )
-    return {
+    metadata = {
         "evaluationSchema": C7_ARM_SCHEMA if arm_manifest else "rag-eval-v1",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "baseUrl": args.base_url,
@@ -572,6 +585,11 @@ def build_metadata(
         "repeat": {"index": run_index, "total": repeat_total},
         "warmup": {"calls": int((arm_manifest or {}).get("warmupCalls", 0))},
     }
+    dataset_identity = getattr(args, "dataset_release_identity", None)
+    if isinstance(dataset_identity, dict):
+        metadata["datasetReleaseIdentity"] = dataset_identity
+        metadata["datasetValidation"] = dataset_identity.get("validationStatus")
+    return metadata
 
 
 def repeat_path(path_value: str, repeat: int, index: int) -> Path:
@@ -663,6 +681,8 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
         args.base_url,
         "--eval-set",
         args.eval_set,
+        "--dataset-manifest",
+        str(getattr(args, "dataset_manifest", DEFAULT_DATASET_MANIFEST)),
         "--kb-id",
         str(kb_id),
         "--sample-limit",
@@ -716,6 +736,8 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
         command.append("--no-enable-rerank")
     if args.no_overwrite:
         command.append("--no-overwrite")
+    if getattr(args, "allow_unversioned_eval_set", False):
+        command.append("--allow-unversioned-eval-set")
     return command
 
 
@@ -835,7 +857,44 @@ def build_plan(
         plan["armId"] = manifest.get("armId")
         plan["armManifestSha256"] = manifest.get("sha256")
         plan["warmupCalls"] = 0 if getattr(args, "skip_warmup", False) else manifest.get("warmupCalls", 0)
+    dataset_identity = getattr(args, "dataset_release_identity", None)
+    if isinstance(dataset_identity, dict):
+        plan["datasetReleaseIdentity"] = dataset_identity
     return plan
+
+
+def validate_eval_dataset(args: argparse.Namespace, fixtures: list[Path]) -> dict[str, Any]:
+    repo_root = Path(__file__).resolve().parents[1]
+    manifest_path = Path(args.dataset_manifest)
+    release_identity = dataset_contract.validate_versioned_release(
+        repo_root,
+        manifest_path,
+    )
+    selected_manifest = (repo_root / manifest_path).resolve()
+    default_manifest = (repo_root / DEFAULT_DATASET_MANIFEST).resolve()
+    if selected_manifest != default_manifest and default_manifest.is_file():
+        tracked_identity = dataset_contract.validate_versioned_release(
+            repo_root,
+            DEFAULT_DATASET_MANIFEST,
+        )
+        dataset_contract.ensure_release_version_consistent(release_identity, tracked_identity)
+    expected_eval = (repo_root / release_identity["questionSet"]["path"]).resolve()
+    expected_fixtures = {
+        (repo_root / fixture["path"]).resolve()
+        for fixture in release_identity["fixtures"]
+    }
+    actual_eval = Path(args.eval_set).resolve()
+    actual_fixtures = {path.resolve() for path in fixtures}
+    if actual_eval == expected_eval and actual_fixtures == expected_fixtures:
+        return release_identity
+    if args.allow_unversioned_eval_set:
+        return dataset_contract.validate_unversioned_eval_set(actual_eval)
+    artifact = actual_eval.name if actual_eval != expected_eval else "fixture-corpus"
+    raise dataset_contract.DatasetContractError(
+        "unversioned_eval_set" if actual_eval != expected_eval else "fixture_corpus_mismatch",
+        artifact,
+        "custom eval inputs require --allow-unversioned-eval-set",
+    )
 
 
 def print_plan(plan: dict[str, Any]) -> None:
@@ -875,6 +934,14 @@ def main() -> int:
     args = parse_args()
     args.base_url = args.base_url.rstrip("/")
     fixtures = [Path(value) for value in (args.fixtures or [str(path) for path in DEFAULT_FIXTURES])]
+    try:
+        args.dataset_release_identity = validate_eval_dataset(args, fixtures)
+    except dataset_contract.DatasetContractError as exc:
+        print(
+            f"Dataset validation failed: errorCode={exc.code} artifact={exc.artifact}",
+            file=sys.stderr,
+        )
+        return 2
     missing = [str(path) for path in fixtures if not path.exists()]
     if missing:
         print(f"Missing fixture file count: {len(missing)}", file=sys.stderr)

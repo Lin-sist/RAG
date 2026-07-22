@@ -3,9 +3,9 @@
 ## Status
 
 - Change type：Type C 重大变更。
-- 当前阶段：规划 artifacts 已建立，等待用户审阅 scope、non-goals、design 决策记录与 `evaluation` spec delta；未进入实现。
+- 当前阶段：用户已批准 proposal、16 条 design 决策和 4 requirements / 13 scenarios；TDD 实现与本地验证已完成，正在等待用户实现验收。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-- 外部调用：规划阶段真实 embedding、rerank、ask、judge、LLM/provider 调用量为 0。
+- 外部调用：规划与实现阶段真实 embedding、rerank、ask、judge、LLM/provider 调用量均为 0，数据出站为 0。
 
 ## Summary
 
@@ -63,9 +63,8 @@ C8a 只建立治理和执行门禁，不扩充、重写或重新标注样本。1
 
 ### unknown
 
-- dataset/schema/annotation/corpus 四类 version 的最终命名格式与 bump 规则等待事前闸门确认。
-- project-specific schema contract 是否采用严格 unknown-field 拒绝、以及 legacy custom eval-set 的显式降级入口等待事前闸门确认。
-- 初始 release 的逻辑 KB identity 字段组合和 manifest 路径规范等待事前闸门确认。
+- 本 change 实现完成后，真实生产数据分布与 C8b 分类配额仍未知，不在 C8a 推断。
+- C8a 只验证本地 release/schema/versioning 行为，不通过真实 provider run 推断质量收益或生产 SLA。
 
 ## 用户故事（大白话）
 
@@ -108,7 +107,7 @@ C8a 只建立治理和执行门禁，不扩充、重写或重新标注样本。1
 
 ## Version Semantics
 
-规划建议采用四个显式 version 轴，最终由用户事前闸门确认：
+已批准采用四个显式 version 轴：
 
 - `releaseVersion`：对外引用的完整数据 release；任一组成 identity 变化都生成新 release。
 - `sampleSchemaVersion`：字段集合、类型、枚举或条件语义发生不兼容变化时 bump。
@@ -156,6 +155,14 @@ C8a 的规划、实现和验收均应可在本地完成：
 - change 归档并将 `.ai/ACTIVE_TASK.md` 恢复为 `IDLE`。
 - C8a 归档后只表示版本治理完成，不表示 C8b 样本扩充、C9 claim/judge 或 C10 quality gate 已完成。
 
+## Implementation Result（待用户验收）
+
+- 新增 `docs/eval/dataset-manifest.json` 与 `docs/eval/schema/rag-eval-sample-v1.json`，固定 `rag-eval-dev-v1`、30 条 question set、3 份 fixture、逻辑 KB contract 与 distribution；现有 JSONL/fixture bytes 和 C7 hash 未改变。
+- 新增标准库 validator，覆盖 safe repo path、artifact bytes/hash、sample count/order、allowed/required/type/enum/ID、answerable/no-answer、fixture source 与 distribution；错误只输出稳定 code 和安全定位字段。
+- direct/reproducible runner 在 login、preflight、KB mutation 与 provider 前共用 validation；正式路径输出 `VALID` release identity，custom 输入默认拒绝，显式诊断标为 `UNVERSIONED` 且不可比较。
+- 聚焦测试、Python 全量 86 tests、两条 current-release plan、SensitiveLogs、secret/protected-path/断链扫描和 `git diff --check` 均通过；Maven、frontend、Docker/live provider 因无对应改动且 acceptance 为纯本地而跳过。
+- 尚未完成用户验收、delta 接受、归档和 `ACTIVE_TASK=IDLE`；这些 closeout 动作不在本轮提前执行。
+
 ## Risks
 
 - 过度严格的 schema 可能阻碍后续字段扩展；通过显式 schema bump 和 formal/unversioned 分层控制，而不是静默接纳未知字段。
@@ -169,4 +176,3 @@ C8a 的规划、实现和验收均应可在本地完成：
 - manifest/schema/validator 和 runner additive metadata 可独立回退，不影响 backend、KB 或业务数据。
 - 当前 JSONL 与 fixture 不在本 change 中重写，因此 rollback 不需要恢复评测内容。
 - 若 validator 集成影响 legacy ad-hoc 命令，可回退 runner 接线并保留离线校验工具；不得通过放宽正式 baseline 契约来掩盖问题。
-

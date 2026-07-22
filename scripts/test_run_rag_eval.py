@@ -2,7 +2,11 @@
 from __future__ import annotations
 
 import argparse
+import io
+import tempfile
 import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
 from unittest import mock
 
 import run_rag_eval as runner
@@ -284,6 +288,104 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         self.assertIn("Client-observed debug retrieval latency", rendered)
         self.assertIn("Server-side rerank stage latency", rendered)
         self.assertIn("count=3, min=80.0, P50=90.0, P95=110.0, max=110.0 ms", rendered)
+
+    def test_main_rejects_unversioned_custom_eval_set_before_backend_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            eval_set = tmp / "custom.jsonl"
+            report = tmp / "report.md"
+            eval_set.write_text('{"id":"fact-001","should_answer":true}\n', encoding="utf-8")
+            argv = [
+                "run_rag_eval.py",
+                "--eval-set",
+                str(eval_set),
+                "--kb-id",
+                "1",
+                "--plan-only",
+                "--report",
+                str(report),
+            ]
+
+            with mock.patch("sys.argv", argv), mock.patch.object(runner, "login") as login:
+                self.assertEqual(2, runner.main())
+
+            login.assert_not_called()
+
+    def test_main_rejects_drifted_release_before_backend_calls(self) -> None:
+        error = runner.dataset_contract.DatasetContractError(
+            "artifact_hash_mismatch",
+            "docs/eval/rag_eval_set.jsonl",
+            "bytes or sha256 drifted",
+        )
+
+        with (
+            mock.patch("sys.argv", ["run_rag_eval.py", "--kb-id", "1", "--plan-only"]),
+            mock.patch.object(runner, "validate_eval_dataset", side_effect=error),
+            mock.patch.object(runner, "login") as login,
+        ):
+            self.assertEqual(2, runner.main())
+
+        login.assert_not_called()
+
+    def test_unversioned_results_are_never_safe_for_comparison(self) -> None:
+        counts = {
+            "askErrors": 0,
+            "retrieveErrors": 0,
+            "skippedAsk": 1,
+            "judgeErrors": 0,
+            "skippedJudge": 1,
+            "rateLimitErrors": 0,
+            "retryCount": 0,
+        }
+
+        result = runner.metrics_safe_for_comparison(
+            "RETRIEVAL_ONLY",
+            counts,
+            dataset_validation="UNVERSIONED",
+        )
+
+        self.assertEqual("no; dataset is UNVERSIONED", result)
+
+    def test_run_metadata_dataset_identity_mismatch_is_rejected(self) -> None:
+        current = {
+            "validationStatus": "VALID",
+            "releaseVersion": "rag-eval-dev-v1",
+            "manifestSha256": "current",
+        }
+        metadata = {
+            "datasetValidation": "VALID",
+            "datasetReleaseIdentity": {**current, "manifestSha256": "stale"},
+        }
+
+        with self.assertRaises(runner.dataset_contract.DatasetContractError) as raised:
+            runner.bind_dataset_identity(metadata, current)
+
+        self.assertEqual("release_identity_mismatch", raised.exception.code)
+
+    def test_versioned_plan_reports_release_identity_before_backend_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report = Path(tmp_dir) / "report.md"
+            argv = [
+                "run_rag_eval.py",
+                "--eval-set",
+                str(Path(runner.__file__).resolve().parents[1] / "docs/eval/rag_eval_set.jsonl"),
+                "--kb-id",
+                "1",
+                "--plan-only",
+                "--sample-limit",
+                "1",
+                "--report",
+                str(report),
+            ]
+            output = io.StringIO()
+
+            with mock.patch("sys.argv", argv), mock.patch.object(runner, "login") as login:
+                with redirect_stdout(output):
+                    self.assertEqual(0, runner.main())
+
+            login.assert_not_called()
+            self.assertIn('"validationStatus": "VALID"', output.getvalue())
+            self.assertIn('"releaseVersion": "rag-eval-dev-v1"', output.getvalue())
 
 
 if __name__ == "__main__":

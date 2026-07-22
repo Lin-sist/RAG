@@ -1,6 +1,6 @@
 # RAG 优化文档索引
 
-> 状态日期：2026-07-20
+> 状态日期：2026-07-21
 
 本目录只保留三类内容：当前 v3 证据、已关闭的 v4 阶段证据、历史演进证据。阶段编号只在所属版本目录内解释。
 
@@ -22,6 +22,12 @@
 ### C7：当前 reranker A/B evidence
 
 - `../eval/reports/c7-reranker-ab-full-2026-07-20.md`：固定 30 条开发样本、`R=3,W=3` 的 clean heuristic/NVIDIA 比较、provider coverage、质量 delta 与延迟边界；用户已验收，delta 已接受并归档。
+
+### C8a：评测数据版本治理（实现完成，待验收）
+
+- `../eval/dataset-manifest.json`：首个 `rag-eval-dev-v1` release identity，固定 question/schema/annotation/corpus version 与当前 artifact hash。
+- `../eval/schema/rag-eval-sample-v1.json`：allowed/required fields、类型、enum、ID pattern 与 answerable/no-answer 条件契约。
+- `../eval/RAG_EVAL_GUIDE.md`：formal/UNVERSIONED 边界、零外调 plan、version bump matrix 与 drift recovery。change 尚未验收归档，长期 `evaluation` baseline 尚未接受该 delta。
 
 ## 历史材料
 

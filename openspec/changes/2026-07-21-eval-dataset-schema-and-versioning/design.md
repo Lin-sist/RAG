@@ -232,9 +232,16 @@ C7 和更早报告保留原样。它们已经记录 eval-set hash、fixture/conf
 - validation failure 只停止评测，不修改 KB、文件或业务数据。
 - 回滚移除 runner integration 后，manifest/schema/validator仍可作为离线工具保留；不需要数据迁移。
 
+## Implementation Outcome（待用户验收）
+
+- 16 条决策均按批准方案实现：sidecar manifest、有限 schema vocabulary、四轴加 question-set version、严格 unknown-field、safe repo path、静态/运行时 identity 分层和显式 `UNVERSIONED` 诊断模式均已落地。
+- 两个 runner 共享 `eval_dataset_contract.py`；validation 顺序位于 credentials、login、preflight、KB create/upload、warm-up 和 measured run 之前。既有 C7 arm manifest、metadata 字段、plan/preflight/keep-existing 行为与指标公式保持兼容。
+- 正式 metadata/report 记录 dataset release identity 与 validation status；direct runner 会拒绝 wrapper metadata 与本地 validation 的同 version/identity mismatch。`UNVERSIONED` 报告固定不安全用于 comparison。
+- 当前实现与离线验证完成，但 baseline delta 尚未接受，change 尚未归档，活动任务仍保持 `ACTIVE` 等待用户验收。
+
 ## 决策记录
 
-> 审批状态：以下 16 条为规划建议，均待用户在事前闸门确认；确认前不进入实现。
+> 审批状态：用户已于 2026-07-21 批准本节 16 条建议并授权进入 TDD 实现。下文原始“待用户在事前闸门确认”措辞作为规划审阅痕迹保留，不再表示未决。
 
 ### 决策 1：C8a 与 C8b 保持两个串行 change
 - **面临的选择**：一次完成 schema/versioning 和 100～300 条扩充；先扩数据再补版本；C8a 只建治理后由 C8b 扩充。
@@ -315,4 +322,3 @@ C7 和更早报告保留原样。它们已经记录 eval-set hash、fixture/conf
 - **面临的选择**：提前加入 tenant/恶意样本并跑真实链路；只用 mock 宣称业务收益；保持本 change 本地数据治理且真实外调为 0。
 - **选了哪个 + 为什么**：建议本地治理、零外调；tenant model 尚未建立，C14 才负责隔离评测，C8a 验收也不需要模型结果，待用户在事前闸门确认。
 - **放弃的代价**：提前造隔离样本缺少领域契约；用 mock 宣称收益不可信；真实 provider只增加费用、出站和限流风险而不验证 versioning 核心。
-

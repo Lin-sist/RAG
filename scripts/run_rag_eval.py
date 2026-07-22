@@ -22,9 +22,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import eval_dataset_contract as dataset_contract
+
 
 DEFAULT_BASE_URL = "http://localhost:8080"
 DEFAULT_EVAL_SET = Path("docs/eval/rag_eval_set.jsonl")
+DEFAULT_DATASET_MANIFEST = Path("docs/eval/dataset-manifest.json")
 DEFAULT_REPORT = Path("tmp/eval/local-eval.md")
 NO_ANSWER_CUES = (
     "没有找到",
@@ -99,6 +102,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run RAG eval baseline.")
     parser.add_argument("--base-url", default=os.getenv("RAG_BASE_URL", DEFAULT_BASE_URL))
     parser.add_argument("--eval-set", default=os.getenv("RAG_EVAL_SET", str(DEFAULT_EVAL_SET)))
+    parser.add_argument(
+        "--dataset-manifest",
+        default=os.getenv("RAG_EVAL_DATASET_MANIFEST", str(DEFAULT_DATASET_MANIFEST)),
+        help="Repo-relative versioned eval dataset manifest. Required for formal evidence.",
+    )
+    parser.add_argument(
+        "--allow-unversioned-eval-set",
+        action="store_true",
+        help="Allow a custom eval set only as UNVERSIONED local diagnosis, never as formal baseline evidence.",
+    )
     parser.add_argument("--report", default=os.getenv("RAG_EVAL_REPORT", str(DEFAULT_REPORT)))
     parser.add_argument("--after-report", default=os.getenv("RAG_EVAL_AFTER_REPORT", ""))
     parser.add_argument("--kb-id", type=int, default=parse_int_env("RAG_EVAL_KB_ID"))
@@ -200,7 +213,7 @@ def eval_plan(samples: list[dict[str, Any]], args: argparse.Namespace) -> dict[s
     judge_calls = 0
     if args.judge_mode == "llm" and not args.skip_ask:
         judge_calls = len(answerable)
-    return {
+    plan = {
         "sampleCount": len(samples),
         "answerableCount": len(answerable),
         "noAnswerCount": len(no_answer),
@@ -220,6 +233,38 @@ def eval_plan(samples: list[dict[str, Any]], args: argparse.Namespace) -> dict[s
             "detailsJson": args.details_json,
         },
     }
+    dataset_identity = getattr(args, "dataset_release_identity", None)
+    if isinstance(dataset_identity, dict):
+        plan["datasetReleaseIdentity"] = dataset_identity
+    return plan
+
+
+def validate_eval_dataset(args: argparse.Namespace) -> dict[str, Any]:
+    repo_root = Path(__file__).resolve().parents[1]
+    manifest_path = Path(args.dataset_manifest)
+    release_identity = dataset_contract.validate_versioned_release(
+        repo_root,
+        manifest_path,
+    )
+    selected_manifest = (repo_root / manifest_path).resolve()
+    default_manifest = (repo_root / DEFAULT_DATASET_MANIFEST).resolve()
+    if selected_manifest != default_manifest and default_manifest.is_file():
+        tracked_identity = dataset_contract.validate_versioned_release(
+            repo_root,
+            DEFAULT_DATASET_MANIFEST,
+        )
+        dataset_contract.ensure_release_version_consistent(release_identity, tracked_identity)
+    expected_eval = (repo_root / release_identity["questionSet"]["path"]).resolve()
+    actual_eval = Path(args.eval_set).resolve()
+    if actual_eval == expected_eval:
+        return release_identity
+    if args.allow_unversioned_eval_set:
+        return dataset_contract.validate_unversioned_eval_set(actual_eval)
+    raise dataset_contract.DatasetContractError(
+        "unversioned_eval_set",
+        actual_eval.name or "custom-eval-set",
+        "custom eval set requires --allow-unversioned-eval-set",
+    )
 
 
 def print_eval_plan(plan: dict[str, Any]) -> None:
@@ -1228,6 +1273,31 @@ def load_run_metadata(path_value: str) -> dict[str, Any]:
     return value
 
 
+def bind_dataset_identity(
+    run_metadata: dict[str, Any],
+    dataset_identity: dict[str, Any],
+) -> dict[str, Any]:
+    bound = dict(run_metadata)
+    existing_identity = bound.get("datasetReleaseIdentity")
+    existing_status = bound.get("datasetValidation")
+    current_status = dataset_identity.get("validationStatus")
+    if existing_identity is not None and existing_identity != dataset_identity:
+        raise dataset_contract.DatasetContractError(
+            "release_identity_mismatch",
+            str(dataset_identity.get("manifestPath") or "custom-eval-set"),
+            "run metadata dataset identity differs from local validation",
+        )
+    if existing_status is not None and existing_status != current_status:
+        raise dataset_contract.DatasetContractError(
+            "release_identity_mismatch",
+            str(dataset_identity.get("manifestPath") or "custom-eval-set"),
+            "run metadata dataset validation status differs from local validation",
+        )
+    bound["datasetReleaseIdentity"] = dataset_identity
+    bound["datasetValidation"] = current_status
+    return bound
+
+
 def run_counts(results: list[SampleResult]) -> dict[str, int]:
     return {
         "askErrors": sum(1 for result in results if result.ask_error is not None),
@@ -1254,7 +1324,13 @@ def report_status(args: argparse.Namespace, results: list[SampleResult], login_e
     return "PARTIAL"
 
 
-def metrics_safe_for_comparison(status: str, counts: dict[str, int]) -> str:
+def metrics_safe_for_comparison(
+    status: str,
+    counts: dict[str, int],
+    dataset_validation: str = "VALID",
+) -> str:
+    if dataset_validation != "VALID":
+        return f"no; dataset is {dataset_validation or 'UNVALIDATED'}"
     if status == "CLEAN":
         return "yes"
     if status == "RETRIEVAL_ONLY":
@@ -1277,6 +1353,7 @@ def write_report(
     finished = time.time()
     status = report_status(args, results, login_error)
     counts = run_counts(results)
+    dataset_validation = str(run_metadata.get("datasetValidation") or "UNVALIDATED")
     lines: list[str] = []
     lines.append("# RAG Eval Report")
     lines.append("")
@@ -1289,7 +1366,10 @@ def write_report(
     lines.append(f"- skippedJudge count: `{counts['skippedJudge']}`")
     lines.append(f"- rateLimitErrors count: `{counts['rateLimitErrors']}`")
     lines.append(f"- retry count: `{counts['retryCount']}`")
-    lines.append(f"- Metrics safe for comparison: `{metrics_safe_for_comparison(status, counts)}`")
+    lines.append(
+        f"- Metrics safe for comparison: "
+        f"`{metrics_safe_for_comparison(status, counts, dataset_validation)}`"
+    )
     lines.append(f"- Base URL: `{args.base_url}`")
     lines.append(f"- Knowledge base ID: `{args.kb_id}`")
     lines.append(f"- Eval set: `{args.eval_set}`")
@@ -1436,6 +1516,15 @@ def write_report(
 
 
 def append_header_metadata(lines: list[str], metadata: dict[str, Any]) -> None:
+    dataset_identity = metadata.get("datasetReleaseIdentity")
+    if isinstance(dataset_identity, dict):
+        lines.append(f"- Dataset validation: `{dataset_identity.get('validationStatus', '')}`")
+        lines.append(f"- Dataset release: `{dataset_identity.get('releaseVersion', '')}`")
+        lines.append(f"- Dataset manifest SHA-256: `{dataset_identity.get('manifestSha256', '')}`")
+        question_set = dataset_identity.get("questionSet")
+        if isinstance(question_set, dict):
+            lines.append(f"- Dataset sample count: `{question_set.get('sampleCount', '')}`")
+            lines.append(f"- Dataset question SHA-256: `{question_set.get('sha256', '')}`")
     kb = metadata.get("knowledgeBase")
     if isinstance(kb, dict):
         lines.append(f"- Eval KB name: `{kb.get('name', '')}`")
@@ -1687,11 +1776,19 @@ def write_details_json(
     path.parent.mkdir(parents=True, exist_ok=True)
     status = report_status(args, results, login_error)
     counts = run_counts(results)
+    dataset_identity = run_metadata.get("datasetReleaseIdentity")
+    dataset_validation = str(run_metadata.get("datasetValidation") or "UNVALIDATED")
     payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "reportStatus": status,
         "runCounts": counts,
-        "metricsSafeForComparison": metrics_safe_for_comparison(status, counts),
+        "metricsSafeForComparison": metrics_safe_for_comparison(
+            status,
+            counts,
+            dataset_validation,
+        ),
+        "datasetValidation": dataset_validation,
+        "datasetReleaseIdentity": dataset_identity,
         "baseUrl": args.base_url,
         "kbId": args.kb_id,
         "evalSet": args.eval_set,
@@ -1738,11 +1835,29 @@ def main() -> int:
     started_at = time.time()
     args = parse_args()
     args.base_url = args.base_url.rstrip("/")
+    try:
+        args.dataset_release_identity = validate_eval_dataset(args)
+    except dataset_contract.DatasetContractError as exc:
+        print(
+            f"Dataset validation failed: errorCode={exc.code} artifact={exc.artifact}",
+            file=sys.stderr,
+        )
+        return 2
     eval_path = Path(args.eval_set)
     report_path = Path(args.report)
     after_report_path = Path(args.after_report) if args.after_report else None
     details_json_path = Path(args.details_json) if args.details_json else None
-    run_metadata = load_run_metadata(args.run_metadata_json)
+    try:
+        run_metadata = bind_dataset_identity(
+            load_run_metadata(args.run_metadata_json),
+            args.dataset_release_identity,
+        )
+    except dataset_contract.DatasetContractError as exc:
+        print(
+            f"Dataset validation failed: errorCode={exc.code} artifact={exc.artifact}",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.no_overwrite:
         output_paths = [report_path]
@@ -1812,7 +1927,10 @@ def main() -> int:
     print(f"skippedJudge: {counts['skippedJudge']}")
     print(f"rateLimitErrors: {counts['rateLimitErrors']}")
     print(f"retry count: {counts['retryCount']}")
-    print(f"Metrics safe for comparison: {metrics_safe_for_comparison(status, counts)}")
+    print(
+        "Metrics safe for comparison: "
+        f"{metrics_safe_for_comparison(status, counts, str(run_metadata.get('datasetValidation')))}"
+    )
     print(f"Recall@3: {pct(metrics['recall_at_3'])}")
     print(f"Recall@5: {pct(metrics['recall_at_5'])}")
     print(f"MRR: {float(metrics['mrr']):.4f}")

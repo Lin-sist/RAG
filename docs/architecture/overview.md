@@ -64,6 +64,7 @@
 - C6 已把 reranker attribution 透传到同步问答 metadata、debug retrieval 与评测 runner 的逐样本/聚合报告；这只证明协议与覆盖，不代表 NVIDIA 优于 heuristic。
 - C6 provider/attribution 契约已接受进 `rag-system` baseline；归档后 1 次纯合成 NVIDIA hosted smoke 已通过，确认当前 key、模型专属 endpoint、真实响应解析和完整候选覆盖。该证据不代表生产 SLA 或 NVIDIA 相对 heuristic 的收益成立。
 - C7 full `R=3,W=3` comparison 为 `COMPARABLE`；heuristic 继续复现 Recall@5 `68.63%`、MRR `0.7346`、Top1 `96.30%`，NVIDIA 为 `76.47%`、`0.8241`、`100%`，三个 repeat 一致且无 fallback。
+- C8a 在 runner 前增加纯本地 dataset contract 层：tracked manifest 固定 release/question/schema/annotation/corpus version 与 artifact identity，共享 validator 在 login、preflight、KB mutation 和 provider 调用前校验 path/hash/count/order、sample contract、fixture source 和 distribution。未版本化 custom 输入只能显式标记为 `UNVERSIONED`，不能形成可比较结论；当前 change 等待用户验收，baseline delta 尚未接受。
 - NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
@@ -74,6 +75,7 @@
 - `UserDetailsServiceImpl` 从数据库加载未删除用户及其有效角色；运行时不再初始化固定默认账号。
 - 真实 model reranker 已完成并验收 30 条开发样本 A/B，C7 delta 已接受进 `evaluation` baseline 并归档；默认 provider 仍为 heuristic。
 - 30 条评测集是开发基线，不是生产数据集或论文级基准。
+- C8a 没有扩充或重新标注这 30 条数据；C8b 数据扩充、C9 claim/judge 与 C10 quality gate 仍是独立后续范围。
 - 标题感知、长代码块和长段落专项仍待验证。
 - 当前只有请求日志与诊断字段，尚未形成完整 GenAI trace、指标和告警体系。
 

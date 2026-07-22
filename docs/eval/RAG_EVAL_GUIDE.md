@@ -553,7 +553,48 @@ compact comparison 不复制 question、contexts、passages、raw provider respo
 - 30 条开发样本只能证明本 eval-set、fixture、KB、配置、provider/model 和 Git HEAD 下的观察结果。
 - C7 不证明 generation、citation、no-answer 或 judge 改善，不建立生产 SLA，也不自动修改默认 reranker。
 
-## 9. 下一步接入方向
+## 9. C8a：版本化评测数据 Release
+
+正式评测默认绑定 `docs/eval/dataset-manifest.json`。首个 release 为 `rag-eval-dev-v1`，固定当前 30 条 question set、`rag-eval-sample-v1` schema 和 3 份 `test-data/*.md` fixture；manifest 同时记录 raw SHA-256、bytes、sample count、有序 sample ID identity、逻辑 KB contract 与分布。当前 JSONL 和 fixture 的原始字节没有因 C8a 改写。
+
+两个 runner 都会先完成本地 manifest/schema/question/fixture 校验，再考虑 login、preflight、KB mutation 或 provider 调用。可以用以下命令做零外调计划检查：
+
+```powershell
+python -B scripts\run_rag_eval.py --plan-only --kb-id 0 --sample-limit 1
+python -B scripts\run_reproducible_rag_eval.py --plan-only
+```
+
+输出中的 `datasetReleaseIdentity.validationStatus=VALID`、`releaseVersion`、manifest/question/fixture hash、sample count 和 distribution 共同说明本地 release 身份匹配；`estimated*Calls` 是后续实际运行的估算，不是本次 plan 已发生的调用。
+
+### 9.1 Formal 与 UNVERSIONED
+
+- 默认正式路径只接受 manifest 中的 question set 和 fixture corpus；custom eval-set 或 fixture mismatch 会在任何 backend/provider 调用前非零退出。
+- 若要让另一套数据形成正式 release，先在仓库内新增独立 manifest/schema/artifact，并通过 `--dataset-manifest <repo-relative-path> --eval-set <manifest-question-path>` 显式选择；新 manifest 必须使用新的唯一 `releaseVersion`，完整声明各版本、hash、bytes、count/order、fixture 与 distribution，不能复用 `rag-eval-dev-v1` 覆盖当前身份。
+- 本地诊断确有需要时，必须显式增加 `--allow-unversioned-eval-set`。该结果的 metadata/report 标为 `UNVERSIONED`，`Metrics safe for comparison` 固定为 `no`，不得进入正式 baseline、跨 run 可比较结论或质量门禁。
+- `--preflight-only` 仍只检查已有资源，`--keep-existing` 仍只复用已有 KB/document；manifest 不会触发隐式建库、上传、删除或覆盖报告。
+- C7 及更早报告保留当时的 hash、metadata 和结论边界，不回写 C8a 才引入的 release version 或 validation status。
+
+### 9.2 Version bump matrix
+
+| 变化 | 必须 bump | 同时生成新 release | 说明 |
+|---|---|---:|---|
+| 样本 membership、order、ID 或 question text | `questionSetVersion` | 是 | 重算 question bytes/hash/count/order identity |
+| allowed/required field、类型、enum、ID pattern 或条件规则 | `sampleSchemaVersion` | 是 | 新建 schema 文件并记录其 bytes/hash |
+| expected source/keyword/answer point/context、`should_answer`、type/difficulty 或 notes 审核变化 | `annotationVersion` | 是 | 即使 question text 不变也必须 bump |
+| fixture 集合、文件名或任意 bytes | `fixtureCorpusVersion` | 是 | 重算每份 fixture identity 与逻辑 KB expected document names |
+
+任一组成 identity 改变都必须生成新的 `releaseVersion`。同一个 release version 不得对应另一份 manifest hash、question/schema/annotation/corpus identity；不能通过只改 hash、保留旧 version 来覆盖历史 release。
+
+### 9.3 Drift 恢复
+
+1. 若变化是误改，恢复 manifest 所指 artifact 的原始 bytes，再重新运行 plan。
+2. 若变化是有意演进，按上表创建新 question/schema/annotation/corpus version，更新所有 path/hash/bytes/count/order/distribution，再生成新的 release version。
+3. schema 不兼容时保留旧 schema 文件和旧 release，不原地覆盖；annotation-only 或 fixture-only 变化也必须产生新 release。
+4. 不把绝对路径、`..`、secret、numeric KB ID、vector collection、provider 原始响应或 Git HEAD 写进静态 manifest。Git/config/observed KB identity 由运行时 metadata 追加。
+
+C8a 只完成 schema/versioning 与 fail-fast 门禁，不代表 C8b 数据扩充、C9 claim/judge、C10 quality gate 或 C14 isolation evaluation 已完成。
+
+## 10. 下一步接入方向
 
 ### Hybrid Search
 

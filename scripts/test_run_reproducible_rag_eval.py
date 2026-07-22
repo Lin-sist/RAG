@@ -437,6 +437,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             fixture.write_text("# Fixture\n", encoding="utf-8")
             argv = [
                 "run_reproducible_rag_eval.py",
+                "--allow-unversioned-eval-set",
                 "--eval-set",
                 str(eval_set),
                 "--fixture",
@@ -449,6 +450,24 @@ class ReproducibleRagEvalTest(unittest.TestCase):
                 self.assertEqual(2, runner.main())
 
             login.assert_not_called()
+
+    def test_main_rejects_drifted_release_before_backend_calls(self) -> None:
+        error = runner.dataset_contract.DatasetContractError(
+            "artifact_hash_mismatch",
+            "docs/eval/rag_eval_set.jsonl",
+            "bytes or sha256 drifted",
+        )
+
+        with (
+            mock.patch("sys.argv", ["run_reproducible_rag_eval.py", "--plan-only"]),
+            mock.patch.object(runner, "validate_eval_dataset", side_effect=error),
+            mock.patch.object(runner, "login") as login,
+            mock.patch.object(runner, "find_existing_eval_kb") as find_kb,
+        ):
+            self.assertEqual(2, runner.main())
+
+        login.assert_not_called()
+        find_kb.assert_not_called()
 
     def test_main_plan_only_loads_c7_arm_manifest_without_backend_calls(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -480,6 +499,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             argv = [
                 "run_reproducible_rag_eval.py",
                 "--plan-only",
+                "--allow-unversioned-eval-set",
                 "--eval-set", str(eval_set),
                 "--fixture", str(fixture),
                 "--repeat", "3",
@@ -488,6 +508,27 @@ class ReproducibleRagEvalTest(unittest.TestCase):
 
             with mock.patch("sys.argv", argv), mock.patch.object(runner, "login") as login:
                 self.assertEqual(0, runner.main())
+
+            login.assert_not_called()
+
+    def test_main_rejects_unversioned_custom_eval_set_before_backend_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            eval_set = tmp / "eval.jsonl"
+            fixture = tmp / "fixture.md"
+            eval_set.write_text('{"id":"fact-001","should_answer":true}\n', encoding="utf-8")
+            fixture.write_text("# Fixture\n", encoding="utf-8")
+            argv = [
+                "run_reproducible_rag_eval.py",
+                "--plan-only",
+                "--eval-set",
+                str(eval_set),
+                "--fixture",
+                str(fixture),
+            ]
+
+            with mock.patch("sys.argv", argv), mock.patch.object(runner, "login") as login:
+                self.assertEqual(2, runner.main())
 
             login.assert_not_called()
 
@@ -501,6 +542,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             argv = [
                 "run_reproducible_rag_eval.py",
                 "--preflight-only",
+                "--allow-unversioned-eval-set",
                 "--eval-set",
                 str(eval_set),
                 "--fixture",

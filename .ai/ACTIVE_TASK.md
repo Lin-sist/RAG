@@ -9,12 +9,12 @@
 - Change：`2026-07-21-eval-dataset-schema-and-versioning`
 - 位置：`openspec/changes/2026-07-21-eval-dataset-schema-and-versioning/`
 - 类型：Type C 重大变更。
-- 当前阶段：C8a proposal/design/tasks/`evaluation` spec delta 已建立，等待用户事前闸门审阅；未进入实现。
+- 当前阶段：TDD 实现与纯本地验证已完成，等待用户验收 schema/manifest、version bump、validator 与 runner compatibility；delta 尚未接受，change 尚未归档。
 - 目标：把当前 question set、fixture corpus、sample schema 与 annotation 建成版本化 release identity，并让评测 runner 在任何 backend/provider 调用前统一 fail-fast 校验。
 - 范围：dataset release manifest、项目级样本 schema contract、共享本地 validator、runner metadata/compatibility、version bump 规则、单元测试与评测指南。
 - 非目标：不扩充或重新标注当前 30 条样本；不进入 C8b/C9/C10/C14；不修改 Java/API、指标公式、默认 provider、数据库、前端或部署；不执行真实业务外调。
 - 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-- 验收入口：先批准 proposal scope/non-goals、design 16 条决策与 4 requirements / 13 scenarios；获批后才进入 TDD 实现，最终经用户验收后接受 delta、归档并恢复 `IDLE`。
+- 验收入口：完成 RED→GREEN、Python/SensitiveLogs/diff/范围验证后等待用户验收；只有用户验收后才接受 delta、归档并恢复 `IDLE`。
 
 ## Last Completed
 

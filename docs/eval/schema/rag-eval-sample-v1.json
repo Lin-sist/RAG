@@ -1,0 +1,65 @@
+{
+  "contractKind": "rag-eval-sample-schema",
+  "contractFormatVersion": "1",
+  "sampleSchemaVersion": "rag-eval-sample-v1",
+  "allowedFields": [
+    "id",
+    "question",
+    "type",
+    "difficulty",
+    "expected_sources",
+    "expected_keywords",
+    "expected_answer_points",
+    "expected_contexts",
+    "should_answer",
+    "notes"
+  ],
+  "requiredFields": [
+    "id",
+    "question",
+    "type",
+    "difficulty",
+    "expected_sources",
+    "expected_keywords",
+    "expected_answer_points",
+    "expected_contexts",
+    "should_answer",
+    "notes"
+  ],
+  "fieldTypes": {
+    "id": "nonEmptyString",
+    "question": "nonEmptyString",
+    "type": "nonEmptyString",
+    "difficulty": "nonEmptyString",
+    "expected_sources": "stringArray",
+    "expected_keywords": "stringArray",
+    "expected_answer_points": "stringArray",
+    "expected_contexts": "contextArray",
+    "should_answer": "boolean",
+    "notes": "nonEmptyString"
+  },
+  "enums": {
+    "type": ["fact", "definition", "reasoning", "multi_hop", "no_answer"],
+    "difficulty": ["easy", "medium", "hard"]
+  },
+  "idPattern": "^(fact|definition|reasoning|multi-hop|no-answer)-[0-9]{3}$",
+  "contextFields": ["source", "contains"],
+  "unknownFields": "reject",
+  "conditionalRules": {
+    "answerable": {
+      "shouldAnswer": true,
+      "nonEmptyFields": [
+        "expected_sources",
+        "expected_keywords",
+        "expected_answer_points",
+        "expected_contexts"
+      ]
+    },
+    "noAnswer": {
+      "type": "no_answer",
+      "shouldAnswer": false,
+      "emptyFields": ["expected_sources", "expected_keywords", "expected_contexts"],
+      "nonEmptyFields": ["expected_answer_points"]
+    }
+  }
+}

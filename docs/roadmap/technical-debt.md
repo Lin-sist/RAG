@@ -40,13 +40,19 @@
 - NVIDIA 相对 heuristic 的 Recall@5/MRR/Top1 观察提升为 +7.84pp/+0.0895/+3.70pp；server-side rerank P50/P95 为 363/688ms，overall P50 增加 188ms。H1 冷启动污染 aggregate P95，不能据此宣称 model 尾延迟更快。
 - 30 条开发样本不能外推生产收益；用户已验收 C7 evidence 与结论边界，delta 已接受进 `evaluation` baseline，change 已归档。默认仍保持 heuristic；若未来切换默认 provider，须另立 Type C change。
 
-### 2. 分块结构专项
+### 2. 评测数据版本治理（实现完成，待验收：2026-07-21）
+
+- C8a 已新增 `rag-eval-dev-v1` manifest、sample schema contract、共享 validator 与 direct/reproducible runner 前置校验；当前 30 条 JSONL 和 3 份 fixture bytes 保持不变。
+- custom eval-set 仅能显式降级为 `UNVERSIONED`，不得形成正式 baseline、可比较结论或质量门禁输入；C7 历史报告不追认回写新 version。
+- 剩余闭环是用户验收、接受 4 requirements / 13 scenarios、归档并恢复 `ACTIVE_TASK=IDLE`；C8b 100～300 条扩充仍须另立 change。
+
+### 3. 分块结构专项
 
 - 来源：承接已关闭 v4 计划中未执行的 Stage 3；后续须重新分级并独立立项，不从旧 v4 计划续跑。
 - 验证标题感知、长代码块、长段落和父子块策略。
 - 保持 `420/80` 为稳定基线，只做可回滚的单变量实验。
 
-### 3. Claim-level 引用质量
+### 4. Claim-level 引用质量
 
 - 当前 citation snippet 可回连到 retrieved contexts，但还不能证明答案每个 claim 都被证据支持。
 - 后续补 claim support rate、人工抽样与可选 LLM judge；judge 失败时必须显式降级。

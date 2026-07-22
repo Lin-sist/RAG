@@ -911,3 +911,26 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、`openspec/specs/`、评测集、fixture、业务代码、生产默认 provider 或历史报告；未创建 C8b 内容或提前声称 C8a 已实现。
 - 剩余风险：用户尚未批准 proposal、16 条 design decisions 和 4/13 delta；version 命名、严格 unknown-field、逻辑 KB identity 与是否保留显式 `UNVERSIONED` 诊断模式仍在事前闸门等待确认。
 - Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C8a评测数据版本治理规划`。
+
+## 2026-07-21｜C8a 规划提交补录
+
+- Commit：`7b4542b261286025a1ab6fdd99e0f7e20ff0843f`（`docs(openspec): 启动C8a评测数据版本治理规划`）。本条只补录上一规划提交的真实 hash，不记录本次 C8a 实现提交。
+
+## 2026-07-21｜C8a 规划批准与 TDD 实现启动
+
+- 用户决策：用户批准 proposal scope/non-goals/version semantics、design 16 条决策和 `evaluation` delta 的 4 requirements / 13 scenarios，并明确授权进入 TDD 实现。
+- 提交责任：继续为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 实现边界：按纵向 RED→GREEN 切片实现 tracked release manifest、项目级 sample schema、共享标准库 validator、direct/reproducible runner 前置 fail-fast 与兼容 metadata；当前 30 条 JSONL 和 3 份 fixture bytes 保持不变，不进入 C8b/C9/C10/C14。
+- 外部调用：C8a 默认 acceptance 全部本地完成，真实 embedding/rerank/ask/judge/LLM/provider 调用量为 0，数据出站为 0；不启动 backend/Docker/live provider。
+- Commit：`pending`。
+
+## 2026-07-21｜C8a 评测数据版本治理 TDD 实现完成（待验收）
+
+- 范围与修改：新增 `docs/eval/dataset-manifest.json`、`docs/eval/schema/rag-eval-sample-v1.json`、`scripts/eval_dataset_contract.py` 与聚焦测试；修改 direct/reproducible runner 及测试，增加前置 dataset validation、release identity metadata/report 和显式 `UNVERSIONED` 降级；同步评测指南、proposal/design/tasks、项目上下文、架构、技术债、优化索引与活动任务指针。
+- 已确认事实：首个 `rag-eval-dev-v1` 固定 30 条 question set、3 份 fixture、`rag-eval-sample-v1` schema、逻辑 KB contract 与 type/difficulty/shouldAnswer distribution。JSONL SHA-256 仍为 `d17bde69db58848fe79069709a7b7c3c927da916661faa8caf1bd71efcd6d7fe`；3 份 fixture SHA-256 仍为 `c51df5761d510aa4c8a5fd610c90454b12973e2999138c3b57ba83768a296521`、`a33f16e91025e9a8d92274c4221d1c172bb4f68c03790db53b8e20157ef4faa0`、`59ad5d66a59be2ce4e517ca81e37fde06b7673f3da7f798a4c76b01cc6f348a9`，未为通过 schema 修改样本或 fixture。
+- TDD 与行为：RED→GREEN 覆盖缺 version、unsafe/absolute path、缺失/hash drift artifact、非 object、missing/unknown/type/enum/ID pattern/duplicate、answerability、fixture source、context 和 distribution；两个 runner 的 invalid/drift 测试证明 login/KB stub call count=0。正式路径记录 `VALID` identity；custom 输入默认拒绝，仅显式 `--allow-unversioned-eval-set` 时标为 `UNVERSIONED`，且 `Metrics safe for comparison=no`。
+- 验证：validator 18 tests / OK；direct + reproducible runner 49 tests / OK；Python 全量 `python -B -m unittest discover -s scripts -p 'test_*.py'` 为 86 tests / OK；direct/reproducible current-release plan 均返回 `VALID`、30 samples、3 fixtures、完整 version/hash/distribution，实际业务调用为 0；SensitiveLogs 扫描 307 source files / PASS；定向 secret pattern、受保护路径与 10 个 C8a 链接目标检查通过；`git diff --check` 通过。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；无 Java/POM/前端/依赖/运行时配置改动，因此 Maven、frontend build 与 Docker/Testcontainers 均 `SKIPPED`；C8a acceptance 为纯本地 contract 验证且用户未另行授权业务外调，因此 live backend/provider smoke `SKIPPED`。实现阶段真实 embedding/rerank/ask/judge/LLM/provider 调用量均为 0，数据出站为 0。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、`openspec/specs/` baseline、Java/API、数据库/迁移、前端、依赖、生产默认 provider、retrieval/chunking/rerank/prompt/citation/no-answer/judge 公式或历史 C7 报告；未进入 C8b/C9/C10/C14，未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险与闸门：30 条开发数据仍不能外推生产分布或 SLA；Git 保证已提交 release 的历史不可变性，运行时 metadata mismatch 额外 fail closed，但正式 release 演进仍依赖评审时遵守 bump matrix。等待用户验收后才能把 4 requirements / 13 scenarios 接受进 baseline、归档并恢复 `ACTIVE_TASK=IDLE`。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(评测): 实现C8a评测数据版本治理`。
