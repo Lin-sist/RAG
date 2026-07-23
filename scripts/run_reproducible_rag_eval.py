@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import eval_dataset_contract as dataset_contract
+import run_rag_eval as eval_runner
 
 
 DEFAULT_BASE_URL = "http://localhost:8080"
@@ -581,6 +582,7 @@ def build_metadata(
             if path.exists()
         },
         "git": {"head": git_head()},
+        "claimMetricConfig": dict(eval_runner.CLAIM_METRIC_CONFIG),
         "armManifest": dict(arm_manifest) if arm_manifest else None,
         "repeat": {"index": run_index, "total": repeat_total},
         "warmup": {"calls": int((arm_manifest or {}).get("warmupCalls", 0))},
@@ -851,6 +853,7 @@ def build_plan(
         "childCommandShape": redact_command(
             build_eval_command(args, 0, Path(args.report), Path(args.details_json), Path(args.metadata_json))
         ),
+        "claimMetricConfig": dict(eval_runner.CLAIM_METRIC_CONFIG),
     }
     manifest = getattr(args, "arm_manifest_data", None)
     if isinstance(manifest, dict):

@@ -1,6 +1,6 @@
 # RAG 优化文档索引
 
-> 状态日期：2026-07-22
+> 状态日期：2026-07-23
 
 本目录只保留三类内容：当前 v3 证据、已关闭的 v4 阶段证据、历史演进证据。阶段编号只在所属版本目录内解释。
 
@@ -35,6 +35,13 @@
 - `../eval/releases/rag-eval-dev-v2.jsonl`：前 30 条保持 v1 raw/object/order identity，追加 120 条 source-first 开发样本；默认 manifest 已切换为与显式 v2 manifest byte-identical。
 - `../eval/review/rag-eval-dev-v2-review.jsonl`：150 条结构、grounding、duplicate 与语义复核事实，不复制完整 question、answer 或 fixture 正文。
 - C8b 的 4 requirements / 12 scenarios 已接受进长期 baseline并归档；这不代表 C9/C10/C14 或任何质量收益完成。
+
+### C9a：客观 Claim-Evidence 指标（实现完成，待验收）
+
+- active change：`2026-07-23-claim-evidence-objective-metrics`。
+- direct runner 已新增固定 `claim-lexical-v1`：句子/列表 claim、provenance-valid returned citations、exact + `0.70` claim-token coverage、逐 claim attribution 与全 claim 分母。
+- direct/reproducible plan、run metadata、Markdown 和 details JSON 固定 splitter/tokenizer/threshold/evidence policy identity；identity 漂移会在 backend/provider 调用前失败。
+- 当前只有合成离线测试和 plan-only 证据，真实 generation/provider 调用量为 0；用户验收前不接受 baseline、不归档，也不宣称 faithfulness、C9b judge calibration 或 C10 quality gate 完成。
 
 ## 历史材料
 

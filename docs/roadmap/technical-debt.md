@@ -55,8 +55,9 @@
 
 ### 4. Claim-level 引用质量
 
-- 当前 citation snippet 可回连到 retrieved contexts，但还不能证明答案每个 claim 都被证据支持。
-- 后续补 claim support rate、人工抽样与可选 LLM judge；judge 失败时必须显式降级。
+- C9a active change 已实现待验收的 objective lexical claim support：确定性句子/列表拆分，只接受 provenance-valid returned citation snippets，按 exact / `0.70` claim-token coverage 输出逐 claim attribution、全 claim 分母与局部完整性状态。
+- 该结果只能说明固定算法下的词法证据对齐，不能证明语义蕴含或完整事实正确性；真实 150 条 generation evidence 尚未授权和执行。
+- C9b 仍需完成 judge 校准与 objective/judge 全局状态分离；judge 失败必须显式降级且不得污染干净 objective 指标。C10 再定义阈值与退出码门禁。
 
 ### 4. SSE 结构化结果
 

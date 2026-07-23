@@ -5,7 +5,7 @@ import argparse
 import io
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -13,6 +13,136 @@ import run_rag_eval as runner
 
 
 class RunRagEvalJudgeTest(unittest.TestCase):
+    def test_extract_answer_claims_splits_sentences_and_list_items_deterministically(self) -> None:
+        answer = "概念一。概念二；\n- First fact. Second fact!"
+
+        first = runner.extract_answer_claims(answer)
+        second = runner.extract_answer_claims(answer)
+
+        self.assertEqual(["概念一", "概念二", "First fact", "Second fact"], [item["text"] for item in first])
+        self.assertEqual([1, 2, 3, 4], [item["claimIndex"] for item in first])
+        self.assertEqual(first, second)
+        self.assertTrue(all(item["claimHash"] for item in first))
+
+    def test_extract_answer_claims_ignores_structural_only_fragments(self) -> None:
+        claims = runner.extract_answer_claims("###\n1.\n[1]\n---\n- 有效事实。")
+
+        self.assertEqual(["有效事实"], [item["text"] for item in claims])
+
+    def test_objective_claim_metrics_keep_unsupported_claims_in_denominator(self) -> None:
+        result = runner.evaluate_objective_claim_metrics(
+            "Spring Boot 使用自动配置。它会读取不存在的未来配置。",
+            citations=[{"chunkId": "chunk-1", "snippet": "Spring Boot 使用自动配置。", "source": "spring.md"}],
+            contexts=[{"source": "chunk-1", "content": "Spring Boot 使用自动配置。"}],
+            should_answer=True,
+            skipped_ask=False,
+            ask_error=None,
+        )
+
+        self.assertEqual("COMPLETE", result["claimMetricStatus"])
+        self.assertEqual(2, result["claimTotal"])
+        self.assertEqual(1, result["supportedClaimCount"])
+        self.assertEqual(1, result["unsupportedClaimCount"])
+        self.assertEqual(0.5, result["objectiveClaimSupportRate"])
+        self.assertEqual("exact", result["claims"][0]["support"])
+        self.assertEqual("unsupported", result["claims"][1]["support"])
+
+    def test_objective_claim_metrics_uses_fixed_token_overlap_boundary(self) -> None:
+        claim = "alpha beta gamma delta epsilon zeta eta theta iota kappa"
+        supported = runner.evaluate_objective_claim_metrics(
+            claim,
+            [{"chunkId": "c1", "snippet": "alpha beta gamma delta epsilon zeta eta"}],
+            [{"source": "c1", "content": "alpha beta gamma delta epsilon zeta eta"}],
+            should_answer=True,
+            skipped_ask=False,
+            ask_error=None,
+        )
+        unsupported = runner.evaluate_objective_claim_metrics(
+            claim,
+            [{"chunkId": "c1", "snippet": "alpha beta gamma delta epsilon zeta"}],
+            [{"source": "c1", "content": "alpha beta gamma delta epsilon zeta"}],
+            should_answer=True,
+            skipped_ask=False,
+            ask_error=None,
+        )
+
+        self.assertEqual("token_overlap", supported["claims"][0]["support"])
+        self.assertEqual(0.7, supported["claims"][0]["bestEvidence"]["claimTokenCoverage"])
+        self.assertEqual("unsupported", unsupported["claims"][0]["support"])
+        self.assertEqual("below_lexical_threshold", unsupported["claims"][0]["reason"])
+
+    def test_objective_claim_metrics_excludes_citation_without_context_provenance(self) -> None:
+        result = runner.evaluate_objective_claim_metrics(
+            "Spring Boot 使用自动配置。",
+            [{"chunkId": "claimed", "snippet": "Spring Boot 使用自动配置。"}],
+            [{"source": "actual", "content": "Spring Boot 使用自动配置。"}],
+            should_answer=True,
+            skipped_ask=False,
+            ask_error=None,
+        )
+
+        self.assertEqual(0, result["eligibleEvidenceCount"])
+        self.assertEqual("unsupported", result["claims"][0]["support"])
+        self.assertEqual("no_eligible_evidence", result["claims"][0]["reason"])
+
+    def test_objective_claim_metrics_prefers_exact_then_stable_citation_index(self) -> None:
+        claim = "alpha beta gamma delta epsilon zeta eta theta iota kappa"
+        result = runner.evaluate_objective_claim_metrics(
+            claim,
+            [
+                {"chunkId": "c0", "snippet": "alpha beta gamma delta epsilon zeta eta"},
+                {"chunkId": "c1", "snippet": claim},
+                {"chunkId": "c2", "snippet": claim},
+            ],
+            [
+                {"source": "c0", "content": "alpha beta gamma delta epsilon zeta eta"},
+                {"source": "c1", "content": claim},
+                {"source": "c2", "content": claim},
+            ],
+            should_answer=True,
+            skipped_ask=False,
+            ask_error=None,
+        )
+
+        self.assertEqual("exact", result["claims"][0]["support"])
+        self.assertEqual(1, result["claims"][0]["bestEvidence"]["citationIndex"])
+        self.assertEqual(3, result["claims"][0]["matchedEvidenceCount"])
+
+    def test_objective_claim_metrics_marks_short_non_exact_claim_unsupported(self) -> None:
+        result = runner.evaluate_objective_claim_metrics(
+            "AI",
+            [{"chunkId": "c1", "snippet": "artificial intelligence"}],
+            [{"source": "c1", "content": "artificial intelligence"}],
+            should_answer=True,
+            skipped_ask=False,
+            ask_error=None,
+        )
+
+        self.assertEqual("unsupported", result["claims"][0]["support"])
+        self.assertEqual("insufficient_claim_tokens", result["claims"][0]["reason"])
+
+    def test_objective_claim_metrics_distinguishes_skipped_not_applicable_and_partial(self) -> None:
+        cases = [
+            ({"should_answer": True, "skipped_ask": True, "ask_error": None, "answer": ""}, "SKIPPED", None),
+            ({"should_answer": False, "skipped_ask": False, "ask_error": None, "answer": "拒答"}, "NOT_APPLICABLE", None),
+            ({"should_answer": True, "skipped_ask": False, "ask_error": "timeout", "answer": ""}, "PARTIAL", "ask_error"),
+            ({"should_answer": True, "skipped_ask": False, "ask_error": None, "answer": ""}, "PARTIAL", "empty_answer"),
+            ({"should_answer": True, "skipped_ask": False, "ask_error": None, "answer": "###"}, "PARTIAL", "empty_claim_set"),
+        ]
+
+        for values, expected_status, expected_error in cases:
+            with self.subTest(expected_status=expected_status, expected_error=expected_error):
+                result = runner.evaluate_objective_claim_metrics(
+                    values["answer"],
+                    [],
+                    [],
+                    should_answer=values["should_answer"],
+                    skipped_ask=values["skipped_ask"],
+                    ask_error=values["ask_error"],
+                )
+                self.assertEqual(expected_status, result["claimMetricStatus"])
+                self.assertEqual(expected_error, result["claimExtractionError"])
+
     def test_require_credentials_rejects_missing_values(self) -> None:
         args = argparse.Namespace(username="", password="")
 
@@ -218,6 +348,106 @@ class RunRagEvalJudgeTest(unittest.TestCase):
 
         self.assertEqual(125.0, result.details["retrieveLatencyMillis"])
 
+    def test_run_sample_records_objective_claim_metrics_in_details(self) -> None:
+        args = argparse.Namespace(
+            base_url="http://localhost:8080",
+            kb_id=7,
+            top_k=5,
+            min_score=0.3,
+            enable_rerank=True,
+            timeout=60.0,
+            skip_ask=False,
+            judge_mode="off",
+        )
+        sample = {"id": "fact-001", "question": "q", "should_answer": True}
+        ask_response = {
+            "answer": "Spring Boot 使用自动配置。",
+            "citations": [{"chunkId": "chunk-1", "snippet": "Spring Boot 使用自动配置。"}],
+            "contexts": [{"source": "chunk-1", "content": "Spring Boot 使用自动配置。"}],
+            "metadata": {"status": "ok"},
+        }
+
+        with (
+            mock.patch.object(runner.time, "monotonic", side_effect=[1.0, 1.050]),
+            mock.patch.object(
+                runner,
+                "call_json",
+                return_value={"data": {"status": "ok", "contexts": [{"source": "chunk-1", "contentPreview": "Spring Boot 使用自动配置。"}]}},
+            ),
+            mock.patch.object(
+                runner,
+                "call_ask_with_retries",
+                return_value=(ask_response, {"attempts": 1, "retries": 0, "rateLimitErrors": 0}),
+            ),
+        ):
+            result = runner.run_sample(sample, args, "token")
+
+        self.assertEqual("COMPLETE", result.details["objectiveClaimMetrics"]["claimMetricStatus"])
+        self.assertEqual(1, result.details["objectiveClaimMetrics"]["supportedClaimCount"])
+
+    def test_write_report_includes_claim_summary_and_algorithm_identity(self) -> None:
+        args = argparse.Namespace(
+            base_url="http://localhost:8080",
+            kb_id=7,
+            eval_set="eval.jsonl",
+            sample_ids=[],
+            sample_limit=0,
+            top_k=5,
+            min_score=0.3,
+            enable_rerank=True,
+            timeout=60.0,
+            skip_ask=False,
+            judge_mode="off",
+            judge_model="",
+            judge_base_url="https://example.test/v1",
+            judge_temperature=0.0,
+            ask_timeout=60.0,
+            ask_delay_seconds=0.0,
+            max_ask_retries=0,
+            retry_backoff_seconds=0.0,
+            retry_ask_timeouts=True,
+        )
+        sample = {"id": "fact-001", "question": "q", "type": "fact", "should_answer": True}
+        ask_response = {
+            "answer": "Spring Boot 使用自动配置。",
+            "citations": [{"chunkId": "chunk-1", "snippet": "Spring Boot 使用自动配置。"}],
+            "contexts": [{"source": "chunk-1", "content": "Spring Boot 使用自动配置。"}],
+            "metadata": {"status": "ok"},
+        }
+
+        with (
+            mock.patch.object(runner.time, "monotonic", side_effect=[1.0, 1.050]),
+            mock.patch.object(
+                runner,
+                "call_json",
+                return_value={"data": {"status": "ok", "contexts": [{"source": "chunk-1", "contentPreview": "Spring Boot 使用自动配置。"}]}},
+            ),
+            mock.patch.object(
+                runner,
+                "call_ask_with_retries",
+                return_value=(ask_response, {"attempts": 1, "retries": 0, "rateLimitErrors": 0}),
+            ),
+        ):
+            result = runner.run_sample(sample, args, "token")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report = Path(tmp_dir) / "report.md"
+            runner.write_report(
+                report,
+                args,
+                [sample],
+                [result],
+                None,
+                runner.time.time(),
+                {"datasetValidation": "VALID"},
+            )
+            rendered = report.read_text(encoding="utf-8")
+
+        self.assertIn("Objective claim metric status", rendered)
+        self.assertIn("Objective lexical claim support rate", rendered)
+        self.assertIn("claim-lexical-v1", rendered)
+        self.assertNotIn("Spring Boot 使用自动配置", rendered)
+
     def test_run_sample_records_latency_when_debug_retrieval_fails(self) -> None:
         args = argparse.Namespace(
             base_url="http://localhost:8080",
@@ -275,6 +505,97 @@ class RunRagEvalJudgeTest(unittest.TestCase):
 
         self.assertEqual(250.0, summary["retrieval_latency_millis"]["p50"])
         self.assertEqual(15.0, summary["rerank_attribution"]["latencyMillis"]["p50"])
+
+    def test_aggregate_claim_metrics_stays_partial_when_an_answerable_sample_fails(self) -> None:
+        def sample_result(claim_metrics: dict[str, object], *, ask_error: str | None) -> argparse.Namespace:
+            return argparse.Namespace(
+                sample={"should_answer": True},
+                skipped_ask=False,
+                ask_error=ask_error,
+                ask_response={} if ask_error is None else None,
+                skipped_judge=True,
+                judge_error=None,
+                judge_pass=None,
+                faithfulness_score=None,
+                relevance_score=None,
+                recall_total=0,
+                recall3_hits=0,
+                recall5_hits=0,
+                first_match_rank=None,
+                top1_source_hit=None,
+                keyword_hits=0,
+                keyword_total=0,
+                citation_hits=0,
+                citation_total=0,
+                citation_snippet_hits=0,
+                citation_snippet_total=0,
+                unsupported_citation_count=0,
+                no_answer_citation_violation_count=0,
+                no_answer_ok=None,
+                objective_claim_metrics=claim_metrics,
+                details={"retrieveLatencyMillis": 10, "rerankAttribution": {}},
+            )
+
+        complete = runner.evaluate_objective_claim_metrics(
+            "已支持事实。",
+            [{"chunkId": "c1", "snippet": "已支持事实。"}],
+            [{"source": "c1", "content": "已支持事实。"}],
+            should_answer=True,
+            skipped_ask=False,
+            ask_error=None,
+        )
+        partial = runner.evaluate_objective_claim_metrics(
+            "",
+            [],
+            [],
+            should_answer=True,
+            skipped_ask=False,
+            ask_error="timeout",
+        )
+
+        summary = runner.aggregate([
+            sample_result(complete, ask_error=None),
+            sample_result(partial, ask_error="timeout"),
+        ])
+
+        self.assertEqual("PARTIAL", summary["claim_metric_status"])
+        self.assertEqual(1, summary["claim_total"])
+        self.assertEqual(1, summary["supported_claim_count"])
+        self.assertEqual(1, summary["claim_partial_samples"])
+        self.assertEqual(1, summary["answers_with_complete_claim_metrics"])
+        self.assertEqual(0.5, summary["claim_complete_sample_rate"])
+
+    def test_aggregate_claim_metrics_distinguishes_no_answer_from_retrieval_only(self) -> None:
+        no_answer = argparse.Namespace(
+            sample={"should_answer": False},
+            objective_claim_metrics=runner.empty_claim_metric_result("NOT_APPLICABLE"),
+        )
+        retrieval_only = argparse.Namespace(
+            sample={"should_answer": True},
+            objective_claim_metrics=runner.empty_claim_metric_result("SKIPPED"),
+        )
+
+        no_answer_summary = runner.aggregate_objective_claim_metrics([no_answer])
+        skipped_summary = runner.aggregate_objective_claim_metrics([retrieval_only])
+
+        self.assertEqual("NOT_APPLICABLE", no_answer_summary["claim_metric_status"])
+        self.assertEqual("N/A", no_answer_summary["claim_complete_sample_rate"])
+        self.assertEqual("SKIPPED", skipped_summary["claim_metric_status"])
+        self.assertEqual("skipped", skipped_summary["objective_claim_support_rate"])
+        self.assertEqual("skipped", skipped_summary["claim_complete_sample_rate"])
+
+    def test_legacy_result_without_claim_fields_is_unavailable_not_zero(self) -> None:
+        legacy = argparse.Namespace(
+            sample={"should_answer": True},
+            skipped_ask=False,
+            details={},
+        )
+
+        result = runner.objective_claim_metrics_for_result(legacy)
+
+        self.assertEqual("PARTIAL", result["claimMetricStatus"])
+        self.assertEqual("claim_metric_unavailable", result["claimExtractionError"])
+        self.assertEqual("N/A", result["objectiveClaimSupportRate"])
 
     def test_latency_fact_rows_names_retrieval_and_rerank_separately(self) -> None:
         rows = runner.latency_fact_rows({
@@ -362,6 +683,49 @@ class RunRagEvalJudgeTest(unittest.TestCase):
 
         self.assertEqual("release_identity_mismatch", raised.exception.code)
 
+    def test_run_metadata_claim_metric_identity_mismatch_is_rejected(self) -> None:
+        metadata = {
+            "claimMetricConfig": {
+                **runner.CLAIM_METRIC_CONFIG,
+                "lexicalThreshold": 0.58,
+            }
+        }
+
+        with self.assertRaisesRegex(ValueError, "claim_metric_identity_mismatch"):
+            runner.bind_claim_metric_identity(metadata)
+
+    def test_main_rejects_claim_metric_identity_drift_before_backend_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            metadata = Path(tmp_dir) / "metadata.json"
+            metadata.write_text(
+                '{"claimMetricConfig":{"claimMetricVersion":"older"}}',
+                encoding="utf-8",
+            )
+            argv = [
+                "run_rag_eval.py",
+                "--kb-id",
+                "1",
+                "--plan-only",
+                "--run-metadata-json",
+                str(metadata),
+            ]
+            errors = io.StringIO()
+
+            with (
+                mock.patch("sys.argv", argv),
+                mock.patch.object(
+                    runner,
+                    "validate_eval_dataset",
+                    return_value={"validationStatus": "VALID", "manifestPath": "docs/eval/dataset-manifest.json"},
+                ),
+                mock.patch.object(runner, "login") as login,
+                redirect_stderr(errors),
+            ):
+                self.assertEqual(2, runner.main())
+
+            login.assert_not_called()
+            self.assertIn("claim_metric_identity_mismatch", errors.getvalue())
+
     def test_versioned_plan_reports_release_identity_before_backend_calls(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             report = Path(tmp_dir) / "report.md"
@@ -389,6 +753,7 @@ class RunRagEvalJudgeTest(unittest.TestCase):
             login.assert_not_called()
             self.assertIn('"validationStatus": "VALID"', output.getvalue())
             self.assertIn('"releaseVersion": "rag-eval-dev-v2"', output.getvalue())
+            self.assertIn('"claimMetricVersion": "claim-lexical-v1"', output.getvalue())
 
 
 if __name__ == "__main__":

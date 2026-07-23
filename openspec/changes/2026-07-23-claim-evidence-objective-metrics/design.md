@@ -190,6 +190,14 @@ Maven、frontend build、Docker/live provider 在无 Java/前端/运行时改动
 
 首次真实 evidence 只能描述当前固定身份下的 objective lexical alignment。若 observed 分布显示 threshold 或 splitter 需要调整，应产生新的 algorithm version/change 后重新跑，不能覆盖原 evidence。
 
+## 12. Implementation Notes（待验收）
+
+- splitter 与 matcher 作为 direct runner 内的纯函数实现；reproducible runner 只引用 direct runner 的配置常量，不复制算法。
+- `claimMetricConfig` 同时进入 direct/repro plan、repro run metadata、Markdown header、details JSON、per-sample 和 aggregate；外部 metadata 声明不同 identity 时 fail closed。
+- unsupported reason 固定为 `no_eligible_evidence`、`insufficient_claim_tokens`、`below_lexical_threshold`；ask/抽取缺口固定为 `ask_error`、`empty_answer`、`empty_claim_set`，不透传原始 provider exception。
+- aggregate `claim_metric_status` 独立于全局 Report status；no-answer 为 `NOT_APPLICABLE`，retrieval-only 为 `SKIPPED`，缺口为 `PARTIAL`，完整 answerable alignment 为 `COMPLETE`。
+- 实现没有增加依赖、环境变量、Java/API、生产配置或 dataset schema/release；真实 generation evidence 继续由独立授权闸门控制。
+
 ## 决策记录
 
 ### 决策 1：claim 拆分使用本地确定性规则

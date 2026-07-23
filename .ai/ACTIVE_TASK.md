@@ -9,11 +9,11 @@
 - Change：`2026-07-23-claim-evidence-objective-metrics`
 - 位置：`openspec/changes/2026-07-23-claim-evidence-objective-metrics/`
 - 目标：为成功的 answerable generation 输出增加确定性 claim 拆分，并只使用通过既有 citation-context provenance 校验的 returned citation evidence 计算客观词法对齐、逐 claim attribution 与聚合完整性状态。
-- 范围：Python eval runner 的离线 claim contract、eligible evidence、exact/token lexical alignment、per-sample/aggregate report schema、算法 identity、测试与评测指南；当前仅进入规划审阅，尚未授权实现。
+- 范围：Python eval runner 的离线 claim contract、eligible evidence、exact/token lexical alignment、per-sample/aggregate report schema、算法 identity、测试与评测指南；离线 TDD 实现已完成，当前等待用户验收，不接受 baseline、不归档。
 - 非目标：不做 C9b judge 校准或 objective/judge 全局状态拆分，不做 C10 threshold/exit gate，不改 dataset release、Java/API、prompt、生产 citation、retrieval/chunking/rerank/no-answer、前端或 SSE，不运行真实 generation baseline。
 - 验收入口：`proposal.md` 的 planning/implementation/closeout gate、`design.md` 的 12 条决策记录、`tasks.md` 与 `specs/evaluation/spec.md` 的 4 requirements / 12 scenarios。
 - 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-- 外部调用：规划阶段 embedding/rerank/ask/judge/LLM/provider 调用量与数据出站均为 0；后续任何真实 150 条 generation evidence run 必须单独披露并授权。
+- 外部调用：离线实现阶段 embedding/rerank/ask/judge/LLM/provider 调用量与数据出站均为 0；后续任何真实 150 条 generation evidence run 必须单独披露并授权，本次实现授权不包含该运行。
 
 ## Last Completed
 

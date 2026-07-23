@@ -9,6 +9,7 @@ without adding project dependencies.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -45,6 +46,23 @@ NO_ANSWER_CUES = (
     "no result",
     "not enough information",
 )
+CLAIM_SENTENCE_SPLIT_PATTERN = re.compile(r"[。！？；.!?;]+")
+CLAIM_LIST_PREFIX_PATTERN = re.compile(
+    r"^\s*(?:[-*•]+|\d+[.)、]|[（(]?[一二三四五六七八九十]+[）)、.]|#+)\s*"
+)
+CLAIM_STRUCTURAL_ONLY_PATTERN = re.compile(
+    r"^(?:\[\s*\d+\s*]|[\s\W_]+|\d+|[一二三四五六七八九十]+)$"
+)
+CLAIM_LEXICAL_THRESHOLD = 0.70
+CLAIM_MIN_TOKENS = 2
+CLAIM_METRIC_CONFIG = {
+    "claimMetricVersion": "claim-lexical-v1",
+    "claimSplitterVersion": "sentence-list-v1",
+    "tokenizerVersion": "ascii-cjk-bigram-v1",
+    "lexicalThreshold": CLAIM_LEXICAL_THRESHOLD,
+    "minClaimTokens": CLAIM_MIN_TOKENS,
+    "evidencePolicy": "validated-returned-citations-only-v1",
+}
 
 
 @dataclass
@@ -68,6 +86,7 @@ class SampleResult:
     unsupported_citation_count: int
     no_answer_citation_violation_count: int
     no_answer_ok: bool | None
+    objective_claim_metrics: dict[str, Any]
     faithfulness_score: float | None
     relevance_score: float | None
     judge_pass: bool | None
@@ -96,6 +115,10 @@ class AskRetryError(RuntimeError):
         self.attempts = attempts
         self.retries = retries
         self.rate_limit_errors = rate_limit_errors
+
+
+class ClaimMetricIdentityError(ValueError):
+    pass
 
 
 def parse_args() -> argparse.Namespace:
@@ -227,6 +250,7 @@ def eval_plan(samples: list[dict[str, Any]], args: argparse.Namespace) -> dict[s
             "ask": ask_calls,
             "llmJudge": judge_calls,
         },
+        "claimMetricConfig": dict(CLAIM_METRIC_CONFIG),
         "outputs": {
             "report": args.report,
             "afterReport": args.after_report,
@@ -605,6 +629,14 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         retrieval_error = "No contexts returned; knowledge base may not exist, documents may still be indexing, or minScore is too high."
     if ask_error is None and ask_response is not None and ask_response.get("metadata", {}).get("status") == "error":
         ask_error = f"QA returned error status: {ask_response.get('answer')}"
+    objective_claim_metrics = evaluate_objective_claim_metrics(
+        ask_answer,
+        citations or [],
+        ask_response.get("contexts", []) if ask_response else [],
+        should_answer=should_answer,
+        skipped_ask=skipped_ask,
+        ask_error=ask_error,
+    )
 
     normalized_sources = {
         "expected_sources": [
@@ -648,6 +680,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         "askRawResponse": ask_response,
         "judgeRawResponse": judge_response,
         "returnedCitations": citations or [],
+        "objectiveClaimMetrics": objective_claim_metrics,
         "metricCalculationDetails": {
             "retrieveHitRatio": f"{recall5_hits}/{recall_total}" if recall_total else "-",
             "recall3Hits": recall3_hits,
@@ -701,6 +734,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         unsupported_citation_count=unsupported_citation_count,
         no_answer_citation_violation_count=no_answer_citation_violation_count,
         no_answer_ok=no_answer_ok,
+        objective_claim_metrics=objective_claim_metrics,
         faithfulness_score=faithfulness_score,
         relevance_score=relevance_score,
         judge_pass=judge_pass,
@@ -893,6 +927,26 @@ def count_keyword_hits(sample: dict[str, Any], answer: str) -> tuple[int, int]:
     return hits, len(keywords)
 
 
+def extract_answer_claims(answer: str) -> list[dict[str, Any]]:
+    claims: list[dict[str, Any]] = []
+    normalized_lines = str(answer or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    for line in normalized_lines:
+        block = CLAIM_LIST_PREFIX_PATTERN.sub("", line, count=1).strip()
+        for fragment in CLAIM_SENTENCE_SPLIT_PATTERN.split(block):
+            text = re.sub(r"\s+", " ", fragment).strip()
+            if not text or CLAIM_STRUCTURAL_ONLY_PATTERN.fullmatch(text):
+                continue
+            claim_index = len(claims) + 1
+            claim_hash = hashlib.sha256(normalize(text).encode("utf-8")).hexdigest()[:16]
+            claims.append({
+                "claimIndex": claim_index,
+                "claimHash": claim_hash,
+                "text": text,
+                "characterCount": len(text),
+            })
+    return claims
+
+
 def count_citation_hits(sample: dict[str, Any], citations: list[dict[str, Any]]) -> tuple[int, int]:
     expected_sources = sample.get("expected_sources") or []
     if not expected_sources:
@@ -975,6 +1029,148 @@ def token_set(text: str) -> set[str]:
     for index in range(len(cjk_chars) - 1):
         tokens.add("".join(cjk_chars[index:index + 2]))
     return tokens
+
+
+def evaluate_objective_claim_metrics(
+    answer: str,
+    citations: list[dict[str, Any]],
+    contexts: list[dict[str, Any]],
+    *,
+    should_answer: bool,
+    skipped_ask: bool,
+    ask_error: str | None,
+) -> dict[str, Any]:
+    if not should_answer:
+        return empty_claim_metric_result("NOT_APPLICABLE")
+    if skipped_ask:
+        return empty_claim_metric_result("SKIPPED")
+    if ask_error is not None:
+        return empty_claim_metric_result("PARTIAL", "ask_error")
+    if not str(answer or "").strip():
+        return empty_claim_metric_result("PARTIAL", "empty_answer")
+
+    claims = extract_answer_claims(answer)
+    if not claims:
+        return empty_claim_metric_result("PARTIAL", "empty_claim_set")
+
+    evidence = eligible_claim_evidence(citations, contexts)
+    evaluated_claims = [align_claim_to_evidence(claim, evidence) for claim in claims]
+    exact_count = sum(1 for claim in evaluated_claims if claim["support"] == "exact")
+    overlap_count = sum(1 for claim in evaluated_claims if claim["support"] == "token_overlap")
+    supported_count = exact_count + overlap_count
+    total = len(evaluated_claims)
+    return {
+        "claimMetricStatus": "COMPLETE",
+        "claimTotal": total,
+        "supportedClaimCount": supported_count,
+        "unsupportedClaimCount": total - supported_count,
+        "exactSupportCount": exact_count,
+        "tokenOverlapSupportCount": overlap_count,
+        "objectiveClaimSupportRate": ratio(supported_count, total),
+        "eligibleEvidenceCount": len(evidence),
+        "claimExtractionError": None,
+        "claimMetricConfig": dict(CLAIM_METRIC_CONFIG),
+        "claims": evaluated_claims,
+    }
+
+
+def empty_claim_metric_result(status: str, error: str | None = None) -> dict[str, Any]:
+    return {
+        "claimMetricStatus": status,
+        "claimTotal": 0,
+        "supportedClaimCount": 0,
+        "unsupportedClaimCount": 0,
+        "exactSupportCount": 0,
+        "tokenOverlapSupportCount": 0,
+        "objectiveClaimSupportRate": "skipped" if status == "SKIPPED" else "N/A",
+        "eligibleEvidenceCount": 0,
+        "claimExtractionError": error,
+        "claimMetricConfig": dict(CLAIM_METRIC_CONFIG),
+        "claims": [],
+    }
+
+
+def eligible_claim_evidence(
+    citations: list[dict[str, Any]],
+    contexts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    evidence: list[dict[str, Any]] = []
+    for citation_index, citation in enumerate(citations or []):
+        matched_context = next(
+            (context for context in contexts or [] if citation_supported_by_context(citation, context)),
+            None,
+        )
+        if matched_context is None:
+            continue
+        evidence.append({
+            "citationIndex": citation_index,
+            "source": str(citation.get("source") or citation.get("sourceFileName") or citation.get("documentTitle") or ""),
+            "documentId": citation.get("documentId"),
+            "chunkId": citation.get("chunkId"),
+            "snippet": str(citation.get("snippet") or ""),
+        })
+    return evidence
+
+
+def align_claim_to_evidence(
+    claim: dict[str, Any],
+    evidence: list[dict[str, Any]],
+) -> dict[str, Any]:
+    claim_text = str(claim.get("text") or "")
+    claim_norm = normalize(claim_text)
+    claim_tokens = token_set(claim_norm)
+    matches: list[dict[str, Any]] = []
+    for item in evidence:
+        evidence_norm = normalize(str(item.get("snippet") or ""))
+        if claim_norm and claim_norm in evidence_norm:
+            matches.append(claim_evidence_match(item, "exact", 1.0))
+            continue
+        if len(claim_tokens) < CLAIM_MIN_TOKENS:
+            continue
+        evidence_tokens = token_set(evidence_norm)
+        coverage = ratio(len(claim_tokens & evidence_tokens), len(claim_tokens))
+        if coverage >= CLAIM_LEXICAL_THRESHOLD:
+            matches.append(claim_evidence_match(item, "token_overlap", coverage))
+
+    if matches:
+        matches.sort(key=lambda item: (
+            0 if item["method"] == "exact" else 1,
+            -float(item["claimTokenCoverage"]),
+            int(item["citationIndex"]),
+        ))
+        best = matches[0]
+        return {
+            **claim,
+            "support": best["method"],
+            "bestEvidence": best,
+            "matchedEvidenceCount": len(matches),
+            "reason": None,
+        }
+
+    if not evidence:
+        reason = "no_eligible_evidence"
+    elif len(claim_tokens) < CLAIM_MIN_TOKENS:
+        reason = "insufficient_claim_tokens"
+    else:
+        reason = "below_lexical_threshold"
+    return {
+        **claim,
+        "support": "unsupported",
+        "bestEvidence": None,
+        "matchedEvidenceCount": 0,
+        "reason": reason,
+    }
+
+
+def claim_evidence_match(item: dict[str, Any], method: str, coverage: float) -> dict[str, Any]:
+    return {
+        "citationIndex": item.get("citationIndex"),
+        "source": item.get("source"),
+        "documentId": item.get("documentId"),
+        "chunkId": item.get("chunkId"),
+        "method": method,
+        "claimTokenCoverage": round(float(coverage), 6),
+    }
 
 
 def is_no_answer(ask_response: dict[str, Any] | None, answer: str) -> bool:
@@ -1130,6 +1326,68 @@ def aggregate_rerank_attributions(attributions: list[dict[str, Any]]) -> dict[st
     }
 
 
+def aggregate_objective_claim_metrics(results: list[SampleResult]) -> dict[str, Any]:
+    claim_results = [objective_claim_metrics_for_result(result) for result in results]
+    statuses = [str(item.get("claimMetricStatus") or "PARTIAL") for item in claim_results]
+    complete_samples = sum(1 for status in statuses if status == "COMPLETE")
+    partial_samples = sum(1 for status in statuses if status == "PARTIAL")
+    skipped_samples = sum(1 for status in statuses if status == "SKIPPED")
+    not_applicable_samples = sum(1 for status in statuses if status == "NOT_APPLICABLE")
+    answerable_samples = sum(1 for result in results if result.sample.get("should_answer", True))
+
+    if partial_samples:
+        aggregate_status = "PARTIAL"
+    elif complete_samples:
+        aggregate_status = "COMPLETE"
+    elif skipped_samples:
+        aggregate_status = "SKIPPED"
+    else:
+        aggregate_status = "NOT_APPLICABLE"
+
+    claim_total = sum(int(item.get("claimTotal") or 0) for item in claim_results)
+    supported_count = sum(int(item.get("supportedClaimCount") or 0) for item in claim_results)
+    unsupported_count = sum(int(item.get("unsupportedClaimCount") or 0) for item in claim_results)
+    exact_count = sum(int(item.get("exactSupportCount") or 0) for item in claim_results)
+    overlap_count = sum(int(item.get("tokenOverlapSupportCount") or 0) for item in claim_results)
+    if aggregate_status == "SKIPPED":
+        support_rate: float | str = "skipped"
+        complete_sample_rate: float | str = "skipped"
+    else:
+        support_rate = metric_ratio(supported_count, claim_total, False)
+        complete_sample_rate = metric_ratio(complete_samples, answerable_samples, False)
+
+    return {
+        "claim_metric_status": aggregate_status,
+        "claim_metric_config": dict(CLAIM_METRIC_CONFIG),
+        "claim_evaluable_samples": complete_samples,
+        "claim_partial_samples": partial_samples,
+        "claim_skipped_samples": skipped_samples,
+        "claim_not_applicable_samples": not_applicable_samples,
+        "claim_total": claim_total,
+        "supported_claim_count": supported_count,
+        "unsupported_claim_count": unsupported_count,
+        "exact_supported_claim_count": exact_count,
+        "token_overlap_supported_claim_count": overlap_count,
+        "objective_claim_support_rate": support_rate,
+        "answers_with_complete_claim_metrics": complete_samples,
+        "claim_complete_sample_rate": complete_sample_rate,
+    }
+
+
+def objective_claim_metrics_for_result(result: SampleResult) -> dict[str, Any]:
+    metrics = getattr(result, "objective_claim_metrics", None)
+    if isinstance(metrics, dict):
+        return metrics
+    details = getattr(result, "details", {})
+    if isinstance(details, dict) and isinstance(details.get("objectiveClaimMetrics"), dict):
+        return details["objectiveClaimMetrics"]
+    if not result.sample.get("should_answer", True):
+        return empty_claim_metric_result("NOT_APPLICABLE")
+    if getattr(result, "skipped_ask", False):
+        return empty_claim_metric_result("SKIPPED")
+    return empty_claim_metric_result("PARTIAL", "claim_metric_unavailable")
+
+
 def aggregate(results: list[SampleResult]) -> dict[str, Any]:
     answerable = [result for result in results if result.sample.get("should_answer", True)]
     no_answer = [result for result in results if not result.sample.get("should_answer", True)]
@@ -1182,6 +1440,7 @@ def aggregate(results: list[SampleResult]) -> dict[str, Any]:
         for result in results
         if "retrieveLatencyMillis" in result.details
     ])
+    claim_metrics = aggregate_objective_claim_metrics(results)
 
     return {
         "samples": len(results),
@@ -1217,6 +1476,7 @@ def aggregate(results: list[SampleResult]) -> dict[str, Any]:
         "judge_pass_total": len(judge_pass_values),
         "rerank_attribution": rerank_attribution,
         "retrieval_latency_millis": retrieval_latency,
+        **claim_metrics,
     }
 
 
@@ -1295,6 +1555,15 @@ def bind_dataset_identity(
         )
     bound["datasetReleaseIdentity"] = dataset_identity
     bound["datasetValidation"] = current_status
+    return bound
+
+
+def bind_claim_metric_identity(run_metadata: dict[str, Any]) -> dict[str, Any]:
+    bound = dict(run_metadata)
+    existing = bound.get("claimMetricConfig")
+    if existing is not None and existing != CLAIM_METRIC_CONFIG:
+        raise ClaimMetricIdentityError("claim_metric_identity_mismatch")
+    bound["claimMetricConfig"] = dict(CLAIM_METRIC_CONFIG)
     return bound
 
 
@@ -1383,6 +1652,7 @@ def write_report(
     lines.append(f"- judgeModel: `{args.judge_model or ''}`")
     lines.append(f"- judgeBaseUrl: `{args.judge_base_url}`")
     lines.append(f"- judgeTemperature: `{args.judge_temperature}`")
+    lines.append(f"- claimMetricConfig: `{json.dumps(CLAIM_METRIC_CONFIG, sort_keys=True)}`")
     if run_metadata:
         append_header_metadata(lines, run_metadata)
     lines.append(f"- askTimeout: `{args.ask_timeout}`")
@@ -1439,6 +1709,16 @@ def write_report(
     lines.append(f"| LLM judge pass rate | {pct(metrics['judge_pass_rate'])} ({metrics['judge_pass_count']}/{metrics['judge_pass_total']}) |")
     lines.append(f"| Faithfulness average | {pct(metrics['faithfulness_avg'])} |")
     lines.append(f"| Relevance average | {pct(metrics['relevance_avg'])} |")
+    lines.append(f"| Objective claim metric status | `{metrics['claim_metric_status']}` |")
+    lines.append(f"| Claim evaluable samples | {metrics['claim_evaluable_samples']} |")
+    lines.append(f"| Claim partial samples | {metrics['claim_partial_samples']} |")
+    lines.append(f"| Claim skipped samples | {metrics['claim_skipped_samples']} |")
+    lines.append(f"| Claim not-applicable samples | {metrics['claim_not_applicable_samples']} |")
+    lines.append(f"| Objective lexical claim support rate | {pct(metrics['objective_claim_support_rate'])} ({metrics['supported_claim_count']}/{metrics['claim_total']}) |")
+    lines.append(f"| Unsupported claim count | {metrics['unsupported_claim_count']} |")
+    lines.append(f"| Exact supported claim count | {metrics['exact_supported_claim_count']} |")
+    lines.append(f"| Token-overlap supported claim count | {metrics['token_overlap_supported_claim_count']} |")
+    lines.append(f"| Claim-complete answerable sample rate | {pct(metrics['claim_complete_sample_rate'])} ({metrics['answers_with_complete_claim_metrics']}/{metrics['answerable_samples']}) |")
     lines.append("")
 
     rerank = metrics["rerank_attribution"]
@@ -1466,8 +1746,8 @@ def write_report(
 
     lines.append("## Sample Results")
     lines.append("")
-    lines.append("| ID | Type | Retrieve | First Match | Ask | Keyword Hit | Citation Source | Citation Snippet | Unsupported Citations | No-answer OK | Judge | Errors |")
-    lines.append("|---|---|---:|---:|---|---:|---:|---:|---:|---:|---|---|")
+    lines.append("| ID | Type | Retrieve | First Match | Ask | Keyword Hit | Citation Source | Citation Snippet | Unsupported Citations | Claim Metric | Claim Support | No-answer OK | Judge | Errors |")
+    lines.append("|---|---|---:|---:|---|---:|---:|---:|---:|---|---:|---:|---|---|")
     for result in results:
         retrieve = f"{result.recall5_hits}/{result.recall_total}" if result.recall_total else "-"
         first = result.first_match_rank if result.first_match_rank is not None else "-"
@@ -1475,13 +1755,19 @@ def write_report(
         keyword = "skipped" if result.skipped_ask else (f"{result.keyword_hits}/{result.keyword_total}" if result.keyword_total else "-")
         citation = "skipped" if result.skipped_ask else (f"{result.citation_hits}/{result.citation_total}" if result.citation_total else "-")
         citation_snippet = "skipped" if result.skipped_ask else (f"{result.citation_snippet_hits}/{result.citation_snippet_total}" if result.citation_snippet_total else "-")
+        claim_metrics = objective_claim_metrics_for_result(result)
+        claim_support = (
+            f"{claim_metrics['supportedClaimCount']}/{claim_metrics['claimTotal']}"
+            if claim_metrics["claimTotal"]
+            else str(claim_metrics["objectiveClaimSupportRate"])
+        )
         no_answer = format_bool(result.no_answer_ok)
         judge = "skipped" if result.skipped_judge else ("error" if result.judge_error else format_bool(result.judge_pass))
         errors = "; ".join(error for error in [result.retrieval_error, result.ask_error, result.judge_error] if error) or ""
         lines.append(
             f"| {result.sample.get('id')} | {result.sample.get('type')} | {retrieve} | {first} | {ask_state} | "
             f"{keyword} | {citation} | {citation_snippet} | {result.unsupported_citation_count} | "
-            f"{no_answer} | {judge} | {escape_table(errors)} |"
+            f"{claim_metrics['claimMetricStatus']} | {claim_support} | {no_answer} | {judge} | {escape_table(errors)} |"
         )
     lines.append("")
 
@@ -1493,6 +1779,8 @@ def write_report(
     lines.append("- When `--skip-ask` is enabled, generation/citation/no-answer metrics are marked as skipped instead of being counted as zero.")
     lines.append("- When ask errors occur, generation/citation/no-answer metrics are calculated only on successful ask samples and the report status becomes PARTIAL.")
     lines.append("- When judge is disabled or unavailable, faithfulness/relevance metrics are marked as skipped or partial; objective citation/no-answer metrics remain reportable.")
+    lines.append("- Objective claim metrics deterministically split successful answerable outputs and align claims only to provenance-validated returned citation snippets.")
+    lines.append("- Claim metric status is independent from global Report status; C9a does not change judge status semantics.")
     lines.append("- `queryVariants`, `rank`, `score`, `source`, `documentId`, `chunkId`, `contentPreview`, and `metadata` are expected in debug output.")
     lines.append("")
 
@@ -1502,6 +1790,7 @@ def write_report(
     lines.append("- Citation source hit rate checks expected source names in returned citations.")
     lines.append("- Citation snippet hit rate verifies each returned citation against the `contexts` returned by `/api/qa/ask` using exact match or token overlap.")
     lines.append("- Answer keyword scoring is lexical; optional LLM judge metrics are reported separately when explicitly enabled.")
+    lines.append("- Objective lexical claim support is not semantic entailment, complete factual correctness, or an independent faithfulness judgment.")
     lines.append("- Metrics assume the three `test-data/*.md` files were uploaded with recognizable file names or document titles.")
     lines.append("")
 
@@ -1789,6 +2078,7 @@ def write_details_json(
         ),
         "datasetValidation": dataset_validation,
         "datasetReleaseIdentity": dataset_identity,
+        "claimMetricConfig": dict(CLAIM_METRIC_CONFIG),
         "baseUrl": args.base_url,
         "kbId": args.kb_id,
         "evalSet": args.eval_set,
@@ -1852,11 +2142,15 @@ def main() -> int:
             load_run_metadata(args.run_metadata_json),
             args.dataset_release_identity,
         )
+        run_metadata = bind_claim_metric_identity(run_metadata)
     except dataset_contract.DatasetContractError as exc:
         print(
             f"Dataset validation failed: errorCode={exc.code} artifact={exc.artifact}",
             file=sys.stderr,
         )
+        return 2
+    except ClaimMetricIdentityError:
+        print("Claim metric validation failed: errorCode=claim_metric_identity_mismatch", file=sys.stderr)
         return 2
 
     if args.no_overwrite:
@@ -1945,6 +2239,14 @@ def main() -> int:
     print(f"LLM judge pass rate: {pct(metrics['judge_pass_rate'])}")
     print(f"Faithfulness average: {pct(metrics['faithfulness_avg'])}")
     print(f"Relevance average: {pct(metrics['relevance_avg'])}")
+    print(f"Objective claim metric status: {metrics['claim_metric_status']}")
+    print(
+        "Objective lexical claim support rate: "
+        f"{pct(metrics['objective_claim_support_rate'])} "
+        f"({metrics['supported_claim_count']}/{metrics['claim_total']})"
+    )
+    print(f"Unsupported claim count: {metrics['unsupported_claim_count']}")
+    print(f"Claim metric config: {json.dumps(CLAIM_METRIC_CONFIG, sort_keys=True)}")
     print(f"Wrote report: {report_path}")
     if after_report_path is not None:
         print(f"Wrote report: {after_report_path}")

@@ -1034,3 +1034,27 @@
 - 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划无 Python 实现、Java/POM、前端、依赖或运行时服务改动，因此 Python 全量、Maven、frontend build、Docker/Testcontainers 与 live provider smoke 均 `SKIPPED`。真实 embedding/rerank/ask/judge/LLM/provider 调用量与数据出站均为 0。
 - 下一闸门：用户需先审阅并批准 proposal、12 条决策、4/12 delta 与 TDD 实现授权；真实 generation evidence 仍需另行授权，不随实现批准自动放开。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C9a客观claim证据指标规划`。
+
+## 2026-07-23｜C9a 规划提交补录
+
+- Commit：`4afe586`（`docs(openspec): 启动C9a客观claim证据指标规划`）。本条只补录上一规划提交的真实 hash，不记录本次实现提交。
+
+## 2026-07-23｜C9a 决策批准并进入离线 TDD 实现
+
+- 用户批准：proposal、12 条 design 决策、`evaluation` delta 的 4 requirements / 12 scenarios 与 TDD 实现授权全部通过；句子/列表 claim、validated-citation-only evidence、exact + 0.70 claim-token coverage、全 claim 分母和局部状态方案生效。
+- 提交与外调边界：提交责任继续为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。实现授权不包含真实 generation/judge/provider run，embedding/rerank/ask/judge/LLM/provider 调用量与数据出站保持 0。
+- 当前阶段：按 `tdd` skill 进行纵向 RED→GREEN 切片，先从 deterministic splitter 的可观察行为开始，再逐步接入 eligible evidence、per-sample/aggregate metrics 与 report identity；不一次性批量写完测试。
+- Commit：`pending`。
+
+## 2026-07-23｜C9a objective claim-evidence 离线实现完成（待验收）
+
+- 范围与修改：`scripts/run_rag_eval.py` 新增固定 `claim-lexical-v1` 的 splitter、eligible evidence、exact/token matcher、per-sample/aggregate/status、report/details/console 与 metadata identity drift gate；`scripts/run_reproducible_rag_eval.py` 复用 direct runner 的唯一 config 并写入 plan/run metadata；两份 runner tests 增加 TDD 行为覆盖。同步评测指南、active change proposal/design/tasks、`openspec/project.md`、架构、技术债、优化索引与活动任务指针。
+- 已确认行为：成功 answerable answer 按段落/列表/中英文句末标点确定性拆分；只有通过既有 citation identity + snippet-to-returned-context provenance 的 citation 才进入 evidence。claim 先做 normalized exact，否则用 ASCII token/CJK bigram、claim-token denominator、固定 `0.70` 和最少 2 token；无 evidence、短 claim、低于阈值都保留在分母并输出稳定 reason。best evidence 按 exact、coverage、citationIndex 稳定排序。
+- 指标与边界：per-sample 保存 claim text/hash/index 与 best evidence，aggregate/Markdown/console 只输出状态和计数，不复制 raw claim/snippet。局部状态为 `COMPLETE/PARTIAL/SKIPPED/NOT_APPLICABLE`，不改变现有全局 `CLEAN/PARTIAL/RETRIEVAL_ONLY/FAILED`、keyword、citation、no-answer 或 judge 公式。不同 `claimMetricConfig` 以 `claim_metric_identity_mismatch` 在 backend/provider 调用前失败；旧结果缺字段时解释为 unavailable/partial，不补算为 0。
+- TDD 证据：逐个 RED→GREEN 覆盖 splitter 不存在、结构 marker、per-sample 缺字段、aggregate 缺状态、Markdown 缺摘要、metadata identity 缺口等 tracer bullets；补充 invalid provenance、0.70 boundary、短 claim、stable tie-break、no-answer/retrieval-only/partial 与旧结果兼容。聚焦 direct 为 36 tests / OK，reproducible 为 27 tests / OK；最终 `python -B -m unittest discover -s scripts -p 'test_*.py'` 为 114 tests / OK。
+- Dataset/plan 验证：v1 direct plan-only=`VALID`/30 samples，v2 direct=`VALID`/150 samples，v2 reproducible=`VALID`/150 samples；三者选取 1 条均显示 `claim-lexical-v1` 与 threshold `0.7`。direct 只估算 debug=1/ask=1/judge=0，repro retrieval-only 估算 debug=1/ask=0/judge=0；plan-only 实际 backend/provider 调用为 0。
+- 安全与文档验证：SensitiveLogs 308 source files / PASS；10 个 changed Markdown 的本地链接 missing=0；受保护路径、baseline spec、dataset release/review/schema/manifest、fixture、历史 reports/history diff 均为 0；`git diff --check` 通过。定向 secret scan 首次 PowerShell quoting 解析失败，修正为边界明确的 key pattern 后无命中；未把失败的首次命令算作通过。
+- 跳过项与外调：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过。无 Java/POM/前端/依赖/运行时服务改动，因此 Maven、frontend build、Docker/Testcontainers 与 live backend/provider smoke 均 `SKIPPED`。真实 150 条 generation evidence 未授权、未执行；embedding/rerank/ask/judge/LLM/provider 实际调用量、数据出站与费用均为 0。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、`openspec/specs/` baseline、eval JSONL/fixture/review/schema/manifest、Java/API、数据库、前端、依赖、生产 prompt/citation/no-answer/provider、默认 reranker 或历史报告；未进入 C9b/C10，未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险与闸门：deterministic lexical metric 仍有同义 false negative 与共享术语 false positive，`0.70` 尚无真实 150 条 generation 分布校准；它不能证明 entailment/faithfulness。当前 change 保持 `ACTIVE` 等待用户验收；验收后才能接受 4/12 delta、归档并恢复 `IDLE`。真实 evidence 必须另行披露和授权。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(评测): 实现C9a客观claim证据指标`。

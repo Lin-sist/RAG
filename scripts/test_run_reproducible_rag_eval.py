@@ -85,6 +85,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual("kb_test", metadata["knowledgeBase"]["vectorCollection"])
         self.assertEqual("fixture.md", metadata["fixtures"][0]["name"])
         self.assertIn(str(config), metadata["configSnapshot"])
+        self.assertEqual(runner.eval_runner.CLAIM_METRIC_CONFIG, metadata["claimMetricConfig"])
 
     def test_write_json_respects_no_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
