@@ -1112,6 +1112,19 @@
 - 下一闸门：等待用户明确授权进入 offline TDD implementation；即使获得实现授权，live judge calibration 仍需后续单独披露 provider/model、出站、费用/限流和 raw artifact 策略并授权。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 确认C9b方案审阅通过`。
 
+## 2026-07-23｜C9b 方案批准提交补录
+
+- Commit：`dc7a99d`（`docs(openspec): 确认C9b方案审阅通过`）。本条只补录上一方案批准状态提交的真实 hash，不记录本次 offline implementation 提交。
+
+## 2026-07-23｜C9b 获准进入 offline TDD 实现
+
+- 用户授权：明确授权进入 C9b offline TDD implementation；批准范围为共享 judge contract/strict parser、calibration schema/corpus/validator/runner、objective/judge/global status、per-channel comparison safety、测试与文档同步。
+- TDD 方法：按 `tdd` skill 使用纵向 RED→GREEN tracer bullets，一次锁定一个 public behavior，再做最小实现；不先批量写完全部测试。
+- 提交边界：继续由用户手动提交；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 外调边界：本授权不包含 live judge calibration。canary 4 calls、full 72 calls、总计最多 76 仍未授权；本轮 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 实际调用和数据出站必须保持 0。
+- Closeout 边界：实现完成后 change 继续保持 `ACTIVE` 等待 offline implementation 验收和后续 live calibration 决策；不提前接受 baseline、不归档、不恢复 `IDLE`。
+- Commit：`pending`。
+
 ## 2026-07-23｜C9b 方案批准状态同步验证
 
 - 状态验证：proposal 与 design/delta 两项批准任务均已勾选，offline TDD implementation authorization 仍未勾选；`.ai/ACTIVE_TASK.md` 明确记录“规划已获批准，等待实现授权”，没有提前进入实现或接受 baseline。
@@ -1119,3 +1132,21 @@
 - 跳过项与外调：仅同步批准状态，未修改代码/数据，因此 Python、Maven、frontend build、Docker/backend 均 `SKIPPED`；live judge/provider 未授权，实际业务调用和数据出站均为 0。
 - 剩余风险：实现尚未开始，calibration corpus、strict parser、status matrix 和 runner 均仍是 planned；只有后续 offline TDD 验证完成后才能称实现 ready，只有另行授权并完成 live calibration 后才能称 judge 获得校准 evidence。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 确认C9b方案审阅通过`。
+
+## 2026-07-23｜C9b offline TDD implementation 完成（待验收）
+
+- 用户授权与提交责任：用户明确授权 C9b offline TDD implementation；提交责任继续为 `用户手动提交`，Agent 未暂存、提交、push、创建 PR、部署或发布。Live canary/full judge calibration 未获授权。
+- 实现范围：新增 shared `scripts/rag_judge_contract.py`，固定 `rag-judge-v1` prompt/parser/双 `0.70` threshold/score-derived pass/secret-free identity；direct/reproducible runner 绑定同一 contract。Normal eval 新增 objective/judge/global status、per-channel comparison safety、judge eligible/attempted/valid/error/invalid-payload/provider-pass-mismatch coverage，judge error 不污染 objective 通道。
+- Calibration：新增 `judge-calibration-v1` schema、manifest 与 24 条人工复核静态 case，faithful×relevant 四象限各 6 条；validator 在外调前校验 path/hash/bytes/count/order、quota、fixture exact grounding、gold/review consistency。独立 runner 固定 canary 4×1、full 24×3，无 retry，保留失败 observation，输出 coverage/confusion/agreement/provider-pass mismatch/repeat consistency、脱敏 Markdown 与 `--no-overwrite` 本地 raw details；live 边界还需显式 `--execute-live-judge`。
+- TDD 证据：按纵向 RED→GREEN 依次锁定 out-of-range/strict score、provider pass disagreement、contract drift、shared prompt、reproducible metadata、judge all-error/channel safety、details JSON、coverage counts、calibration corpus/plan/missing observation/fake execution/no-overwrite/live HTTP boundary 和绝对路径脱敏；外部 boundary 均由 fake/mock 替代。
+- 验证：direct/reproducible/calibration 聚焦 suites 通过；最终 `python -B -m unittest discover -s scripts -p 'test_*.py'` 为 132 tests / OK。Direct v2、direct v1、reproducible v2 plan-only 均验证对应 release，选 1 条时实际业务调用为 0；calibration canary/full plan-only 分别返回 `VALID`、4×1=4 与 24×3=72 的预算，实际 judge 调用为 0。v1 首次误传不存在的 question-set path，validator 在任何调用前以 `unversioned_eval_set` 退出；改用 manifest 固定的 `docs/eval/rag_eval_set.jsonl` 后通过。
+- 安全与文档：SensitiveLogs 扫描 310 source files / PASS；10 个 changed/untracked Markdown 本地链接 missing=0；定向扫描只命中单测中的 `secret-value`/`unused-by-fake` 假值，无真实 credential 或新增 `C:\Users\` 路径；受保护配置、accepted baseline、v1/v2 release、fixture、历史 reports/history diff 均为 0；`git diff --check` 通过。OpenSpec CLI 当前不可用，未声称 CLI validation 通过。
+- 跳过项与外调：Java/POM/前端/依赖/生产配置均未修改，因此 Maven、frontend build、Docker/Testcontainers、live backend 均 `SKIPPED`。真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、数据出站、费用与限流事件均为 0。
+- 范围与剩余风险：未修改 production QA、默认 judge、C9a formula、v1/v2 dataset、Java/API、prompt/citation/retrieval/rerank/no-answer、baseline spec 或 C10 gate。Change 保持 `ACTIVE`；当前只能声明 offline implementation ready，尚无 live agreement/repeat evidence，不能声明 judge 已校准、通用可靠、production-ready 或可自动 gate。
+- Commit：`pending`；建议用户手动提交 `feat(评测): 完成C9b离线judge校准与状态语义`。
+
+## 2026-07-23｜C9b offline implementation 最终复核补录
+
+- 在上一条后补充 duplicate/unexpected calibration observation identity 回归：两类漂移现在明确产生 `NOT_COMPARABLE`，不会因保留首个成功 observation 而误报 `COMPLETE`；脱敏报告同时展示 missing/duplicate/unexpected counts。
+- 最终 Python 全量更新为 133 tests / OK；calibration manifest 仍为 `VALID`，canary/full plan-only 预算仍为 4/72，实际业务调用与数据出站仍为 0；SensitiveLogs 仍为 310 source files / PASS。
+- 上一条的 132 tests 是补测前的阶段结果，本条以 133 为当前最终值；其余范围、跳过项、剩余风险与 `Commit: pending` 不变。

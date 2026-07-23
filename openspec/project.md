@@ -25,12 +25,13 @@
 - C8a 已验收归档：首个 `rag-eval-dev-v1` dataset manifest、`rag-eval-sample-v1` contract 和两个 runner 共用的本地 fail-fast validator 已落地；正式路径固定当前 30 条 question set 与 3 份 fixture，custom 输入只能显式降级为 `UNVERSIONED`。4 个 requirements / 13 个 scenarios 已接受进 `evaluation` baseline。
 - C8b 已验收归档：默认与显式 v2 manifest byte-identical，固定 150 条 exact quota、v1 seed raw/object/order identity、103 条新增 answerable 的 242 个 fixture contexts、150 条 review records 与三份 fixture coverage 49/43/44；4 requirements / 12 scenarios 已接受进 `evaluation` baseline。
 - C9a 已验收归档：direct runner 使用固定 `claim-lexical-v1` 将成功 answerable 输出按句子/列表拆分，并只对 provenance-valid returned citation snippets 做 exact 或 `0.70` claim-token coverage；逐 claim attribution、aggregate support rate 与 `COMPLETE/PARTIAL/SKIPPED/NOT_APPLICABLE` 局部状态已接入 direct/reproducible report/metadata。4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline；真实 150 条 generation evidence 尚未授权和执行。
+- C9b offline implementation 已完成、尚待验收：normal/calibration runner 共用版本化 `rag-judge-v1` contract 与 strict parser；独立 `judge-calibration-v1` 固定 24 条四象限人工 gold case；normal eval 分离 objective/judge/global status 与 per-channel comparison safety。未执行 live calibration，不能声称 judge 已校准，delta 尚未接受进 baseline。
 
 ## 当前边界
 
 - 不是生产级多租户系统。
 - 登录与 refresh 已使用数据库用户、状态和角色；bootstrap 默认关闭，运行时不提供固定默认账号。
-- LLM judge 默认关闭；C9a 只提供客观词法 claim-evidence alignment，未完成 C9b judge 校准或逐 claim faithfulness 结论。
+- LLM judge 默认关闭；C9b 目前只完成校准工具、静态 corpus 与状态语义的离线实现，尚无 live provider evidence，不能声称 judge 已校准或逐 claim faithfulness 已成立。
 - C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项、完整 GenAI 可观测性仍未完成。
 
 ## 长期规格

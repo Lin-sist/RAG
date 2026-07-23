@@ -1,0 +1,43 @@
+{
+  "manifestSchemaVersion": "judge-calibration-manifest-v1",
+  "releaseVersion": "judge-calibration-v1",
+  "caseSchemaVersion": "judge-calibration-case-v1",
+  "reviewVersion": "human-review-v1",
+  "judgeContractVersion": "rag-judge-v1",
+  "promptVersion": "rag-judge-prompt-v1",
+  "promptSha256": "d98612cdc4f6681e126d3e6fd4dac81f5d76d14ec4bd596e904fa4843999df80",
+  "caseSchema": {
+    "path": "docs/eval/schema/judge-calibration-case-v1.json",
+    "bytes": 475,
+    "sha256": "d878ba268d1ce1b551d7364f67bee3c30edeced46030c64afa7439ab0c87569a"
+  },
+  "cases": {
+    "path": "docs/eval/calibration/judge-calibration-v1-cases.jsonl",
+    "bytes": 11149,
+    "sha256": "a49f1ed81932906548460830045ca777eee67ef0835ce762fb88568d0507e3b0",
+    "count": 24
+  },
+  "quadrantQuotas": {
+    "ft_rt": 6,
+    "ft_rf": 6,
+    "ff_rt": 6,
+    "ff_rf": 6
+  },
+  "fixtures": [
+    {
+      "path": "test-data/springboot-basics.md",
+      "bytes": 7975,
+      "sha256": "c51df5761d510aa4c8a5fd610c90454b12973e2999138c3b57ba83768a296521"
+    },
+    {
+      "path": "test-data/java-interview-guide.md",
+      "bytes": 6946,
+      "sha256": "a33f16e91025e9a8d92274c4221d1c172bb4f68c03790db53b8e20157ef4faa0"
+    },
+    {
+      "path": "test-data/rag-technology-guide.md",
+      "bytes": 7392,
+      "sha256": "59ad5d66a59be2ce4e517ca81e37fde06b7673f3da7f798a4c76b01cc6f348a9"
+    }
+  ]
+}

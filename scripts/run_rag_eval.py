@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 import eval_dataset_contract as dataset_contract
+import rag_judge_contract as judge_contract
 
 
 DEFAULT_BASE_URL = "http://localhost:8080"
@@ -55,6 +56,7 @@ CLAIM_STRUCTURAL_ONLY_PATTERN = re.compile(
 )
 CLAIM_LEXICAL_THRESHOLD = 0.70
 CLAIM_MIN_TOKENS = 2
+JUDGE_SCORE_THRESHOLD = judge_contract.JUDGE_SCORE_THRESHOLD
 CLAIM_METRIC_CONFIG = {
     "claimMetricVersion": "claim-lexical-v1",
     "claimSplitterVersion": "sentence-list-v1",
@@ -118,6 +120,13 @@ class AskRetryError(RuntimeError):
 
 
 class ClaimMetricIdentityError(ValueError):
+    pass
+
+
+JudgePayloadError = judge_contract.JudgePayloadError
+
+
+class JudgeContractIdentityError(ValueError):
     pass
 
 
@@ -251,6 +260,7 @@ def eval_plan(samples: list[dict[str, Any]], args: argparse.Namespace) -> dict[s
             "llmJudge": judge_calls,
         },
         "claimMetricConfig": dict(CLAIM_METRIC_CONFIG),
+        "judgeContractConfig": judge_contract.contract_config(args),
         "outputs": {
             "report": args.report,
             "afterReport": args.after_report,
@@ -378,11 +388,7 @@ def call_llm_judge(
         "messages": [
             {
                 "role": "system",
-                "content": (
-                    "You are a strict RAG answer evaluator. Judge only from the provided retrieved contexts. "
-                    "Return JSON only, with fields: faithfulnessScore, relevanceScore, pass, reason. "
-                    "Scores must be numbers between 0 and 1. pass is true only when the answer is both faithful and relevant."
-                ),
+                "content": judge_contract.JUDGE_SYSTEM_PROMPT,
             },
             {
                 "role": "user",
@@ -398,9 +404,7 @@ def call_llm_judge(
         args.judge_timeout,
     )
     content = extract_openai_message_content(response)
-    parsed = parse_judge_content(content)
-    parsed["rawContent"] = content
-    return parsed
+    return parse_judge_content(content)
 
 
 def build_judge_prompt(
@@ -410,26 +414,14 @@ def build_judge_prompt(
     max_context_chars: int,
 ) -> str:
     contexts = ask_response.get("contexts", []) if isinstance(ask_response, dict) else []
-    context_lines: list[str] = []
-    remaining = max(0, max_context_chars)
-    for index, context in enumerate(contexts or [], start=1):
-        source = context.get("source") or context.get("sourceFileName") or context.get("documentTitle") or ""
-        content = str(context.get("content") or context.get("contentPreview") or "")
-        if remaining <= 0:
-            break
-        clipped = content[:remaining]
-        remaining -= len(clipped)
-        context_lines.append(f"[{index}] source={source}\n{clipped}")
-
-    expected_points = sample.get("expected_answer_points") or []
-    expected_keywords = sample.get("expected_keywords") or []
-    return "\n\n".join([
-        f"Question:\n{sample.get('question', '')}",
-        f"Expected answer points for reference, not as hidden context:\n{json.dumps(expected_points, ensure_ascii=False)}",
-        f"Expected keywords for reference:\n{json.dumps(expected_keywords, ensure_ascii=False)}",
-        "Retrieved contexts:\n" + ("\n\n".join(context_lines) if context_lines else "(none)"),
-        f"Answer to judge:\n{answer}",
-    ])
+    return judge_contract.build_judge_prompt(
+        question=str(sample.get("question") or ""),
+        answer=answer,
+        contexts=contexts or [],
+        expected_points=sample.get("expected_answer_points") or [],
+        expected_keywords=sample.get("expected_keywords") or [],
+        max_context_chars=max_context_chars,
+    )
 
 
 def extract_openai_message_content(response: dict[str, Any]) -> str:
@@ -444,65 +436,7 @@ def extract_openai_message_content(response: dict[str, Any]) -> str:
 
 
 def parse_judge_content(content: str) -> dict[str, Any]:
-    payload = parse_json_object_from_text(content)
-    faithfulness = clamp_score(first_present(payload, "faithfulnessScore", "faithfulness", "faithfulness_score"))
-    relevance = clamp_score(first_present(payload, "relevanceScore", "relevance", "relevance_score"))
-    passed = parse_bool(first_present(payload, "pass", "passed", "ok"))
-    if passed is None and faithfulness is not None and relevance is not None:
-        passed = faithfulness >= 0.7 and relevance >= 0.7
-    return {
-        "faithfulnessScore": faithfulness,
-        "relevanceScore": relevance,
-        "pass": passed,
-        "reason": str(payload.get("reason") or payload.get("rationale") or "").strip(),
-    }
-
-
-def parse_json_object_from_text(text: str) -> dict[str, Any]:
-    stripped = text.strip()
-    if stripped.startswith("```"):
-        stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.IGNORECASE)
-        stripped = re.sub(r"\s*```$", "", stripped)
-    try:
-        value = json.loads(stripped)
-    except json.JSONDecodeError:
-        start = stripped.find("{")
-        end = stripped.rfind("}")
-        if start < 0 or end <= start:
-            raise RuntimeError("Judge response was not JSON") from None
-        value = json.loads(stripped[start:end + 1])
-    if not isinstance(value, dict):
-        raise RuntimeError("Judge response JSON must be an object")
-    return value
-
-
-def first_present(payload: dict[str, Any], *keys: str) -> Any:
-    for key in keys:
-        if key in payload:
-            return payload[key]
-    return None
-
-
-def clamp_score(value: Any) -> float | None:
-    if value is None or value == "":
-        return None
-    try:
-        score = float(value)
-    except (TypeError, ValueError):
-        return None
-    return min(1.0, max(0.0, score))
-
-
-def parse_bool(value: Any) -> bool | None:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered in {"true", "yes", "pass", "passed", "1"}:
-            return True
-        if lowered in {"false", "no", "fail", "failed", "0"}:
-            return False
-    return None
+    return judge_contract.parse_judge_content(content)
 
 
 def extract_rerank_attribution(debug_response: dict[str, Any] | None) -> dict[str, Any]:
@@ -1398,8 +1332,13 @@ def aggregate(results: list[SampleResult]) -> dict[str, Any]:
     ]
     answerable_ask_success = [result for result in ask_success if result.sample.get("should_answer", True)]
     no_answer_ask_success = [result for result in ask_success if not result.sample.get("should_answer", True)]
-    judge_evaluable = [
+    judge_eligible = [
         result for result in answerable_ask_success
+        if str((result.ask_response or {}).get("answer") or "").strip()
+    ]
+    judge_attempted = [result for result in judge_eligible if not result.skipped_judge]
+    judge_evaluable = [
+        result for result in judge_attempted
         if not result.skipped_judge and result.judge_error is None and result.judge_pass is not None
     ]
     ask_skipped = sum(1 for result in results if result.skipped_ask)
@@ -1464,6 +1403,19 @@ def aggregate(results: list[SampleResult]) -> dict[str, Any]:
         "answerable_ask_success_samples": len(answerable_ask_success),
         "no_answer_ask_success_samples": len(no_answer_ask_success),
         "judge_evaluable_samples": len(judge_evaluable),
+        "judge_eligible_samples": len(judge_eligible),
+        "judge_attempted_samples": len(judge_attempted),
+        "judge_valid_samples": len(judge_evaluable),
+        "judge_error_samples": sum(1 for result in judge_attempted if result.judge_error is not None),
+        "judge_invalid_payload_samples": sum(
+            1 for result in judge_attempted if result.judge_error == "invalid_judge_payload"
+        ),
+        "judge_provider_pass_mismatch_count": sum(
+            1
+            for result in judge_evaluable
+            if isinstance(getattr(result, "judge_response", None), dict)
+            and bool(result.judge_response.get("providerPassMismatch"))
+        ),
         "answer_keyword_hits": keyword_hits,
         "answer_keyword_total": keyword_total,
         "citation_source_hits": citation_hits,
@@ -1567,6 +1519,19 @@ def bind_claim_metric_identity(run_metadata: dict[str, Any]) -> dict[str, Any]:
     return bound
 
 
+def bind_judge_contract_identity(
+    run_metadata: dict[str, Any],
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    bound = dict(run_metadata)
+    current = judge_contract.contract_config(args)
+    existing = bound.get("judgeContractConfig")
+    if existing is not None and existing != current:
+        raise JudgeContractIdentityError("judge_contract_identity_mismatch")
+    bound["judgeContractConfig"] = current
+    return bound
+
+
 def run_counts(results: list[SampleResult]) -> dict[str, int]:
     return {
         "askErrors": sum(1 for result in results if result.ask_error is not None),
@@ -1579,18 +1544,91 @@ def run_counts(results: list[SampleResult]) -> dict[str, int]:
     }
 
 
-def report_status(args: argparse.Namespace, results: list[SampleResult], login_error: str | None) -> str:
-    if login_error:
-        return "FAILED"
+def metric_channel_statuses(
+    args: argparse.Namespace,
+    results: list[SampleResult],
+    login_error: str | None,
+) -> dict[str, str]:
     counts = run_counts(results)
-    retrieve_errors = counts["retrieveErrors"]
-    if results and retrieve_errors >= max(1, len(results) // 2):
-        return "FAILED"
-    if args.skip_ask:
-        return "RETRIEVAL_ONLY"
-    if retrieve_errors == 0 and counts["askErrors"] == 0:
-        return "CLEAN"
-    return "PARTIAL"
+    if login_error or (results and counts["retrieveErrors"] >= max(1, len(results) // 2)):
+        objective_status = "FAILED"
+    elif args.skip_ask:
+        objective_status = "RETRIEVAL_ONLY"
+    elif counts["retrieveErrors"] or counts["askErrors"]:
+        objective_status = "PARTIAL"
+    elif any(
+        objective_claim_metrics_for_result(result).get("claimMetricStatus") == "PARTIAL"
+        for result in results
+    ):
+        objective_status = "PARTIAL"
+    else:
+        objective_status = "COMPLETE"
+
+    if getattr(args, "judge_mode", "off") != "llm" or args.skip_ask:
+        judge_status = "SKIPPED"
+    else:
+        eligible = [
+            result
+            for result in results
+            if result.sample.get("should_answer", True)
+            and not result.skipped_ask
+            and result.ask_error is None
+            and result.ask_response is not None
+            and str(result.ask_response.get("answer", "")).strip()
+        ]
+        if not eligible:
+            judge_status = "NOT_APPLICABLE"
+        elif all(
+            not result.skipped_judge
+            and result.judge_error is None
+            and result.judge_pass is not None
+            for result in eligible
+        ):
+            judge_status = "COMPLETE"
+        else:
+            judge_status = "PARTIAL"
+
+    if objective_status == "FAILED":
+        report = "FAILED"
+    elif objective_status == "RETRIEVAL_ONLY":
+        report = "RETRIEVAL_ONLY"
+    elif objective_status == "PARTIAL" or judge_status == "PARTIAL":
+        report = "PARTIAL"
+    else:
+        report = "CLEAN"
+    return {
+        "objectiveMetricStatus": objective_status,
+        "judgeMetricStatus": judge_status,
+        "reportStatus": report,
+    }
+
+
+def metric_channel_safety(
+    statuses: dict[str, str],
+    dataset_validation: str = "VALID",
+) -> dict[str, dict[str, str]]:
+    objective_status = statuses["objectiveMetricStatus"]
+    judge_status = statuses["judgeMetricStatus"]
+    if dataset_validation != "VALID":
+        objective_safety = "NOT_ELIGIBLE"
+        judge_safety = "NOT_ELIGIBLE"
+    else:
+        objective_safety = (
+            "ELIGIBLE"
+            if objective_status == "COMPLETE"
+            else "RETRIEVAL_ONLY"
+            if objective_status == "RETRIEVAL_ONLY"
+            else "NOT_ELIGIBLE"
+        )
+        judge_safety = "ELIGIBLE" if judge_status == "COMPLETE" else "NOT_ELIGIBLE"
+    return {
+        "objective": {"status": objective_status, "comparisonSafety": objective_safety},
+        "judge": {"status": judge_status, "comparisonSafety": judge_safety},
+    }
+
+
+def report_status(args: argparse.Namespace, results: list[SampleResult], login_error: str | None) -> str:
+    return metric_channel_statuses(args, results, login_error)["reportStatus"]
 
 
 def metrics_safe_for_comparison(
@@ -1609,6 +1647,23 @@ def metrics_safe_for_comparison(
     return "no"
 
 
+def metrics_safe_for_channels(
+    channels: dict[str, dict[str, str]],
+    dataset_validation: str = "VALID",
+) -> str:
+    if dataset_validation != "VALID":
+        return f"no; dataset is {dataset_validation or 'UNVALIDATED'}"
+    objective = channels["objective"]["comparisonSafety"]
+    judge = channels["judge"]["comparisonSafety"]
+    objective_text = {
+        "ELIGIBLE": "objective metrics eligible",
+        "RETRIEVAL_ONLY": "retrieval metrics only",
+        "NOT_ELIGIBLE": "objective metrics not eligible",
+    }[objective]
+    judge_text = "judge metrics eligible" if judge == "ELIGIBLE" else "judge metrics not eligible"
+    return f"{objective_text}; {judge_text}"
+
+
 def write_report(
     path: Path,
     args: argparse.Namespace,
@@ -1620,14 +1675,20 @@ def write_report(
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     finished = time.time()
-    status = report_status(args, results, login_error)
     counts = run_counts(results)
     dataset_validation = str(run_metadata.get("datasetValidation") or "UNVALIDATED")
+    statuses = metric_channel_statuses(args, results, login_error)
+    status = statuses["reportStatus"]
+    channels = metric_channel_safety(statuses, dataset_validation)
     lines: list[str] = []
     lines.append("# RAG Eval Report")
     lines.append("")
     lines.append(f"- Generated at: {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- Report status: `{status}`")
+    lines.append(f"- Objective metric status: `{statuses['objectiveMetricStatus']}`")
+    lines.append(f"- Judge metric status: `{statuses['judgeMetricStatus']}`")
+    lines.append(f"- Objective comparison safety: `{channels['objective']['comparisonSafety']}`")
+    lines.append(f"- Judge comparison safety: `{channels['judge']['comparisonSafety']}`")
     lines.append(f"- askErrors count: `{counts['askErrors']}`")
     lines.append(f"- retrieveErrors count: `{counts['retrieveErrors']}`")
     lines.append(f"- skippedAsk count: `{counts['skippedAsk']}`")
@@ -1637,7 +1698,7 @@ def write_report(
     lines.append(f"- retry count: `{counts['retryCount']}`")
     lines.append(
         f"- Metrics safe for comparison: "
-        f"`{metrics_safe_for_comparison(status, counts, dataset_validation)}`"
+        f"`{metrics_safe_for_channels(channels, dataset_validation)}`"
     )
     lines.append(f"- Base URL: `{args.base_url}`")
     lines.append(f"- Knowledge base ID: `{args.kb_id}`")
@@ -1652,6 +1713,9 @@ def write_report(
     lines.append(f"- judgeModel: `{args.judge_model or ''}`")
     lines.append(f"- judgeBaseUrl: `{args.judge_base_url}`")
     lines.append(f"- judgeTemperature: `{args.judge_temperature}`")
+    lines.append(
+        f"- judgeContractConfig: `{json.dumps(judge_contract.contract_config(args), sort_keys=True)}`"
+    )
     lines.append(f"- claimMetricConfig: `{json.dumps(CLAIM_METRIC_CONFIG, sort_keys=True)}`")
     if run_metadata:
         append_header_metadata(lines, run_metadata)
@@ -1706,6 +1770,12 @@ def write_report(
     lines.append(f"| No-answer citation violation count | {metrics['no_answer_citation_violation_count']} |")
     lines.append(f"| No-answer accuracy on successful ask samples | {pct(metrics['no_answer_accuracy'])} ({metrics['no_answer_ok_count']}/{metrics['no_answer_evaluable_total']}) |")
     lines.append(f"| Judge evaluable samples | {metrics['judge_evaluable_samples']} |")
+    lines.append(f"| Judge eligible samples | {metrics['judge_eligible_samples']} |")
+    lines.append(f"| Judge attempted samples | {metrics['judge_attempted_samples']} |")
+    lines.append(f"| Judge valid samples | {metrics['judge_valid_samples']} |")
+    lines.append(f"| Judge error samples | {metrics['judge_error_samples']} |")
+    lines.append(f"| Judge invalid payload samples | {metrics['judge_invalid_payload_samples']} |")
+    lines.append(f"| Judge provider pass mismatches | {metrics['judge_provider_pass_mismatch_count']} |")
     lines.append(f"| LLM judge pass rate | {pct(metrics['judge_pass_rate'])} ({metrics['judge_pass_count']}/{metrics['judge_pass_total']}) |")
     lines.append(f"| Faithfulness average | {pct(metrics['faithfulness_avg'])} |")
     lines.append(f"| Relevance average | {pct(metrics['relevance_avg'])} |")
@@ -2063,22 +2133,24 @@ def write_details_json(
     run_metadata: dict[str, Any],
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    status = report_status(args, results, login_error)
+    statuses = metric_channel_statuses(args, results, login_error)
+    status = statuses["reportStatus"]
     counts = run_counts(results)
     dataset_identity = run_metadata.get("datasetReleaseIdentity")
     dataset_validation = str(run_metadata.get("datasetValidation") or "UNVALIDATED")
+    channels = metric_channel_safety(statuses, dataset_validation)
     payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "reportStatus": status,
+        "objectiveMetricStatus": statuses["objectiveMetricStatus"],
+        "judgeMetricStatus": statuses["judgeMetricStatus"],
+        "metricChannels": channels,
         "runCounts": counts,
-        "metricsSafeForComparison": metrics_safe_for_comparison(
-            status,
-            counts,
-            dataset_validation,
-        ),
+        "metricsSafeForComparison": metrics_safe_for_channels(channels, dataset_validation),
         "datasetValidation": dataset_validation,
         "datasetReleaseIdentity": dataset_identity,
         "claimMetricConfig": dict(CLAIM_METRIC_CONFIG),
+        "judgeContractConfig": judge_contract.contract_config(args),
         "baseUrl": args.base_url,
         "kbId": args.kb_id,
         "evalSet": args.eval_set,
@@ -2143,6 +2215,7 @@ def main() -> int:
             args.dataset_release_identity,
         )
         run_metadata = bind_claim_metric_identity(run_metadata)
+        run_metadata = bind_judge_contract_identity(run_metadata, args)
     except dataset_contract.DatasetContractError as exc:
         print(
             f"Dataset validation failed: errorCode={exc.code} artifact={exc.artifact}",
@@ -2151,6 +2224,9 @@ def main() -> int:
         return 2
     except ClaimMetricIdentityError:
         print("Claim metric validation failed: errorCode=claim_metric_identity_mismatch", file=sys.stderr)
+        return 2
+    except JudgeContractIdentityError:
+        print("Judge contract validation failed: errorCode=judge_contract_identity_mismatch", file=sys.stderr)
         return 2
 
     if args.no_overwrite:
@@ -2210,10 +2286,17 @@ def main() -> int:
         return 1
 
     metrics = aggregate(results)
-    status = report_status(args, results, login_error)
+    statuses = metric_channel_statuses(args, results, login_error)
+    status = statuses["reportStatus"]
     counts = run_counts(results)
+    dataset_validation = str(run_metadata.get("datasetValidation") or "UNVALIDATED")
+    channels = metric_channel_safety(statuses, dataset_validation)
     print("\nRAG eval complete")
     print(f"Report status: {status}")
+    print(f"Objective metric status: {statuses['objectiveMetricStatus']}")
+    print(f"Judge metric status: {statuses['judgeMetricStatus']}")
+    print(f"Objective comparison safety: {channels['objective']['comparisonSafety']}")
+    print(f"Judge comparison safety: {channels['judge']['comparisonSafety']}")
     print(f"askErrors: {counts['askErrors']}")
     print(f"retrieveErrors: {counts['retrieveErrors']}")
     print(f"skippedAsk: {counts['skippedAsk']}")
@@ -2223,7 +2306,7 @@ def main() -> int:
     print(f"retry count: {counts['retryCount']}")
     print(
         "Metrics safe for comparison: "
-        f"{metrics_safe_for_comparison(status, counts, str(run_metadata.get('datasetValidation')))}"
+        f"{metrics_safe_for_channels(channels, dataset_validation)}"
     )
     print(f"Recall@3: {pct(metrics['recall_at_3'])}")
     print(f"Recall@5: {pct(metrics['recall_at_5'])}")
@@ -2237,6 +2320,15 @@ def main() -> int:
     print(f"No-answer citation violation count: {metrics['no_answer_citation_violation_count']}")
     print(f"No-answer accuracy: {pct(metrics['no_answer_accuracy'])}")
     print(f"LLM judge pass rate: {pct(metrics['judge_pass_rate'])}")
+    print(
+        "Judge coverage: "
+        f"eligible={metrics['judge_eligible_samples']} "
+        f"attempted={metrics['judge_attempted_samples']} "
+        f"valid={metrics['judge_valid_samples']} "
+        f"errors={metrics['judge_error_samples']} "
+        f"invalidPayload={metrics['judge_invalid_payload_samples']}"
+    )
+    print(f"Judge provider pass mismatches: {metrics['judge_provider_pass_mismatch_count']}")
     print(f"Faithfulness average: {pct(metrics['faithfulness_avg'])}")
     print(f"Relevance average: {pct(metrics['relevance_avg'])}")
     print(f"Objective claim metric status: {metrics['claim_metric_status']}")

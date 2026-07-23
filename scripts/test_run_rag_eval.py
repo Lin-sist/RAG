@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -13,6 +14,21 @@ import run_rag_eval as runner
 
 
 class RunRagEvalJudgeTest(unittest.TestCase):
+    def test_parse_judge_content_rejects_out_of_range_scores(self) -> None:
+        with self.assertRaisesRegex(runner.JudgePayloadError, "invalid_judge_payload"):
+            runner.parse_judge_content(
+                '{"faithfulnessScore": 1.2, "relevanceScore": 0.65, "pass": true}'
+            )
+
+    def test_parse_judge_content_derives_pass_and_reports_provider_disagreement(self) -> None:
+        parsed = runner.parse_judge_content(
+            '{"faithfulnessScore": 0.9, "relevanceScore": 0.6, "pass": true}'
+        )
+
+        self.assertFalse(parsed["pass"])
+        self.assertTrue(parsed["providerReportedPass"])
+        self.assertTrue(parsed["providerPassMismatch"])
+
     def test_extract_answer_claims_splits_sentences_and_list_items_deterministically(self) -> None:
         answer = "概念一。概念二；\n- First fact. Second fact!"
 
@@ -149,20 +165,22 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "explicit credentials"):
             runner.require_credentials(args)
 
-    def test_parse_judge_content_accepts_fenced_json_and_clamps_scores(self) -> None:
+    def test_parse_judge_content_accepts_fenced_strict_json(self) -> None:
         parsed = runner.parse_judge_content(
             """```json
-            {"faithfulnessScore": 1.2, "relevanceScore": "0.65", "pass": "yes", "reason": "grounded"}
+            {"faithfulnessScore": 1.0, "relevanceScore": 0.75, "pass": true, "reason": "grounded"}
             ```"""
         )
 
         self.assertEqual(1.0, parsed["faithfulnessScore"])
-        self.assertEqual(0.65, parsed["relevanceScore"])
+        self.assertEqual(0.75, parsed["relevanceScore"])
         self.assertTrue(parsed["pass"])
         self.assertEqual("grounded", parsed["reason"])
 
     def test_parse_judge_content_derives_pass_when_missing(self) -> None:
-        parsed = runner.parse_judge_content('{"faithfulness": 0.71, "relevance": 0.70}')
+        parsed = runner.parse_judge_content(
+            '{"faithfulnessScore": 0.71, "relevanceScore": 0.70}'
+        )
 
         self.assertTrue(parsed["pass"])
 
@@ -209,6 +227,108 @@ class RunRagEvalJudgeTest(unittest.TestCase):
         self.assertEqual(1, plan["estimatedBackendCalls"]["llmJudge"])
         self.assertEqual(12.0, plan["askTimeout"])
         self.assertTrue(plan["retryAskTimeouts"])
+
+    def test_eval_plan_exposes_versioned_judge_contract_without_secret(self) -> None:
+        args = argparse.Namespace(
+            skip_ask=False,
+            judge_mode="llm",
+            judge_model="judge-model",
+            judge_temperature=0.0,
+            judge_max_context_chars=6000,
+            judge_base_url="https://example.test/v1",
+            judge_api_key="secret-value",
+            ask_timeout=12.0,
+            retry_ask_timeouts=True,
+            report="report.md",
+            after_report="",
+            details_json="details.json",
+        )
+
+        config = runner.eval_plan([{"id": "fact-001"}], args)["judgeContractConfig"]
+
+        self.assertEqual("rag-judge-v1", config["judgeContractVersion"])
+        self.assertEqual("strict-json-scores-v1", config["parserVersion"])
+        self.assertEqual(0.7, config["faithfulnessThreshold"])
+        self.assertEqual("judge-model", config["model"])
+        self.assertNotIn("apiKey", config)
+        self.assertNotIn("secret-value", str(config))
+
+    def test_normal_judge_prompt_delegates_to_shared_contract(self) -> None:
+        sample = {
+            "question": "What is RAG?",
+            "expected_answer_points": ["retrieval", "generation"],
+            "expected_keywords": ["RAG"],
+        }
+        answer = "RAG combines retrieval and generation."
+        ask_response = {
+            "contexts": [
+                {"source": "fixture.md", "content": "RAG retrieves context before generation."}
+            ]
+        }
+
+        expected = runner.judge_contract.build_judge_prompt(
+            question=sample["question"],
+            answer=answer,
+            contexts=ask_response["contexts"],
+            expected_points=sample["expected_answer_points"],
+            expected_keywords=sample["expected_keywords"],
+            max_context_chars=6000,
+        )
+
+        self.assertEqual(
+            expected,
+            runner.build_judge_prompt(sample, answer, ask_response, 6000),
+        )
+
+    def test_normal_judge_result_does_not_retain_raw_provider_content(self) -> None:
+        args = argparse.Namespace(
+            judge_model="judge-model",
+            judge_api_key="test-key",
+            judge_temperature=0.0,
+            judge_base_url="https://example.test/v1",
+            judge_timeout=12.0,
+            judge_max_context_chars=6000,
+        )
+        response = {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"faithfulnessScore":0.8,"relevanceScore":0.9,"pass":true,"reason":"private"}'
+                    }
+                }
+            ]
+        }
+
+        with mock.patch.object(runner, "call_json", return_value=response):
+            result = runner.call_llm_judge(
+                {"question": "q"},
+                "answer",
+                {"contexts": [{"source": "fixture.md", "content": "context"}]},
+                args,
+            )
+
+        self.assertNotIn("rawContent", result)
+        self.assertEqual("private", result["reason"])
+
+    def test_run_metadata_rejects_judge_contract_identity_drift(self) -> None:
+        args = argparse.Namespace(
+            judge_model="judge-model",
+            judge_temperature=0.0,
+            judge_max_context_chars=6000,
+            judge_base_url="https://example.test/v1",
+        )
+        metadata = {
+            "judgeContractConfig": {
+                **runner.judge_contract.contract_config(args),
+                "parserVersion": "stale-parser",
+            }
+        }
+
+        with self.assertRaisesRegex(
+            runner.JudgeContractIdentityError,
+            "judge_contract_identity_mismatch",
+        ):
+            runner.bind_judge_contract_identity(metadata, args)
 
     def test_should_retry_ask_timeout_can_be_disabled(self) -> None:
         error = TimeoutError("timed out")
@@ -401,6 +521,8 @@ class RunRagEvalJudgeTest(unittest.TestCase):
             judge_model="",
             judge_base_url="https://example.test/v1",
             judge_temperature=0.0,
+            judge_timeout=60.0,
+            judge_max_context_chars=6000,
             ask_timeout=60.0,
             ask_delay_seconds=0.0,
             max_ask_retries=0,
@@ -432,6 +554,7 @@ class RunRagEvalJudgeTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             report = Path(tmp_dir) / "report.md"
+            details_path = Path(tmp_dir) / "details.json"
             runner.write_report(
                 report,
                 args,
@@ -441,12 +564,30 @@ class RunRagEvalJudgeTest(unittest.TestCase):
                 runner.time.time(),
                 {"datasetValidation": "VALID"},
             )
+            runner.write_details_json(
+                details_path,
+                args,
+                [sample],
+                [result],
+                None,
+                runner.time.time(),
+                {"datasetValidation": "VALID"},
+            )
             rendered = report.read_text(encoding="utf-8")
+            details = json.loads(details_path.read_text(encoding="utf-8"))
 
         self.assertIn("Objective claim metric status", rendered)
         self.assertIn("Objective lexical claim support rate", rendered)
+        self.assertIn("Objective metric status: `COMPLETE`", rendered)
+        self.assertIn("Judge metric status: `SKIPPED`", rendered)
+        self.assertIn("judgeContractConfig", rendered)
         self.assertIn("claim-lexical-v1", rendered)
         self.assertNotIn("Spring Boot 使用自动配置", rendered)
+        self.assertEqual("COMPLETE", details["objectiveMetricStatus"])
+        self.assertEqual("SKIPPED", details["judgeMetricStatus"])
+        self.assertEqual("ELIGIBLE", details["metricChannels"]["objective"]["comparisonSafety"])
+        self.assertEqual("NOT_ELIGIBLE", details["metricChannels"]["judge"]["comparisonSafety"])
+        self.assertEqual("rag-judge-v1", details["judgeContractConfig"]["judgeContractVersion"])
 
     def test_run_sample_records_latency_when_debug_retrieval_fails(self) -> None:
         args = argparse.Namespace(
@@ -505,6 +646,129 @@ class RunRagEvalJudgeTest(unittest.TestCase):
 
         self.assertEqual(250.0, summary["retrieval_latency_millis"]["p50"])
         self.assertEqual(15.0, summary["rerank_attribution"]["latencyMillis"]["p50"])
+
+    def test_judge_all_error_makes_global_partial_without_polluting_objective_status(self) -> None:
+        result = argparse.Namespace(
+            sample={"should_answer": True},
+            retrieval_error=None,
+            ask_error=None,
+            skipped_ask=False,
+            ask_response={"answer": "完整回答"},
+            objective_claim_metrics=runner.empty_claim_metric_result("COMPLETE"),
+            skipped_judge=False,
+            judge_error="timeout",
+            judge_pass=None,
+            rate_limit_errors=0,
+            ask_retry_count=0,
+        )
+        args = argparse.Namespace(skip_ask=False, judge_mode="llm")
+
+        statuses = runner.metric_channel_statuses(args, [result], None)
+
+        self.assertEqual("COMPLETE", statuses["objectiveMetricStatus"])
+        self.assertEqual("PARTIAL", statuses["judgeMetricStatus"])
+        self.assertEqual("PARTIAL", statuses["reportStatus"])
+
+    def test_channel_safety_keeps_complete_objective_when_judge_is_partial(self) -> None:
+        safety = runner.metric_channel_safety(
+            {
+                "objectiveMetricStatus": "COMPLETE",
+                "judgeMetricStatus": "PARTIAL",
+                "reportStatus": "PARTIAL",
+            },
+            dataset_validation="VALID",
+        )
+
+        self.assertEqual("ELIGIBLE", safety["objective"]["comparisonSafety"])
+        self.assertEqual("NOT_ELIGIBLE", safety["judge"]["comparisonSafety"])
+
+    def test_status_matrix_covers_judge_off_no_answer_only_and_retrieval_only(self) -> None:
+        answerable = argparse.Namespace(
+            sample={"should_answer": True},
+            retrieval_error=None,
+            ask_error=None,
+            skipped_ask=False,
+            ask_response={"answer": "answer"},
+            objective_claim_metrics=runner.empty_claim_metric_result("COMPLETE"),
+            skipped_judge=True,
+            judge_error=None,
+            judge_pass=None,
+            rate_limit_errors=0,
+            ask_retry_count=0,
+        )
+        no_answer = argparse.Namespace(
+            **{
+                **vars(answerable),
+                "sample": {"should_answer": False},
+                "ask_response": {"answer": "cannot answer"},
+                "objective_claim_metrics": runner.empty_claim_metric_result("NOT_APPLICABLE"),
+            }
+        )
+
+        off = runner.metric_channel_statuses(
+            argparse.Namespace(skip_ask=False, judge_mode="off"),
+            [answerable],
+            None,
+        )
+        no_answer_only = runner.metric_channel_statuses(
+            argparse.Namespace(skip_ask=False, judge_mode="llm"),
+            [no_answer],
+            None,
+        )
+        retrieval_only = runner.metric_channel_statuses(
+            argparse.Namespace(skip_ask=True, judge_mode="off"),
+            [argparse.Namespace(**{**vars(answerable), "skipped_ask": True})],
+            None,
+        )
+
+        self.assertEqual(
+            {"objectiveMetricStatus": "COMPLETE", "judgeMetricStatus": "SKIPPED", "reportStatus": "CLEAN"},
+            off,
+        )
+        self.assertEqual("NOT_APPLICABLE", no_answer_only["judgeMetricStatus"])
+        self.assertEqual("CLEAN", no_answer_only["reportStatus"])
+        self.assertEqual("RETRIEVAL_ONLY", retrieval_only["reportStatus"])
+
+    def test_aggregate_exposes_judge_coverage_counts(self) -> None:
+        def result(*, judge_error: str | None, judge_pass: bool | None) -> argparse.Namespace:
+            return argparse.Namespace(
+                sample={"should_answer": True},
+                skipped_ask=False,
+                ask_error=None,
+                ask_response={"answer": "answer"},
+                skipped_judge=False,
+                judge_error=judge_error,
+                judge_pass=judge_pass,
+                faithfulness_score=0.8 if judge_pass is not None else None,
+                relevance_score=0.8 if judge_pass is not None else None,
+                recall_total=0,
+                recall3_hits=0,
+                recall5_hits=0,
+                first_match_rank=None,
+                top1_source_hit=None,
+                keyword_hits=0,
+                keyword_total=0,
+                citation_hits=0,
+                citation_total=0,
+                citation_snippet_hits=0,
+                citation_snippet_total=0,
+                unsupported_citation_count=0,
+                no_answer_citation_violation_count=0,
+                no_answer_ok=None,
+                objective_claim_metrics=runner.empty_claim_metric_result("COMPLETE"),
+                details={},
+            )
+
+        metrics = runner.aggregate([
+            result(judge_error=None, judge_pass=True),
+            result(judge_error="invalid_judge_payload", judge_pass=None),
+        ])
+
+        self.assertEqual(2, metrics["judge_eligible_samples"])
+        self.assertEqual(2, metrics["judge_attempted_samples"])
+        self.assertEqual(1, metrics["judge_valid_samples"])
+        self.assertEqual(1, metrics["judge_error_samples"])
+        self.assertEqual(1, metrics["judge_invalid_payload_samples"])
 
     def test_aggregate_claim_metrics_stays_partial_when_an_answerable_sample_fails(self) -> None:
         def sample_result(claim_metrics: dict[str, object], *, ask_error: str | None) -> argparse.Namespace:

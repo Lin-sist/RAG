@@ -67,17 +67,18 @@
 - C8a 已验收归档：runner 前的纯本地 dataset contract 层由 tracked manifest 固定 release/question/schema/annotation/corpus version 与 artifact identity，共享 validator 在 login、preflight、KB mutation 和 provider 调用前校验 path/hash/count/order、sample contract、fixture source 和 distribution。未版本化 custom 输入只能显式标记为 `UNVERSIONED`，不能形成可比较结论；4 个 requirements / 13 个 scenarios 已接受进 `evaluation` baseline。
 - C8b 已验收归档：`rag-eval-dev-v2` 含 150 条（30 seed + 120 new），固定 type×difficulty、answerability、fixture coverage、exact grounding、duplicate 与 review evidence；v1/v2 可同时验证，默认 manifest 已切换为与显式 v2 manifest byte-identical。该验收不构成质量收益结论。
 - C9a 已验收归档：成功 answerable answer 经 `sentence-list-v1` 确定性拆成 claims，只使用通过既有 citation-context provenance 校验的 returned citation snippets，以 exact 或固定 `0.70` claim-token coverage 形成逐 claim attribution；aggregate 单独报告客观 claim 通道的完整性与 support rate，不改变全局 Report status 或 judge 语义。4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline。
+- C9b offline implementation 已完成、尚待验收：`rag-judge-v1` 固定 prompt/parser/`0.70` 双分数 threshold/model config identity；24 条独立静态 calibration v1 按 faithful×relevant 四象限各 6 条；normal eval 输出独立 objective/judge/global status 与 comparison safety。当前未执行 live judge calibration，不能形成 judge agreement 或生产质量结论。
 - NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
-- LLM judge 默认关闭；C9a lexical alignment 不是语义蕴含或独立 faithfulness/relevance judge，因此仍不能宣称逐 claim faithfulness 已验证。
+- LLM judge 默认关闭；C9b 的离线工具就绪不等于 live calibration 已完成，C9a lexical alignment 也不是语义蕴含，因此仍不能宣称逐 claim faithfulness 已验证。
 
 ## 5. 当前边界
 
 - `UserDetailsServiceImpl` 从数据库加载未删除用户及其有效角色；运行时不再初始化固定默认账号。
 - 真实 model reranker 已完成并验收 30 条开发样本 A/B，C7 delta 已接受进 `evaluation` baseline 并归档；默认 provider 仍为 heuristic。
 - 当前默认、已验收的 150 条 v2 是开发评测 release；30 条 v1 仍可显式复现。两者都不是生产数据集、隐藏 benchmark 或论文级基准。
-- C8b 只扩充并复核 question/annotation；C9a objective lexical claim metrics 已验收归档，但 C9b judge 校准、C10 quality gate 与真实 generation evidence 仍是独立后续范围。
+- C8b 只扩充并复核 question/annotation；C9a 已验收归档，C9b 已完成待验收的 offline implementation，但 live judge calibration、C10 quality gate 与真实 generation evidence 仍是独立后续范围。
 - 标题感知、长代码块和长段落专项仍待验证。
 - 当前只有请求日志与诊断字段，尚未形成完整 GenAI trace、指标和告警体系。
 

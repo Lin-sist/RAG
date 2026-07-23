@@ -86,6 +86,11 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual("fixture.md", metadata["fixtures"][0]["name"])
         self.assertIn(str(config), metadata["configSnapshot"])
         self.assertEqual(runner.eval_runner.CLAIM_METRIC_CONFIG, metadata["claimMetricConfig"])
+        self.assertEqual(
+            runner.eval_runner.judge_contract.contract_config(args),
+            metadata["judgeContractConfig"],
+        )
+        self.assertNotIn("key", json.dumps(metadata["judgeContractConfig"]).lower())
 
     def test_write_json_respects_no_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

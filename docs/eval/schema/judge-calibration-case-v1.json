@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "judge-calibration-case-v1",
+  "requiredFields": [
+    "id",
+    "language",
+    "caseType",
+    "question",
+    "answer",
+    "contextRefs",
+    "goldFaithful",
+    "goldRelevant",
+    "goldJointPass",
+    "quadrant",
+    "reviewStatus",
+    "reviewVersion"
+  ],
+  "allowedLanguages": ["zh", "en"],
+  "allowedCaseTypes": ["single_claim", "multi_claim"],
+  "allowedQuadrants": ["ft_rt", "ft_rf", "ff_rt", "ff_rf"],
+  "requiredReviewStatus": "approved"
+}
