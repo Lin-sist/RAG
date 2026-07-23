@@ -8,8 +8,8 @@
 - [x] 规划范围锁定为 judge contract/calibration、objective/judge/global status 与 comparison safety；C10/生产行为/默认 provider 继续串行等待。
 - [x] 规划阶段 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用量和数据出站均为 0。
 - [x] 创建 proposal、design、tasks 与 `evaluation` spec delta；baseline、runner、tests、dataset、calibration artifacts 与 guide 暂不修改。
-- [ ] 用户批准 proposal 的 24-case 四象限、3-repeat、status matrix、external-call gate 与 non-goals。
-- [ ] 用户批准 design 的决策记录与 `evaluation` delta 的 4 requirements / 12 scenarios。
+- [x] 用户批准 proposal 的 24-case 四象限、3-repeat、status matrix、external-call gate 与 non-goals。
+- [x] 用户批准 design 的 15 条决策记录与 `evaluation` delta 的 4 requirements / 12 scenarios。
 - [ ] 用户明确授权进入 TDD offline implementation；该授权默认不包含 live judge calibration。
 
 ## 1. Judge Contract And Parser

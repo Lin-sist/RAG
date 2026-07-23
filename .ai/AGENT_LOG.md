@@ -1099,3 +1099,23 @@
 - 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有 Python/Java/前端实现改动，因此 Python 全量、Maven、frontend build、Docker/Testcontainers、live backend 与 live judge/provider 均 `SKIPPED`。
 - 下一闸门：用户需审阅并批准 24-case 四象限校准集、3 repeats、strict parser、score-derived pass、objective/judge/global status matrix、15 条决策、4/12 delta 与 offline TDD 实现授权。即使批准实现，live canary/full judge 调用仍必须另行披露和授权。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C9b judge校准与状态语义规划`。
+
+## 2026-07-23｜C9b 规划提交补录
+
+- Commit：`f9c2d10`（`docs(openspec): 启动C9b judge校准与状态语义规划`）。本条只补录上一规划提交的真实 hash，不记录本次方案批准状态同步。
+
+## 2026-07-23｜C9b 方案审阅批准
+
+- 用户批准：proposal 的 24-case faithful×relevant 四象限校准集、full 3 repeats、strict parser、score-derived pass、objective/judge/global status matrix、external-call gate 与 non-goals；design 的 15 条决策记录及 `evaluation` delta 的 4 requirements / 12 scenarios 均通过事前规划闸门。
+- 当前边界：本次表述确认方案，不自动解释为 offline TDD 实现授权；`tasks.md` 的 implementation authorization 继续未勾选，runner/tests/calibration artifacts/guide/baseline 均不修改。
+- 外调边界：live canary 最多 4 judge calls、full 最多 72、合计最多 76 的调用仍未授权；embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 实际调用量与数据出站保持 0。
+- 下一闸门：等待用户明确授权进入 offline TDD implementation；即使获得实现授权，live judge calibration 仍需后续单独披露 provider/model、出站、费用/限流和 raw artifact 策略并授权。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 确认C9b方案审阅通过`。
+
+## 2026-07-23｜C9b 方案批准状态同步验证
+
+- 状态验证：proposal 与 design/delta 两项批准任务均已勾选，offline TDD implementation authorization 仍未勾选；`.ai/ACTIVE_TASK.md` 明确记录“规划已获批准，等待实现授权”，没有提前进入实现或接受 baseline。
+- 文档与范围验证：4 个 changed Markdown 本地链接 missing=0，`git diff --check` 通过；`openspec/specs/` baseline、`scripts/`、`docs/eval/`、eval data/fixture、受保护本地配置、Java/POM 和前端 tracked diff 均为 0。
+- 跳过项与外调：仅同步批准状态，未修改代码/数据，因此 Python、Maven、frontend build、Docker/backend 均 `SKIPPED`；live judge/provider 未授权，实际业务调用和数据出站均为 0。
+- 剩余风险：实现尚未开始，calibration corpus、strict parser、status matrix 和 runner 均仍是 planned；只有后续 offline TDD 验证完成后才能称实现 ready，只有另行授权并完成 live calibration 后才能称 judge 获得校准 evidence。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 确认C9b方案审阅通过`。
