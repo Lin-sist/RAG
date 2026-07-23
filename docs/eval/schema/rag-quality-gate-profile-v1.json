@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rag-quality-gate-profile-v1",
+  "title": "RAG Quality Gate Profile V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileId",
+    "profileVersion",
+    "status",
+    "thresholdStatus",
+    "dataset",
+    "runIdentity",
+    "requiredChannels",
+    "errorPolicy",
+    "missingPolicy",
+    "slices",
+    "rules"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "rag-quality-gate-profile-v1"},
+    "profileId": {"type": "string", "minLength": 1},
+    "profileVersion": {"type": "string", "minLength": 1},
+    "status": {"enum": ["DRAFT", "ACTIVE"]},
+    "thresholdStatus": {"enum": ["PENDING_REFERENCE_EVIDENCE", "APPROVED"]},
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestPath", "manifestSha256", "releaseVersion", "expectedSampleCount", "selectionMode"],
+      "properties": {
+        "manifestPath": {"type": "string", "minLength": 1},
+        "manifestSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "releaseVersion": {"type": "string", "minLength": 1},
+        "expectedSampleCount": {"type": "integer", "minimum": 1},
+        "selectionMode": {"const": "full"}
+      }
+    },
+    "runIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "topK", "minScore", "enableRerank"],
+      "properties": {
+        "mode": {"enum": ["retrieval-only", "generation/citation"]},
+        "topK": {"type": "integer", "minimum": 1},
+        "minScore": {"type": "number"},
+        "enableRerank": {"type": "boolean"}
+      }
+    },
+    "requiredChannels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["retrieval", "objective", "judge"]}
+    },
+    "errorPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retrieveErrorsMax", "rateLimitErrorsMax", "retryCountMax"],
+      "properties": {
+        "retrieveErrorsMax": {"type": "integer", "minimum": 0},
+        "rateLimitErrorsMax": {"type": "integer", "minimum": 0},
+        "retryCountMax": {"type": "integer", "minimum": 0}
+      }
+    },
+    "missingPolicy": {"const": "NOT_EVALUABLE"},
+    "slices": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "axis", "value", "minimumDenominator"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "axis": {"enum": ["all", "type", "difficulty", "answerability"]},
+          "value": {"type": ["string", "boolean"]},
+          "minimumDenominator": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "channel", "slice", "metric", "operator", "target", "required"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "channel": {"enum": ["retrieval", "objective", "judge"]},
+          "slice": {"type": "string", "minLength": 1},
+          "metric": {"type": "string", "minLength": 1},
+          "operator": {"enum": ["minInclusive", "maxInclusive"]},
+          "target": {"type": ["number", "null"]},
+          "maxAbsoluteRegression": {"type": ["number", "null"], "minimum": 0},
+          "required": {"type": "boolean"}
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "ACTIVE"}}},
+      "then": {
+        "properties": {
+          "thresholdStatus": {"const": "APPROVED"},
+          "rules": {
+            "items": {
+              "properties": {"target": {"type": "number"}}
+            }
+          }
+        }
+      }
+    }
+  ]
+}

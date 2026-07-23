@@ -1193,3 +1193,26 @@
 - 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有 Python/Java/前端实现改动，因此 Python 全量、Maven、frontend build、Docker/Testcontainers、live backend 与 live provider 均 `SKIPPED`。
 - 下一闸门：等待用户审阅并批准两道闸、initial retrieval-only profile、`PASS/FAIL/NOT_EVALUABLE/INVALID` 与 `0/3/4/2`、15 条 decisions、4/12 delta 和 offline TDD 实现授权。批准 offline implementation 仍不包含 v2/150×3 reference calls。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C10质量阈值门禁规划`。
+
+## 2026-07-23｜C10 规划提交补录
+
+- Commit：`76331fa`（`docs(openspec): 启动C10质量阈值门禁规划`）。本条只补录上一规划提交的真实 hash，不记录本次 offline implementation 改动。
+
+## 2026-07-23｜C10 规划批准并获准进入 offline TDD
+
+- 用户批准：proposal 的两道闸、profile/status/exit-code 语义、initial retrieval-only 边界与 non-goals；design 的 15 条 decisions 与 `evaluation` delta 的 4 requirements / 12 scenarios 均通过事前门禁。
+- 实现授权：用户明确批准进入 offline TDD；提交责任继续为 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 外调边界：用户明确不授权 reference calls。本轮只允许 synthetic/static/local evidence；v2/150×3 reference、debug retrieval、query embedding、rerank、ask、generation、judge 或其他 provider 调用均不得执行，数据出站必须为 0。
+- Closeout 边界：offline implementation 完成后 change 继续保持 `ACTIVE` 等待用户验收和 reference gate 决策；DRAFT profile 不切为 ACTIVE，不接受 baseline、不归档、不恢复 IDLE。
+- Commit：`pending`。
+
+## 2026-07-23｜C10 offline TDD implementation 完成
+
+- 实现范围：新增 `scripts/evaluate_quality_gate.py` 与 21 条 evaluator 回归，交付 `rag-quality-gate-profile-v1` schema 和 `rag-eval-dev-v2-retrieval-regression-v1` DRAFT profile；支持 versioned dataset/run/channel identity、固定 `all/type/difficulty/answerability` slices、retrieval/objective/judge 指标、hard threshold、reference regression AND、minimum denominator、fail-closed missing/error、`PASS/FAIL/NOT_EVALUABLE/INVALID=0/3/4/2`、脱敏 JSON/Markdown 与 `--no-overwrite`。
+- TDD 证据：按纵向 RED→GREEN 锁定 ACTIVE pass、DRAFT fail-closed、invalid contract、固定切片与分母、required missing/error budget、hard+reference、objective/judge channel、no-answer completeness、selection/dataset/reference identity、maxInclusive、CLI output/exit code 与 no-overwrite；最终自审另以失败用例复现并修复“缺 judge score 抛 KeyError”“DRAFT 不保留预期规则”“metric 可错误绑定 channel”及“reference rule identity 未校验”四项边界。
+- 文档与 profile：`docs/eval/RAG_EVAL_GUIDE.md` 已补两步运行、profile lifecycle/versioning、稳定退出码、CI 示例、raw artifact 与 external-call boundary；首个 12-rule retrieval profile 保持 `DRAFT / PENDING_REFERENCE_EVIDENCE`，12 个 target 均为 `null`，未猜测阈值或宣称质量结论。
+- 验证：evaluator 聚焦为 21 tests / OK；dataset/direct/reproducible 关联 suites 为 105 tests / OK；最终 `python -B -m unittest discover -s scripts -p 'test_*.py'` 为 154 tests / OK。Direct 与 reproducible v2 plan-only 均为 `VALID`、各选 1 条，实际业务调用为 0。SensitiveLogs 扫描 311 source files / PASS；4 个 changed Markdown 本地链接 missing=0；C10 新增 guide section 的 secret/absolute-path 命中为 0；8 个 changed/untracked 文件中受保护或越界路径为 0；`git diff --check` 通过。
+- 跳过项与外调：用户未授权 reference calls；未执行 v2/150×3 reference、debug retrieval、query embedding、rerank、ask、generation、judge、LLM/provider、backend 或任何数据出站，实际调用与费用均为 0。Java/POM/前端/依赖/生产配置无改动，因此 Maven、frontend build、Docker/Testcontainers、live backend 均 `SKIPPED`。OpenSpec CLI 当前不可用，未声称 CLI validation 通过。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、v1/v2 release/fixture/review、历史 reports/history、Java/API、数据库、前端、production prompt/citation/retrieval/rerank/no-answer/default judge/provider；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：offline evaluator 已 ready，但没有正式 v2 reference evidence、具体阈值或重复运行稳定性证据；因此不能声明 ACTIVE quality gate、质量达标、production-ready 或 C10 完整归档。Change 保持 `ACTIVE`，等待用户验收和 reference gate 决策；不接受 baseline、不归档、不恢复 IDLE。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(评测): 实现C10离线质量阈值门禁`。

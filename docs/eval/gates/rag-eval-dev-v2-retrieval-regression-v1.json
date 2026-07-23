@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "rag-quality-gate-profile-v1",
+  "profileId": "rag-eval-dev-v2-retrieval-regression",
+  "profileVersion": "v1-draft",
+  "status": "DRAFT",
+  "thresholdStatus": "PENDING_REFERENCE_EVIDENCE",
+  "dataset": {
+    "manifestPath": "docs/eval/dataset-manifest.json",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
+    "releaseVersion": "rag-eval-dev-v2",
+    "expectedSampleCount": 150,
+    "selectionMode": "full"
+  },
+  "runIdentity": {
+    "mode": "retrieval-only",
+    "topK": 5,
+    "minScore": 0.3,
+    "enableRerank": true
+  },
+  "requiredChannels": ["retrieval"],
+  "errorPolicy": {
+    "retrieveErrorsMax": 0,
+    "rateLimitErrorsMax": 0,
+    "retryCountMax": 0
+  },
+  "missingPolicy": "NOT_EVALUABLE",
+  "slices": [
+    {"id": "overall", "axis": "all", "value": "all", "minimumDenominator": 130},
+    {"id": "type-fact", "axis": "type", "value": "fact", "minimumDenominator": 35},
+    {"id": "type-definition", "axis": "type", "value": "definition", "minimumDenominator": 30},
+    {"id": "type-reasoning", "axis": "type", "value": "reasoning", "minimumDenominator": 40},
+    {"id": "type-multi-hop", "axis": "type", "value": "multi_hop", "minimumDenominator": 25},
+    {"id": "type-no-answer", "axis": "type", "value": "no_answer", "minimumDenominator": 20},
+    {"id": "difficulty-easy", "axis": "difficulty", "value": "easy", "minimumDenominator": 43},
+    {"id": "difficulty-medium", "axis": "difficulty", "value": "medium", "minimumDenominator": 57},
+    {"id": "difficulty-hard", "axis": "difficulty", "value": "hard", "minimumDenominator": 30},
+    {"id": "answerable", "axis": "answerability", "value": true, "minimumDenominator": 130}
+  ],
+  "rules": [
+    {"id": "overall-recall5", "channel": "retrieval", "slice": "overall", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "overall-mrr", "channel": "retrieval", "slice": "overall", "metric": "mrr", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "overall-top1", "channel": "retrieval", "slice": "overall", "metric": "top1_source_accuracy", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "fact-recall5", "channel": "retrieval", "slice": "type-fact", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "definition-recall5", "channel": "retrieval", "slice": "type-definition", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "reasoning-recall5", "channel": "retrieval", "slice": "type-reasoning", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "multi-hop-recall5", "channel": "retrieval", "slice": "type-multi-hop", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "no-answer-retrieve-success", "channel": "retrieval", "slice": "type-no-answer", "metric": "retrieve_success_rate", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "easy-recall5", "channel": "retrieval", "slice": "difficulty-easy", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "medium-recall5", "channel": "retrieval", "slice": "difficulty-medium", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "hard-recall5", "channel": "retrieval", "slice": "difficulty-hard", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true},
+    {"id": "answerable-recall5", "channel": "retrieval", "slice": "answerable", "metric": "recall_at_5", "operator": "minInclusive", "target": null, "required": true}
+  ]
+}

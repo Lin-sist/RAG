@@ -8,7 +8,7 @@
 
 - ID：`2026-07-23-eval-quality-threshold-gates`
 - 位置：`openspec/changes/2026-07-23-eval-quality-threshold-gates/`
-- 阶段：C10 proposal/design/tasks/spec delta 已建立，等待用户审阅与 offline TDD implementation 授权。
+- 阶段：C10 offline TDD implementation 已完成并通过本地验证，等待用户验收；reference evidence/live/provider 调用未授权。
 
 ## Goal
 
@@ -31,10 +31,10 @@
 
 ## Current Gate
 
-1. 用户审阅并批准 proposal 的两道闸、profile/status/exit-code 语义、initial retrieval-only 边界与 non-goals。
-2. 用户审阅并批准 design 的 15 条决策记录和 `evaluation` delta 的 4 requirements / 12 scenarios。
-3. 用户明确授权后才进入 offline TDD implementation；该授权默认不包含任何 live/reference provider 调用。
-4. 首个 profile 只有在 v2 reference evidence 单独披露/授权并由用户确认具体阈值后才可从 `DRAFT` 切为 `ACTIVE`。
+1. Offline evaluator、DRAFT profile、聚焦/全量测试和安全验证已完成，等待用户验收 offline implementation。
+2. 本轮只使用 synthetic/static/local evidence；backend/provider 调用和数据出站必须为 0。
+3. 首个 profile 只有在 v2 reference evidence 单独披露/授权并由用户确认具体阈值后才可从 `DRAFT` 切为 `ACTIVE`。
+4. Offline implementation 完成后保持 change `ACTIVE`，等待用户验收与 reference gate 决策，不提前接受 baseline 或归档。
 
 ## Submission Responsibility
 

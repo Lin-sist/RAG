@@ -441,6 +441,49 @@ python -B scripts\run_judge_calibration.py --plan-only --profile full --judge-mo
 
 normal details JSON 新增 `objectiveMetricStatus`、`judgeMetricStatus`、`metricChannels` 和 `judgeContractConfig`。judge all-error 会使 global `PARTIAL`，但不会污染完整 objective channel；judge off 为 `SKIPPED`，no-answer-only 且 judge 已开启为 `NOT_APPLICABLE`。旧报告缺少 C9b 字段时只能解释为 `unavailable`，不得回填为 0、`SKIPPED` 或 `PARTIAL`。
 
+### 6.2 C10 quality gate profile 与离线 evaluator
+
+C10 将“产生评测 evidence”和“应用质量 policy”拆成两步。`run_rag_eval.py` / `run_reproducible_rag_eval.py` 继续负责生成本地 details JSON；`evaluate_quality_gate.py` 只读取已存在的 details、tracked profile 与可选 reference summary，不登录 backend，也不调用 embedding、rerank、ask、generation 或 judge。
+
+当前 tracked profile 为 `docs/eval/gates/rag-eval-dev-v2-retrieval-regression-v1.json`。它固定 v2 manifest、full 150 条 selection、retrieval-only、`topK=5`、`minScore=0.3`、rerank enabled，以及 overall/type/difficulty/answerability slices。由于 v2 reference calls 未授权，profile 保持 `DRAFT`、`thresholdStatus=PENDING_REFERENCE_EVIDENCE`，所有 target 为 `null`；即使输入 evidence 完整，也只能返回 `NOT_EVALUABLE/4`，不能宣称 active quality gate 已建立。
+
+对已经存在的本地 details 做离线检查：
+
+```powershell
+python -B scripts\evaluate_quality_gate.py `
+  --profile docs\eval\gates\rag-eval-dev-v2-retrieval-regression-v1.json `
+  --details tmp\eval\candidate-details.json `
+  --output-json tmp\eval\candidate-gate.json `
+  --output-markdown tmp\eval\candidate-gate.md `
+  --no-overwrite
+```
+
+如果 profile 规则包含 `maxAbsoluteRegression`，还必须显式提供与 profile/dataset/run identity 完全一致的锁定 reference summary：
+
+```powershell
+python -B scripts\evaluate_quality_gate.py `
+  --profile docs\eval\gates\approved-profile.json `
+  --details tmp\eval\candidate-details.json `
+  --reference tmp\eval\locked-reference-gate.json `
+  --output-json tmp\eval\candidate-gate.json `
+  --output-markdown tmp\eval\candidate-gate.md `
+  --no-overwrite
+```
+
+退出码与含义：
+
+| 退出码 | Gate status | 含义 |
+|---:|---|---|
+| `0` | `PASS` | ACTIVE profile、身份/分母/通道完整，所有 required hard/reference rules 通过 |
+| `3` | `FAIL` | evidence 完整且可比较，但至少一条 required quality rule 未达标 |
+| `4` | `NOT_EVALUABLE` | DRAFT、UNVERSIONED、selection/identity/channel/error/missing/denominator/reference 不完整，不能作质量判断 |
+| `2` | `INVALID` | profile/schema/operator/threshold/input contract 非法 |
+| `1` | runtime error | evaluator 自身出现未分类读写或运行异常，不得改称质量 FAIL |
+
+门禁输出只保留 profile/dataset/run identity、rule、slice、metric、denominator、observed、target、tolerance、result 与安全 reason code，不复制 question、answer、claim、citation、context、provider body、Authorization、secret 或绝对本地路径。缺失 required metric 不填 0，不删除失败样本；optional rule 缺失时明确 `SKIPPED`。hard threshold 与 reference tolerance 并存时必须同时通过，tolerance 不能豁免 identity、status、error、missing 或 denominator 门禁。
+
+未来激活首个 retrieval profile 前，仍须单独披露并授权 v2/150×3 reference 运行的 provider/model、最多调用量、数据出站、费用/零费用依据、限流、timeout/retry 与 raw artifact 策略。当前 offline implementation 授权不包含这些调用。
+
 ## 7. 如何记录优化前后对比
 
 临时实验报告默认写入 `tmp/eval/`，避免把每次本地运行都提交到仓库：
