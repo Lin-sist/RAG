@@ -1216,3 +1216,18 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、v1/v2 release/fixture/review、历史 reports/history、Java/API、数据库、前端、production prompt/citation/retrieval/rerank/no-answer/default judge/provider；未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险：offline evaluator 已 ready，但没有正式 v2 reference evidence、具体阈值或重复运行稳定性证据；因此不能声明 ACTIVE quality gate、质量达标、production-ready 或 C10 完整归档。Change 保持 `ACTIVE`，等待用户验收和 reference gate 决策；不接受 baseline、不归档、不恢复 IDLE。
 - Commit：`pending`；提交责任为用户手动提交。建议 `feat(评测): 实现C10离线质量阈值门禁`。
+
+## 2026-07-23｜C10 offline implementation 提交补录
+
+- Commit：`4e74b70d394d42c7dd3f1cae72e2a0e58228caf8`（`feat(评测): 实现C10离线质量阈值门禁`）。本条只补录上一执行提交的真实 hash，不记录本次验收归档改动。
+
+## 2026-07-23｜C10 用户验收、baseline 接受与归档
+
+- 用户授权与结果：用户确认 C10 offline implementation 验收完成并要求检查后归档。4 requirements / 12 scenarios 的 delta body 已原文接受进 `openspec/specs/evaluation/spec.md`；change 已移动到 `openspec/changes/archive/2026-07-23-eval-quality-threshold-gates/`，`.ai/ACTIVE_TASK.md=IDLE`，当前无未归档 change。
+- Reference gate：用户此前明确不授权 reference calls，且本轮没有新的外调授权；v2/150×3 reference、最多 450 debug retrieval/可能 450 query embedding、locked reference summary、hard floors/tolerances 与 profile activation 全部按 `SKIPPED` 收口。首个 retrieval profile 保持 `DRAFT / PENDING_REFERENCE_EVIDENCE`、12 个 target 均为 `null`；本次归档只确认 offline gate framework，不确认 ACTIVE quality gate 或任何 retrieval/generation/citation/judge 质量达标。
+- 长期事实源：同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`，明确 C10 已接受的能力与未完成的 reference/activation 边界。
+- 验证：archive 4 个必需 artifacts 齐全、tasks 未勾选数 0、未归档 change 数 0、`ACTIVE_TASK=IDLE`；delta body 是 `evaluation` baseline exact suffix，计数为 4 requirements / 12 scenarios。`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 154 tests / OK；SensitiveLogs 扫描 311 source files / PASS。
+- 跳过项与外调：本轮只有 OpenSpec baseline/archive 与长期文档收口，没有 Java、Python 实现、POM、前端、依赖或运行时配置改动，因此 Maven、frontend build、Docker/Testcontainers、live backend 均 `SKIPPED`。Reference/provider 调用、数据出站、费用与限流事件均为 0；OpenSpec CLI 当前不可用，未声称 CLI validation 通过。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、v1/v2 release/fixture/review、历史 reports/history、Java/API、数据库、前端、production prompt/citation/retrieval/rerank/no-answer/default judge/provider；未暂存、提交、push、创建 PR、部署或发布。
+- 后续 readiness：冻结蓝图的下一主线候选为 C11 `genai-tracing-core`。其前置 C10 离线契约已接受，结论为“归档提交完成后可进入独立规划”；为避免把 C10 closeout 与 C11 proposal 混入同一提交，本轮不创建 C11 active change。用户手动提交本次归档并恢复干净工作区后，可启动 C11 proposal/design/tasks/spec delta 事前闸门。
+- Commit：`pending`；提交责任为用户手动提交。建议 `chore(openspec): 验收并归档C10离线质量门禁`。

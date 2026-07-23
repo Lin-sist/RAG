@@ -2,43 +2,23 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
-## Change
+当前没有活动 change。新重大变更必须重新完成 readiness 与 OpenSpec 事前闸门。
 
-- ID：`2026-07-23-eval-quality-threshold-gates`
-- 位置：`openspec/changes/2026-07-23-eval-quality-threshold-gates/`
-- 阶段：C10 offline TDD implementation 已完成并通过本地验证，等待用户验收；reference evidence/live/provider 调用未授权。
+## Last Completed
 
-## Goal
+- Change：`2026-07-23-eval-quality-threshold-gates`
+- 位置：`openspec/changes/archive/2026-07-23-eval-quality-threshold-gates/`
+- 结果：完成 `rag-quality-gate-profile-v1`、独立离线 evaluator、固定切片、阈值/容差、fail-closed 状态、脱敏 summary 与稳定退出码。
+- 验收：用户已验收 offline framework；4 requirements / 12 scenarios 已接受进 `evaluation` baseline。Reference calls 未授权并按 `SKIPPED` 收口，首个 retrieval profile 保持 `DRAFT`，因此不确认 ACTIVE quality gate 或项目质量达标。
 
-建立版本化 eval quality gate profile、按指标通道与 `all/type/difficulty/answerability` 切片的确定性阈值/容差判定、缺失与错误 fail-closed 语义，以及 `PASS/FAIL/NOT_EVALUABLE/INVALID` 的稳定退出码。
+## Start A New Material Change
 
-## Scope
-
-- tracked profile schema/identity 与 DRAFT/ACTIVE 生命周期；
-- 独立 offline evaluator，消费 local details JSON，不触发 backend/provider；
-- hard threshold、reference regression tolerance、minimum denominator 与 per-channel completeness；
-- 脱敏 gate JSON/Markdown/console output；
-- 首个 v2 retrieval profile 的 shape，以及后续 reference evidence/阈值激活闸门。
-
-## Non-Goals
-
-- planning/offline implementation 阶段不执行 embedding、rerank、debug retrieval、ask、generation、judge 或其他 provider 调用；
-- 不追认 C7 历史 30 条报告为 v2 gate evidence，不把 C9a/C9b 离线结果冒充真实 generation/judge baseline；
-- 不修改 dataset、metric formulas、Java/API、数据库、前端、依赖、production prompt/citation/no-answer、默认 judge/reranker/provider；
-- 不自动调参、不修改 CI 平台配置、不进入 C11+ 或 C14。
-
-## Current Gate
-
-1. Offline evaluator、DRAFT profile、聚焦/全量测试和安全验证已完成，等待用户验收 offline implementation。
-2. 本轮只使用 synthetic/static/local evidence；backend/provider 调用和数据出站必须为 0。
-3. 首个 profile 只有在 v2 reference evidence 单独披露/授权并由用户确认具体阈值后才可从 `DRAFT` 切为 `ACTIVE`。
-4. Offline implementation 完成后保持 change `ACTIVE`，等待用户验收与 reference gate 决策，不提前接受 baseline 或归档。
-
-## Submission Responsibility
-
-`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+1. 冻结蓝图的下一主线候选是 C11 `genai-tracing-core`；先等待用户手动提交本次 C10 归档，使工作区恢复干净。
+2. 在 `openspec/changes/<change-id>/` 创建 `proposal.md`、`design.md`、`tasks.md` 和需要的 spec delta。
+3. 将本文件 `Status` 改为 `ACTIVE`，并填写 change id、目标、范围、非目标和验收入口。
+4. 按 `AGENTS.md` 执行并持续更新 tasks 与 `.ai/AGENT_LOG.md`；完成且验证后，经用户确认再归档并恢复 `IDLE`。
 
 ## Emergency Rule
 

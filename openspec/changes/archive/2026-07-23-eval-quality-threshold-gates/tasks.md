@@ -50,17 +50,17 @@
 
 ## 6. Reference Evidence And Profile Activation Gate
 
-- [ ] `PENDING USER AUTHORIZATION`：执行前确认 provider/model、固定 KB/config/Git/dataset identity、数据出站、费用/零费用依据、限流、timeout/retry 与 raw artifact 策略。
-- [ ] 推荐预算待确认：full v2 150 条 × 3 repeats = 最多 450 debug retrieval；可能最多 450 query embedding；heuristic reranker 下 external rerank/ask/generation/judge=0。
-- [ ] 先运行 plan/preflight；任何 dataset/KB/config/Git drift、retrieve error、rate limit、fallback 或 excess calls 立即停止，不保留成功子集定阈值。
-- [ ] 生成锁定 reference summary，提出 overall/type/difficulty/answerability hard floors 与 regression tolerances；不得自动修改 profile 为 ACTIVE。
-- [ ] 用户审阅并明确确认具体阈值、容差与 profile identity 后，才将 retrieval profile 从 `DRAFT` 切为 `ACTIVE`。
-- [ ] Generation/objective 与 judge profile 在各自真实 evidence 不足时保持未激活，不阻塞 retrieval profile，也不产生相应质量结论。
+- [x] `SKIPPED`：用户未授权 reference calls，因此未选择 provider/model、固定 KB/config/Git live identity，也未产生数据出站、费用、限流、timeout/retry 或 raw reference artifact。
+- [x] `SKIPPED`：未授权 full v2 150 条 × 3 repeats；实际 debug retrieval、query embedding、external rerank、ask、generation、judge/provider 调用均为 0。
+- [x] `SKIPPED`：仅完成 direct/reproducible plan-only 的本地 VALID 检查；未进入 reference runtime preflight，也未从任何成功子集推断阈值。
+- [x] `SKIPPED`：未生成锁定 reference summary，未提出或自动学习 hard floors / regression tolerances。
+- [x] `SKIPPED`：没有具体阈值、容差或 reference identity 可供审阅，retrieval profile 保持 `DRAFT / PENDING_REFERENCE_EVIDENCE`。
+- [x] Generation/objective 与 judge profile 保持未激活；本 change 只接受通用离线 contract/evaluator，不产生 retrieval、generation、citation 或 judge 质量结论。
 
 ## 7. Acceptance And Closeout
 
-- [ ] 用户验收 offline evaluator、profile contract、slice/threshold/status/exit code、安全与兼容性。
-- [ ] 用户验收首个 ACTIVE profile 的 reference evidence、具体阈值与容差；若 reference gate 未授权或未完成，C10 不得以“active quality gate 完成”归档。
-- [ ] 将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`。
-- [ ] 同步 project/architecture/technical debt/optimization index 与 `.ai/AGENT_LOG.md`。
-- [ ] 恢复 `.ai/ACTIVE_TASK.md=IDLE` 并归档 change。
+- [x] 用户验收 offline evaluator、profile contract、slice/threshold/status/exit code、安全与兼容性，并要求检查后归档。
+- [x] `SKIPPED`：首个 ACTIVE profile 的 reference evidence、具体阈值与容差未授权、未产生；本次只以“offline gate framework + DRAFT profile”归档，不声称 active quality gate 完成。
+- [x] 将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`。
+- [x] 同步 project/architecture/technical debt/optimization index 与 `.ai/AGENT_LOG.md`。
+- [x] 恢复 `.ai/ACTIVE_TASK.md=IDLE` 并归档 change。

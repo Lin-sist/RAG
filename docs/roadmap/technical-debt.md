@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-22
+> 状态日期：2026-07-23
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
@@ -57,7 +57,8 @@
 
 - C9a 已验收归档 objective lexical claim support：确定性句子/列表拆分，只接受 provenance-valid returned citation snippets，按 exact / `0.70` claim-token coverage 输出逐 claim attribution、全 claim 分母与局部完整性状态；4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline。
 - 该结果只能说明固定算法下的词法证据对齐，不能证明语义蕴含或完整事实正确性；真实 150 条 generation evidence 尚未授权和执行。
-- C9b 已验收归档：judge contract/corpus/validator/runner 与 objective/judge/global 状态分离均已落地，4 requirements / 12 scenarios 已接受进 baseline；live canary/full 未授权并按 `SKIPPED` 收口，未来真实校准仍需单独披露调用量、模型、数据出站、费用/限流并授权。C10 再定义质量阈值与退出码门禁。
+- C9b 已验收归档：judge contract/corpus/validator/runner 与 objective/judge/global 状态分离均已落地，4 requirements / 12 scenarios 已接受进 baseline；live canary/full 未授权并按 `SKIPPED` 收口，未来真实校准仍需单独披露调用量、模型、数据出站、费用/限流并授权。
+- C10 已验收归档：版本化 profile contract、离线 evaluator、固定类别切片、阈值/容差语义、fail-closed 状态和稳定退出码已落地，4 requirements / 12 scenarios 已接受进 baseline。Reference calls 未授权并按 `SKIPPED` 收口，首个 retrieval profile 保持 DRAFT；正式 reference evidence、具体阈值和 ACTIVE quality gate 仍是后续独立 evidence/activation 工作，不得把本次归档解释为质量达标。
 
 ### 4. SSE 结构化结果
 

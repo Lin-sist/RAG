@@ -51,6 +51,13 @@
 - canary 固定 4×1，full 固定 24×3；runner 无自动 retry，并要求显式 `--execute-live-judge`、本地 raw details 与 `--no-overwrite`。
 - 4 requirements / 12 scenarios 已接受进长期 `evaluation` baseline；live calibration 未授权并按 `SKIPPED` 收口，真实 judge/provider 调用与数据出站为 0。尚无 agreement evidence，不能宣称 judge 已真实校准、默认开启或 C10 gate 已建立。
 
+### C10：质量阈值门禁（离线框架已验收归档）
+
+- archived change：`../../openspec/changes/archive/2026-07-23-eval-quality-threshold-gates/`。
+- `../eval/schema/rag-quality-gate-profile-v1.json` 与独立 evaluator 固定 profile/dataset/run/channel identity、`all/type/difficulty/answerability` 切片、hard/reference AND、minimum denominator、缺失/错误 fail-closed 语义以及 `0/3/4/2` 退出码。
+- 首个 `rag-eval-dev-v2-retrieval-regression-v1` profile 保持 `DRAFT / PENDING_REFERENCE_EVIDENCE`，12 个 target 均未填写；reference calls 未授权并按 `SKIPPED` 收口，实际 backend/provider 调用和数据出站为 0。
+- 4 requirements / 12 scenarios 已接受进长期 `evaluation` baseline；本次只确认 offline gate framework，不确认 ACTIVE quality gate、retrieval/generation/citation/judge 质量达标或 production readiness。
+
 ## 历史材料
 
 `history/` 保存 v3 正式计划形成前的 hybrid、reranker abstraction 和 token chunker 演进记录。它们可以解释代码为何形成当前结构，但不得单独用于判断当前阶段、指标或待办。

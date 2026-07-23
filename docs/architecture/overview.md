@@ -78,7 +78,7 @@
 - `UserDetailsServiceImpl` 从数据库加载未删除用户及其有效角色；运行时不再初始化固定默认账号。
 - 真实 model reranker 已完成并验收 30 条开发样本 A/B，C7 delta 已接受进 `evaluation` baseline 并归档；默认 provider 仍为 heuristic。
 - 当前默认、已验收的 150 条 v2 是开发评测 release；30 条 v1 仍可显式复现。两者都不是生产数据集、隐藏 benchmark 或论文级基准。
-- C8b 只扩充并复核 question/annotation；C9a/C9b 均已验收归档，但 live judge calibration、C10 quality gate 与真实 generation evidence 仍是独立后续范围。
+- C8b 只扩充并复核 question/annotation；C9a/C9b/C10 离线能力均已验收归档。C10 当前只有 DRAFT retrieval profile，reference calls 与具体阈值未授权，因此 active quality gate、live judge calibration 与真实 generation evidence 仍未完成。
 - 标题感知、长代码块和长段落专项仍待验证。
 - 当前只有请求日志与诊断字段，尚未形成完整 GenAI trace、指标和告警体系。
 
