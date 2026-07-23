@@ -1013,3 +1013,24 @@
 - 跳过项与外调：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；本轮无 Java/POM/前端/依赖/运行时服务改动，因此 Maven、frontend build、Docker/Testcontainers 与 live backend/provider smoke 均 `SKIPPED`。未获得外部业务调用授权，真实 embedding/rerank/ask/judge/LLM/provider 调用量与数据出站均为 0。
 - 剩余风险与后续 readiness：150 条 v2 仍只来自 3 份 tracked fixture，是开发评测 release，不是生产分布、隐藏 benchmark 或论文级数据集。C9a `claim-evidence-objective-metrics` 的前置数据治理已满足，可以另立 Type C change 进入规划；claim 单位、evidence 对齐、指标分母和状态语义仍须在新 change 事前闸门决定。
 - Commit：`pending`；提交责任为用户手动提交。建议 `chore(openspec): 验收并归档C8b评测数据扩充`。
+
+## 2026-07-23｜C9a claim-evidence objective metrics 规划启动
+
+- 用户决策与提交责任：用户要求检查当前项目状态，并在允许时直接开始 C9a 规划。提交责任按仓库默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 HEAD 为 `1577aab`、工作区干净、`.ai/ACTIVE_TASK.md=IDLE`、C8b 4 requirements / 12 scenarios 已接受进 `evaluation` baseline并归档、默认 v2 与显式 v2 manifest 已完成验收，当前无未归档 change。C8b closeout 已明确 C9a 的数据治理前置满足。
+- 能力分类：`confirmed` 为 generation/citation/no-answer 客观指标、citation-context provenance、可选 judge 与 v1/v2 dataset identity；`partial` 为现有 details 已含 answer/citations/contexts 但没有 claim attribution；`planned` 为确定性 claim splitter、validated-citation-only evidence、exact/token lexical alignment、分母与局部状态；`out_of_scope` 为 C9b judge calibration、C10 quality gate、生产行为和 dataset 修改；`unknown` 为初始 0.70 threshold 在未来真实 150 条 generation evidence 上的分布。
+- 规划范围与 artifacts：建立 Type C change `2026-07-23-claim-evidence-objective-metrics` 的 proposal/design/tasks 与 `evaluation` spec delta，并激活 `.ai/ACTIVE_TASK.md`。规划采用句子/列表 claim、只接受通过 provenance 的 returned citations、exact + 0.70 claim-token coverage、所有抽取 claim 进入分母、`COMPLETE/PARTIAL/SKIPPED/NOT_APPLICABLE` 局部状态；明确不称 entailment/faithfulness。
+- 规划结构：change 下 proposal/design/tasks/spec delta 共 4 文件；design 12 条待用户确认的真实决策；delta 为 4 requirements / 12 scenarios。用户尚未批准 initial threshold、12 条决策、delta 或 TDD 实现授权。
+- 外部调用与范围安全：规划阶段真实 embedding/rerank/ask/judge/LLM/provider 调用量和数据出站均为 0；未修改 baseline spec、Python runner/tests、eval JSONL/fixture/manifest/schema/review、Java/API、配置、数据库、前端、依赖、默认 provider、生产 prompt/citation/no-answer 或历史报告，未进入 C9b/C10。
+- 跳过项：规划只修改 OpenSpec/ACTIVE_TASK/AGENT_LOG，不涉及实现，因此 Python、Maven、frontend build、Docker/Testcontainers 与 live backend/provider 均暂不运行；OpenSpec CLI 可用性将在规划验证中检查，未检查前不声称通过。
+- 剩余风险：deterministic lexical alignment 存在同义 false negative 与共享术语 false positive；0.70 是待事前闸门批准的 v1 初始阈值，不是经验校准或质量门禁。未来一次 150 条 evidence run 的保守上限为 150 debug retrieval、150 ask、至多 300 query embedding、至多 150 generation、judge=0，当前未授权。
+- Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C9a客观claim证据指标规划`。
+
+## 2026-07-23｜C9a 规划门禁验证
+
+- 结构与状态：proposal/design/tasks/spec delta 共 4 文件；12 条 design decisions 均满足“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”三行结构；delta 为 4 requirements / 12 scenarios；`.ai/ACTIVE_TASK.md=ACTIVE` 且只指向 C9a，当前只有一个未归档 change。
+- 验证：direct plan-only 首次因漏传必需的 `--kb-id` 在任何 backend/provider 调用前退出；补 `--kb-id 0` 后返回 dataset `VALID`、v2、150 samples，选取 1 条时仅估算 debugRetrieve=1、ask=1、judge=0，plan-only 实际业务调用为 0。reproducible plan-only 返回同一 `VALID` v2 identity，选取 1 条时估算 debugRetrieve=1、ask=0、judge=0，实际业务调用为 0。SensitiveLogs 扫描 308 source files / PASS；新规划文件无 trailing whitespace、均以 LF 结尾且无本地 Markdown 链接；定向 secret value scan无命中；`git diff --check` 通过。
+- 范围检查：`openspec/specs/` baseline、`scripts/`、`docs/eval/`、fixture、`.env.local`、`application-dev.yml`、`.agents/` 与 `docs/学习文档/` tracked diff 为 0。当前工作区仅修改 `.ai/ACTIVE_TASK.md`、追加 `.ai/AGENT_LOG.md`，并新增 C9a change 目录；未修改业务代码、测试、数据或历史证据。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划无 Python 实现、Java/POM、前端、依赖或运行时服务改动，因此 Python 全量、Maven、frontend build、Docker/Testcontainers 与 live provider smoke 均 `SKIPPED`。真实 embedding/rerank/ask/judge/LLM/provider 调用量与数据出站均为 0。
+- 下一闸门：用户需先审阅并批准 proposal、12 条决策、4/12 delta 与 TDD 实现授权；真实 generation evidence 仍需另行授权，不随实现批准自动放开。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C9a客观claim证据指标规划`。
