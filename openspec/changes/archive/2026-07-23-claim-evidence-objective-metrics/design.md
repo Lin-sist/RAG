@@ -190,7 +190,7 @@ Maven、frontend build、Docker/live provider 在无 Java/前端/运行时改动
 
 首次真实 evidence 只能描述当前固定身份下的 objective lexical alignment。若 observed 分布显示 threshold 或 splitter 需要调整，应产生新的 algorithm version/change 后重新跑，不能覆盖原 evidence。
 
-## 12. Implementation Notes（待验收）
+## 12. Implementation Notes（已验收）
 
 - splitter 与 matcher 作为 direct runner 内的纯函数实现；reproducible runner 只引用 direct runner 的配置常量，不复制算法。
 - `claimMetricConfig` 同时进入 direct/repro plan、repro run metadata、Markdown header、details JSON、per-sample 和 aggregate；外部 metadata 声明不同 identity 时 fail closed。

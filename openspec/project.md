@@ -24,7 +24,7 @@
 - C7 full 六个 measured runs 的 strict identity、pairing 与 provider coverage 已通过，comparison=`COMPARABLE`；model 90/90 effective nvidia、fallback=0、coverage=100%。Server-side rerank P50/P95 为 363/688ms；overall latency 受 H1 冷启动异常影响，不能据 aggregate P95 宣称模型更快。
 - C8a 已验收归档：首个 `rag-eval-dev-v1` dataset manifest、`rag-eval-sample-v1` contract 和两个 runner 共用的本地 fail-fast validator 已落地；正式路径固定当前 30 条 question set 与 3 份 fixture，custom 输入只能显式降级为 `UNVERSIONED`。4 个 requirements / 13 个 scenarios 已接受进 `evaluation` baseline。
 - C8b 已验收归档：默认与显式 v2 manifest byte-identical，固定 150 条 exact quota、v1 seed raw/object/order identity、103 条新增 answerable 的 242 个 fixture contexts、150 条 review records 与三份 fixture coverage 49/43/44；4 requirements / 12 scenarios 已接受进 `evaluation` baseline。
-- C9a active change 已完成待验收的离线实现：direct runner 使用固定 `claim-lexical-v1` 将成功 answerable 输出按句子/列表拆分，并只对 provenance-valid returned citation snippets 做 exact 或 `0.70` claim-token coverage；逐 claim attribution、aggregate support rate 与 `COMPLETE/PARTIAL/SKIPPED/NOT_APPLICABLE` 局部状态已接入 direct/reproducible report/metadata。该实现尚未接受进 baseline，也未运行真实 150 条 generation evidence。
+- C9a 已验收归档：direct runner 使用固定 `claim-lexical-v1` 将成功 answerable 输出按句子/列表拆分，并只对 provenance-valid returned citation snippets 做 exact 或 `0.70` claim-token coverage；逐 claim attribution、aggregate support rate 与 `COMPLETE/PARTIAL/SKIPPED/NOT_APPLICABLE` 局部状态已接入 direct/reproducible report/metadata。4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline；真实 150 条 generation evidence 尚未授权和执行。
 
 ## 当前边界
 

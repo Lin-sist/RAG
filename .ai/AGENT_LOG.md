@@ -1058,3 +1058,18 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、`openspec/specs/` baseline、eval JSONL/fixture/review/schema/manifest、Java/API、数据库、前端、依赖、生产 prompt/citation/no-answer/provider、默认 reranker 或历史报告；未进入 C9b/C10，未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险与闸门：deterministic lexical metric 仍有同义 false negative 与共享术语 false positive，`0.70` 尚无真实 150 条 generation 分布校准；它不能证明 entailment/faithfulness。当前 change 保持 `ACTIVE` 等待用户验收；验收后才能接受 4/12 delta、归档并恢复 `IDLE`。真实 evidence 必须另行披露和授权。
 - Commit：`pending`；提交责任为用户手动提交。建议 `feat(评测): 实现C9a客观claim证据指标`。
+
+## 2026-07-23｜C9a 实现提交补录
+
+- Commit：`26228aa`（`feat(评测): 实现C9a客观claim证据指标`）。本条只补录上一实现提交的真实 hash，不记录本次验收归档提交。
+
+## 2026-07-23｜C9a 用户验收、baseline 接受与归档
+
+- 用户授权与结果：用户确认 C9a 验收通过。4 requirements / 12 scenarios 的 delta body 已原文接受进 `openspec/specs/evaluation/spec.md`；change 已移动到 `openspec/changes/archive/2026-07-23-claim-evidence-objective-metrics/`，`.ai/ACTIVE_TASK.md=IDLE`，当前无未归档 change。
+- 归档范围：同步 proposal/design/tasks、项目上下文、架构、技术债与优化索引；Optional Real Evidence Gate 因未获真实运行授权明确记为 `SKIPPED`，tasks 已全部闭环。C9a 只确认固定 `claim-lexical-v1` 的 objective lexical alignment，不确认 C9b judge calibration、semantic faithfulness、C10 quality gate 或真实 150 条 generation evidence。
+- 验证：归档目录 4 个必需 artifacts 齐全，tasks 未勾选数为 0，delta body 为 baseline exact suffix，计数为 4 requirements / 12 scenarios，`ACTIVE_TASK=IDLE` 且未归档 change 数为 0；`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 114 tests / OK；direct/reproducible plan-only 均为 `VALID` v2/150 samples 并显示 `claim-lexical-v1` / `0.70`；SensitiveLogs 扫描 308 source files / PASS；7 个 changed Markdown 的本地链接 missing=0；`git diff --check` 通过。
+- 跳过项与外调：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；无 Java/POM/前端/依赖/运行时服务改动，因此 Maven、frontend build、Docker/Testcontainers 与 live backend/provider smoke 均 `SKIPPED`。真实 embedding/rerank/ask/judge/LLM/provider 调用量、数据出站与费用均为 0。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、eval JSONL/fixture/review/schema/manifest、Java/API、数据库、前端、依赖、生产 prompt/citation/no-answer/provider、默认 reranker 或历史报告；未进入 C9b/C10，未暂存、提交、push、创建 PR、部署或发布。
+- C9b readiness：治理前置已满足，且代码事实确认 judge 默认关闭、已有可选 judge/聚合字段，但 `report_status` 仍只看 retrieve/ask error，judge 全失败仍可能 `CLEAN`，也没有独立 objective/judge status 或校准 evidence。C9b 可在本归档提交后另立 `judge-calibration-and-status-semantics` Type C change 进入规划；实现和任何真实 judge 校准调用仍需分别通过事前闸门与外调授权。
+- 剩余风险：C9a `0.70` 仍无真实 150 条 generation 分布证据；C9b 的 judge model/prompt、人工 gold、校准样本、agreement 指标、状态矩阵和错误降级语义尚未决策，不能从当前代码推定。
+- Commit：`pending`；提交责任为用户手动提交。建议 `chore(openspec): 验收并归档C9a客观claim证据指标`。

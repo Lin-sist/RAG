@@ -36,12 +36,12 @@
 - `../eval/review/rag-eval-dev-v2-review.jsonl`：150 条结构、grounding、duplicate 与语义复核事实，不复制完整 question、answer 或 fixture 正文。
 - C8b 的 4 requirements / 12 scenarios 已接受进长期 baseline并归档；这不代表 C9/C10/C14 或任何质量收益完成。
 
-### C9a：客观 Claim-Evidence 指标（实现完成，待验收）
+### C9a：客观 Claim-Evidence 指标（已验收归档）
 
-- active change：`2026-07-23-claim-evidence-objective-metrics`。
+- archived change：`archive/2026-07-23-claim-evidence-objective-metrics`。
 - direct runner 已新增固定 `claim-lexical-v1`：句子/列表 claim、provenance-valid returned citations、exact + `0.70` claim-token coverage、逐 claim attribution 与全 claim 分母。
 - direct/reproducible plan、run metadata、Markdown 和 details JSON 固定 splitter/tokenizer/threshold/evidence policy identity；identity 漂移会在 backend/provider 调用前失败。
-- 当前只有合成离线测试和 plan-only 证据，真实 generation/provider 调用量为 0；用户验收前不接受 baseline、不归档，也不宣称 faithfulness、C9b judge calibration 或 C10 quality gate 完成。
+- 4 个 requirements / 12 个 scenarios 已接受进长期 `evaluation` baseline；当前只有合成离线测试和 plan-only 证据，真实 generation/provider 调用量为 0，仍不宣称 faithfulness、C9b judge calibration 或 C10 quality gate 完成。
 
 ## 历史材料
 

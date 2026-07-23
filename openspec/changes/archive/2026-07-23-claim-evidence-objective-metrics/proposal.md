@@ -115,7 +115,7 @@ C8a/C8b 已完成正式 dataset release、schema、fixture、标注、review 与
 - raw answer/claim/evidence 可包含用户内容；默认 evidence 输出沿用现有本地 report/details 边界，不进入普通日志，不新增 tracked raw report。
 - 如果把 ask 失败样本静默排除，support rate 会虚高；通过 `claimMetricStatus=PARTIAL` 与失败计数阻止完整性误报。
 
-## Implementation Outcome（待验收）
+## Implementation Outcome（已验收）
 
 - `scripts/run_rag_eval.py` 已新增固定 `claim-lexical-v1`：确定性 sentence/list splitter、claim hash/index、provenance-valid citation evidence、exact / `0.70` claim-token coverage、stable best-evidence tie-break 与稳定 unsupported reason。
 - per-sample details 已包含 raw claim attribution；aggregate、Markdown、details JSON 与 console 已包含局部 claim status、全 claim 分母、support/unsupported/exact/token counts、complete sample coverage 与算法 identity。摘要与普通输出不复制 raw claim/snippet。
@@ -123,6 +123,12 @@ C8a/C8b 已完成正式 dataset release、schema、fixture、标注、review 与
 - direct/reproducible runner 的原 retrieval、keyword、citation、no-answer、judge 公式与全局 Report status 保持不变；dataset v1/v2 identity 和历史报告未修改。
 - TDD 聚焦行为覆盖中英文/列表拆分、结构 marker、invalid citation、exact/token threshold、短 claim、stable tie-break、no-answer/retrieval-only/partial、历史结果 unavailable、per-sample/aggregate/report 与 metadata drift。Python 全量为 `114 tests / OK`。
 - v1 direct、v2 direct 与 v2 reproducible plan-only 均返回 `VALID`，并显示 `claim-lexical-v1` / `0.70`；实际 backend/provider 调用、数据出站与费用均为 0。真实 150 条 generation evidence 未授权、未执行。
+
+## Closeout Outcome
+
+- 用户于 2026-07-23 验收 claim contract、evidence attribution、aggregate/status、兼容性与结论边界。
+- 4 个 requirements / 12 个 scenarios 已原文接受进 `openspec/specs/evaluation/spec.md`，change 随后归档并恢复 `.ai/ACTIVE_TASK.md=IDLE`。
+- 本验收只确认 objective lexical alignment 的实现与离线证据，不确认 C9b judge calibration、逐 claim semantic faithfulness、C10 quality gate 或真实 150 条 generation evidence。
 
 ## Rollback
 

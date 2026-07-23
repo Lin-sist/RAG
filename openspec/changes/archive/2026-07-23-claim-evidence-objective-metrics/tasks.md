@@ -59,16 +59,16 @@
 
 ## 6. Optional Real Evidence Gate
 
-- [ ] 在任何真实 run 前固定 v2 release、KB/doc identity、Git HEAD、tracked config、LLM provider/model 与 claimMetricConfig。
-- [ ] 单独披露并取得用户授权：一次 150 条上限为 150 debug retrieval、150 ask、至多 300 query embedding、至多 150 generation、judge=0；默认 heuristic 时外部 rerank model=0。
-- [ ] 记录 timeout、retry、rate limit、error categories、raw artifact no-overwrite 与数据出站；异常不得通过删除样本形成 CLEAN evidence。
+- [x] `SKIPPED`：未获真实 run 授权，因此本 change 未固定运行时 KB/doc、provider/model 等 live identity；执行前置要求保留给后续独立 evidence 任务。
+- [x] `SKIPPED`：未发起 150 条真实 run，调用量、出站、模型、费用与限流披露继续作为执行前授权闸门。
+- [x] `SKIPPED`：未产生 live artifact，timeout、retry、rate limit、error category、no-overwrite 与出站记录不适用；规则继续保留。
 - [x] 未获授权时本节保持 `SKIPPED`，不阻塞离线 C9a 实现验收；本轮真实 evidence 明确 `SKIPPED`。
 
 ## 7. Acceptance And Closeout
 
 - [x] 更新 proposal/design/tasks 的实际实现、验证、跳过项、风险与 external call facts。
 - [x] 同步 `openspec/project.md`、architecture、technical debt、optimization index 与 `.ai/AGENT_LOG.md`。
-- [ ] 用户验收 claim contract、evidence attribution、aggregate/status、兼容性与结论边界。
-- [ ] 用户验收后将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`。
-- [ ] 恢复 `.ai/ACTIVE_TASK.md=IDLE` 并归档 change。
-- [ ] C9a 收口只确认 objective lexical alignment，不确认 C9b judge calibration、faithfulness 或 C10 quality gate。
+- [x] 用户验收 claim contract、evidence attribution、aggregate/status、兼容性与结论边界。
+- [x] 用户验收后将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`。
+- [x] 恢复 `.ai/ACTIVE_TASK.md=IDLE` 并归档 change。
+- [x] C9a 收口只确认 objective lexical alignment，不确认 C9b judge calibration、faithfulness 或 C10 quality gate。
