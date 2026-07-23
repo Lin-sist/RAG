@@ -1171,3 +1171,25 @@
 
 - 首次 changed-Markdown 链接命令把已移动的 active 路径删除项也当作现存文件读取，产生 4 组本地 `Get-Content` 诊断；该命令不作为通过证据。改用 `--diff-filter=AMR` 并合并 untracked archive 后，12 个现存 changed Markdown 的本地链接 missing=0。
 - 当前事实源旧 active 路径/待验收表述扫描为 0，受保护路径 diff=0，`git diff --check` 通过；归档仍保持 `Commit: pending`。
+
+## 2026-07-23｜C10 quality threshold gates readiness 与规划启动
+
+- 用户决策与提交责任：用户要求检查项目状况，若允许则开始 C10 规划。提交责任按默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 HEAD=`c246929`，工作区干净，`main...origin/main [ahead 7]`，`.ai/ACTIVE_TASK.md=IDLE`；C9a/C9b 均已接受进 `evaluation` baseline 并归档，当前无未归档 change。路线图下一顺序项明确为 C10 `eval-quality-threshold-gates`，结论为 `GO`。
+- 当前事实：direct details 已有 versioned dataset identity、run metadata、global/objective/judge status、per-channel comparison safety、aggregate metrics 和逐样本 calculation details；现有 `--fail-on-ask-errors/--fail-on-judge-errors` 只覆盖执行错误，没有版本化 quality profile、type/difficulty slices、threshold/tolerance 或质量退出码。
+- 能力分类：`confirmed` 为 C8 v2 release 与 C9 channel/status contract；`partial` 为仅有 aggregate metrics/error exit；`planned` 为 tracked profile、offline evaluator、fixed slices、hard/reference rules、fail-closed missing/error 和 `0/3/4/2` exit codes；`out_of_scope` 为算法/生产默认/CI/C11+/C14；`unknown` 为 v2 reference 指标、provider/费用/限流，未在 planning 中猜测。
+- 规划 artifacts：创建 `2026-07-23-eval-quality-threshold-gates` 的 proposal/design/tasks 与 `evaluation` spec delta，激活 `.ai/ACTIVE_TASK.md`。Design 包含 15 条真实决策记录，delta 为 4 requirements / 12 scenarios。
+- 两道闸：offline implementation 只使用合成/静态 evidence、业务调用和数据出站为 0；首个 retrieval profile 先为 `DRAFT`。若后续激活，推荐另行授权 v2/150×3 repeats，最多 450 debug retrieval、可能最多 450 query embedding，heuristic 下 external rerank/ask/generation/judge=0；具体 provider/model/出站/费用/限流/timeout/retry/raw artifact 和阈值仍待事前闸门确认。
+- 范围安全：本轮不修改 baseline spec、scripts、tests、eval dataset/fixture/schema/manifest/review、历史 report、Java/API、数据库、前端、依赖、生产配置、prompt/citation/no-answer 或默认 provider；未触发任何 backend/provider 调用。
+- 剩余风险与下一闸门：当前没有正式 v2/150 reference evidence，不能用 C7 30 条历史值或 C9 离线 corpus 直接激活数值 gate。用户需先批准 proposal、15 条 decisions、4/12 delta 与 offline TDD 实现授权；reference evidence 和 profile ACTIVE 仍需后续单独授权/验收。
+- Commit：`pending`。建议用户手动提交 `docs(openspec): 启动C10质量阈值门禁规划`。
+
+## 2026-07-23｜C10 规划门禁验证
+
+- 结构与状态：proposal/design/tasks/spec delta 共 4 个必需 artifacts；design 的 15 条 decisions 均完整包含“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”；delta 为 4 requirements / 12 scenarios；`.ai/ACTIVE_TASK.md=ACTIVE` 且只指向 C10，未归档 active change 数为 1。
+- Plan-only：direct runner 使用默认 v2 manifest，返回 `VALID` / `rag-eval-dev-v2` / 150 samples；选 1 条仅估算 debugRetrieve=1、ask=1、judge=0。Reproducible runner 返回 retrieval-only、同一 `VALID` v2 identity；选 1 条仅估算 debugRetrieve=1、ask=0、judge=0。两次均为 plan-only，实际 backend/provider 调用、数据出站与费用为 0。
+- 文档与安全：SensitiveLogs 扫描 310 source files / PASS；6 个 changed/untracked Markdown 的本地链接 missing=0；trailing whitespace=0；规划目标新增内容的 secret value / Authorization token / `C:\Users\` 绝对路径命中为 0；受保护路径 diff=0；`git diff --check` 通过。
+- 范围检查：`openspec/specs/` baseline、`scripts/`、`docs/eval/`、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、Java/POM、前端与历史 reports tracked diff 均为 0。当前只修改 ACTIVE_TASK、追加 AGENT_LOG 并新增 C10 change 目录。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有 Python/Java/前端实现改动，因此 Python 全量、Maven、frontend build、Docker/Testcontainers、live backend 与 live provider 均 `SKIPPED`。
+- 下一闸门：等待用户审阅并批准两道闸、initial retrieval-only profile、`PASS/FAIL/NOT_EVALUABLE/INVALID` 与 `0/3/4/2`、15 条 decisions、4/12 delta 和 offline TDD 实现授权。批准 offline implementation 仍不包含 v2/150×3 reference calls。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C10质量阈值门禁规划`。
