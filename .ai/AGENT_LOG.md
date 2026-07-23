@@ -1231,3 +1231,25 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、v1/v2 release/fixture/review、历史 reports/history、Java/API、数据库、前端、production prompt/citation/retrieval/rerank/no-answer/default judge/provider；未暂存、提交、push、创建 PR、部署或发布。
 - 后续 readiness：冻结蓝图的下一主线候选为 C11 `genai-tracing-core`。其前置 C10 离线契约已接受，结论为“归档提交完成后可进入独立规划”；为避免把 C10 closeout 与 C11 proposal 混入同一提交，本轮不创建 C11 active change。用户手动提交本次归档并恢复干净工作区后，可启动 C11 proposal/design/tasks/spec delta 事前闸门。
 - Commit：`pending`；提交责任为用户手动提交。建议 `chore(openspec): 验收并归档C10离线质量门禁`。
+
+## 2026-07-23｜C11 GenAI tracing core readiness 与规划启动
+
+- 用户决策与提交责任：用户要求检查项目状况，允许则直接开始 C11 规划。提交责任按默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 HEAD=`d85d85a`，工作区干净，`main...origin/main [ahead 10]`，`.ai/ACTIVE_TASK.md=IDLE`；C10 4 requirements / 12 scenarios 已接受进 `evaluation` baseline 并归档，当前无未归档 change。冻结蓝图下一顺序项明确为 C11 `genai-tracing-core`，结论为 `GO`。
+- 当前事实：Spring Boot 3.2.1 已管理 OTel BOM `1.31.0`，但仓库没有 OTel/Micrometer tracing runtime dependency；现有 `TraceFilter/TraceContext` 只有 custom header + MDC。`RedisAsyncTaskManager` 用 `CompletableFuture.supplyAsync` 且未传播 context；ingest 已有稳定 task/document/deterministic chunk identity，ask 已有 provider/fallback/citation diagnostics 和 sync/SSE 两条入口。
+- 能力分类：`confirmed` 为 request MDC、durable task ledger、vector metadata、sync/stream QA 与 existing diagnostics；`partial` 为只有请求日志/诊断字段、无 OTel span/async propagation；`planned` 为 API/SDK 分层、default-off SDK、W3C/custom bridge、separate ingest/ask topology、stable lineage、安全 allowlist 与 in-memory verification；`out_of_scope` 为 C12 exporter/metrics/alerts/deployment/sampling、Java agent、生产 SLA/租户/质量激活；`unknown` 为真实 backend 吞吐、费用、retention、权限与采样。
+- 规划 artifacts：创建 `2026-07-23-genai-tracing-core` 的 proposal/design/tasks 与 `rag-system` spec delta，激活 `.ai/ACTIVE_TASK.md`。Design 包含 14 条真实决策记录，delta 为 4 requirements / 12 scenarios。
+- 关键边界：ingest durable task 使用 independent root + optional submission link，ask 与 ingest 不建 parent/child；跨时间只通过 `ingestTaskId/documentId/chunkId` lineage 关联，不持久化 OTel trace/span id。stream span 绑定 complete/error/cancel/timeout；raw question/prompt/answer/context/snippet/file/user/credential/provider body/error message/stack 全部禁止进入 telemetry；C11 runtime 不注册 network exporter。
+- 外调与范围安全：规划阶段真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、外部传输和数据出站均为 0；未修改 baseline spec、POM/Java/test/config、数据库/API/DTO、评测资产、前端、默认 provider 或历史报告，未进入 C12+。
+- 跳过项：规划只修改 OpenSpec/ACTIVE_TASK/AGENT_LOG，因此尚未运行 Maven、Python、frontend build、Docker/Testcontainers、live backend/provider 或 exporter；OpenSpec CLI 可用性和文档/安全门禁将在规划收口验证中记录。
+- 剩余风险与下一闸门：default-off、W3C/custom bridge、lineage metadata、stream lifecycle 与 14 条决策仍需用户批准；用户还需明确授权新增 Boot BOM 已管理的 OTel API/SDK 依赖并进入 Java TDD。实现授权不包含任何 exporter、外部 provider 或数据出站。
+- Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C11 GenAI追踪核心规划`。
+
+## 2026-07-23｜C11 规划门禁验证
+
+- 结构与状态：proposal/design/tasks/spec delta 共 4 个必需 artifacts；design 的 14 条 decisions 均完整包含“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”；delta 为 4 requirements / 12 scenarios；`.ai/ACTIVE_TASK.md=ACTIVE` 且只指向 C11，未归档 active change 数为 1。
+- 文档与安全：SensitiveLogs 扫描 311 source files / PASS；6 个 changed/untracked Markdown 的本地相对链接 missing=0，当前规划文件没有本地链接；新增 change artifacts 的 credential value / Authorization token / `C:\Users\` 绝对路径命中为 0；CRLF 文件数 0；`git diff --check` 通过。
+- 范围检查：`openspec/specs/` baseline、`scripts/`、`docs/eval/`、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、Java/POM、前端与历史 reports tracked diff 均为 0。当前只修改 ACTIVE_TASK、追加 AGENT_LOG 并新增 C11 change 目录。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有 Java/POM/Python/前端实现改动，因此 Maven、Python 全量、frontend build、Docker/Testcontainers、live backend/provider 与 network exporter 均 `SKIPPED`。
+- 外调与下一闸门：真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、数据出站、费用与限流事件均为 0。等待用户审阅并批准 default-off、separate trace、stable lineage、stream lifecycle、privacy contract、14 条 decisions、4/12 delta，并授权新增 OTel 依赖与进入 Java TDD。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C11 GenAI追踪核心规划`。
