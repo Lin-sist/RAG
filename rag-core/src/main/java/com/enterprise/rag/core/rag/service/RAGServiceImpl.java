@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag.service;
 
 import com.enterprise.rag.common.constant.RedisKeyConstants;
 import com.enterprise.rag.common.util.RedisUtil;
+import com.enterprise.rag.common.trace.GenAiTelemetry;
 import com.enterprise.rag.core.rag.generator.AnswerGenerator;
 import com.enterprise.rag.core.rag.generator.LLMException;
 import com.enterprise.rag.core.rag.model.*;
@@ -9,8 +10,8 @@ import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.query.RetrievalResult;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -34,7 +35,6 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class RAGServiceImpl implements RAGService {
     private static final Pattern LEADING_CONVERSATIONAL_PATTERN = Pattern.compile(
             "^(请问|请教一下|请教|想问一下|想问|麻烦问下|麻烦问一下|帮我|请你|请|你认为|你觉得|你看|可以说说|说说|聊聊|分析一下|分析下|帮忙分析一下|帮忙分析下)\\s*");
@@ -49,17 +49,49 @@ public class RAGServiceImpl implements RAGService {
     private final AnswerGenerator answerGenerator;
     private final RedisUtil redisUtil;
     private final ObjectMapper objectMapper;
+    private final GenAiTelemetry telemetry;
+
+    @Autowired
+    public RAGServiceImpl(QueryEngine queryEngine,
+            AnswerGenerator answerGenerator,
+            RedisUtil redisUtil,
+            ObjectMapper objectMapper,
+            GenAiTelemetry telemetry) {
+        this.queryEngine = queryEngine;
+        this.answerGenerator = answerGenerator;
+        this.redisUtil = redisUtil;
+        this.objectMapper = objectMapper;
+        this.telemetry = telemetry == null ? GenAiTelemetry.noop() : telemetry;
+    }
+
+    public RAGServiceImpl(QueryEngine queryEngine,
+            AnswerGenerator answerGenerator,
+            RedisUtil redisUtil,
+            ObjectMapper objectMapper) {
+        this(queryEngine, answerGenerator, redisUtil, objectMapper, GenAiTelemetry.noop());
+    }
 
     @Override
     public QAResponse ask(QARequest request) {
+        try (GenAiTelemetry.SpanScope askSpan = telemetry.startRoot(
+                GenAiTelemetry.SpanNames.ASK,
+                Map.of(GenAiTelemetry.Attributes.OPERATION, "ask"),
+                null)) {
+            return askWithinTrace(request, askSpan);
+        }
+    }
+
+    private QAResponse askWithinTrace(QARequest request, GenAiTelemetry.SpanScope askSpan) {
         String question = request.question();
         String collectionName = request.collectionName();
 
         if (question == null || question.isBlank()) {
+            askSpan.outcome("INVALID_REQUEST");
             return QAResponse.error(question, "问题不能为空");
         }
 
         if (collectionName == null || collectionName.isBlank()) {
+            askSpan.outcome("INVALID_REQUEST");
             return QAResponse.error(question, "知识库名称不能为空");
         }
 
@@ -69,10 +101,11 @@ public class RAGServiceImpl implements RAGService {
             // 1. 检查缓存
             String modelName = answerGenerator.getModelName();
             if (request.enableCache()) {
-                QAResponse cachedResponse = getFromCache(question, collectionName, request.topK(), request.filter(),
-                        modelName);
+                QAResponse cachedResponse = traceStage(GenAiTelemetry.SpanNames.CACHE_LOOKUP,
+                        () -> getFromCache(question, collectionName, request.topK(), request.filter(), modelName));
                 if (cachedResponse != null) {
                     log.debug("QA cache hit for collection: {}", collectionName);
+                    askSpan.outcome("CACHE_HIT");
                     return addCacheMetadata(cachedResponse, true);
                 }
             }
@@ -84,24 +117,27 @@ public class RAGServiceImpl implements RAGService {
                     request.minScore(),
                     request.filter(),
                     true);
-            RetrievalResult retrievalResult = retrieveWithDiagnostics(question, retrieveOptions);
+            RetrievalResult retrievalResult = traceRetrieval(request.topK(), () -> {
+                RetrievalResult initial = retrieveWithDiagnostics(question, retrieveOptions);
+                return initial.contexts().isEmpty()
+                        ? retryExplanatoryRetrieval(question, request, collectionName, initial)
+                        : initial;
+            });
             List<RetrievedContext> contexts = retrievalResult.contexts();
             log.debug("Retrieved {} contexts for question", contexts.size());
             log.debug("Top retrieval scores: {}", topScoresForLog(contexts, 5));
 
-            // 3. 处理无结果情况
-            if (contexts.isEmpty()) {
-                retrievalResult = retryExplanatoryRetrieval(question, request, collectionName, retrievalResult);
-                contexts = retrievalResult.contexts();
-            }
-
             if (contexts.isEmpty()) {
                 log.info("No relevant contexts found for collection: {}", collectionName);
+                askSpan.outcome("NO_RESULT");
                 return QAResponse.noResult(question);
             }
 
             // 4. 生成答案
-            GeneratedAnswer generatedAnswer = answerGenerator.generate(question, contexts);
+            recordLineage(askSpan, contexts, request.topK());
+            List<RetrievedContext> selectedContexts = contexts;
+            GeneratedAnswer generatedAnswer = traceStage(GenAiTelemetry.SpanNames.GENERATION,
+                    () -> answerGenerator.generate(question, selectedContexts));
 
             // 5. 构建响应
             Map<String, Object> metadata = new HashMap<>(generatedAnswer.metadata());
@@ -132,11 +168,79 @@ public class RAGServiceImpl implements RAGService {
             }
 
             log.info("Successfully generated answer for collection: {}", collectionName);
+            askSpan.outcome("SUCCESS");
             return response;
 
         } catch (Exception e) {
             log.error("Failed to process QA request: errorType={}", e.getClass().getSimpleName());
+            askSpan.safeError(e, classifyClientError(e), "ASK_FAILED").outcome("ERROR");
             return QAResponse.error(question, toClientErrorMessage(e), errorMetadata(e));
+        }
+    }
+
+    private <T> T traceStage(String spanName, java.util.function.Supplier<T> action) {
+        try (GenAiTelemetry.SpanScope stage = telemetry.startSpan(spanName, Map.of())) {
+            try {
+                T result = action.get();
+                stage.outcome("SUCCESS");
+                return result;
+            } catch (RuntimeException failure) {
+                stage.safeError(failure, "ask", "STAGE_FAILED").outcome("ERROR");
+                throw failure;
+            }
+        }
+    }
+
+    private RetrievalResult traceRetrieval(int topK,
+            java.util.function.Supplier<RetrievalResult> action) {
+        try (GenAiTelemetry.SpanScope stage = telemetry.startSpan(
+                GenAiTelemetry.SpanNames.RETRIEVAL, Map.of())) {
+            try {
+                RetrievalResult result = action.get();
+                stage.diagnostics(result.diagnostics())
+                        .longFact(GenAiTelemetry.Attributes.TOP_K, topK)
+                        .longFact(GenAiTelemetry.Attributes.SELECTED_COUNT, result.contexts().size())
+                        .stringFact(GenAiTelemetry.Attributes.RETRIEVAL_ROUTE,
+                                stringMetadata(result.diagnostics().get("retrievalMode")))
+                        .outcome("SUCCESS");
+                return result;
+            } catch (RuntimeException failure) {
+                stage.safeError(failure, "retrieval", "RETRIEVAL_FAILED").outcome("ERROR");
+                throw failure;
+            }
+        }
+    }
+
+    private void recordLineage(GenAiTelemetry.SpanScope askSpan,
+            List<RetrievedContext> contexts,
+            int topK) {
+        int limit = Math.min(Math.max(0, topK), contexts.size());
+        for (int index = 0; index < limit; index++) {
+            RetrievedContext context = contexts.get(index);
+            Map<String, Object> metadata = context.metadata() == null ? Map.of() : context.metadata();
+            String taskId = stringMetadata(metadata.get("ingestTaskId"));
+            Long documentId = longMetadata(metadata.get("documentId"));
+            String chunkId = stringMetadata(metadata.get("chunkId"));
+            String status = taskId != null && documentId != null && chunkId != null
+                    ? "COMPLETE"
+                    : (documentId != null || chunkId != null ? "PARTIAL" : "MISSING");
+            askSpan.lineageContext(taskId, documentId, chunkId, index + 1L,
+                    context.relevanceScore(), status);
+        }
+    }
+
+    private String stringMetadata(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private Long longMetadata(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return value == null ? null : Long.valueOf(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return null;
         }
     }
 
@@ -153,6 +257,20 @@ public class RAGServiceImpl implements RAGService {
             return Flux.error(new IllegalArgumentException("知识库名称不能为空"));
         }
 
+        return Flux.deferContextual(contextView -> askStreamSubscription(
+                request,
+                contextView.getOrDefault(RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY, null)));
+    }
+
+    private Flux<String> askStreamSubscription(QARequest request,
+            RAGService.StreamTerminalSignal terminalSignal) {
+        String question = request.question();
+        String collectionName = request.collectionName();
+        GenAiTelemetry.SpanScope askSpan = telemetry.startRoot(
+                GenAiTelemetry.SpanNames.ASK,
+                Map.of(GenAiTelemetry.Attributes.OPERATION, "ask_stream"),
+                null);
+
         log.info("Processing streaming QA request for collection: {}", collectionName);
 
         try {
@@ -165,14 +283,14 @@ public class RAGServiceImpl implements RAGService {
                     request.minScore(),
                     request.filter(),
                     true);
-            RetrievalResult retrievalResult = retrieveWithDiagnostics(question, retrieveOptions);
+            RetrievalResult retrievalResult = traceRetrieval(request.topK(), () -> {
+                RetrievalResult initial = retrieveWithDiagnostics(question, retrieveOptions);
+                return initial.contexts().isEmpty()
+                        ? retryExplanatoryRetrieval(question, request, collectionName, initial)
+                        : initial;
+            });
             List<RetrievedContext> contexts = retrievalResult.contexts();
             long retrievalLatencyMs = System.currentTimeMillis() - retrievalStartTime;
-
-            if (contexts.isEmpty()) {
-                retrievalResult = retryExplanatoryRetrieval(question, request, collectionName, retrievalResult);
-                contexts = retrievalResult.contexts();
-            }
 
             log.info("stream_retrieval_done collection={}, retrievalLatencyMs={}, contextCount={}, topScores={}",
                     collectionName,
@@ -186,17 +304,80 @@ public class RAGServiceImpl implements RAGService {
             if (contexts.isEmpty()) {
                 log.info("stream_retrieval_no_context collection={}, retrievalLatencyMs={}",
                         collectionName, retrievalLatencyMs);
-                return Flux.just("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。");
+                askSpan.detach();
+                return finishStream(
+                        Flux.just("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。"),
+                        askSpan, null, "NO_RESULT", terminalSignal);
             }
 
             // 流式生成答案
-            return answerGenerator.generateStream(question, contexts);
+            recordLineage(askSpan, contexts, request.topK());
+            GenAiTelemetry.SpanScope generation = telemetry.startSpan(
+                    GenAiTelemetry.SpanNames.GENERATION, Map.of());
+            Flux<String> stream;
+            try {
+                stream = answerGenerator.generateStream(question, contexts);
+            } catch (RuntimeException failure) {
+                generation.safeError(failure, "ask", "GENERATION_FAILED").finish("ERROR");
+                throw failure;
+            }
+            generation.detach();
+            askSpan.detach();
+            return finishStream(stream, askSpan, generation, "SUCCESS", terminalSignal);
 
         } catch (Exception e) {
             log.error("Failed to process streaming QA request: errorType={}",
                     e.getClass().getSimpleName());
+            askSpan.safeError(e, classifyClientError(e), "ASK_STREAM_FAILED").finish("ERROR");
             return Flux.error(new IllegalStateException(toClientErrorMessage(e), e));
         }
+    }
+
+    private Flux<String> finishStream(Flux<String> source,
+            GenAiTelemetry.SpanScope askSpan,
+            GenAiTelemetry.SpanScope generationSpan,
+            String completedOutcome,
+            RAGService.StreamTerminalSignal terminalSignal) {
+        java.util.concurrent.atomic.AtomicReference<String> errorOutcome =
+                new java.util.concurrent.atomic.AtomicReference<>("ERROR");
+        return source
+                .doOnError(failure -> {
+                    if (isTimeoutFailure(failure)) {
+                        errorOutcome.set("TIMEOUT");
+                    }
+                    askSpan.safeError(failure, "ask", "ASK_STREAM_FAILED");
+                    if (generationSpan != null) {
+                        generationSpan.safeError(failure, "ask", "GENERATION_FAILED");
+                    }
+                })
+                .doFinally(signal -> {
+                    String outcome = switch (signal) {
+                        case CANCEL -> terminalSignal != null && terminalSignal.isTimeout()
+                                ? "TIMEOUT" : "CANCELLED";
+                        case ON_ERROR -> errorOutcome.get();
+                        default -> completedOutcome;
+                    };
+                    if (generationSpan != null) {
+                        generationSpan.finish(outcome);
+                    }
+                    askSpan.finish(outcome);
+                });
+    }
+
+    private boolean isTimeoutFailure(Throwable failure) {
+        LLMException llmException = findLlmException(failure);
+        if (llmException != null
+                && "timeout".equals(String.valueOf(llmException.diagnostics().get("errorCategory")))) {
+            return true;
+        }
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof java.util.concurrent.TimeoutException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private String toClientErrorMessage(Exception e) {

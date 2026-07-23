@@ -1,5 +1,6 @@
 package com.enterprise.rag.core.rag.query;
 
+import com.enterprise.rag.common.trace.GenAiTelemetry;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
@@ -62,18 +63,30 @@ public class QueryEngineImpl implements QueryEngine {
     private final KeywordIndex keywordIndex;
     private final RetrievalProperties retrievalProperties;
     private final RerankerRegistry rerankerRegistry;
+    private final GenAiTelemetry telemetry;
 
     @Autowired
     public QueryEngineImpl(EmbeddingService embeddingService,
             VectorStore vectorStore,
             KeywordIndex keywordIndex,
             RetrievalProperties retrievalProperties,
-            RerankerRegistry rerankerRegistry) {
+            RerankerRegistry rerankerRegistry,
+            GenAiTelemetry telemetry) {
         this.embeddingService = embeddingService;
         this.vectorStore = vectorStore;
         this.keywordIndex = keywordIndex;
         this.retrievalProperties = retrievalProperties;
         this.rerankerRegistry = rerankerRegistry;
+        this.telemetry = telemetry == null ? GenAiTelemetry.noop() : telemetry;
+    }
+
+    public QueryEngineImpl(EmbeddingService embeddingService,
+            VectorStore vectorStore,
+            KeywordIndex keywordIndex,
+            RetrievalProperties retrievalProperties,
+            RerankerRegistry rerankerRegistry) {
+        this(embeddingService, vectorStore, keywordIndex, retrievalProperties,
+                rerankerRegistry, GenAiTelemetry.noop());
     }
 
     QueryEngineImpl(EmbeddingService embeddingService, VectorStore vectorStore) {
@@ -131,11 +144,12 @@ public class QueryEngineImpl implements QueryEngine {
         if (isHybridEnabled()) {
             List<RetrievedContext> keywordContexts;
             try {
-                keywordContexts = keywordIndex.search(
-                        options.collectionName(),
-                        query,
-                        keywordTopK(options.topK()),
-                        options.filter());
+                keywordContexts = traceStage(GenAiTelemetry.SpanNames.KEYWORD_SEARCH,
+                        () -> keywordIndex.search(
+                                options.collectionName(),
+                                query,
+                                keywordTopK(options.topK()),
+                                options.filter()));
             } catch (RuntimeException keywordFailure) {
                 if (vectorFailure != null) {
                     throw vectorFailure;
@@ -145,7 +159,9 @@ public class QueryEngineImpl implements QueryEngine {
             if (vectorFailure != null && (keywordContexts == null || keywordContexts.isEmpty())) {
                 throw vectorFailure;
             }
-            contexts = fuseByRrf(vectorContexts, keywordContexts, rrfK());
+            List<RetrievedContext> finalVectorContexts = vectorContexts;
+            contexts = traceStage(GenAiTelemetry.SpanNames.RETRIEVAL_FUSION,
+                    () -> fuseByRrf(finalVectorContexts, keywordContexts, rrfK()));
             log.debug("Hybrid retrieval fused vectorContexts={}, keywordContexts={}, fused={}",
                     vectorContexts.size(), keywordContexts.size(), contexts.size());
         } else if (vectorFailure != null) {
@@ -155,9 +171,26 @@ public class QueryEngineImpl implements QueryEngine {
         Map<String, Object> rerankDiagnostics;
         // 3. 如果启用重排序，执行重排序
         if (options.enableRerank() && !contexts.isEmpty()) {
-            RerankOutcome rerankOutcome = rerankerRegistry.rerankWithDiagnostics(query, contexts.stream()
+            List<RetrievedContext> rerankCandidates = contexts.stream()
                     .limit(rerankTopN())
-                    .toList());
+                    .toList();
+            RerankOutcome rerankOutcome;
+            try (GenAiTelemetry.SpanScope rerank = telemetry.startSpan(
+                    GenAiTelemetry.SpanNames.RERANK, Map.of())) {
+                try {
+                    rerankOutcome = rerankerRegistry.rerankWithDiagnostics(query, rerankCandidates);
+                    Map<String, Object> diagnostics = rerankOutcome.diagnostics().toMap();
+                    long fallbackCount = diagnostics.get("rerankFallbackCount") instanceof Number number
+                            ? number.longValue() : 0L;
+                    rerank.diagnostics(diagnostics)
+                            .longFact(GenAiTelemetry.Attributes.CANDIDATE_COUNT, rerankCandidates.size())
+                            .longFact(GenAiTelemetry.Attributes.SELECTED_COUNT, rerankOutcome.contexts().size())
+                            .outcome(fallbackCount > 0L ? "FALLBACK_SUCCESS" : "SUCCESS");
+                } catch (RuntimeException failure) {
+                    rerank.safeError(failure, "rerank", "RERANK_FAILED").outcome("ERROR");
+                    throw failure;
+                }
+            }
             contexts = rerankOutcome.contexts();
             rerankDiagnostics = rerankOutcome.diagnostics().toMap();
             log.debug("Reranked {} contexts", contexts.size());
@@ -224,10 +257,12 @@ public class QueryEngineImpl implements QueryEngine {
         Map<String, RetrievedContext> merged = new LinkedHashMap<>();
 
         for (QueryVariant queryVariant : queryVariants) {
-            float[] queryVector = embeddingService.embed(queryVariant.query());
+            float[] queryVector = traceStage(GenAiTelemetry.SpanNames.QUERY_EMBEDDING,
+                    () -> embeddingService.embed(queryVariant.query()));
             log.debug("Query variant embedded: weight={}", queryVariant.weight());
 
-            List<SearchResult> searchResults = vectorStore.search(collectionName, queryVector, searchOptions);
+            List<SearchResult> searchResults = traceStage(GenAiTelemetry.SpanNames.VECTOR_SEARCH,
+                    () -> vectorStore.search(collectionName, queryVector, searchOptions));
             log.debug("Vector search returned {} results for query variant", searchResults.size());
 
             for (SearchResult searchResult : searchResults) {
@@ -249,6 +284,19 @@ public class QueryEngineImpl implements QueryEngine {
         return merged.values().stream()
                 .sorted(Comparator.comparingDouble(RetrievedContext::relevanceScore).reversed())
                 .toList();
+    }
+
+    private <T> T traceStage(String spanName, java.util.function.Supplier<T> action) {
+        try (GenAiTelemetry.SpanScope stage = telemetry.startSpan(spanName, Map.of())) {
+            try {
+                T result = action.get();
+                stage.outcome("SUCCESS");
+                return result;
+            } catch (RuntimeException failure) {
+                stage.safeError(failure, "retrieval", "STAGE_FAILED").outcome("ERROR");
+                throw failure;
+            }
+        }
     }
 
     private List<RetrievedContext> fuseByRrf(List<RetrievedContext> vectorContexts,

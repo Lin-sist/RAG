@@ -10,6 +10,22 @@ import reactor.core.publisher.Flux;
  */
 public interface RAGService {
 
+    String STREAM_TERMINAL_SIGNAL_CONTEXT_KEY = "rag.stream.terminal.signal";
+
+    /** SSE adapter 可在取消订阅前标记真实 timeout，避免与主动断连混淆。 */
+    final class StreamTerminalSignal {
+        private final java.util.concurrent.atomic.AtomicBoolean timeout =
+                new java.util.concurrent.atomic.AtomicBoolean();
+
+        public void markTimeout() {
+            timeout.set(true);
+        }
+
+        public boolean isTimeout() {
+            return timeout.get();
+        }
+    }
+
     /**
      * 执行问答（同步）
      *

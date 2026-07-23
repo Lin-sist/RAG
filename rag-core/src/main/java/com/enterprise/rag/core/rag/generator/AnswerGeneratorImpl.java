@@ -1,5 +1,6 @@
 package com.enterprise.rag.core.rag.generator;
 
+import com.enterprise.rag.common.trace.GenAiTelemetry;
 import com.enterprise.rag.core.rag.citation.CitationValidationResult;
 import com.enterprise.rag.core.rag.citation.CitationValidator;
 import com.enterprise.rag.core.rag.model.Citation;
@@ -10,6 +11,7 @@ import com.enterprise.rag.core.rag.prompt.PromptStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -50,16 +52,25 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     private final CitationValidator citationValidator;
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
+    private final GenAiTelemetry telemetry;
 
+    @Autowired
     public AnswerGeneratorImpl(LLMProperties properties, PromptBuilder promptBuilder,
-            CitationValidator citationValidator, WebClient.Builder proxyWebClientBuilder) {
+            CitationValidator citationValidator, WebClient.Builder proxyWebClientBuilder,
+            GenAiTelemetry telemetry) {
         this.properties = properties;
         this.promptBuilder = promptBuilder;
         this.citationValidator = citationValidator;
+        this.telemetry = telemetry == null ? GenAiTelemetry.noop() : telemetry;
         this.objectMapper = new ObjectMapper();
         this.webClient = proxyWebClientBuilder.clone()
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
                 .build();
+    }
+
+    public AnswerGeneratorImpl(LLMProperties properties, PromptBuilder promptBuilder,
+            CitationValidator citationValidator, WebClient.Builder proxyWebClientBuilder) {
+        this(properties, promptBuilder, citationValidator, proxyWebClientBuilder, GenAiTelemetry.noop());
     }
 
     @Override
@@ -71,19 +82,19 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         log.debug("Generating answer");
 
         // 构建 Prompt（RAG-02: 上下文去重 + token budget + 来源增强）
-        PromptBuilder.PromptBuildResult buildResult = promptBuilder.buildOptimized(
-                query,
-                contexts,
-                PromptStrategy.STRUCTURED,
-                PromptBuilder.DEFAULT_CONTEXT_TOKEN_BUDGET);
+        PromptBuilder.PromptBuildResult buildResult = buildPrompt(query, contexts);
         String prompt = buildResult.prompt();
         List<RetrievedContext> effectiveContexts = buildResult.contexts();
 
         // 调用 LLM API
-        String answer = sanitizeAnswerText(callLLM(prompt));
+        String answer = sanitizeAnswerText(traceStage(
+                GenAiTelemetry.SpanNames.LLM_REQUEST,
+                () -> callLLM(prompt)));
 
         // 提取引用来源
-        CitationResolution citationResolution = resolveCitations(query, answer, effectiveContexts);
+        CitationResolution citationResolution = traceStage(
+                GenAiTelemetry.SpanNames.CITATION_VALIDATE,
+                () -> resolveCitations(query, answer, effectiveContexts));
         CitationValidationResult citationValidation = citationResolution.validation();
 
         // 构建元数据
@@ -114,11 +125,7 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
 
         log.debug("Generating streaming answer");
 
-        PromptBuilder.PromptBuildResult buildResult = promptBuilder.buildOptimized(
-                query,
-                contexts,
-                PromptStrategy.STRUCTURED,
-                PromptBuilder.DEFAULT_CONTEXT_TOKEN_BUDGET);
+        PromptBuilder.PromptBuildResult buildResult = buildPrompt(query, contexts);
         String prompt = buildResult.prompt();
         log.info("stream_prompt_ready model={}, contextCount={}, estimatedContextTokens={}, removedByDedup={}, removedByBudget={}",
                 getModelName(),
@@ -127,7 +134,59 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                 buildResult.removedByDedup(),
                 buildResult.removedByBudget());
 
-        return callLLMStream(prompt);
+        GenAiTelemetry.SpanScope llmSpan = telemetry.startSpan(
+                GenAiTelemetry.SpanNames.LLM_REQUEST, Map.of());
+        Flux<String> stream;
+        try {
+            stream = callLLMStream(prompt, llmSpan);
+        } catch (RuntimeException failure) {
+            llmSpan.safeError(failure, "llm", "LLM_FAILED").finish("ERROR");
+            throw failure;
+        }
+        llmSpan.detach();
+        return stream
+                .doOnError(failure -> llmSpan.safeError(failure, "llm", "LLM_FAILED"))
+                .doFinally(signal -> llmSpan.finish(switch (signal) {
+                    case CANCEL -> "CANCELLED";
+                    case ON_ERROR -> "ERROR";
+                    default -> "SUCCESS";
+                }));
+    }
+
+    private <T> T traceStage(String spanName, java.util.function.Supplier<T> action) {
+        try (GenAiTelemetry.SpanScope stage = telemetry.startSpan(spanName, Map.of())) {
+            try {
+                T result = action.get();
+                stage.outcome("SUCCESS");
+                return result;
+            } catch (RuntimeException failure) {
+                if (failure instanceof LLMException llmFailure) {
+                    stage.diagnostics(llmFailure.diagnostics());
+                }
+                stage.safeError(failure, "generation", "STAGE_FAILED").outcome("ERROR");
+                throw failure;
+            }
+        }
+    }
+
+    private PromptBuilder.PromptBuildResult buildPrompt(String query, List<RetrievedContext> contexts) {
+        try (GenAiTelemetry.SpanScope prompt = telemetry.startSpan(
+                GenAiTelemetry.SpanNames.PROMPT_BUILD, Map.of())) {
+            try {
+                PromptBuilder.PromptBuildResult result = promptBuilder.buildOptimized(
+                        query,
+                        contexts,
+                        PromptStrategy.STRUCTURED,
+                        PromptBuilder.DEFAULT_CONTEXT_TOKEN_BUDGET);
+                prompt.longFact(GenAiTelemetry.Attributes.PROMPT_ESTIMATED_TOKENS,
+                                result.estimatedContextTokens())
+                        .outcome("SUCCESS");
+                return result;
+            } catch (RuntimeException failure) {
+                prompt.safeError(failure, "prompt", "PROMPT_BUILD_FAILED").outcome("ERROR");
+                throw failure;
+            }
+        }
     }
 
     @Override
@@ -191,7 +250,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                     .doOnError(error -> logLlmError("openai", "/chat/completions", error))
                     .block();
 
-            return parseOpenAIResponse(response);
+            String parsed = parseOpenAIResponse(response);
+            telemetry.currentProviderCall(
+                    "openai", "openai", config.getModel(), "http_json",
+                    attemptCount.get(), retryCount.get());
+            return parsed;
         } catch (Exception e) {
             throw buildLlmException(
                     "openai",
@@ -241,7 +304,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                     .doOnError(error -> logLlmError("qwen", "/services/aigc/text-generation/generation", error))
                     .block();
 
-            return parseQwenResponse(response);
+            String parsed = parseQwenResponse(response);
+            telemetry.currentProviderCall(
+                    "qwen", "qwen", config.getModel(), "http_json",
+                    attemptCount.get(), retryCount.get());
+            return parsed;
         } catch (Exception e) {
             throw buildLlmException(
                     "qwen",
@@ -256,18 +323,18 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     /**
      * 调用 LLM API（流式）
      */
-    private Flux<String> callLLMStream(String prompt) {
+    private Flux<String> callLLMStream(String prompt, GenAiTelemetry.SpanScope llmSpan) {
         if ("openai".equalsIgnoreCase(properties.getProvider())) {
-            return callOpenAIStream(prompt);
+            return callOpenAIStream(prompt, llmSpan);
         } else {
-            return callQwenStream(prompt);
+            return callQwenStream(prompt, llmSpan);
         }
     }
 
     /**
      * 调用 OpenAI API（流式）
      */
-    private Flux<String> callOpenAIStream(String prompt) {
+    private Flux<String> callOpenAIStream(String prompt, GenAiTelemetry.SpanScope llmSpan) {
         LLMProperties.OpenAIConfig config = properties.getOpenai();
 
         Map<String, Object> requestBody = new HashMap<>();
@@ -312,13 +379,16 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                                 config.getModel(),
                                 error,
                                 attemptCount.get(),
-                                retryCount.get()));
+                                retryCount.get()))
+                .doOnComplete(() -> llmSpan.providerCall(
+                        "openai", "openai", config.getModel(), "sse",
+                        attemptCount.get(), retryCount.get()));
     }
 
     /**
      * 调用通义千问 API（流式）
      */
-    private Flux<String> callQwenStream(String prompt) {
+    private Flux<String> callQwenStream(String prompt, GenAiTelemetry.SpanScope llmSpan) {
         LLMProperties.QwenConfig config = properties.getQwen();
 
         Map<String, Object> requestBody = new HashMap<>();
@@ -365,7 +435,10 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
                                 config.getModel(),
                                 error,
                                 attemptCount.get(),
-                                retryCount.get()));
+                                retryCount.get()))
+                .doOnComplete(() -> llmSpan.providerCall(
+                        "qwen", "qwen", config.getModel(), "sse",
+                        attemptCount.get(), retryCount.get()));
     }
 
     private <T> Mono<T> applyRetryPolicy(
@@ -540,6 +613,10 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             if (content.isBlank()) {
                 throw invalidResponse();
             }
+            JsonNode usage = root.path("usage");
+            telemetry.currentTokenUsage(
+                    integralLong(usage.path("prompt_tokens")),
+                    integralLong(usage.path("completion_tokens")));
             return content;
         } catch (Exception e) {
             log.error("Failed to parse OpenAI response: errorType={}", e.getClass().getSimpleName());
@@ -560,6 +637,10 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             if (content.isBlank()) {
                 throw invalidResponse();
             }
+            JsonNode usage = root.path("usage");
+            telemetry.currentTokenUsage(
+                    integralLong(usage.path("input_tokens")),
+                    integralLong(usage.path("output_tokens")));
             return content;
         } catch (Exception e) {
             log.error("Failed to parse Qwen response: errorType={}", e.getClass().getSimpleName());
@@ -568,6 +649,10 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             }
             throw invalidResponse(e);
         }
+    }
+
+    private Long integralLong(JsonNode value) {
+        return value != null && value.isIntegralNumber() ? value.longValue() : null;
     }
 
     private LLMException invalidResponse() {

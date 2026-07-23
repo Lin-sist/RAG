@@ -21,6 +21,7 @@ import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskHandle;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.idempotency.Idempotent;
+import com.enterprise.rag.common.trace.GenAiTelemetry;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.rag.keyword.KeywordDocument;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
@@ -33,8 +34,8 @@ import com.enterprise.rag.document.parser.DocumentParserFactory;
 import com.enterprise.rag.document.processor.DocumentInput;
 import com.enterprise.rag.document.processor.DocumentProcessor;
 import com.enterprise.rag.document.processor.ProcessResult;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -57,7 +58,6 @@ import java.util.Optional;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DocumentIndexingServiceImpl implements DocumentIndexingService {
 
     private static final int MAX_INDEX_ATTEMPTS = 3;
@@ -75,6 +75,53 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     private final IndexTaskLedger indexTaskLedger;
     private final IndexTaskSqlFinalizer sqlFinalizer;
     private final DocumentChunkingProperties chunkingProperties;
+    private final GenAiTelemetry telemetry;
+
+    @Autowired
+    public DocumentIndexingServiceImpl(DocumentService documentService,
+            KnowledgeBaseService knowledgeBaseService,
+            DocumentProcessor documentProcessor,
+            DocumentParserFactory documentParserFactory,
+            AsyncTaskManager asyncTaskManager,
+            EmbeddingService embeddingService,
+            VectorStore vectorStore,
+            KeywordIndex keywordIndex,
+            IndexInputStore indexInputStore,
+            IndexTaskLedger indexTaskLedger,
+            IndexTaskSqlFinalizer sqlFinalizer,
+            DocumentChunkingProperties chunkingProperties,
+            GenAiTelemetry telemetry) {
+        this.documentService = documentService;
+        this.knowledgeBaseService = knowledgeBaseService;
+        this.documentProcessor = documentProcessor;
+        this.documentParserFactory = documentParserFactory;
+        this.asyncTaskManager = asyncTaskManager;
+        this.embeddingService = embeddingService;
+        this.vectorStore = vectorStore;
+        this.keywordIndex = keywordIndex;
+        this.indexInputStore = indexInputStore;
+        this.indexTaskLedger = indexTaskLedger;
+        this.sqlFinalizer = sqlFinalizer;
+        this.chunkingProperties = chunkingProperties;
+        this.telemetry = telemetry == null ? GenAiTelemetry.noop() : telemetry;
+    }
+
+    public DocumentIndexingServiceImpl(DocumentService documentService,
+            KnowledgeBaseService knowledgeBaseService,
+            DocumentProcessor documentProcessor,
+            DocumentParserFactory documentParserFactory,
+            AsyncTaskManager asyncTaskManager,
+            EmbeddingService embeddingService,
+            VectorStore vectorStore,
+            KeywordIndex keywordIndex,
+            IndexInputStore indexInputStore,
+            IndexTaskLedger indexTaskLedger,
+            IndexTaskSqlFinalizer sqlFinalizer,
+            DocumentChunkingProperties chunkingProperties) {
+        this(documentService, knowledgeBaseService, documentProcessor, documentParserFactory,
+                asyncTaskManager, embeddingService, vectorStore, keywordIndex, indexInputStore,
+                indexTaskLedger, sqlFinalizer, chunkingProperties, GenAiTelemetry.noop());
+    }
 
     @Override
     @Idempotent(keyPrefix = "kb:upload", required = false, ttlSeconds = 3600)
@@ -127,15 +174,16 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         try {
             String taskId = indexTaskLedger.createAccepted(documentId, uploaderId);
             acceptedTaskId = taskId;
+            io.opentelemetry.context.Context submissionContext = telemetry.captureContext();
             taskHandle = asyncTaskManager.submit(
                     taskId,
                     "DOCUMENT_INDEX",
                     uploaderId,
-                    progressCallback -> doIndex(
-                        taskId, kbId, documentId, fileName, documentTitle, fileType,
-                        storedInput.storageKey(), storedInput.sizeBytes(), storedInput.sha256(),
-                        progressCallback, () -> {
-                        }));
+                    progressCallback -> runFreshIngest(
+                            submissionContext, taskId, kbId, documentId, fileName, documentTitle, fileType,
+                            storedInput.storageKey(), storedInput.sizeBytes(), storedInput.sha256(),
+                            progressCallback, () -> {
+                            }));
         } catch (RuntimeException e) {
             if (acceptedTaskId != null) {
                 try {
@@ -160,6 +208,34 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 "PROCESSING");
     }
 
+    private ProcessResult runFreshIngest(io.opentelemetry.context.Context submissionContext,
+            String taskId, Long kbId, Long documentId, String fileName, String documentTitle,
+            String fileType, String storageKey, long inputSizeBytes, String inputSha256,
+            java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback,
+            IndexTaskLeaseGuard leaseGuard) {
+        try (GenAiTelemetry.SpanScope ingest = telemetry.startRoot(
+                GenAiTelemetry.SpanNames.INGEST,
+                Map.of(
+                        GenAiTelemetry.Attributes.OPERATION, "ingest",
+                        GenAiTelemetry.Attributes.TASK_ID, taskId,
+                        GenAiTelemetry.Attributes.DOCUMENT_ID, documentId,
+                        GenAiTelemetry.Attributes.RESUME, false,
+                        GenAiTelemetry.Attributes.INGEST_PHASE, "EXECUTION"),
+                submissionContext)) {
+            try {
+                ProcessResult result = doIndex(taskId, kbId, documentId, fileName, documentTitle, fileType,
+                        storageKey, inputSizeBytes, inputSha256, progressCallback, leaseGuard);
+                ingest.longFact(GenAiTelemetry.Attributes.INGEST_CHUNK_COUNT,
+                                result.chunks() == null ? 0L : result.chunks().size())
+                        .outcome("SUCCESS");
+                return result;
+            } catch (RuntimeException failure) {
+                ingest.safeError(failure, "ingest", "INGEST_FAILED").outcome("ERROR");
+                throw failure;
+            }
+        }
+    }
+
     /**
      * 恢复已确认完成 vector mutation 的任务，只执行可证明幂等的收尾。
      */
@@ -169,6 +245,28 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     }
 
     public void resumeIndexTask(IndexTaskRecord task, IndexTaskLeaseGuard leaseGuard) {
+        try (GenAiTelemetry.SpanScope ingest = telemetry.startRoot(
+                GenAiTelemetry.SpanNames.INGEST,
+                Map.of(
+                        GenAiTelemetry.Attributes.OPERATION, "ingest",
+                        GenAiTelemetry.Attributes.TASK_ID, task.getTaskId(),
+                        GenAiTelemetry.Attributes.DOCUMENT_ID, task.getDocumentId(),
+                        GenAiTelemetry.Attributes.RESUME, true,
+                        GenAiTelemetry.Attributes.INGEST_PHASE, task.getExecutionPhase()),
+                null)) {
+            try {
+                resumeIndexTaskWithinTrace(task, leaseGuard);
+                ingest.longFact(GenAiTelemetry.Attributes.INGEST_CHUNK_COUNT,
+                                task.getPreparedChunkCount() == null ? 0L : task.getPreparedChunkCount())
+                        .outcome("SUCCESS");
+            } catch (RuntimeException failure) {
+                ingest.safeError(failure, "ingest", "RESUME_FAILED").outcome("ERROR");
+                throw failure;
+            }
+        }
+    }
+
+    private void resumeIndexTaskWithinTrace(IndexTaskRecord task, IndexTaskLeaseGuard leaseGuard) {
         validateResumeContract(task);
         IndexTaskPhase phase = IndexTaskPhase.valueOf(task.getExecutionPhase());
         if (phase != IndexTaskPhase.ACCEPTED
@@ -188,8 +286,11 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                     }, leaseGuard);
             return;
         }
-        try (InputStream inputStream = indexInputStore.openVerified(
-                document.getFilePath(), document.getInputSizeBytes(), document.getInputSha256())) {
+        InputStream verifiedInput = traceStage(
+                GenAiTelemetry.SpanNames.INGEST_INPUT_OPEN,
+                () -> indexInputStore.openVerified(
+                        document.getFilePath(), document.getInputSizeBytes(), document.getInputSha256()));
+        try (InputStream inputStream = verifiedInput) {
             DocumentInput input = DocumentInput.of(
                     inputStream,
                     fileName,
@@ -197,7 +298,9 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                             "sourceFileName", fileName,
                             "documentTitle", document.getTitle(),
                             "title", document.getTitle()));
-            ProcessResult result = documentProcessor.process(input);
+            ProcessResult result = traceStage(
+                    GenAiTelemetry.SpanNames.INGEST_PARSE_CHUNK,
+                    () -> documentProcessor.process(input));
             if (!result.contentHash().equals(task.getPreparedContentHash())
                     || result.chunks().size() != task.getPreparedChunkCount()) {
                 indexTaskLedger.markReconciliationRequired(task.getTaskId(), "PREPARED_FACTS_MISMATCH");
@@ -209,7 +312,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                     .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
                     .getVectorCollection();
             PreparedIndex prepared = prepareFinalization(
-                    document.getKbId(), document.getId(), fileName, document.getTitle(), chunks);
+                    task.getTaskId(), document.getKbId(), document.getId(), fileName, document.getTitle(), chunks);
             leaseGuard.assertOwned();
             finalizeIndex(task.getTaskId(), document.getKbId(), document.getId(), result, chunks,
                     collectionName, prepared, ignored -> {
@@ -244,7 +347,10 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             indexTaskLedger.markSafePreVector(taskId);
             progressCallback.accept(AsyncTask.TaskProgress.of(10, "开始解析文档"));
 
-            try (InputStream inputStream = indexInputStore.openVerified(storageKey, inputSizeBytes, inputSha256)) {
+            InputStream verifiedInput = traceStage(
+                    GenAiTelemetry.SpanNames.INGEST_INPUT_OPEN,
+                    () -> indexInputStore.openVerified(storageKey, inputSizeBytes, inputSha256));
+            try (InputStream inputStream = verifiedInput) {
                 DocumentInput input = DocumentInput.of(
                         inputStream,
                         fileName,
@@ -256,7 +362,9 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                                 "title", documentTitle));
 
                 progressCallback.accept(AsyncTask.TaskProgress.of(30, "文档解析中"));
-                ProcessResult result = documentProcessor.process(input);
+                ProcessResult result = traceStage(
+                        GenAiTelemetry.SpanNames.INGEST_PARSE_CHUNK,
+                        () -> documentProcessor.process(input));
 
                 // DOC-04: DB 级去重校验（覆盖重启后 in-memory map 失效的场景）
                 Optional<Document> existingDoc = documentService.getByKnowledgeBaseAndContentHash(kbId,
@@ -341,7 +449,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         RuntimeException lastException = null;
         leaseGuard.assertOwned();
         PreparedIndex preparedIndex = prepareIndex(
-                kbId, documentId, fileName, documentTitle, chunks, progressCallback);
+                taskId, kbId, documentId, fileName, documentTitle, chunks, progressCallback);
         boolean vectorConfirmed = false;
 
         for (int attempt = 1; attempt <= MAX_INDEX_ATTEMPTS; attempt++) {
@@ -374,7 +482,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         throw lastException == null ? new RuntimeException("文档入库失败") : lastException;
     }
 
-    private PreparedIndex prepareIndex(Long kbId,
+    private PreparedIndex prepareIndex(String taskId,
+            Long kbId,
             Long documentId,
             String fileName,
             String documentTitle,
@@ -383,7 +492,9 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         List<String> chunkTexts = chunks.stream().map(DocumentChunk::content).toList();
 
         progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
-        List<float[]> vectors = embeddingService.embedBatch(chunkTexts);
+        List<float[]> vectors = traceStage(
+                GenAiTelemetry.SpanNames.DOCUMENT_EMBEDDING,
+                () -> embeddingService.embedBatch(chunkTexts));
 
         // 构造向量文档列表及对应的 DB Chunk 实体
         List<VectorDocument> vectorDocs = new ArrayList<>(chunks.size());
@@ -396,7 +507,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                     chunk.id(),
                     vectors.get(i),
                     chunk.content(),
-                    buildVectorMetadata(kbId, documentId, fileName, documentTitle, i, chunk)));
+                    buildVectorMetadata(taskId, kbId, documentId, fileName, documentTitle, i, chunk)));
 
             // DOC-02: 构建 DB Chunk 实体，包含 vectorId
             com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk = new com.enterprise.rag.admin.kb.entity.DocumentChunk();
@@ -412,7 +523,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         return new PreparedIndex(vectorDocs, entityChunks);
     }
 
-    private PreparedIndex prepareFinalization(Long kbId,
+    private PreparedIndex prepareFinalization(String taskId,
+            Long kbId,
             Long documentId,
             String fileName,
             String documentTitle,
@@ -423,7 +535,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             DocumentChunk chunk = chunks.get(i);
             vectorDocs.add(new VectorDocument(
                     chunk.id(), new float[0], chunk.content(),
-                    buildVectorMetadata(kbId, documentId, fileName, documentTitle, i, chunk)));
+                    buildVectorMetadata(taskId, kbId, documentId, fileName, documentTitle, i, chunk)));
             com.enterprise.rag.admin.kb.entity.DocumentChunk entityChunk =
                     new com.enterprise.rag.admin.kb.entity.DocumentChunk();
             entityChunk.setDocumentId(documentId);
@@ -448,7 +560,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         leaseGuard.assertOwned();
         indexTaskLedger.markVectorInFlight(taskId, result.contentHash(), chunks.size());
         leaseGuard.assertOwned();
-        vectorStore.upsert(collectionName, vectorDocs);
+        traceStage(GenAiTelemetry.SpanNames.VECTOR_UPSERT,
+                () -> vectorStore.upsert(collectionName, vectorDocs));
         log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
         try {
             indexTaskLedger.markVectorConfirmed(taskId);
@@ -467,11 +580,13 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
         indexTaskLedger.markFinalizing(taskId);
         progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
-        upsertKeywordIndex(collectionName, preparedIndex.vectorDocuments());
+        traceStage(GenAiTelemetry.SpanNames.KEYWORD_UPSERT,
+                () -> upsertKeywordIndex(collectionName, preparedIndex.vectorDocuments()));
 
         progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
-        sqlFinalizer.finalizeSql(taskId, kbId, documentId, result.contentHash(),
-                preparedIndex.entityChunks());
+        traceStage(GenAiTelemetry.SpanNames.INDEX_FINALIZE,
+                () -> sqlFinalizer.finalizeSql(taskId, kbId, documentId, result.contentHash(),
+                        preparedIndex.entityChunks()));
 
         progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档处理完成"));
         return result;
@@ -480,6 +595,26 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     private record PreparedIndex(
             List<VectorDocument> vectorDocuments,
             List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks) {
+    }
+
+    private <T> T traceStage(String spanName, java.util.function.Supplier<T> action) {
+        try (GenAiTelemetry.SpanScope stage = telemetry.startSpan(spanName, Map.of())) {
+            try {
+                T result = action.get();
+                stage.outcome("SUCCESS");
+                return result;
+            } catch (RuntimeException failure) {
+                stage.safeError(failure, "ingest", "STAGE_FAILED").outcome("ERROR");
+                throw failure;
+            }
+        }
+    }
+
+    private void traceStage(String spanName, Runnable action) {
+        traceStage(spanName, () -> {
+            action.run();
+            return null;
+        });
     }
 
     private void sleepBeforeRetry(Long documentId, long backoffMs) {
@@ -526,10 +661,13 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 && chunkCount > 0;
     }
 
-    private Map<String, Object> buildVectorMetadata(Long kbId, Long documentId, String fileName, String documentTitle,
+    private Map<String, Object> buildVectorMetadata(String taskId, Long kbId, Long documentId,
+            String fileName, String documentTitle,
             int chunkIndex, DocumentChunk chunk) {
         Map<String, Object> metadata = new LinkedHashMap<>(chunk.metadata());
+        metadata.put("ingestTaskId", taskId);
         metadata.put("documentId", documentId);
+        metadata.put("chunkId", chunk.id());
         metadata.put("kbId", kbId);
         metadata.put("chunkIndex", chunkIndex);
         metadata.put("startIndex", chunk.startIndex());
@@ -543,6 +681,12 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         metadata.putIfAbsent("headingLevel", null);
         metadata.putIfAbsent("tokenCount", estimateTokenCount(chunk.content()));
         return metadata;
+    }
+
+    @SuppressWarnings("unused")
+    private Map<String, Object> buildVectorMetadata(Long kbId, Long documentId,
+            String fileName, String documentTitle, int chunkIndex, DocumentChunk chunk) {
+        return buildVectorMetadata(null, kbId, documentId, fileName, documentTitle, chunkIndex, chunk);
     }
 
     private int estimateTokenCount(String text) {

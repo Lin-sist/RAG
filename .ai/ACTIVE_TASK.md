@@ -12,7 +12,7 @@
 - 非目标：C12 exporter/metrics/alerts/deployment/sampling、Java agent、生产 SLA、raw GenAI content、租户隔离、质量门禁激活。
 - 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 - 外调边界：真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用与数据出站均未授权；规划阶段保持 0。
-- 当前闸门：等待用户审阅 proposal、14 条 design decisions、4 requirements / 12 scenarios，并明确授权新增 OTel 依赖与进入 Java TDD。
+- 当前阶段：Java TDD implementation 与本地验证已完成，等待用户验收；验收前不接受 delta、不归档 change、不置为 `IDLE`。
 
 ## Previous Completed
 
@@ -23,10 +23,9 @@
 
 ## Execution Entry
 
-1. 先审阅并批准 active change 的 proposal、design、tasks 与 spec delta；未批准前不修改 POM、Java、配置或测试。
-2. 获得实现授权后，按 `tasks.md` 从 OTel foundation/context/privacy 的 RED 测试开始，一次推进一个可验证切片。
+1. 用户验收实现与验证证据。
+2. 验收后原文接受 delta、同步长期事实源、归档 change 并恢复 `IDLE`。
 3. C11 不接 network exporter、不新增 metrics/alerts/deployment，不触发真实 provider 或数据出站。
-4. 实现完成并经用户验收后，才接受 delta、归档 change 并恢复 `IDLE`。
 
 ## Emergency Rule
 

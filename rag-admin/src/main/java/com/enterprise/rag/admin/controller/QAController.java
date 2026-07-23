@@ -193,10 +193,13 @@ public class QAController {
         SseEmitter emitter = new SseEmitter(120_000L); // 120秒超时
         StringBuffer answerBuffer = new StringBuffer();
         StreamDeliveryDiagnostics diagnostics = new StreamDeliveryDiagnostics(startTime, STREAM_GAP_WARN_THRESHOLD_MS);
+        RAGService.StreamTerminalSignal terminalSignal = new RAGService.StreamTerminalSignal();
 
         Disposable.Swap subscription = Disposables.swap();
         subscription.update(ragService.askStream(qaRequest)
                 .doOnSubscribe(s -> log.debug("流式问答开始: kbId={}", request.kbId()))
+                .contextWrite(context -> context.put(
+                        RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY, terminalSignal))
                 .subscribe(
                         chunk -> {
                             if (!"[DONE]".equals(chunk)) {
@@ -254,6 +257,7 @@ public class QAController {
             }
         });
         emitter.onTimeout(() -> {
+            terminalSignal.markTimeout();
             if (!subscription.isDisposed()) {
                 subscription.dispose();
             }

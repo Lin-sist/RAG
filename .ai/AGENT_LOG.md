@@ -1253,3 +1253,27 @@
 - 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有 Java/POM/Python/前端实现改动，因此 Maven、Python 全量、frontend build、Docker/Testcontainers、live backend/provider 与 network exporter 均 `SKIPPED`。
 - 外调与下一闸门：真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、数据出站、费用与限流事件均为 0。等待用户审阅并批准 default-off、separate trace、stable lineage、stream lifecycle、privacy contract、14 条 decisions、4/12 delta，并授权新增 OTel 依赖与进入 Java TDD。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C11 GenAI追踪核心规划`。
+
+## 2026-07-23｜C11 规划提交补录
+
+- Commit：`3e02074`（`docs(openspec): 启动C11 GenAI追踪核心规划`）。本条只补录上一规划提交的真实 hash，不记录本次 C11 实现改动。
+
+## 2026-07-23｜C11 规划批准并获准进入 Java TDD
+
+- 用户批准：proposal 的 C11/C12 边界、default-off、separate ingest/ask trace、stable lineage、stream lifecycle 与 privacy contract；design 的 14 条 decisions 和 `rag-system` delta 的 4 requirements / 12 scenarios 全部通过事前闸门。
+- 实现授权：用户明确授权新增 Spring Boot 3.2.1 BOM 已管理的 OpenTelemetry API/SDK/test 依赖并进入 Java TDD；提交责任继续为 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 外调边界：授权不包含 OTLP/Zipkin/Jaeger exporter、metrics、告警、部署、真实 embedding/rerank/ask/generation/judge/LLM/provider 调用或数据出站；实现与测试只使用 no-op/in-memory SDK 和 fake dependencies。
+- 执行方式：按 `tdd` skill 进行纵向 RED→GREEN，从 public tracing facade/context behavior 开始，再推进 request/async、ingest lineage、sync/stream ask；不一次性横向写完全部测试。
+- Commit：`pending`。
+
+## 2026-07-23｜C11 GenAI tracing core Java TDD implementation 完成
+
+- 实现范围：按 Spring Boot 3.2.1 BOM 管理的 OTel `1.31.0` 分层新增 common API、admin SDK 与 test-only in-memory exporter；新增 default-off/no-op wiring、固定 instrumentation scope、安全 tracer facade、span/attribute/event allowlist、fail-open error recorder，以及 W3C 优先/custom pair 回退的 request/MDC bridge。Runtime 未注册 OTLP/Zipkin/Jaeger exporter。
+- Ingest：`DocumentIndexingServiceImpl` 在 durable task 执行时创建 independent `rag.ingest` root，fresh submission 只以 optional link 关联，resume 无 parent/link；真实执行阶段覆盖 input open、parse/chunk、batch embedding、vector upsert、keyword upsert、SQL finalize，retry 不复制 root。Vector/keyword metadata 共享 `ingestTaskId/documentId/确定性 chunkId`，不持久化 OTel trace/span id。
+- Ask：`RAGServiceImpl/QueryEngineImpl/AnswerGeneratorImpl` 已接入 cache/retrieval/query embedding/vector/keyword/fusion/rerank/generation/prompt/LLM/citation 固定拓扑；复用既有 requested/effective provider、fallback、attempt/retry diagnostics，真实 provider usage 与 prompt estimated token 分离。Sync cache-hit/no-result/success/error 与 stream complete/error/cancel/timeout 均按真实生命周期结束一次；`QAController` 通过 Reactor context terminal signal 将 SseEmitter timeout 与主动断连区分。
+- Lineage 与隐私：只对最终 `topK` contexts 记录 bounded `rag.lineage.context` event，支持 `COMPLETE/PARTIAL/MISSING`；question/prompt/answer/context/source/file/title/credential/provider body/raw error message/stack 不进入普通 telemetry，不调用 `recordException`，动态 span name 与非 allowlisted attribute 被拒绝。Telemetry helper 自身失败降级 no-op，不改变业务异常、retry、fallback、持久化或响应语义。
+- TDD 与验证：所有切片均先得到预期 RED，再做最小 GREEN。最终 `mvn -q test` 退出码 0，77 个 Surefire reports / 336 tests / 0 failures / 0 errors / 9 skipped；9 个 skip 均为需要 Docker 的 8 个 MySQL migration/recovery tests 与 1 个独立 Milvus stop/start test。Python 全量 `154 tests / OK`；SensitiveLogs 扫描 313 source files / PASS；OTel dependency tree 仅含 API/SDK/SDK-testing 及 SDK 自身模块，无 network exporter；3 个 changed Markdown 本地链接 missing=0；新增内容 secret/private-key/`C:\Users\` 命中 0；受保护路径与 accepted baseline diff 均为 0；`git diff --check` 通过，仅有既有 CRLF→LF 提示。
+- 跳过项与外调：前端无改动，正式 frontend build `SKIPPED`。本轮不执行 Docker/Testcontainers/live backend；真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、外部 telemetry 传输、业务数据出站、模型费用与限流事件均为 0。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、评测 release/fixture/history、数据库 schema、API/DTO、production provider/prompt/retrieval/rerank/citation/no-answer 默认行为；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：C11 只验证进程内 tracing contract，默认仍关闭；生产 exporter、metrics、alerts、sampling、retention、权限与部署属于 C12。Docker MySQL/Milvus live suites 本轮未执行。Change 保持 `ACTIVE`，等待用户验收；验收前不接受 delta、不归档、不恢复 `IDLE`。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(观测): 实现C11 GenAI追踪核心`。
