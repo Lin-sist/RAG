@@ -55,4 +55,4 @@
 - [x] 运行 SensitiveLogs、changed Markdown links、secret/absolute-path、受保护路径与 `git diff --check`。
 - [x] 前端无改动时正式 build 记为 `SKIPPED`；无 Docker/live dependency 行为时 Testcontainers/live backend 记为 `SKIPPED`。
 - [x] 真实 provider/exporter 调用、外部传输与数据出站保持 0。
-- [ ] 用户验收实现与验证证据后，原文接受 delta、同步长期事实源、归档 change 并恢复 `ACTIVE_TASK=IDLE`。
+- [x] 用户验收实现与验证证据后，原文接受 delta、同步长期事实源、归档 change 并恢复 `ACTIVE_TASK=IDLE`。

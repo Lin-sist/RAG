@@ -65,9 +65,10 @@
 - 当前流式路径只输出文本 chunk，历史保存 citations 为空。
 - 需要设计兼容的结构化完成事件，明确 citations、contexts、metadata 和中断语义。
 
-### 5. 可观测性与恢复演练
+### 5. 可观测性与恢复演练（C11 tracing core 已完成：2026-07-23）
 
-- 为 embedding、vector search、BM25、RRF、rerank、LLM 和 citation validation 建立统一 trace/metrics。
+- C11 已建立默认关闭、fail-open 的 OTel 1.31 进程内 tracing core：分离 ingest/ask trace、固定实际执行阶段、稳定 task/document/chunk lineage、W3C/custom context、MDC bridge、同步/流式终态与隐私白名单；4 requirements / 12 scenarios 已接受进 `rag-system` baseline 并归档。
+- C12 仍需独立立项决定 network exporter、metrics、alerts/dashboard、production sampling、retention、权限、部署和真实 backend 容量/费用；C11 未发送外部 telemetry，不能解释为生产观测栈完成。
 - LLM 429/503/timeout、Redis/Milvus 不可用语义已完成；继续演练索引输入丢失、进程中断与恢复。
 
 ## P2：基线稳定后

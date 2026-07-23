@@ -1,6 +1,6 @@
 # RAG 项目当前架构
 
-> 状态日期：2026-07-22
+> 状态日期：2026-07-23
 > 本文只描述当前代码中已确认的结构与能力。阶段指标以 `docs/optimization/` 和 `docs/eval/reports/` 中的当前文件为准。
 
 ## 1. 项目定位
@@ -68,6 +68,7 @@
 - C8b 已验收归档：`rag-eval-dev-v2` 含 150 条（30 seed + 120 new），固定 type×difficulty、answerability、fixture coverage、exact grounding、duplicate 与 review evidence；v1/v2 可同时验证，默认 manifest 已切换为与显式 v2 manifest byte-identical。该验收不构成质量收益结论。
 - C9a 已验收归档：成功 answerable answer 经 `sentence-list-v1` 确定性拆成 claims，只使用通过既有 citation-context provenance 校验的 returned citation snippets，以 exact 或固定 `0.70` claim-token coverage 形成逐 claim attribution；aggregate 单独报告客观 claim 通道的完整性与 support rate，不改变全局 Report status 或 judge 语义。4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline。
 - C9b 已验收归档：`rag-judge-v1` 固定 prompt/parser/`0.70` 双分数 threshold/model config identity；24 条独立静态 calibration v1 按 faithful×relevant 四象限各 6 条；normal eval 输出独立 objective/judge/global status 与 comparison safety。4 requirements / 12 scenarios 已接受进 `evaluation` baseline；live judge calibration 按 `SKIPPED` 收口，不能形成真实 agreement 或生产质量结论。
+- C11 已验收归档：默认关闭、fail-open 的 OTel 1.31 tracing core 为 durable ingest 与 ask 建立分离 trace，固定实际执行阶段 topology，并以稳定 task/document/chunk lineage 关联两条链路；W3C/custom context、MDC bridge、同步/流式终态和隐私白名单均由进程内 exporter/fake tests 锁定。4 requirements / 12 scenarios 已接受进 `rag-system` baseline。
 - NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
@@ -80,7 +81,7 @@
 - 当前默认、已验收的 150 条 v2 是开发评测 release；30 条 v1 仍可显式复现。两者都不是生产数据集、隐藏 benchmark 或论文级基准。
 - C8b 只扩充并复核 question/annotation；C9a/C9b/C10 离线能力均已验收归档。C10 当前只有 DRAFT retrieval profile，reference calls 与具体阈值未授权，因此 active quality gate、live judge calibration 与真实 generation evidence 仍未完成。
 - 标题感知、长代码块和长段落专项仍待验证。
-- 当前只有请求日志与诊断字段，尚未形成完整 GenAI trace、指标和告警体系。
+- C11 已形成默认关闭的进程内 GenAI trace contract，但 runtime 不注册网络 exporter；metrics、告警、dashboard、生产 sampling、retention、权限和部署仍属于 C12，不能宣称完整生产观测体系已就绪。
 
 ## 6. 文档真相源
 

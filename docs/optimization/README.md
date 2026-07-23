@@ -58,6 +58,13 @@
 - 首个 `rag-eval-dev-v2-retrieval-regression-v1` profile 保持 `DRAFT / PENDING_REFERENCE_EVIDENCE`，12 个 target 均未填写；reference calls 未授权并按 `SKIPPED` 收口，实际 backend/provider 调用和数据出站为 0。
 - 4 requirements / 12 scenarios 已接受进长期 `evaluation` baseline；本次只确认 offline gate framework，不确认 ACTIVE quality gate、retrieval/generation/citation/judge 质量达标或 production readiness。
 
+### C11：GenAI Tracing Core（已验收归档）
+
+- archived change：`../../openspec/changes/archive/2026-07-23-genai-tracing-core/`。
+- OTel 1.31 API/SDK 由 Spring Boot 3.2.1 BOM 管理，runtime 默认关闭且 fail-open；durable ingest 与 ask 使用分离 trace，并通过稳定 `ingestTaskId/documentId/chunkId` lineage 关联。
+- 固定阶段 topology、W3C/custom context、MDC bridge、同步/流式终态、bounded lineage events 与隐私白名单已用 in-memory exporter/fake dependencies 验证。
+- 4 requirements / 12 scenarios 已接受进长期 `rag-system` baseline；C11 不含 network exporter、metrics、alerts、dashboard、生产 sampling、retention、权限或部署，真实 provider/exporter 调用和数据出站为 0。
+
 ## 历史材料
 
 `history/` 保存 v3 正式计划形成前的 hybrid、reranker abstraction 和 token chunker 演进记录。它们可以解释代码为何形成当前结构，但不得单独用于判断当前阶段、指标或待办。

@@ -1277,3 +1277,18 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、评测 release/fixture/history、数据库 schema、API/DTO、production provider/prompt/retrieval/rerank/citation/no-answer 默认行为；未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险：C11 只验证进程内 tracing contract，默认仍关闭；生产 exporter、metrics、alerts、sampling、retention、权限与部署属于 C12。Docker MySQL/Milvus live suites 本轮未执行。Change 保持 `ACTIVE`，等待用户验收；验收前不接受 delta、不归档、不恢复 `IDLE`。
 - Commit：`pending`；提交责任为用户手动提交。建议 `feat(观测): 实现C11 GenAI追踪核心`。
+
+## 2026-07-23｜C11 implementation 提交补录
+
+- Commit：`e1aa401`（`feat(观测): 实现C11 GenAI追踪核心`）。本条只补录上一执行提交的真实 hash，不记录本次验收归档改动。
+
+## 2026-07-23｜C11 验收与归档
+
+- 用户验收：用户明确确认 C11 验收通过并要求归档；提交责任继续为 `用户手动提交`，Agent 未暂存、未提交、未 push、未创建 PR、未部署。
+- 规格收口：`2026-07-23-genai-tracing-core` delta body 已原文接受为 `openspec/specs/rag-system/spec.md` 的 exact suffix，共 4 requirements / 12 scenarios；change 的 proposal、design、tasks 与 delta 已移入 `openspec/changes/archive/2026-07-23-genai-tracing-core/`，tasks unchecked=0，未归档 active change=0，`.ai/ACTIVE_TASK.md=IDLE`。
+- 长期事实源：同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`，记录 default-off/fail-open OTel 1.31 tracing core、分离 ingest/ask trace、稳定 lineage、固定 topology、context/MDC、流式终态和隐私边界；C12 exporter、metrics、alerts、sampling、retention、权限与部署仍明确未完成。
+- 本轮验证：delta exact suffix=`true`；4/12 计数正确；archive artifacts=4；11 个归档相关 Markdown 本地链接 missing=0；Python 全量 `154 tests / OK`；SensitiveLogs 扫描 313 source files / PASS；受保护路径 diff=0。新增文档定向扫描仅命中 AGENT_LOG 既有历史说明，无新增真实 credential 或用户目录绝对路径。
+- 复用与跳过：本轮只做规格/文档/状态归档，未修改 Java/POM/前端/数据库 schema；因此未重跑 Maven、frontend build、Docker/Testcontainers/live backend。实现提交 `e1aa401` 已有同一代码状态的 `mvn -q test` 77 reports / 336 tests / 0 failures / 0 errors / 9 Docker-related skipped 证据。OpenSpec CLI 不在 PATH，未声称 CLI validation 通过。
+- 外调与范围：真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、外部 telemetry 传输、业务数据出站、模型费用与限流事件均为 0；未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、评测 release/fixture/history 或 migration。
+- 剩余风险：C11 仍是默认关闭的进程内 tracing contract，不代表生产观测栈或 production readiness；Docker MySQL/Milvus live suites 本轮未执行。后续 C12 必须另立 Type C change 并重新确认外部传输、费用、采样、retention、权限和部署边界。
+- Commit：`pending`；建议 `chore(openspec): 验收并归档C11 GenAI追踪核心`。
