@@ -2,9 +2,18 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
-当前没有 active OpenSpec change。
+## Active Change
+
+- Change：`2026-07-23-judge-calibration-and-status-semantics`
+- 位置：`openspec/changes/2026-07-23-judge-calibration-and-status-semantics/`
+- 目标：为可选 LLM judge 建立版本化 contract、独立人工 gold calibration corpus/evidence，并分离 objective、judge 与全局 Report status/comparison safety。
+- 范围：24 条 faithful×relevant 四象限静态校准集、manifest/validator/calibration runner、strict score parser、tracked judge identity、canary/full agreement 与 repeat stability、normal eval channel status 和兼容性；当前仅完成规划，不修改实现或 baseline。
+- 非目标：不做 C10 quality threshold/exit gate，不默认开启 judge，不改 v1/v2 dataset、C9a objective formulas、Java/API、生产 prompt/citation/retrieval/rerank/no-answer、前端或 SSE，不运行真实 judge calibration。
+- 验收入口：`proposal.md` 的 planning/offline/live/closeout gates、`design.md` 的 15 条决策记录、`tasks.md` 与 `specs/evaluation/spec.md` 的 4 requirements / 12 scenarios。
+- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 外部调用：planning 与 offline implementation 默认均为 0；live canary 最多 4 judge calls、full 最多 72、合计最多 76，必须另行固定 provider/model/出站/费用/限流并授权。
 
 ## Last Completed
 

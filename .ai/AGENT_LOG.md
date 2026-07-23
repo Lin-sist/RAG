@@ -1073,3 +1073,29 @@
 - C9b readiness：治理前置已满足，且代码事实确认 judge 默认关闭、已有可选 judge/聚合字段，但 `report_status` 仍只看 retrieve/ask error，judge 全失败仍可能 `CLEAN`，也没有独立 objective/judge status 或校准 evidence。C9b 可在本归档提交后另立 `judge-calibration-and-status-semantics` Type C change 进入规划；实现和任何真实 judge 校准调用仍需分别通过事前闸门与外调授权。
 - 剩余风险：C9a `0.70` 仍无真实 150 条 generation 分布证据；C9b 的 judge model/prompt、人工 gold、校准样本、agreement 指标、状态矩阵和错误降级语义尚未决策，不能从当前代码推定。
 - Commit：`pending`；提交责任为用户手动提交。建议 `chore(openspec): 验收并归档C9a客观claim证据指标`。
+
+## 2026-07-23｜C9a 验收归档提交补录
+
+- Commit：`033ee01`（`chore(openspec): 验收并归档C9a客观claim证据指标`）。本条只补录上一验收归档提交的真实 hash，不记录本次 C9b 规划提交。
+
+## 2026-07-23｜C9b judge calibration 与状态语义规划启动
+
+- 用户决策与提交责任：用户要求现在开始 C9b 规划。提交责任按仓库默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 HEAD=`033ee01`、工作区干净、`.ai/ACTIVE_TASK.md=IDLE`、C9a 4 requirements / 12 scenarios 已接受进 `evaluation` baseline 并归档，当前无未归档 change，允许按冻结路线图启动 `judge-calibration-and-status-semantics` Type C change。
+- 当前事实：可选 answerable-only judge、faithfulness/relevance/pass、计划调用估算、judge error count 和 `--fail-on-judge-errors` 已存在；但 inline prompt/parser/0.70 pass rule 未形成完整 contract identity，越界 score 会 clamp，provider pass 可成为规范结果，没有 calibration corpus/evidence，`report_status` 只看 retrieve/ask error，因此 judge 全失败仍可能 `CLEAN`。
+- 能力分类：`confirmed` 为既有 optional judge 与 C9a objective status；`partial` 为未版本化 judge contract、成功子集聚合和单一 comparison safety；`planned` 为 24 条四象限 human-gold calibration v1、strict parser、shared contract、canary/full agreement/repeat metrics、objective/judge/global status 分离；`out_of_scope` 为 C10、生产行为、默认开启 judge、no-answer/逐 claim judge和 dataset v2 修改；`unknown` 为 live provider/model/费用/限流与实际 agreement。
+- 规划 artifacts：创建 change `2026-07-23-judge-calibration-and-status-semantics` 的 proposal/design/tasks 与 `evaluation` spec delta，并激活 `.ai/ACTIVE_TASK.md`。规划固定 24 cases（四象限各 6）、full 3 repeats、strict score schema、score-derived pass、`objectiveMetricStatus`/`judgeMetricStatus`/global composition 与 per-channel comparison safety；design 包含 15 条真实决策记录，delta 为 4 requirements / 12 scenarios。
+- 外部调用与范围：规划阶段 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用量和数据出站均为 0；live calibration 预算被锁在独立闸门，canary 最多 4 judge calls、full 最多 72、总计最多 76，执行前必须另行披露和授权。
+- 未修改范围：本轮不修改 baseline spec、Python runner/tests、calibration artifact、eval JSONL/fixture/manifest/schema/review、Java/API、配置、数据库、前端、依赖、默认 provider、生产 prompt/citation/no-answer 或历史报告；未进入 C10。
+- 剩余风险与下一闸门：24 条只能代表开发 rubric；0.70 只是当前 candidate，规划不自动调参或建立门禁。用户需先批准 proposal 的 corpus/repeat/status/external-call 方案、15 条决策、4/12 delta 和 offline TDD 实现授权；实现授权默认仍不包含 live judge 调用。
+- Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C9b judge校准与状态语义规划`。
+
+## 2026-07-23｜C9b 规划门禁验证
+
+- 结构与状态：proposal/design/tasks/spec delta 共 4 文件；15 条 design decisions 均完整包含“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”；delta 为 4 requirements / 12 scenarios；`.ai/ACTIVE_TASK.md=ACTIVE` 且只指向 C9b，当前只有一个未归档 change。
+- Plan-only：direct 与 reproducible runner 均返回 dataset `VALID`、`rag-eval-dev-v2`、150 samples。各选取 1 条时 direct 仅估算 debugRetrieve=1、ask=1、judge=0，reproducible 估算 debugRetrieve=1、ask=0、judge=0；plan-only 实际 backend/provider 调用和数据出站均为 0。
+- 安全与文档：SensitiveLogs 扫描 308 source files / PASS；6 个 changed/untracked Markdown 的本地链接 missing=0、trailing whitespace=0、CRLF=0；5 个本轮规划目标文件的 secret value / Authorization token / `C:\\Users\\` 绝对路径定向扫描为 0；`git diff --check` 通过。
+- 范围检查：`openspec/specs/` baseline、`scripts/`、`docs/eval/`、eval data/fixture、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、Java/POM 和前端 tracked diff 均为 0；当前只修改 ACTIVE_TASK、追加 AGENT_LOG 并新增 C9b change 目录。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有 Python/Java/前端实现改动，因此 Python 全量、Maven、frontend build、Docker/Testcontainers、live backend 与 live judge/provider 均 `SKIPPED`。
+- 下一闸门：用户需审阅并批准 24-case 四象限校准集、3 repeats、strict parser、score-derived pass、objective/judge/global status matrix、15 条决策、4/12 delta 与 offline TDD 实现授权。即使批准实现，live canary/full judge 调用仍必须另行披露和授权。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C9b judge校准与状态语义规划`。
