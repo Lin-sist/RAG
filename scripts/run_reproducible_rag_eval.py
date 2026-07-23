@@ -24,7 +24,7 @@ import eval_dataset_contract as dataset_contract
 
 
 DEFAULT_BASE_URL = "http://localhost:8080"
-DEFAULT_EVAL_SET = Path("docs/eval/rag_eval_set.jsonl")
+DEFAULT_EVAL_SET = Path("docs/eval/releases/rag-eval-dev-v2.jsonl")
 DEFAULT_DATASET_MANIFEST = Path("docs/eval/dataset-manifest.json")
 DEFAULT_REPORT = Path("docs/eval/reports/stage1-reproducible-eval.md")
 DEFAULT_DETAILS_JSON = Path("docs/eval/reports/stage1-reproducible-eval-details.json")

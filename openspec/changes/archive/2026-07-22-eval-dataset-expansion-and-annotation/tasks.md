@@ -72,7 +72,7 @@
 
 - [x] 更新 proposal/design/tasks 的实际数据构建、review 与验证结果；最终 release 未保留 rejected draft。
 - [x] 同步 `openspec/project.md`、架构、技术债、优化索引和 `.ai/AGENT_LOG.md`。
-- [ ] 用户验收 expanded dataset、quota、review evidence、v1/v2 identity 与结论边界。
-- [ ] 用户验收后将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`。
-- [ ] 验收后切换默认 manifest 到 v2，恢复 `.ai/ACTIVE_TASK.md=IDLE` 并归档 change。
-- [ ] C8b 收口后另行 readiness，再决定是否启动 C9a；不得在本 change 直接实现 claim metrics。
+- [x] 用户验收 expanded dataset、quota、review evidence、v1/v2 identity 与结论边界。
+- [x] 用户验收后将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`。
+- [x] 验收后切换默认 manifest 到 v2，恢复 `.ai/ACTIVE_TASK.md=IDLE` 并归档 change。
+- [x] C8b 收口后已另行完成 readiness：C9a `claim-evidence-objective-metrics` 可以启动独立规划，但本 change 未创建或实现 claim metrics。

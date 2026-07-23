@@ -29,12 +29,12 @@
 - `../eval/schema/rag-eval-sample-v1.json`：allowed/required fields、类型、enum、ID pattern 与 answerable/no-answer 条件契约。
 - `../eval/RAG_EVAL_GUIDE.md`：formal/UNVERSIONED 边界、零外调 plan、version bump matrix 与 drift recovery。4 个 requirements / 13 个 scenarios 已接受进长期 `evaluation` baseline，change 已归档。
 
-### C8b：评测数据扩充与标注（实现完成，待用户验收）
+### C8b：评测数据扩充与标注（已验收归档）
 
 - `../eval/releases/rag-eval-dev-v2-manifest.json`：显式 v2 release，固定 150 条 exact quota、v1 seed identity、三份 fixture coverage、grounding/duplicate facts 和 review identity。
-- `../eval/releases/rag-eval-dev-v2.jsonl`：前 30 条保持 v1 raw/object/order identity，追加 120 条 source-first 开发样本；默认 manifest 尚未切换。
+- `../eval/releases/rag-eval-dev-v2.jsonl`：前 30 条保持 v1 raw/object/order identity，追加 120 条 source-first 开发样本；默认 manifest 已切换为与显式 v2 manifest byte-identical。
 - `../eval/review/rag-eval-dev-v2-review.jsonl`：150 条结构、grounding、duplicate 与语义复核事实，不复制完整 question、answer 或 fixture 正文。
-- C8b 尚未接受进长期 baseline、未归档，不代表 C9/C10/C14 或任何质量收益完成。
+- C8b 的 4 requirements / 12 scenarios 已接受进长期 baseline并归档；这不代表 C9/C10/C14 或任何质量收益完成。
 
 ## 历史材料
 

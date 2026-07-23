@@ -10,8 +10,8 @@ from eval_dataset_contract import _jaccard, _question_features, sha256_file
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-V1_MANIFEST = REPO_ROOT / "docs/eval/dataset-manifest.json"
-V1_RELEASE_MANIFEST = REPO_ROOT / "docs/eval/releases/rag-eval-dev-v1-manifest.json"
+V1_MANIFEST = REPO_ROOT / "docs/eval/releases/rag-eval-dev-v1-manifest.json"
+V1_RELEASE_MANIFEST = V1_MANIFEST
 V2_QUESTIONS = REPO_ROOT / "docs/eval/releases/rag-eval-dev-v2.jsonl"
 V2_REVIEW = REPO_ROOT / "docs/eval/review/rag-eval-dev-v2-review.jsonl"
 V2_MANIFEST = REPO_ROOT / "docs/eval/releases/rag-eval-dev-v2-manifest.json"
@@ -290,9 +290,8 @@ def main() -> None:
     appended = "".join(canonical_json_line(row) + "\n" for row in ROWS).encode("utf-8")
     V2_QUESTIONS.write_bytes(seed_bytes + appended)
     review_rows = build_review(all_rows)
-    V2_REVIEW.write_text(
-        "".join(canonical_json_line(row) + "\n" for row in review_rows),
-        encoding="utf-8",
+    V2_REVIEW.write_bytes(
+        "".join(canonical_json_line(row) + "\n" for row in review_rows).encode("utf-8")
     )
 
     distribution = {
@@ -340,9 +339,8 @@ def main() -> None:
             "nearDuplicateThreshold": 0.82,
         },
     }
-    V2_MANIFEST.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
+    V2_MANIFEST.write_bytes(
+        (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     )
 
 

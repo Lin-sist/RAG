@@ -998,3 +998,18 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、v1 question/schema/fixture bytes、`openspec/specs/` baseline、Java/API、数据库、前端、依赖、默认 provider、retrieval/chunking/rerank/prompt/citation/no-answer/judge 公式或历史报告；未进入 C9/C10/C14，未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险与闸门：150 条仍来自 3 份 tracked fixture，是开发数据而非隐藏 benchmark、生产分布或论文级数据集；自动门禁不能替代用户对题意和标注的最终语义验收。用户验收前必须继续保持默认 manifest=v1，不接受 baseline、不归档；验收后才可切默认 v2、原文接受 4/12 delta、恢复 `ACTIVE_TASK=IDLE` 并归档。
 - Commit：`pending`；提交责任为用户手动提交。建议 `feat(评测): 实现C8b评测数据扩充与标注`。
+
+## 2026-07-23｜C8b 实现提交补录
+
+- Commit：`55d9a34`（`feat(评测): 实现C8b评测数据扩充与标注`）。本条只补录上一实现提交的真实 hash，不记录本次验收归档提交。
+
+## 2026-07-23｜C8b 用户验收、默认切换与归档
+
+- 用户授权与结果：用户确认 C8b 验收完毕，并授权在完成度复核通过后直接归档。4 requirements / 12 scenarios 的 delta body 已原文接受进 `openspec/specs/evaluation/spec.md`；默认 manifest 和两个 runner 已切换到 `rag-eval-dev-v2`；change 已移动到 `openspec/changes/archive/2026-07-22-eval-dataset-expansion-and-annotation/`，`.ai/ACTIVE_TASK.md=IDLE`，当前无未归档 change。
+- 归档范围：同步 proposal/design/tasks、项目上下文、架构、评测指南、技术债与优化索引；18 条已批准决策消除“待确认”残留；v1 显式 manifest/question set 继续可独立验证，C8b 不宣称 retrieval、generation、citation、no-answer、judge 质量收益或 C9/C10/C14 完成。
+- 归档修复：默认切换后 runner 的默认 eval set 改为 v2，测试辅助和 v2 builder 改为显式读取 v1 seed manifest。额外发现 Windows `Path.write_text` 生成 CRLF、Git `eol=lf` 入库后会让 review/manifest raw hash 在新 checkout 漂移；先增加 LF 回归测试并观察 3 个预期失败，再改为 UTF-8 `write_bytes` 固定 LF。最终 v2 question SHA-256=`cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d`，review SHA-256=`fb95b2c1c8947afff3dd7115e61b92daea462a9332f58732240b6e2fdecbe738`，默认与显式 v2 manifest byte-identical，SHA-256=`8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87`。
+- 验证：`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 99 tests / OK；direct 与 reproducible 默认 plan-only 均返回 `VALID`、v2、150 samples，选取 1 条时 estimated debugRetrieve=1、ask=0、judge=0，plan-only 实际业务调用=0；v1/v2 并存验证、LF bytes、default=explicit-v2、question/review path/hash/bytes binding 全部通过。归档 4 个必需 artifacts 齐全、tasks 全勾选、delta body exact suffix、4/12 计数、无未归档 change 与 `ACTIVE_TASK=IDLE` 均通过。
+- 安全与文档：SensitiveLogs 扫描 308 source files / PASS；12 个 changed Markdown 的本地相对链接 missing=0；`git diff --check` 通过；受保护的 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 改动为 0。未修改 v1 question/schema、3 份 fixture、Java/API、数据库、前端、依赖、provider、retrieval/chunking/rerank/prompt/citation/no-answer/judge 公式，未暂存、提交、push、创建 PR、部署或发布。
+- 跳过项与外调：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；本轮无 Java/POM/前端/依赖/运行时服务改动，因此 Maven、frontend build、Docker/Testcontainers 与 live backend/provider smoke 均 `SKIPPED`。未获得外部业务调用授权，真实 embedding/rerank/ask/judge/LLM/provider 调用量与数据出站均为 0。
+- 剩余风险与后续 readiness：150 条 v2 仍只来自 3 份 tracked fixture，是开发评测 release，不是生产分布、隐藏 benchmark 或论文级数据集。C9a `claim-evidence-objective-metrics` 的前置数据治理已满足，可以另立 Type C change 进入规划；claim 单位、evidence 对齐、指标分母和状态语义仍须在新 change 事前闸门决定。
+- Commit：`pending`；提交责任为用户手动提交。建议 `chore(openspec): 验收并归档C8b评测数据扩充`。

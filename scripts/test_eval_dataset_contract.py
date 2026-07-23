@@ -21,18 +21,30 @@ class EvalDatasetContractTest(unittest.TestCase):
         )
 
         self.assertEqual("VALID", identity["validationStatus"])
-        self.assertEqual("rag-eval-dev-v1", identity["releaseVersion"])
-        self.assertEqual("questions-v1", identity["questionSetVersion"])
+        self.assertEqual("rag-eval-dev-v2", identity["releaseVersion"])
+        self.assertEqual("questions-v2", identity["questionSetVersion"])
         self.assertEqual("rag-eval-sample-v1", identity["sampleSchemaVersion"])
-        self.assertEqual("annotations-v1", identity["annotationVersion"])
+        self.assertEqual("annotations-v2", identity["annotationVersion"])
         self.assertEqual("fixtures-v1", identity["fixtureCorpusVersion"])
-        self.assertEqual(30, identity["questionSet"]["sampleCount"])
+        self.assertEqual(150, identity["questionSet"]["sampleCount"])
+        self.assertEqual(150, identity["annotationReview"]["reviewedSampleCount"])
         self.assertEqual(3, len(identity["fixtures"]))
+
+    def test_tracked_v2_generated_artifacts_use_repository_lf_bytes(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+
+        for relative_path in (
+            "docs/eval/dataset-manifest.json",
+            "docs/eval/releases/rag-eval-dev-v2-manifest.json",
+            "docs/eval/review/rag-eval-dev-v2-review.jsonl",
+        ):
+            with self.subTest(path=relative_path):
+                self.assertNotIn(b"\r\n", (repo_root / relative_path).read_bytes())
 
     def test_tracked_v1_and_v2_release_manifests_validate_concurrently(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]
 
-        default_v1 = contract.validate_versioned_release(
+        default_v2 = contract.validate_versioned_release(
             repo_root,
             Path("docs/eval/dataset-manifest.json"),
         )
@@ -45,7 +57,7 @@ class EvalDatasetContractTest(unittest.TestCase):
             Path("docs/eval/releases/rag-eval-dev-v2-manifest.json"),
         )
 
-        self.assertEqual(default_v1["manifestSha256"], explicit_v1["manifestSha256"])
+        self.assertEqual(default_v2["manifestSha256"], explicit_v2["manifestSha256"])
         self.assertEqual("rag-eval-dev-v1", explicit_v1["releaseVersion"])
         self.assertEqual("rag-eval-dev-v2", explicit_v2["releaseVersion"])
         self.assertEqual(150, explicit_v2["questionSet"]["sampleCount"])
@@ -700,7 +712,9 @@ class EvalDatasetContractTest(unittest.TestCase):
     def copy_tracked_release(cls, repo_root: Path) -> dict:
         source_root = Path(__file__).resolve().parents[1]
         manifest = json.loads(
-            (source_root / "docs/eval/dataset-manifest.json").read_text(encoding="utf-8")
+            (source_root / "docs/eval/releases/rag-eval-dev-v1-manifest.json").read_text(
+                encoding="utf-8"
+            )
         )
         descriptors = [manifest["questionSet"], manifest["sampleSchema"], *manifest["fixtures"]]
         for descriptor in descriptors:

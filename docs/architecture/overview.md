@@ -65,7 +65,7 @@
 - C6 provider/attribution 契约已接受进 `rag-system` baseline；归档后 1 次纯合成 NVIDIA hosted smoke 已通过，确认当前 key、模型专属 endpoint、真实响应解析和完整候选覆盖。该证据不代表生产 SLA 或 NVIDIA 相对 heuristic 的收益成立。
 - C7 full `R=3,W=3` comparison 为 `COMPARABLE`；heuristic 继续复现 Recall@5 `68.63%`、MRR `0.7346`、Top1 `96.30%`，NVIDIA 为 `76.47%`、`0.8241`、`100%`，三个 repeat 一致且无 fallback。
 - C8a 已验收归档：runner 前的纯本地 dataset contract 层由 tracked manifest 固定 release/question/schema/annotation/corpus version 与 artifact identity，共享 validator 在 login、preflight、KB mutation 和 provider 调用前校验 path/hash/count/order、sample contract、fixture source 和 distribution。未版本化 custom 输入只能显式标记为 `UNVERSIONED`，不能形成可比较结论；4 个 requirements / 13 个 scenarios 已接受进 `evaluation` baseline。
-- C8b 已完成本地实现、等待用户验收：`rag-eval-dev-v2` 显式 release 含 150 条（30 seed + 120 new），固定 type×difficulty、answerability、fixture coverage、exact grounding、duplicate 与 review evidence；v1/v2 可同时验证，默认 manifest 尚未从 v1 切换。该状态不构成新的 baseline 或质量收益结论。
+- C8b 已验收归档：`rag-eval-dev-v2` 含 150 条（30 seed + 120 new），固定 type×difficulty、answerability、fixture coverage、exact grounding、duplicate 与 review evidence；v1/v2 可同时验证，默认 manifest 已切换为与显式 v2 manifest byte-identical。该验收不构成质量收益结论。
 - NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
@@ -75,7 +75,7 @@
 
 - `UserDetailsServiceImpl` 从数据库加载未删除用户及其有效角色；运行时不再初始化固定默认账号。
 - 真实 model reranker 已完成并验收 30 条开发样本 A/B，C7 delta 已接受进 `evaluation` baseline 并归档；默认 provider 仍为 heuristic。
-- 当前默认、已验收的 30 条 v1 是开发基线；待验收的 150 条 v2 同样不是生产数据集、隐藏 benchmark 或论文级基准。
+- 当前默认、已验收的 150 条 v2 是开发评测 release；30 条 v1 仍可显式复现。两者都不是生产数据集、隐藏 benchmark 或论文级基准。
 - C8b 只扩充并复核 question/annotation，不改变 retrieval、generation、citation、no-answer 或 judge 公式；C9 claim/judge 与 C10 quality gate 仍是独立后续范围。
 - 标题感知、长代码块和长段落专项仍待验证。
 - 当前只有请求日志与诊断字段，尚未形成完整 GenAI trace、指标和告警体系。

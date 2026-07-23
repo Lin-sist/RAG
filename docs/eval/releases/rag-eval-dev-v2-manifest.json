@@ -75,8 +75,8 @@
   },
   "annotationReview": {
     "path": "docs/eval/review/rag-eval-dev-v2-review.jsonl",
-    "sha256": "ef9a28b145aeb09bd40d10d789d03a221c1fd61348e6c3f647a9e64f54f75f86",
-    "bytes": 33885,
+    "sha256": "fb95b2c1c8947afff3dd7115e61b92daea462a9332f58732240b6e2fdecbe738",
+    "bytes": 33735,
     "reviewedSampleCount": 150
   },
   "expandedDataset": {

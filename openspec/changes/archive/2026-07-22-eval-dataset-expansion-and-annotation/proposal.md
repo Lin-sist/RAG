@@ -3,7 +3,7 @@
 ## Status
 
 - Change type：Type C 重大变更。
-- 当前阶段：proposal、18 条 design 决策与 `evaluation` delta 的 4 requirements / 12 scenarios 已获用户批准；TDD 实现与本地冻结验证已完成，expanded v2 等待用户验收，尚未切换为默认 release、接受 baseline 或归档。
+- 当前阶段：用户已验收 expanded data、quota、review evidence、v1/v2 identity 与结论边界；4 requirements / 12 scenarios 已接受进 `evaluation` baseline，默认 manifest 已切换到 v2，change 已归档。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 - 外部调用：规划阶段真实 embedding、rerank、ask、judge、LLM/provider 调用量为 0，数据出站为 0。
 
@@ -69,6 +69,7 @@ C8b 只扩大当前固定知识域下的数据覆盖，不修改 retrieval、chu
 - 2026-07-22：用户批准目标总量 150、type/difficulty/answerability 与 type×difficulty exact quota、现有 3 份 fixture 边界、review sidecar、manifest schema v2、v1/v2 共存、默认 manifest 延迟切换、零外调及全部 18 条 design 决策。
 - 同轮批准 `evaluation` delta 的 4 requirements / 12 scenarios，并授权进入 TDD 实现。
 - 提交责任保持 `用户手动提交`；未授权暂存、提交、push、PR、部署或任何外部业务调用。
+- 2026-07-23：用户要求复核 C8b 是否全部完成，并授权门禁通过后直接归档；复核通过后接受 expanded v2 及结论边界，允许切换默认 manifest、接受 delta 和归档。
 
 ## 用户故事（大白话）
 
@@ -161,16 +162,22 @@ C8b 规划默认全部本地完成：
 - 同时改变 question、annotation、fixture 和 schema 会难以定位漂移；默认建议只 bump question/annotation/release，其他轴按真实变化决定。
 - tracked eval data 对开发者可见，不是隐藏 benchmark；C8b 只提高开发评测覆盖，不解决训练污染或独立盲测问题。
 
-## Implementation Outcome（待用户验收）
+## Implementation Outcome（已验收）
 
 - 已生成 `rag-eval-dev-v2`：150 条总量，前 30 条 v1 seed 的原始行 bytes、解析对象、标注、ID 与顺序保持一致，后续追加 120 条。
 - exact quota 与批准矩阵完全匹配：type=35/30/40/25/20，difficulty=50/65/35，answerable/no-answer=130/20；三份 fixture coverage 为 Java 49、RAG 43、Spring Boot 44。
 - 103 条新增 answerable 共绑定并校验 242 个 exact fixture contexts；新增 22 条 multi-hop 均至少两个独立 evidence points；新增 17 条 no-answer 已记录三份 fixture 全 corpus 复核事实。
 - review sidecar 覆盖 150/150；normalized exact duplicate=0，0.82 阈值下 near-duplicate candidate=0。manifest schema v2 同时固定 v1 seed release、v2 question、review 与 expanded contract identity。
-- `docs/eval/dataset-manifest.json` 仍为 byte-identical v1 默认 manifest；v1/v2 通过各自显式 manifest 同时得到 `VALID`。实现阶段外部业务调用与数据出站均为 0。
+- `docs/eval/dataset-manifest.json` 已在验收后切换为与显式 v2 manifest byte-identical 的默认 manifest；v1/v2 继续通过各自显式 manifest 得到 `VALID`。实现与验收阶段外部业务调用和数据出站均为 0。
 
 ## Rollback
 
 - v1 release 文件与 manifest 保留，v2 artifacts 可独立移除或停止设为默认，不需要恢复业务数据库或 KB 数据。
 - C8b 不修改后端运行时行为，rollback 不涉及 Java/API/数据库迁移。
 - 若 expanded release 语义验收失败，保持默认 manifest 指向 v1，不以 `UNVERSIONED` 结果替代正式 release。
+
+## Closeout
+
+- 2026-07-23 用户验收后，4 requirements / 12 scenarios 已原文接受进 `openspec/specs/evaluation/spec.md`，默认 manifest 已切换为与显式 v2 manifest byte-identical。
+- change 归档只确认 expanded development dataset 与 annotation governance 完成，不确认 retrieval/generation/citation/no-answer/judge 质量改善。
+- 后续 readiness 结论：C9a `claim-evidence-objective-metrics` 的前置数据治理已满足，可以启动独立 Type C 规划；claim 拆分单位、evidence 对齐算法、指标分母与状态语义仍须在新 change 事前闸门决定。

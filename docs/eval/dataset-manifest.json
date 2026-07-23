@@ -1,11 +1,23 @@
 {
-  "manifestSchemaVersion": "rag-eval-dataset-manifest-v1",
-  "releaseVersion": "rag-eval-dev-v1",
-  "questionSetVersion": "questions-v1",
+  "manifestSchemaVersion": "rag-eval-dataset-manifest-v2",
+  "releaseVersion": "rag-eval-dev-v2",
+  "questionSetVersion": "questions-v2",
   "sampleSchemaVersion": "rag-eval-sample-v1",
-  "annotationVersion": "annotations-v1",
+  "annotationVersion": "annotations-v2",
   "fixtureCorpusVersion": "fixtures-v1",
   "questionSet": {
+    "path": "docs/eval/releases/rag-eval-dev-v2.jsonl",
+    "sha256": "cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d",
+    "bytes": 94504,
+    "sampleCount": 150,
+    "orderedSampleIdsSha256": "5baac0884a917ae20bf6e584207127f5d0e084569c5c07aa0c08d00fd986b67e"
+  },
+  "seedReleaseManifest": {
+    "path": "docs/eval/releases/rag-eval-dev-v1-manifest.json",
+    "sha256": "91a03152ede5cd421650c5034158c1035248512bf38d1e2281079c6987a4a380",
+    "bytes": 1826
+  },
+  "seedQuestionSet": {
     "path": "docs/eval/rag_eval_set.jsonl",
     "sha256": "d17bde69db58848fe79069709a7b7c3c927da916661faa8caf1bd71efcd6d7fe",
     "bytes": 17990,
@@ -45,20 +57,81 @@
   },
   "distribution": {
     "type": {
-      "fact": 10,
-      "definition": 8,
-      "reasoning": 6,
-      "multi_hop": 3,
-      "no_answer": 3
+      "definition": 30,
+      "fact": 35,
+      "multi_hop": 25,
+      "no_answer": 20,
+      "reasoning": 40
     },
     "difficulty": {
-      "easy": 15,
-      "medium": 12,
-      "hard": 3
+      "easy": 50,
+      "hard": 35,
+      "medium": 65
     },
     "shouldAnswer": {
-      "true": 27,
-      "false": 3
+      "true": 130,
+      "false": 20
     }
+  },
+  "annotationReview": {
+    "path": "docs/eval/review/rag-eval-dev-v2-review.jsonl",
+    "sha256": "fb95b2c1c8947afff3dd7115e61b92daea462a9332f58732240b6e2fdecbe738",
+    "bytes": 33735,
+    "reviewedSampleCount": 150
+  },
+  "expandedDataset": {
+    "totalSampleCount": 150,
+    "seedSampleCount": 30,
+    "newSampleCount": 120,
+    "quotas": {
+      "type": {
+        "definition": 30,
+        "fact": 35,
+        "multi_hop": 25,
+        "no_answer": 20,
+        "reasoning": 40
+      },
+      "difficulty": {
+        "easy": 50,
+        "hard": 35,
+        "medium": 65
+      },
+      "shouldAnswer": {
+        "true": 130,
+        "false": 20
+      },
+      "typeDifficulty": {
+        "definition": {
+          "easy": 14,
+          "hard": 4,
+          "medium": 12
+        },
+        "fact": {
+          "easy": 18,
+          "hard": 4,
+          "medium": 13
+        },
+        "multi_hop": {
+          "easy": 3,
+          "hard": 12,
+          "medium": 10
+        },
+        "no_answer": {
+          "easy": 7,
+          "hard": 5,
+          "medium": 8
+        },
+        "reasoning": {
+          "easy": 8,
+          "hard": 10,
+          "medium": 22
+        }
+      }
+    },
+    "fixtureCoverage": {
+      "minimumAnswerableSamples": 35,
+      "maximumAnswerableRatio": 0.45
+    },
+    "nearDuplicateThreshold": 0.82
   }
 }

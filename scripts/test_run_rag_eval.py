@@ -368,7 +368,10 @@ class RunRagEvalJudgeTest(unittest.TestCase):
             argv = [
                 "run_rag_eval.py",
                 "--eval-set",
-                str(Path(runner.__file__).resolve().parents[1] / "docs/eval/rag_eval_set.jsonl"),
+                str(
+                    Path(runner.__file__).resolve().parents[1]
+                    / "docs/eval/releases/rag-eval-dev-v2.jsonl"
+                ),
                 "--kb-id",
                 "1",
                 "--plan-only",
@@ -385,7 +388,7 @@ class RunRagEvalJudgeTest(unittest.TestCase):
 
             login.assert_not_called()
             self.assertIn('"validationStatus": "VALID"', output.getvalue())
-            self.assertIn('"releaseVersion": "rag-eval-dev-v1"', output.getvalue())
+            self.assertIn('"releaseVersion": "rag-eval-dev-v2"', output.getvalue())
 
 
 if __name__ == "__main__":

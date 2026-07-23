@@ -40,12 +40,12 @@
 - NVIDIA 相对 heuristic 的 Recall@5/MRR/Top1 观察提升为 +7.84pp/+0.0895/+3.70pp；server-side rerank P50/P95 为 363/688ms，overall P50 增加 188ms。H1 冷启动污染 aggregate P95，不能据此宣称 model 尾延迟更快。
 - 30 条开发样本不能外推生产收益；用户已验收 C7 evidence 与结论边界，delta 已接受进 `evaluation` baseline，change 已归档。默认仍保持 heuristic；若未来切换默认 provider，须另立 Type C change。
 
-### 2. 评测数据版本治理与扩充（C8a 已完成，C8b 待验收）
+### 2. 评测数据版本治理与扩充（已完成：2026-07-23）
 
 - C8a 已新增 `rag-eval-dev-v1` manifest、sample schema contract、共享 validator 与 direct/reproducible runner 前置校验；当前 30 条 JSONL 和 3 份 fixture bytes 保持不变。
 - custom eval-set 仅能显式降级为 `UNVERSIONED`，不得形成正式 baseline、可比较结论或质量门禁输入；C7 历史报告不追认回写新 version。
 - C8a 已由用户验收；4 requirements / 13 scenarios 已接受进 `evaluation` baseline 并归档。
-- C8b 已在独立 Type C change 中离线实现 150 条 v2（保留 30 条 seed、新增 120 条），包含 exact quota、fixture grounding/coverage、重复检测、150 条 review sidecar 和 v1/v2 共存；默认 manifest、baseline spec 与 archive 均等待用户验收后再切换/接受/归档。
+- C8b 已由用户验收并归档：150 条 v2（保留 30 条 seed、新增 120 条）包含 exact quota、fixture grounding/coverage、重复检测、150 条 review sidecar 和 v1/v2 共存；默认 manifest 已切换到 v2，4 requirements / 12 scenarios 已接受进 `evaluation` baseline。
 
 ### 3. 分块结构专项
 
