@@ -62,15 +62,15 @@
 
 ## 7. Live Calibration Gate
 
-- [ ] 执行前单独披露并取得用户授权：canary 最多 4 judge calls；full 最多 72 judge calls；合计最多 76，其他业务调用均为 0。
-- [ ] 固定 provider/model/endpoint/temperature/timeout/retry、Git HEAD、manifest、prompt/parser/threshold/max-context identity、费用/限流与 raw artifact no-overwrite。
-- [ ] canary 四象限各 1 条通过 identity/schema/coverage 检查后，才允许 full 24×3；失败不得通过换样本或删除 observation 继续。
-- [ ] 记录 parse errors、HTTP/rate-limit/timeout、attempt count、per-case repeat consistency、confusion/agreement 与 provider-pass mismatch。
-- [ ] 用户审阅 live calibration evidence 后决定接受当前 contract、版本化调整或拒绝；Agent 不自动调 threshold。
+- [x] `SKIPPED`：用户本次验收并授权归档的是 C9b offline implementation；未单独授权 canary 4 calls、full 72 calls 或总计最多 76 calls。
+- [x] `SKIPPED`：未选择 live provider/model/endpoint，也未产生费用、限流、timeout/retry 或 raw provider artifact；tracked identity 和 `--no-overwrite` 仅完成离线实现与测试。
+- [x] `SKIPPED`：未执行 canary 或 full，不存在通过换样本、删除 observation 或只保留成功子集形成的 live evidence。
+- [x] `SKIPPED`：没有 live parse/HTTP/rate-limit/timeout、repeat consistency、confusion/agreement 或 provider-pass mismatch 观测；实际 judge/provider 调用和数据出站为 0。
+- [x] 用户明确验收 offline corpus/contract/status/comparison 实现并要求归档；当前 contract 作为离线能力接受，但无 live agreement 结论，后续真实校准必须另立授权与 evidence 流程。
 
 ## 8. Acceptance And Closeout
 
-- [ ] 用户验收 calibration corpus、judge contract、live evidence、status/comparison semantics、兼容性与结论边界。
-- [ ] 用户验收后将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`。
-- [ ] 恢复 `.ai/ACTIVE_TASK.md=IDLE` 并归档 change。
-- [ ] C9b 收口不确认 production faithfulness、通用 judge 可靠性、默认开启 judge 或 C10 quality gate。
+- [x] 用户验收 calibration corpus、judge contract、status/comparison semantics、兼容性与结论边界；live evidence 明确未执行并按 `SKIPPED` 收口。
+- [x] 用户验收后将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`。
+- [x] 恢复 `.ai/ACTIVE_TASK.md=IDLE` 并归档 change。
+- [x] C9b 收口不确认 production faithfulness、通用 judge 可靠性、默认开启 judge 或 C10 quality gate。

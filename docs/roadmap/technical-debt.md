@@ -57,7 +57,7 @@
 
 - C9a 已验收归档 objective lexical claim support：确定性句子/列表拆分，只接受 provenance-valid returned citation snippets，按 exact / `0.70` claim-token coverage 输出逐 claim attribution、全 claim 分母与局部完整性状态；4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline。
 - 该结果只能说明固定算法下的词法证据对齐，不能证明语义蕴含或完整事实正确性；真实 150 条 generation evidence 尚未授权和执行。
-- C9b offline implementation 已完成、尚待验收：judge contract/corpus/validator/runner 与 objective/judge/global 状态分离均已落地；live canary/full calibration 仍需单独披露调用量、模型、数据出站、费用/限流并授权。C10 再定义质量阈值与退出码门禁。
+- C9b 已验收归档：judge contract/corpus/validator/runner 与 objective/judge/global 状态分离均已落地，4 requirements / 12 scenarios 已接受进 baseline；live canary/full 未授权并按 `SKIPPED` 收口，未来真实校准仍需单独披露调用量、模型、数据出站、费用/限流并授权。C10 再定义质量阈值与退出码门禁。
 
 ### 4. SSE 结构化结果
 

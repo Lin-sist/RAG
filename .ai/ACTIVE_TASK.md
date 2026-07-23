@@ -2,25 +2,16 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
-## Active Change
-
-- Change：`2026-07-23-judge-calibration-and-status-semantics`
-- 位置：`openspec/changes/2026-07-23-judge-calibration-and-status-semantics/`
-- 目标：为可选 LLM judge 建立版本化 contract、独立人工 gold calibration corpus/evidence，并分离 objective、judge 与全局 Report status/comparison safety。
-- 范围：24 条 faithful×relevant 四象限静态校准集、manifest/validator/calibration runner、strict score parser、tracked judge identity、canary/full agreement 与 repeat stability、normal eval channel status 和兼容性；offline TDD 实现已完成并通过离线回归，当前等待用户验收及单独决定是否授权 live calibration，不修改 baseline。
-- 非目标：不做 C10 quality threshold/exit gate，不默认开启 judge，不改 v1/v2 dataset、C9a objective formulas、Java/API、生产 prompt/citation/retrieval/rerank/no-answer、前端或 SSE，不运行真实 judge calibration。
-- 验收入口：`proposal.md` 的 planning/offline/live/closeout gates、`design.md` 的 15 条决策记录、`tasks.md` 与 `specs/evaluation/spec.md` 的 4 requirements / 12 scenarios。
-- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-- 外部调用：planning 与 offline implementation 默认均为 0；live canary 最多 4 judge calls、full 最多 72、合计最多 76，必须另行固定 provider/model/出站/费用/限流并授权。
+当前没有活动 change。新重大变更必须重新完成 readiness 与 OpenSpec 事前闸门。
 
 ## Last Completed
 
-- Change：`2026-07-23-claim-evidence-objective-metrics`
-- 位置：`openspec/changes/archive/2026-07-23-claim-evidence-objective-metrics/`
-- 结果：完成固定 `claim-lexical-v1` 的确定性 claim splitter、provenance-valid returned citation evidence、exact / `0.70` claim-token alignment、逐 claim attribution、aggregate support rate、局部完整性状态与报告身份。
-- 验收：用户已验收 claim contract、evidence attribution、aggregate/status、兼容性与结论边界；4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline，change 已归档。C9a 不代表 C9b judge calibration、semantic faithfulness、C10 quality gate 或真实 150 条 generation evidence 已完成。
+- Change：`2026-07-23-judge-calibration-and-status-semantics`
+- 位置：`openspec/changes/archive/2026-07-23-judge-calibration-and-status-semantics/`
+- 结果：完成共享 `rag-judge-v1` contract、strict parser、24 条四象限静态 calibration corpus/validator/runner，以及 objective/judge/global status 与 per-channel comparison safety。
+- 验收：用户已验收 offline corpus/contract/status/comparison 实现和结论边界；4 requirements / 12 scenarios 已接受进 `evaluation` baseline，change 已归档。Live calibration 未授权并按 `SKIPPED` 收口，因此 C9b 不确认真实 judge agreement、production faithfulness、通用可靠性、默认开启 judge 或 C10 quality gate。
 
 ## Start A New Material Change
 

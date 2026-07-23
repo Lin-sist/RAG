@@ -1150,3 +1150,24 @@
 - 在上一条后补充 duplicate/unexpected calibration observation identity 回归：两类漂移现在明确产生 `NOT_COMPARABLE`，不会因保留首个成功 observation 而误报 `COMPLETE`；脱敏报告同时展示 missing/duplicate/unexpected counts。
 - 最终 Python 全量更新为 133 tests / OK；calibration manifest 仍为 `VALID`，canary/full plan-only 预算仍为 4/72，实际业务调用与数据出站仍为 0；SensitiveLogs 仍为 310 source files / PASS。
 - 上一条的 132 tests 是补测前的阶段结果，本条以 133 为当前最终值；其余范围、跳过项、剩余风险与 `Commit: pending` 不变。
+
+## 2026-07-23｜C9b offline implementation 提交补录
+
+- Commit：`d827f18`（`feat(评测): 完成C9b离线judge校准与状态语义`）。本条只补录上一执行提交的真实 hash，不记录本次验收归档改动。
+
+## 2026-07-23｜C9b 用户验收、baseline 接受与归档
+
+- 用户授权与结果：用户确认 C9b 验收完成并要求项目归档。4 requirements / 12 scenarios 的 delta body 已原文接受进 `openspec/specs/evaluation/spec.md`；change 已移动到 `openspec/changes/archive/2026-07-23-judge-calibration-and-status-semantics/`，`.ai/ACTIVE_TASK.md=IDLE`，当前无未归档 change。
+- 验收范围：接受 shared `rag-judge-v1` contract/strict parser、24 条四象限静态 calibration corpus/validator/runner、objective/judge/global status、per-channel comparison safety、兼容性与安全边界。实现提交为 `d827f18`。
+- Live gate：canary 4 calls、full 72 calls、合计最多 76 的真实 judge calibration 从未单独授权或执行，5 项 live gate 均以 `SKIPPED` 收口；没有 provider/model/endpoint、HTTP/rate-limit/timeout、repeat agreement/confusion 或 raw provider evidence。归档不确认真实 judge agreement、production faithfulness、通用 judge 可靠性、默认开启 judge 或 C10 quality gate。
+- 验证：delta-to-baseline exact suffix 通过（4 requirements / 12 scenarios，首 requirement 在 baseline 仅出现 1 次）；archive 4 个必需 artifacts 齐全、tasks 未勾选数 0、未归档 change 数 0、`ACTIVE_TASK=IDLE`。`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 133 tests / OK；SensitiveLogs 扫描 310 source files / PASS。
+- Plan-only：direct/reproducible 均验证 `rag-eval-dev-v2`，各选择 1 条且实际业务调用为 0；calibration manifest=`VALID`，canary/full 仅报告 4/72 调用预算，实际 judge/provider 调用和数据出站为 0。
+- 跳过项：本轮仅做 OpenSpec baseline/archive 与事实文档收口，没有 Java/POM/前端/依赖/生产配置改动，因此 Maven、frontend build、Docker/Testcontainers、live backend 和 live provider 均 `SKIPPED`。OpenSpec CLI 当前不可用，未声称 CLI validation 通过。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、v1/v2 release/fixture/review、Java/API、数据库、前端、生产 prompt/citation/retrieval/rerank/no-answer/default judge 或历史报告；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：静态 24-case corpus 只代表已接受的开发 rubric；`0.70` 仍是 contract candidate，没有 live agreement、成本、限流或稳定性证据。未来真实校准、阈值调整或 C10 gate 必须新建 Type C change 并重新取得外调授权。
+- Commit：`pending`；提交责任为用户手动提交。建议 `chore(openspec): 验收并归档C9b judge校准与状态语义`。
+
+## 2026-07-23｜C9b 归档文档门禁补录
+
+- 首次 changed-Markdown 链接命令把已移动的 active 路径删除项也当作现存文件读取，产生 4 组本地 `Get-Content` 诊断；该命令不作为通过证据。改用 `--diff-filter=AMR` 并合并 untracked archive 后，12 个现存 changed Markdown 的本地链接 missing=0。
+- 当前事实源旧 active 路径/待验收表述扫描为 0，受保护路径 diff=0，`git diff --check` 通过；归档仍保持 `Commit: pending`。

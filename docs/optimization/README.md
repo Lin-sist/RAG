@@ -43,13 +43,13 @@
 - direct/reproducible plan、run metadata、Markdown 和 details JSON 固定 splitter/tokenizer/threshold/evidence policy identity；identity 漂移会在 backend/provider 调用前失败。
 - 4 个 requirements / 12 个 scenarios 已接受进长期 `evaluation` baseline；当前只有合成离线测试和 plan-only 证据，真实 generation/provider 调用量为 0，仍不宣称 faithfulness、C9b judge calibration 或 C10 quality gate 完成。
 
-### C9b：Judge 校准与状态语义（offline implementation 已完成，待验收）
+### C9b：Judge 校准与状态语义（已验收归档）
 
-- active change：`../../openspec/changes/2026-07-23-judge-calibration-and-status-semantics/`。
+- archived change：`../../openspec/changes/archive/2026-07-23-judge-calibration-and-status-semantics/`。
 - `../eval/calibration/judge-calibration-v1-manifest.json` 固定 24 条 faithful×relevant 四象限人工 gold case，各象限 6 条；context 只解析 tracked fixture exact excerpt。
 - normal/calibration runner 共用 `rag-judge-v1` prompt、strict score parser、score-derived pass 与脱敏 contract identity；normal report/details/console 分离 objective、judge、global status 和 comparison safety。
 - canary 固定 4×1，full 固定 24×3；runner 无自动 retry，并要求显式 `--execute-live-judge`、本地 raw details 与 `--no-overwrite`。
-- 本轮只完成离线实现和 fake/mock/plan-only 验证，真实 judge/provider 调用与数据出站为 0；尚无 agreement evidence，不能宣称 judge 已校准、默认开启或 C10 gate 已建立。
+- 4 requirements / 12 scenarios 已接受进长期 `evaluation` baseline；live calibration 未授权并按 `SKIPPED` 收口，真实 judge/provider 调用与数据出站为 0。尚无 agreement evidence，不能宣称 judge 已真实校准、默认开启或 C10 gate 已建立。
 
 ## 历史材料
 
