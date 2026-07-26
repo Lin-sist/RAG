@@ -2,22 +2,32 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
-当前无活动 change。开始新的 Type C 工作前，必须先创建新的 OpenSpec change 并更新本文件。
+## Change
 
-## Previous Completed
+- Change：`2026-07-26-otel-export-and-metrics`
+- 位置：`openspec/changes/2026-07-26-otel-export-and-metrics/`
+- 阶段：proposal/design/tasks/spec delta 已起草，等待用户事前门禁审阅；尚未进入实现。
+- 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 
-- Change：`2026-07-23-genai-tracing-core`
-- 位置：`openspec/changes/archive/2026-07-23-genai-tracing-core/`
-- 结果：完成默认关闭、fail-open 的 OTel 1.31 GenAI tracing core，建立分离 ingest/ask trace、稳定 lineage、固定阶段 topology、W3C/custom context、MDC bridge、同步/流式终态和隐私白名单。
-- 验收：用户已验收实现与验证证据；4 requirements / 12 scenarios 已原文接受进 `rag-system` baseline。C12 exporter、metrics、alerts、sampling、retention、权限与部署仍未完成。
+## Scope
 
-## Execution Entry
+- 在 C11 tracing core 上增加默认关闭、fail-open 的 OTLP gRPC trace/metric export 与低基数 GenAI stage metrics。
+- 交付仅本机使用的 Collector → Tempo/Prometheus → Grafana reference deployment、tail sampling、72h/7d retention、认证访问、dashboard 与本地 rules。
+- SaaS/公网/跨主机 telemetry、Alertmanager/外部通知、生产 SLA/HA/容量/成本、多租户观测权限和日志聚合保持 out of scope。
 
-1. 当前无活动任务，不从已归档 change 继续实现。
-2. 下一项重大变更必须先建立 proposal、design、tasks 和 spec delta，并明确提交责任。
-3. 若进入 C12，必须重新确认 exporter/backend、metrics、数据出站、费用、采样、retention、权限与部署边界。
+## Approval Gate
+
+1. 用户需批准 proposal 的 backend、default-off、metrics、sampling、retention、权限、dashboard/alerts 与 non-goals。
+2. 用户需批准 design 的 15 条决策记录和 `rag-system` delta 的 4 requirements / 12 scenarios。
+3. 进入实现前，用户需明确授权新增 OTel OTLP exporter/metrics SDK 依赖、下载固定 Collector/Tempo/Prometheus/Grafana images 并执行本机 synthetic smoke。
+4. 上述实现授权不包含真实 embedding/rerank/ask/generation/judge/LLM/provider、SaaS、付费服务、公网数据出站、push、PR 或部署。
+
+## Current External-Call State
+
+- 规划阶段真实 provider/exporter 调用、Docker image 下载、telemetry 出站与费用均为 0。
+- 不得把规划或后续本机 synthetic smoke 解释为 production observability readiness、SLA、容量或长期费用证据。
 
 ## Emergency Rule
 

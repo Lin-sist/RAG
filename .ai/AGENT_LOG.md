@@ -1292,3 +1292,26 @@
 - 外调与范围：真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、外部 telemetry 传输、业务数据出站、模型费用与限流事件均为 0；未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、评测 release/fixture/history 或 migration。
 - 剩余风险：C11 仍是默认关闭的进程内 tracing contract，不代表生产观测栈或 production readiness；Docker MySQL/Milvus live suites 本轮未执行。后续 C12 必须另立 Type C change 并重新确认外部传输、费用、采样、retention、权限和部署边界。
 - Commit：`pending`；建议 `chore(openspec): 验收并归档C11 GenAI追踪核心`。
+
+## 2026-07-26｜C12 OTel export 与 metrics readiness 及规划启动
+
+- 用户决策与提交责任：用户要求检查项目状况，若允许则直接开始 C12 规划。提交责任按默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 HEAD=`5cdddd2`，工作区干净，`main...origin/main`，`.ai/ACTIVE_TASK.md=IDLE`；C11 4 requirements / 12 scenarios 已接受进 `rag-system` baseline 并归档，当前无未归档 change。冻结蓝图下一顺序项明确为 C12 `otel-export-and-metrics`，结论为 `GO`。
+- 当前事实：C11 已有 OTel 1.31 API/SDK、default-off/fail-open tracing、固定 ask/ingest topology、stable lineage、context/MDC 与隐私 allowlist；runtime 尚无 network exporter、meter provider、Collector/Tempo/Prometheus/Grafana、dashboard、rules、sampling、retention 或观测访问控制。
+- 能力分类：`confirmed` 为 C11 trace contract 与无 exporter 默认路径；`partial` 为 spans 有安全阶段事实但无低基数聚合；`planned` 为 OTLP gRPC trace/metric export、bounded batching、固定 metrics、Collector tail sampling、本机 reference stack、72h/7d retention、Grafana auth、dashboard/rules 与 synthetic smoke；`out_of_scope` 为 SaaS/公网/跨主机 telemetry、外部通知、生产 SLA/HA/容量/成本、租户观测权限与日志聚合；`unknown` 为真实生产流量、合规保留期、组织权限和生产阈值。
+- 规划 artifacts：创建 `2026-07-26-otel-export-and-metrics` 的 proposal、design、tasks 与 `rag-system` spec delta，激活 `.ai/ACTIVE_TASK.md`。Design 包含 15 条真实决策记录，delta 为 4 requirements / 12 scenarios。
+- 关键方案：三个 signal/export 开关独立且默认关闭；trace 与 metrics 都通过 localhost OTLP gRPC 到 Collector。Collector 将 error/timeout/cancel/fallback trace 全保留、普通 success 默认 tail-sample 10%，metrics 不采样；Tempo/Prometheus reference retention 为 72h/7d。只有 localhost OTLP/Grafana 暴露，Grafana 禁止 anonymous，credential 只从未跟踪 env/secret 注入。
+- 指标与告警边界：固定 operation/stage/provider/fallback/actual-token instruments，仅允许 bounded labels；lineage/id/score/user/content/model 自由文本/error detail 不得进入 labels。Dashboard 覆盖 traffic/outcome/latency/provider/fallback/token/export；本地 rules 覆盖有最小流量门槛的 ask error、fallback 与 collector failure，不定义 latency SLA，不部署通知渠道。
+- 外调与范围安全：规划阶段真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、Docker image 下载、telemetry 出站、费用与限流事件均为 0；未修改 baseline spec、POM/Java/test/runtime config、默认 compose、数据库/API/DTO、评测资产、前端或 provider 默认值。
+- 跳过项：规划只修改 OpenSpec/ACTIVE_TASK/AGENT_LOG，尚未运行 Maven、Python、frontend build、Docker/Collector/Tempo/Prometheus/Grafana、live backend/provider 或 exporter。进入实现前需用户批准新增 OTel exporter/metrics SDK 依赖、固定 images 下载与本机 synthetic smoke；OpenSpec CLI 可用性和文档/安全门禁将在本轮规划验证中记录。
+- 剩余风险与下一闸门：本机 backend、10% success sampling、72h/7d retention、15 条 decisions、4/12 delta 与 non-SLA alert 边界仍需用户批准；image 兼容版本须在实施前从官方发行源核对并固定。规划不代表生产观测栈、SLA、容量或长期费用已成立。
+- Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C12遥测导出与指标规划`。
+
+## 2026-07-26｜C12 规划门禁验证
+
+- 结构与状态：proposal/design/tasks/spec delta 4 个必需 artifacts 齐全；design 的 15 条 decisions 均完整包含“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”；delta 为 4 requirements / 12 scenarios；`.ai/ACTIVE_TASK.md=ACTIVE` 且只指向 C12，未归档 active change 数为 1。
+- 文档与安全：SensitiveLogs 扫描 313 source files / PASS；6 个 changed/untracked Markdown 本地相对链接 missing=0；新增 change/ACTIVE_TASK 定向 credential/value/用户目录扫描只命中 password/secret 规则说明，无真实值或用户目录绝对路径；相关 Markdown CRLF 文件数 0；`git diff --check` 通过。
+- 范围检查：`openspec/specs/` accepted baseline、Java/POM/runtime YAML、默认 `docker-compose.yml`、前端、`.env.local`、`application-dev.yml`、`.agents/` 与 `docs/学习文档/` tracked diff 均为 0。当前只修改 ACTIVE_TASK、追加 AGENT_LOG 并新增 C12 change 目录。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有 Java/POM/Python/前端/部署实现改动，因此 Maven、Python 全量、frontend build、Docker/Collector/Tempo/Prometheus/Grafana、live backend/provider 与 network exporter 均 `SKIPPED`。
+- 外调与下一闸门：真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、镜像下载、telemetry 出站、费用与限流事件均为 0。等待用户审阅并批准本机 backend、default-off OTLP、metrics cardinality、tail sampling、72h/7d retention、Grafana access、dashboard/rules、15 条 decisions、4/12 delta，并授权新增依赖/固定 images/synthetic smoke 后才能进入实现。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C12遥测导出与指标规划`。
