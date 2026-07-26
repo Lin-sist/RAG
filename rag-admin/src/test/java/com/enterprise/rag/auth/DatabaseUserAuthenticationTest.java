@@ -31,17 +31,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "DROP TABLE IF EXISTS user_role",
         "DROP TABLE IF EXISTS role",
         "DROP TABLE IF EXISTS `user`",
-        "CREATE TABLE `user` (id BIGINT PRIMARY KEY, username VARCHAR(50) NOT NULL, "
+        "DROP TABLE IF EXISTS tenant",
+        "CREATE TABLE tenant (id BIGINT PRIMARY KEY, code VARCHAR(64) NOT NULL UNIQUE, "
+                + "enabled TINYINT DEFAULT 1, deleted TINYINT DEFAULT 0)",
+        "CREATE TABLE `user` (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, username VARCHAR(50) NOT NULL, "
                 + "password_hash VARCHAR(255) NOT NULL, email VARCHAR(100), enabled TINYINT DEFAULT 1, "
                 + "created_at TIMESTAMP, updated_at TIMESTAMP, deleted TINYINT DEFAULT 0, version INT DEFAULT 0)",
         "CREATE TABLE role (id BIGINT PRIMARY KEY, name VARCHAR(50) NOT NULL, deleted TINYINT DEFAULT 0)",
         "CREATE TABLE user_role (id BIGINT PRIMARY KEY, user_id BIGINT NOT NULL, role_id BIGINT NOT NULL)",
-        "INSERT INTO `user` (id, username, password_hash, email, enabled, deleted, version) "
-                + "VALUES (41, 'database-admin', '$2a$10$testHash', 'admin@example.test', 1, 0, 0)",
-        "INSERT INTO `user` (id, username, password_hash, email, enabled, deleted, version) "
-                + "VALUES (42, 'disabled-user', '$2a$10$disabledHash', 'disabled@example.test', 0, 0, 0)",
-        "INSERT INTO `user` (id, username, password_hash, email, enabled, deleted, version) "
-                + "VALUES (43, 'deleted-user', '$2a$10$deletedHash', 'deleted@example.test', 1, 1, 0)",
+        "INSERT INTO `user` (id, tenant_id, username, password_hash, email, enabled, deleted, version) "
+                + "VALUES (41, 901, 'database-admin', '$2a$10$testHash', 'admin@example.test', 1, 0, 0)",
+        "INSERT INTO `user` (id, tenant_id, username, password_hash, email, enabled, deleted, version) "
+                + "VALUES (42, 901, 'disabled-user', '$2a$10$disabledHash', 'disabled@example.test', 0, 0, 0)",
+        "INSERT INTO `user` (id, tenant_id, username, password_hash, email, enabled, deleted, version) "
+                + "VALUES (43, 901, 'deleted-user', '$2a$10$deletedHash', 'deleted@example.test', 1, 1, 0)",
+        "INSERT INTO `user` (id, tenant_id, username, password_hash, email, enabled, deleted, version) "
+                + "VALUES (44, 902, 'disabled-tenant-user', '$2a$10$tenantHash', "
+                + "'tenant@example.test', 1, 0, 0)",
+        "INSERT INTO tenant (id, code, enabled, deleted) VALUES (901, 'legacy-default', 1, 0)",
+        "INSERT INTO tenant (id, code, enabled, deleted) VALUES (902, 'disabled-tenant', 0, 0)",
         "INSERT INTO role (id, name, deleted) VALUES (7, 'ADMIN', 0)",
         "INSERT INTO role (id, name, deleted) VALUES (8, 'DELETED_ROLE', 1)",
         "INSERT INTO user_role (id, user_id, role_id) VALUES (11, 41, 7)",
@@ -76,6 +84,13 @@ class DatabaseUserAuthenticationTest {
     }
 
     @Test
+    void loadsTenantIdentityFromDatabase() {
+        UserDetails details = userDetailsService.loadUserByUsername("database-admin");
+
+        assertEquals(901L, ((com.enterprise.rag.auth.model.UserPrincipal) details).getTenantId());
+    }
+
+    @Test
     void newServiceInstanceStillLoadsPersistedDatabaseUser() {
         UserDetailsService restartedService = new UserDetailsServiceImpl(authUserRepository);
 
@@ -97,6 +112,12 @@ class DatabaseUserAuthenticationTest {
     void doesNotLoadLogicallyDeletedUser() {
         assertThrows(org.springframework.security.core.userdetails.UsernameNotFoundException.class,
                 () -> userDetailsService.loadUserByUsername("deleted-user"));
+    }
+
+    @Test
+    void doesNotLoadUserFromDisabledTenant() {
+        assertThrows(org.springframework.security.core.userdetails.UsernameNotFoundException.class,
+                () -> userDetailsService.loadUserByUsername("disabled-tenant-user"));
     }
 
     @Test

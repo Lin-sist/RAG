@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -52,11 +54,15 @@ public class JwtTokenProvider {
      * 生成 Token
      */
     private String generateToken(UserPrincipal user, long expirationSeconds, String tokenType) {
+        if (user == null || user.getTenantId() == null || user.getTenantId() <= 0) {
+            throw new IllegalArgumentException("Cannot issue token without valid tenant identity");
+        }
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationSeconds * 1000);
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
+        claims.put("tenantId", user.getTenantId());
         claims.put("username", user.getUsername());
         claims.put("roles", user.getRoles());
         claims.put("tokenType", tokenType);
@@ -87,7 +93,8 @@ public class JwtTokenProvider {
      */
     public boolean isTokenValid(String token) {
         try {
-            parseToken(token);
+            Claims claims = parseToken(token);
+            requireTenantId(claims);
             return true;
         } catch (ExpiredJwtException e) {
             log.warn("JWT Token 已过期");
@@ -115,6 +122,13 @@ public class JwtTokenProvider {
      */
     public Long getUserIdFromToken(String token) {
         return parseToken(token).get("userId", Long.class);
+    }
+
+    /**
+     * 从 Token 中获取租户 ID
+     */
+    public Long getTenantIdFromToken(String token) {
+        return requireTenantId(parseToken(token));
     }
 
     /**
@@ -163,10 +177,27 @@ public class JwtTokenProvider {
         Claims claims = parseToken(token);
         return UserPrincipal.builder()
                 .id(claims.get("userId", Long.class))
+                .tenantId(requireTenantId(claims))
                 .username(claims.getSubject())
                 .roles(getRolesFromToken(token))
                 .enabled(true)
                 .build();
+    }
+
+    private Long requireTenantId(Claims claims) {
+        Object rawTenantId = claims.get("tenantId");
+        if (!(rawTenantId instanceof Number number)) {
+            throw new MalformedJwtException("JWT tenant identity invalid");
+        }
+        try {
+            BigInteger tenantId = new BigDecimal(number.toString()).toBigIntegerExact();
+            if (tenantId.signum() <= 0 || tenantId.bitLength() > 63) {
+                throw new MalformedJwtException("JWT tenant identity invalid");
+            }
+            return tenantId.longValueExact();
+        } catch (ArithmeticException e) {
+            throw new MalformedJwtException("JWT tenant identity invalid", e);
+        }
     }
 
     /**

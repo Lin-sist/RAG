@@ -83,6 +83,7 @@ class TokenBlacklistServicePropertyTest {
         // 创建用户并生成 Token
         UserPrincipal user = UserPrincipal.builder()
                 .id(userId)
+                .tenantId(1L)
                 .username(username)
                 .email(username + "@test.com")
                 .enabled(true)
@@ -118,6 +119,7 @@ class TokenBlacklistServicePropertyTest {
 
         UserPrincipal user = UserPrincipal.builder()
                 .id(userId)
+                .tenantId(1L)
                 .username(username)
                 .email(username + "@test.com")
                 .enabled(true)

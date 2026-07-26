@@ -11,15 +11,20 @@ import org.apache.ibatis.annotations.Update;
 public interface AuthUserMapper extends BaseMapper<AuthUser> {
 
     @Select("""
-            SELECT id, username, password_hash, email, enabled, created_at, updated_at, deleted, version
-            FROM `user`
-            WHERE username = #{username} AND deleted = 0
+            SELECT u.id, u.tenant_id, u.username, u.password_hash, u.email, u.enabled,
+                   u.created_at, u.updated_at, u.deleted, u.version
+            FROM `user` u
+            INNER JOIN tenant t
+                    ON t.id = u.tenant_id
+                   AND t.enabled = 1
+                   AND t.deleted = 0
+            WHERE u.username = #{username} AND u.deleted = 0
             LIMIT 1
             """)
     AuthUser findByUsername(@Param("username") String username);
 
     @Select("""
-            SELECT id, username, password_hash, email, enabled, created_at, updated_at, deleted, version
+            SELECT id, tenant_id, username, password_hash, email, enabled, created_at, updated_at, deleted, version
             FROM `user`
             WHERE username = #{username}
             LIMIT 1

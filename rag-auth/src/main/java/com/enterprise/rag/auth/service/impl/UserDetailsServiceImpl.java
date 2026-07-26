@@ -30,6 +30,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         return UserPrincipal.builder()
                 .id(user.id())
+                .tenantId(user.tenantId())
                 .username(user.username())
                 .password(user.passwordHash())
                 .email(user.email())

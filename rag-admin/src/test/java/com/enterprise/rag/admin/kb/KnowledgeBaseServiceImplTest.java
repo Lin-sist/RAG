@@ -6,12 +6,14 @@ import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KBPermissionService;
 import com.enterprise.rag.admin.kb.service.impl.KnowledgeBaseServiceImpl;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -30,6 +32,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class KnowledgeBaseServiceImplTest {
+
+    private static final RequestIdentity REQUEST_IDENTITY = new RequestIdentity(1001L, 901L);
 
     private KnowledgeBaseMapper knowledgeBaseMapper;
     private DocumentService documentService;
@@ -76,7 +80,8 @@ class KnowledgeBaseServiceImplTest {
         org.mockito.Mockito.doThrow(new RuntimeException("milvus down"))
                 .when(vectorStore).createCollection(anyString(), anyInt());
 
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.create(request, 1001L));
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.create(request, REQUEST_IDENTITY));
 
         assertEquals("KB_005", ex.getErrorCode());
         verify(vectorStore).createCollection(anyString(), anyInt());
@@ -95,10 +100,27 @@ class KnowledgeBaseServiceImplTest {
 
         VectorDependencyException exception = assertThrows(
                 VectorDependencyException.class,
-                () -> service.create(request, 1001L));
+                () -> service.create(request, REQUEST_IDENTITY));
 
         assertEquals(VectorDependencyException.ERROR_CODE_UNAVAILABLE, exception.getErrorCode());
         assertEquals(503, exception.getHttpStatus().value());
+    }
+
+    @Test
+    void createShouldPersistServerDerivedTenantIdentity() {
+        CreateKnowledgeBaseRequest request = CreateKnowledgeBaseRequest.builder()
+                .name("tenant-kb")
+                .description("desc")
+                .isPublic(false)
+                .build();
+        when(embeddingService.getDimension()).thenReturn(1024);
+
+        service.create(request, REQUEST_IDENTITY);
+
+        ArgumentCaptor<KnowledgeBase> captor = ArgumentCaptor.forClass(KnowledgeBase.class);
+        verify(knowledgeBaseMapper).insert(captor.capture());
+        assertEquals(1001L, captor.getValue().getOwnerId());
+        assertEquals(901L, captor.getValue().getTenantId());
     }
 
     @Test

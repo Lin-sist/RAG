@@ -12,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.test.context.ActiveProfiles;
@@ -38,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -117,6 +119,9 @@ class HappyPathIT {
     private TestRestTemplate http;
 
     @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
     private DeterministicEmbeddingTestConfig.DeterministicEmbeddingProvider embeddingProvider;
 
     @DynamicPropertySource
@@ -148,13 +153,16 @@ class HappyPathIT {
         assertFalse(accessToken.isBlank());
 
         HttpHeaders headers = bearerHeaders(accessToken);
+        headers.set("X-Tenant-Id", "999999");
         ResponseEntity<JsonNode> create = http.exchange(
-                "/api/knowledge-bases",
+                "/api/knowledge-bases?tenantId=999998",
                 HttpMethod.POST,
                 new HttpEntity<>(Map.of(
                         "name", "c3-happy-path-" + UUID.randomUUID(),
                         "description", "C3 isolated integration fixture",
-                        "isPublic", false), headers),
+                        "isPublic", false,
+                        "tenantId", 999997,
+                        "metadata", Map.of("tenantId", 999996)), headers),
                 JsonNode.class);
 
         assertEquals(HttpStatus.CREATED, create.getStatusCode());
@@ -162,6 +170,20 @@ class HappyPathIT {
         long kbId = createBody.path("data").path("id").asLong();
         assertTrue(kbId > 0);
         assertFalse(createBody.path("data").path("vectorCollection").asText().isBlank());
+        long persistedTenantId = jdbcTemplate.queryForObject(
+                "SELECT tenant_id FROM knowledge_base WHERE id = ?", Long.class, kbId);
+        assertNotEquals(999999L, persistedTenantId);
+        assertNotEquals(999998L, persistedTenantId);
+        assertNotEquals(999997L, persistedTenantId);
+        assertNotEquals(999996L, persistedTenantId);
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM knowledge_base kb
+                INNER JOIN `user` u
+                        ON u.id = kb.owner_id
+                       AND u.tenant_id = kb.tenant_id
+                WHERE kb.id = ?
+                """, Integer.class, kbId));
 
         String uniqueToken = "c3_unique_" + UUID.randomUUID().toString().replace("-", "");
         Upload target = uploadDocument(

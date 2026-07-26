@@ -2,6 +2,7 @@ package com.enterprise.rag.auth.bootstrap;
 
 import com.enterprise.rag.auth.persistence.entity.AuthUser;
 import com.enterprise.rag.auth.persistence.mapper.AuthRoleMapper;
+import com.enterprise.rag.auth.persistence.mapper.AuthTenantMapper;
 import com.enterprise.rag.auth.persistence.mapper.AuthUserMapper;
 import com.enterprise.rag.auth.persistence.mapper.AuthUserRoleMapper;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class AdminBootstrapService {
     private final AuthUserMapper authUserMapper;
     private final AuthRoleMapper authRoleMapper;
     private final AuthUserRoleMapper authUserRoleMapper;
+    private final AuthTenantMapper authTenantMapper;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -39,6 +41,11 @@ public class AdminBootstrapService {
         Long adminRoleId = authRoleMapper.findRoleIdByName("ADMIN");
         if (adminRoleId == null) {
             throw new IllegalStateException("Invalid auth.bootstrap state (admin-role-missing)");
+        }
+
+        Long legacyTenantId = authTenantMapper.findLegacyTenantId();
+        if (legacyTenantId == null || legacyTenantId <= 0) {
+            throw new IllegalStateException("Invalid auth.bootstrap state (legacy-tenant-missing)");
         }
 
         AuthUser existingUser = authUserMapper.findAnyByUsername(properties.getUsername());
@@ -66,6 +73,7 @@ public class AdminBootstrapService {
 
         LocalDateTime now = LocalDateTime.now();
         AuthUser user = new AuthUser();
+        user.setTenantId(legacyTenantId);
         user.setUsername(properties.getUsername());
         user.setPasswordHash(passwordEncoder.encode(properties.getPassword()));
         user.setEmail(properties.getEmail());

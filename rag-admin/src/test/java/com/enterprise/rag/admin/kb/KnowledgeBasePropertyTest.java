@@ -8,6 +8,7 @@ import com.enterprise.rag.admin.kb.entity.*;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KBPermissionService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import net.jqwik.api.*;
 
@@ -48,7 +49,7 @@ class KnowledgeBasePropertyTest {
                 .isPublic(false)
                 .build();
 
-        KnowledgeBaseDTO created = kbService.create(createRequest, ownerId);
+        KnowledgeBaseDTO created = kbService.create(createRequest, new RequestIdentity(ownerId, 1L));
 
         // Verify creation
         assertThat(created != null)
@@ -277,7 +278,7 @@ class KnowledgeBasePropertyTest {
         CreateKnowledgeBaseRequest createRequest = CreateKnowledgeBaseRequest.builder()
                 .name(kbName)
                 .build();
-        KnowledgeBaseDTO kb = kbService.create(createRequest, ownerId);
+        KnowledgeBaseDTO kb = kbService.create(createRequest, new RequestIdentity(ownerId, 1L));
 
         // Add documents
         int totalChunks = 0;
@@ -368,12 +369,13 @@ class KnowledgeBasePropertyTest {
         private long idCounter = 1;
 
         @Override
-        public KnowledgeBaseDTO create(CreateKnowledgeBaseRequest request, Long ownerId) {
+        public KnowledgeBaseDTO create(CreateKnowledgeBaseRequest request, RequestIdentity identity) {
             KnowledgeBase kb = new KnowledgeBase();
             kb.setId(idCounter++);
             kb.setName(request.getName());
             kb.setDescription(request.getDescription());
-            kb.setOwnerId(ownerId);
+            kb.setOwnerId(identity.userId());
+            kb.setTenantId(identity.tenantId());
             kb.setIsPublic(request.getIsPublic() != null ? request.getIsPublic() : false);
             kb.setDocumentCount(0);
             kb.setVectorCollection("kb_" + kb.getId());

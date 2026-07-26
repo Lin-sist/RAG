@@ -11,6 +11,7 @@ import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
 import com.enterprise.rag.common.ratelimit.RateLimit;
@@ -66,9 +67,9 @@ public class KnowledgeBaseController {
         public ResponseEntity<ApiResponse<KnowledgeBaseDTO>> create(
                         @Valid @RequestBody CreateKnowledgeBaseRequest request,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long ownerId = currentUserService.requireUserId(userDetails);
-                log.info("创建知识库请求: ownerId={}", ownerId);
-                KnowledgeBaseDTO kb = knowledgeBaseService.create(request, ownerId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                log.info("创建知识库请求: ownerId={}", identity.userId());
+                KnowledgeBaseDTO kb = knowledgeBaseService.create(request, identity);
                 log.info("知识库创建成功: id={}", kb.getId());
                 return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(kb));
         }

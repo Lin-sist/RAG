@@ -4,13 +4,19 @@ import com.enterprise.rag.auth.config.JwtProperties;
 import com.enterprise.rag.auth.config.JwtSecretProductionGuard;
 import com.enterprise.rag.auth.model.UserPrincipal;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.IntRange;
+import net.jqwik.api.constraints.LongRange;
 import net.jqwik.api.constraints.StringLength;
 import org.springframework.mock.env.MockEnvironment;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -21,17 +27,63 @@ import java.util.Set;
  */
 class JwtTokenProviderPropertyTest {
 
+    private static final String TEST_SECRET =
+            "test-secret-key-must-be-at-least-256-bits-long-for-hs256";
     private final JwtTokenProvider jwtTokenProvider;
 
     JwtTokenProviderPropertyTest() {
         JwtProperties jwtProperties = new JwtProperties();
-        jwtProperties.setSecret("test-secret-key-must-be-at-least-256-bits-long-for-hs256");
+        jwtProperties.setSecret(TEST_SECRET);
         jwtProperties.setAccessTokenExpiration(3600L);
         jwtProperties.setRefreshTokenExpiration(86400L);
         jwtProperties.setIssuer("test-issuer");
         this.jwtTokenProvider = new JwtTokenProvider(
                 jwtProperties,
                 new JwtSecretProductionGuard(new MockEnvironment()));
+    }
+
+    @Example
+    void tokenWithoutTenantClaimShouldBeRejected() {
+        Date now = new Date();
+        String legacyToken = Jwts.builder()
+                .claims(Map.of(
+                        "userId", 7L,
+                        "username", "legacy-user",
+                        "roles", Set.of("USER"),
+                        "tokenType", "access"))
+                .subject("legacy-user")
+                .issuer("test-issuer")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + 60_000))
+                .signWith(Keys.hmacShaKeyFor(TEST_SECRET.getBytes(StandardCharsets.UTF_8)))
+                .compact();
+
+        Assertions.assertThat(jwtTokenProvider.isTokenValid(legacyToken))
+                .as("Token without tenant claim should be rejected")
+                .isFalse();
+    }
+
+    @Example
+    void tokenGenerationShouldRejectMissingTenantIdentity() {
+        UserPrincipal user = UserPrincipal.builder()
+                .id(7L)
+                .username("missing-tenant")
+                .enabled(true)
+                .roles(Set.of("USER"))
+                .build();
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> jwtTokenProvider.generateAccessToken(user));
+    }
+
+    @Example
+    void tokenWithInvalidTenantClaimShouldBeRejected() {
+        for (Object tenantClaim : java.util.List.of(0L, -1L, "tenant-b", 1.5d)) {
+            Assertions.assertThat(jwtTokenProvider.isTokenValid(tokenWithTenantClaim(tenantClaim)))
+                    .as("Invalid tenant claim should be rejected")
+                    .isFalse();
+        }
     }
 
     /**
@@ -45,12 +97,14 @@ class JwtTokenProviderPropertyTest {
     @Property(tries = 100)
     void jwtTokenRoundTripConsistency(
             @ForAll @IntRange(min = 1, max = 10000) long userId,
+            @ForAll @LongRange(min = 1, max = 10000) long tenantId,
             @ForAll @AlphaChars @StringLength(min = 3, max = 20) String username,
             @ForAll("validRoles") Set<String> roles) {
         
         // 创建用户
         UserPrincipal user = UserPrincipal.builder()
                 .id(userId)
+                .tenantId(tenantId)
                 .username(username)
                 .email(username + "@test.com")
                 .enabled(true)
@@ -72,6 +126,9 @@ class JwtTokenProviderPropertyTest {
         Assertions.assertThat(recoveredUser.getId())
                 .as("User ID should match")
                 .isEqualTo(userId);
+        Assertions.assertThat(recoveredUser.getTenantId())
+                .as("Tenant ID should match")
+                .isEqualTo(tenantId);
         Assertions.assertThat(recoveredUser.getUsername())
                 .as("Username should match")
                 .isEqualTo(username);
@@ -112,6 +169,7 @@ class JwtTokenProviderPropertyTest {
         // 创建用户
         UserPrincipal user = UserPrincipal.builder()
                 .id(userId)
+                .tenantId(1L)
                 .username(username)
                 .email(username + "@test.com")
                 .enabled(true)
@@ -166,6 +224,7 @@ class JwtTokenProviderPropertyTest {
         
         UserPrincipal user = UserPrincipal.builder()
                 .id(userId)
+                .tenantId(1L)
                 .username(username)
                 .email(username + "@test.com")
                 .enabled(true)
@@ -182,6 +241,9 @@ class JwtTokenProviderPropertyTest {
         Assertions.assertThat(claims.get("userId", Long.class))
                 .as("userId claim should match")
                 .isEqualTo(userId);
+        Assertions.assertThat(claims.get("tenantId", Long.class))
+                .as("tenantId claim should match")
+                .isEqualTo(1L);
         Assertions.assertThat(claims.get("tokenType", String.class))
                 .as("tokenType claim should be 'access'")
                 .isEqualTo("access");
@@ -206,6 +268,7 @@ class JwtTokenProviderPropertyTest {
         for (int i = 0; i < count; i++) {
             UserPrincipal user = UserPrincipal.builder()
                     .id((long) i)
+                    .tenantId(1L)
                     .username("user" + i)
                     .email("user" + i + "@test.com")
                     .enabled(true)
@@ -231,6 +294,24 @@ class JwtTokenProviderPropertyTest {
                 Set.of("USER", "MANAGER"),
                 Set.of("ADMIN", "MANAGER", "USER")
         );
+    }
+
+    private String tokenWithTenantClaim(Object tenantClaim) {
+        Date now = new Date();
+        Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("userId", 7L);
+        claims.put("tenantId", tenantClaim);
+        claims.put("username", "invalid-tenant-user");
+        claims.put("roles", Set.of("USER"));
+        claims.put("tokenType", "access");
+        return Jwts.builder()
+                .claims(claims)
+                .subject("invalid-tenant-user")
+                .issuer("test-issuer")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + 60_000))
+                .signWith(Keys.hmacShaKeyFor(TEST_SECRET.getBytes(StandardCharsets.UTF_8)))
+                .compact();
     }
 
     @Provide

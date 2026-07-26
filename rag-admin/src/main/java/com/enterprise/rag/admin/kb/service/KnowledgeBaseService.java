@@ -4,6 +4,7 @@ import com.enterprise.rag.admin.kb.dto.CreateKnowledgeBaseRequest;
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseStatistics;
 import com.enterprise.rag.admin.kb.dto.UpdateKnowledgeBaseRequest;
+import com.enterprise.rag.admin.security.RequestIdentity;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,10 +18,10 @@ public interface KnowledgeBaseService {
      * 创建知识库
      *
      * @param request 创建请求
-     * @param ownerId 所有者ID
+     * @param identity 服务端认证请求身份
      * @return 创建的知识库
      */
-    KnowledgeBaseDTO create(CreateKnowledgeBaseRequest request, Long ownerId);
+    KnowledgeBaseDTO create(CreateKnowledgeBaseRequest request, RequestIdentity identity);
 
     /**
      * 根据ID获取知识库

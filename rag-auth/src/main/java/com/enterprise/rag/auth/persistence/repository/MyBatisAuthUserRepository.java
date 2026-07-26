@@ -32,6 +32,7 @@ public class MyBatisAuthUserRepository implements AuthUserRepository {
 
         return Optional.of(new AuthUserAccount(
                 user.getId(),
+                user.getTenantId(),
                 user.getUsername(),
                 user.getPasswordHash(),
                 user.getEmail(),

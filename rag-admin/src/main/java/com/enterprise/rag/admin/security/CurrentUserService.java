@@ -13,9 +13,17 @@ import org.springframework.stereotype.Component;
 public class CurrentUserService {
 
     public Long requireUserId(UserDetails userDetails) {
-        if (!(userDetails instanceof UserPrincipal principal) || principal.getId() == null) {
+        return requireIdentity(userDetails).userId();
+    }
+
+    public RequestIdentity requireIdentity(UserDetails userDetails) {
+        if (!(userDetails instanceof UserPrincipal principal)
+                || principal.getId() == null
+                || principal.getId() <= 0
+                || principal.getTenantId() == null
+                || principal.getTenantId() <= 0) {
             throw new BusinessException("AUTH_001", "未认证，请先登录", HttpStatus.UNAUTHORIZED);
         }
-        return principal.getId();
+        return new RequestIdentity(principal.getId(), principal.getTenantId());
     }
 }

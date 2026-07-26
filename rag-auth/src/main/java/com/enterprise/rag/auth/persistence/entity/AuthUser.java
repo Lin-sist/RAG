@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 @TableName("`user`")
 public class AuthUser extends BaseEntity {
 
+    private Long tenantId;
     private String username;
     private String passwordHash;
     private String email;

@@ -15,6 +15,11 @@ import lombok.EqualsAndHashCode;
 public class KnowledgeBase extends BaseEntity {
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 知识库名称
      */
     private String name;

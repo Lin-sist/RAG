@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class UserPrincipal implements UserDetails {
 
     private Long id;
+    private Long tenantId;
     private String username;
     private String password;
     private String email;

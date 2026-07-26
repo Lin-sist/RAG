@@ -1380,3 +1380,30 @@
 - 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有实现改动，因此 Maven、Python 全量、frontend build、Docker/Testcontainers、live database/backend/provider 均 `SKIPPED`。
 - 外调与下一闸门：真实 embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。等待用户审阅并批准 proposal、12 条 decisions、4/12 delta、旧 token 重新登录和 C13a/C13b 边界后，才能进入 migration/auth/context TDD。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C13a租户模型与上下文规划`。
+
+## 2026-07-26｜C13a 规划提交补录
+
+- Commit：`15036c8`（`docs(openspec): 启动C13a租户模型与上下文规划`）。本条只补录上一规划提交的真实 hash，不记录本次 C13a 实现改动。
+
+## 2026-07-26｜C13a 规划批准并进入 migration/auth/context TDD
+
+- 用户批准：proposal 的单用户单 tenant、稳定 legacy tenant 回填、旧 token 无 tenant claim 时重新登录、服务端签发 identity、immutable context 与 C13a 暗铺设边界；design 的 12 条决策和 `rag-system` delta 的 4 requirements / 12 scenarios 通过事前门禁。
+- 实现授权：开始实现 schema migration、auth persistence/principal/JWT 与 request identity，并执行聚焦及全量本地验证；不新增依赖。提交责任继续为 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- TDD 方式：遵循 `tdd` skill，使用 migration → auth/JWT → request identity 的纵向 RED→GREEN；一次只锁定一个可观察行为，不先横向写完全部测试。
+- 范围边界：不实施 C13b SQL/vector/cache/task/history 强制隔离，不开放 tenant CRUD/membership/switch 或第二业务 tenant，不执行 C14 隔离评测，不进入 C15/C16。
+- 外调边界：真实 embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件必须保持 0。
+- Commit：`pending`。
+
+## 2026-07-26｜C13a tenant migration、认证身份与 immutable context implementation 完成
+
+- 实现范围与文件：新增 `V10__tenant_model_and_legacy_backfill.sql`，创建唯一 `legacy-default` tenant，按 nullable→全量回填→NOT NULL/index 顺序为 `user`、`knowledge_base` 建立 tenant 归属；新增真实 MySQL 8.0.36 migration test。扩展 `AuthUser`、repository/account、`UserPrincipal`、`UserDetailsServiceImpl`、JWT provider 与 bootstrap tenant lookup；新增 immutable `RequestIdentity(userId, tenantId)`，由 `CurrentUserService` 统一构造，并在知识库创建链路显式写入服务端 tenant。同步 auth/bootstrap/JWT/context/KB/property/C5 recovery/HappyPath fixtures 与测试；未改变 API 请求/响应 DTO 形状。
+- TDD 证据：migration 首轮 RED 为 `tenant` 表不存在；auth persistence RED 为 `tenantId` 未进入 account/principal，禁用 tenant 用户仍可加载；JWT RED 分别证明 tenant claim 未 round-trip、旧无 tenant claim token 被接受、缺 tenant principal 仍可签发；context/KB RED 证明尚无 `RequestIdentity` 且 create 仍只接收 ownerId。逐项 GREEN 后，8 个聚焦 suites 共 67 tests / 0 failures / 0 errors / 0 skipped。
+- 迁移与兼容：fresh install、V9→V10 有数据升级、Flyway validate、重复 migrate 均通过；正常/禁用/逻辑删除 user、public/private/逻辑删除 KB 全部回填，user/KB 主键、owner、public 与 `kb_permission` 关系不变。C5 恢复夹具同步 latest=V10 和知识库 tenant 归属后，`C5RecoveryMySqlTest` 通过。V1-V9 tracked diff=0，migration versions 1..10 唯一且连续。
+- 认证与失败语义：数据库登录只接受存在且 enabled/not-deleted tenant 的 user；access/refresh token 都由服务端签发正整数 tenant claim，缺失、零/负数、非整数或错误类型 fail closed，缺 tenant principal 不得签发 token；refresh 仍重载 fresh database principal 并使用 fresh tenant。旧无 tenant claim token 被拒绝，需要重新登录，不提供 fixed/header/query/body/metadata fallback；日志和错误不回显 tenant 原始输入或 token。
+- 请求身份与端到端：`RequestIdentity` 同时要求正数 userId/tenantId，不使用 ThreadLocal。知识库 create 从认证 principal 派生 owner/tenant；`HappyPathIT` 同时伪造 header/query/body/metadata tenant 值，数据库仍保存 owner user 的 tenant，并完成登录、建库、上传、异步索引、Milvus retrieval、删除和资源清理。正常 reactor 生命周期下 `TenantModelMigrationMySqlTest` 2/0/0/0、`HappyPathIT` 1/0/0/0，命令 59.4 秒退出码 0；全部数据均为合成数据，embedding 使用 test-scope deterministic provider。
+- 全量验证：最终 `mvn -q test` 111.7 秒退出码 0，79 个 Surefire reports / 360 tests / 0 failures / 0 errors / 2 skipped；两个 skip 分别因未设置 `RAG_OBSERVABILITY_SMOKE` 与 `RAG_OBSERVABILITY_RECOVERY_SMOKE`，不属于 C13a。首次全量运行中 `GenAiTracingConfigurationTest` 出现一次 OTLP logger 时序断言波动，单独复跑通过，随后完整全量重跑干净通过。Python 全量 159 tests / OK；SensitiveLogs 扫描 317 source files / PASS。
+- 命令诊断：第一次完整 `-Pc3-integration verify` 暴露并修正两处历史 C5 fixture（latest V9 写死、手工 KB insert 缺 tenant_id）；修正后 C5 单测通过。随后一次完整 C3 命令在 HappyPath XML 已为 1/0/0/0 后被 184 秒工具超时终止；一次绕过 reactor 的直接 Failsafe 诊断因错误发现全部 4 个 IT 且缺 reactor classpath 被弃用。最终使用正常 `-am ... verify` 生命周期并限定 `-Dit.test=HappyPathIT` 获得退出码 0，不把无效命令当成产品失败或通过证据。
+- 静态与范围门禁：30 个 changed files 中 protected paths=0、C13b vector/Qdrant/Elasticsearch/cache/Redis/task/history production surfaces=0、ThreadLocal=0、V1-V9 migration=0；新增内容 credential/Authorization/用户目录绝对路径命中 0；3 个 changed Markdown relative links missing=0；`git diff --check` 通过，仅有既有 CRLF→LF 和用户级 git ignore 权限 warning。前端无改动，正式 frontend build `SKIPPED`。
+- 外调与范围安全：真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、模型费用与限流事件均为 0；未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、生产 provider/prompt/retrieval/rerank/citation/no-answer 默认行为；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：C13a 仍是单一 legacy tenant 暗铺设，不证明跨租户隔离；SQL/API/permission、所有 vector adapters、cache/task/history 强制 tenant filtering 仍属于 C13b，C14 隔离评测通过前不得开放 C15/C16。Change 保持 `ACTIVE`，等待用户验收；验收前不接受 4 requirements / 12 scenarios delta、不归档、不恢复 `IDLE`。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(租户): 实现C13a租户模型与身份上下文`。

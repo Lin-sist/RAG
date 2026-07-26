@@ -11,6 +11,7 @@ import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KBPermissionService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.enterprise.rag.common.idempotency.Idempotent;
@@ -50,11 +51,12 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     @Override
     @Transactional
     @Idempotent(keyPrefix = "kb:create", required = false, ttlSeconds = 3600)
-    public KnowledgeBaseDTO create(CreateKnowledgeBaseRequest request, Long ownerId) {
+    public KnowledgeBaseDTO create(CreateKnowledgeBaseRequest request, RequestIdentity identity) {
         KnowledgeBase kb = new KnowledgeBase();
         kb.setName(request.getName());
         kb.setDescription(request.getDescription());
-        kb.setOwnerId(ownerId);
+        kb.setOwnerId(identity.userId());
+        kb.setTenantId(identity.tenantId());
         kb.setIsPublic(request.getIsPublic() != null ? request.getIsPublic() : false);
         kb.setDocumentCount(0);
 

@@ -28,13 +28,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "DROP TABLE IF EXISTS user_role",
         "DROP TABLE IF EXISTS role",
         "DROP TABLE IF EXISTS `user`",
-        "CREATE TABLE `user` (id BIGINT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE, "
+        "DROP TABLE IF EXISTS tenant",
+        "CREATE TABLE tenant (id BIGINT PRIMARY KEY, code VARCHAR(64) NOT NULL UNIQUE, "
+                + "enabled TINYINT DEFAULT 1, deleted TINYINT DEFAULT 0)",
+        "CREATE TABLE `user` (id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id BIGINT NOT NULL, "
+                + "username VARCHAR(50) NOT NULL UNIQUE, "
                 + "password_hash VARCHAR(255) NOT NULL, email VARCHAR(100), enabled TINYINT DEFAULT 1, "
                 + "created_at TIMESTAMP, updated_at TIMESTAMP, deleted TINYINT DEFAULT 0, version INT DEFAULT 0)",
         "CREATE TABLE role (id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL UNIQUE, "
                 + "deleted TINYINT DEFAULT 0)",
         "CREATE TABLE user_role (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, "
                 + "role_id BIGINT NOT NULL, UNIQUE(user_id, role_id))",
+        "INSERT INTO tenant (id, code, enabled, deleted) VALUES (901, 'legacy-default', 1, 0)",
         "INSERT INTO role (id, name, deleted) VALUES (7, 'ADMIN', 0)"
 })
 class AdminBootstrapServiceTest {
@@ -77,16 +82,29 @@ class AdminBootstrapServiceTest {
         assertEquals(BootstrapOutcome.CREATED, adminBootstrapService.bootstrap());
 
         UserDetails details = userDetailsService.loadUserByUsername("first-admin");
+        assertEquals(901L, ((UserPrincipal) details).getTenantId());
         assertTrue(details.isEnabled());
         assertTrue(passwordEncoder.matches("external-bootstrap-password", details.getPassword()));
         assertEquals("ROLE_ADMIN", details.getAuthorities().iterator().next().getAuthority());
     }
 
     @Test
+    void rejectsBootstrapWhenLegacyTenantIsUnavailable() {
+        jdbcTemplate.update("DELETE FROM tenant WHERE code = 'legacy-default'");
+        properties.setEnabled(true);
+        properties.setUsername("first-admin");
+        properties.setPassword("external-bootstrap-password");
+
+        assertThrows(IllegalStateException.class, () -> adminBootstrapService.bootstrap());
+        assertEquals(0, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM `user`", Integer.class));
+    }
+
+    @Test
     void claimsQuarantinedSeedWithoutChangingItsId() {
         jdbcTemplate.update("INSERT INTO `user` "
-                + "(id, username, password_hash, email, enabled, deleted, version) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                99L, "admin", "{c2-known-seed-quarantined}", "old@example.test", 0, 0, 1);
+                + "(id, tenant_id, username, password_hash, email, enabled, deleted, version) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                99L, 901L, "admin", "{c2-known-seed-quarantined}", "old@example.test", 0, 0, 1);
         properties.setEnabled(true);
         properties.setUsername("admin");
         properties.setPassword("external-bootstrap-password");
@@ -105,8 +123,9 @@ class AdminBootstrapServiceTest {
     void leavesExistingAdminUntouchedOnRepeatedBootstrap() {
         String existingHash = passwordEncoder.encode("existing-password");
         jdbcTemplate.update("INSERT INTO `user` "
-                + "(id, username, password_hash, email, enabled, deleted, version) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                77L, "existing-admin", existingHash, "existing@example.test", 1, 0, 4);
+                + "(id, tenant_id, username, password_hash, email, enabled, deleted, version) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                77L, 901L, "existing-admin", existingHash, "existing@example.test", 1, 0, 4);
         jdbcTemplate.update("INSERT INTO user_role (user_id, role_id) VALUES (?, ?)", 77L, 7L);
         properties.setEnabled(true);
         properties.setUsername("existing-admin");
@@ -186,8 +205,9 @@ class AdminBootstrapServiceTest {
     void refusesToElevateExistingNonAdminUser() {
         String existingHash = passwordEncoder.encode("existing-password");
         jdbcTemplate.update("INSERT INTO `user` "
-                + "(id, username, password_hash, email, enabled, deleted, version) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                78L, "existing-user", existingHash, "user@example.test", 1, 0, 0);
+                + "(id, tenant_id, username, password_hash, email, enabled, deleted, version) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                78L, 901L, "existing-user", existingHash, "user@example.test", 1, 0, 0);
         properties.setEnabled(true);
         properties.setUsername("existing-user");
         properties.setPassword("external-bootstrap-password");
@@ -202,8 +222,9 @@ class AdminBootstrapServiceTest {
     @Test
     void refusesToInjectAdminIntoNonEmptyDatabase() {
         jdbcTemplate.update("INSERT INTO `user` "
-                + "(id, username, password_hash, email, enabled, deleted, version) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                79L, "someone-else", passwordEncoder.encode("existing-password"),
+                + "(id, tenant_id, username, password_hash, email, enabled, deleted, version) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                79L, 901L, "someone-else", passwordEncoder.encode("existing-password"),
                 "someone@example.test", 1, 0, 0);
         properties.setEnabled(true);
         properties.setUsername("new-admin");

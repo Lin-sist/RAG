@@ -4,6 +4,7 @@ import java.util.Set;
 
 public record AuthUserAccount(
         Long id,
+        Long tenantId,
         String username,
         String passwordHash,
         String email,

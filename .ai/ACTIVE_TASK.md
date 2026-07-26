@@ -10,7 +10,7 @@
 - 阶段：C13a
 - 位置：`openspec/changes/2026-07-26-tenant-model-context-and-migration/`
 - 类型：Type C（租户模型、认证上下文与持久化迁移）
-- 当前状态：proposal/design/tasks/spec delta 已起草，等待用户事前闸门审阅；尚未进入实现。
+- 当前状态：C13a 实现与本地验证已完成，等待用户验收；尚未接受 baseline 或归档。
 
 ## Scope
 
@@ -20,10 +20,10 @@
 
 ## Execution Entry
 
-1. 先审阅 proposal、design 的决策记录、tasks 与 `rag-system` spec delta。
-2. 未经用户批准，不修改 migration、Java、测试、配置或运行行为。
-3. 提交责任为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-4. 实现阶段不得把 C13b/C14/C15/C16 范围并入本 change。
+1. 按 tasks 纵向执行 migration → auth/JWT → immutable request identity 的 RED→GREEN。
+2. 提交责任为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+3. 实现阶段不得把 C13b/C14/C15/C16 范围并入本 change。
+4. 实现完成后保持 change `ACTIVE`，等待用户验收；验收前不接受 baseline、不归档。
 
 ## Emergency Rule
 

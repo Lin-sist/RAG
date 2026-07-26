@@ -55,7 +55,7 @@ class C5RecoveryMySqlTest {
 
     @Test
     void freshAndV1DatabasesMigrateToLatest() throws Exception {
-        assertEquals("9", currentMigrationVersion());
+        assertEquals("10", currentMigrationVersion());
 
         Flyway v1 = flyway(MigrationVersion.fromVersion("1"));
         v1.clean();
@@ -64,7 +64,7 @@ class C5RecoveryMySqlTest {
         latest.migrate();
         latest.validate();
 
-        assertEquals("9", currentMigrationVersion());
+        assertEquals("10", currentMigrationVersion());
     }
 
     @Test
@@ -206,8 +206,10 @@ class C5RecoveryMySqlTest {
                 Statement statement = connection.createStatement()) {
             statement.executeUpdate("""
                     INSERT INTO knowledge_base
-                        (id, name, owner_id, vector_collection, document_count)
-                    VALUES (800, 'c5-finalize', 20, 'kb_c5_finalize', 0)
+                        (id, name, owner_id, tenant_id, vector_collection, document_count)
+                    VALUES (800, 'c5-finalize', 20,
+                            (SELECT id FROM tenant WHERE code = 'legacy-default'),
+                            'kb_c5_finalize', 0)
                     """);
             statement.executeUpdate("""
                     INSERT INTO document

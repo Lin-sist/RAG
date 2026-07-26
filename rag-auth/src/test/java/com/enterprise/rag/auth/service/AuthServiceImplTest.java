@@ -53,6 +53,7 @@ class AuthServiceImplTest {
         String refreshToken = "refresh-token";
         UserPrincipal principal = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(901L)
                 .username("alice")
                 .enabled(true)
                 .roles(Set.of("USER"))
@@ -72,6 +73,7 @@ class AuthServiceImplTest {
         String refreshToken = "refresh-token";
         UserPrincipal principal = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(901L)
                 .username("alice")
                 .enabled(true)
                 .roles(Set.of("USER"))
@@ -93,12 +95,14 @@ class AuthServiceImplTest {
         String refreshToken = "refresh-token";
         UserPrincipal tokenPrincipal = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(901L)
                 .username("alice")
                 .enabled(true)
                 .roles(Set.of("USER"))
                 .build();
         UserPrincipal disabledDatabaseUser = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(901L)
                 .username("alice")
                 .enabled(false)
                 .roles(Set.of("USER"))
@@ -121,6 +125,7 @@ class AuthServiceImplTest {
         String refreshToken = "refresh-token";
         UserPrincipal tokenPrincipal = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(901L)
                 .username("alice")
                 .enabled(true)
                 .roles(Set.of("USER"))
@@ -144,12 +149,14 @@ class AuthServiceImplTest {
         String refreshToken = "refresh-token";
         UserPrincipal tokenPrincipal = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(901L)
                 .username("alice")
                 .enabled(true)
                 .roles(Set.of("USER"))
                 .build();
         UserPrincipal freshDatabaseUser = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(902L)
                 .username("alice")
                 .enabled(true)
                 .roles(Set.of("ADMIN"))
@@ -192,6 +199,7 @@ class AuthServiceImplTest {
     void shouldUseAccessTokenExpirationAsExpiresIn() {
         UserPrincipal principal = UserPrincipal.builder()
                 .id(1L)
+                .tenantId(901L)
                 .username("admin")
                 .enabled(true)
                 .roles(Set.of("ADMIN"))
@@ -218,6 +226,7 @@ class AuthServiceImplTest {
     void loginShouldReturnStableUnavailableWhenSessionWriteFails() {
         UserPrincipal principal = UserPrincipal.builder()
                 .id(1L)
+                .tenantId(901L)
                 .username("admin")
                 .enabled(true)
                 .roles(Set.of("ADMIN"))
@@ -245,6 +254,7 @@ class AuthServiceImplTest {
         String refreshToken = "refresh-token";
         UserPrincipal principal = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(901L)
                 .username("alice")
                 .enabled(true)
                 .roles(Set.of("USER"))
@@ -268,6 +278,7 @@ class AuthServiceImplTest {
         String refreshToken = "refresh-token";
         UserPrincipal principal = UserPrincipal.builder()
                 .id(7L)
+                .tenantId(901L)
                 .username("alice")
                 .enabled(true)
                 .roles(Set.of("USER"))

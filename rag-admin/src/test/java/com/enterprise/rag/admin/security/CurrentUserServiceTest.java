@@ -19,6 +19,7 @@ class CurrentUserServiceTest {
     void shouldReturnIdWhenPrincipalIsUserPrincipal() {
         UserPrincipal principal = UserPrincipal.builder()
                 .id(42L)
+                .tenantId(901L)
                 .username("alice")
                 .password("secret")
                 .enabled(true)
@@ -28,6 +29,23 @@ class CurrentUserServiceTest {
         Long userId = currentUserService.requireUserId(principal);
 
         assertEquals(42L, userId);
+    }
+
+    @Test
+    void shouldReturnImmutableRequestIdentityFromAuthenticatedPrincipal() {
+        UserPrincipal principal = UserPrincipal.builder()
+                .id(42L)
+                .tenantId(901L)
+                .username("alice")
+                .password("secret")
+                .enabled(true)
+                .roles(Set.of("USER"))
+                .build();
+
+        RequestIdentity identity = currentUserService.requireIdentity(principal);
+
+        assertEquals(42L, identity.userId());
+        assertEquals(901L, identity.tenantId());
     }
 
     @Test
@@ -55,6 +73,7 @@ class CurrentUserServiceTest {
     void shouldThrowWhenPrincipalIdIsNull() {
         UserPrincipal principal = UserPrincipal.builder()
                 .id(null)
+                .tenantId(901L)
                 .username("alice")
                 .password("secret")
                 .enabled(true)
@@ -63,6 +82,22 @@ class CurrentUserServiceTest {
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> currentUserService.requireUserId(principal));
+
+        assertEquals("AUTH_001", exception.getErrorCode());
+    }
+
+    @Test
+    void shouldThrowWhenPrincipalTenantIdIsMissing() {
+        UserPrincipal principal = UserPrincipal.builder()
+                .id(42L)
+                .username("alice")
+                .password("secret")
+                .enabled(true)
+                .roles(Set.of("USER"))
+                .build();
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> currentUserService.requireIdentity(principal));
 
         assertEquals("AUTH_001", exception.getErrorCode());
     }
