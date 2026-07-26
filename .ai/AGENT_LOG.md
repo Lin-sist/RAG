@@ -1423,3 +1423,25 @@
 - 外调与范围安全：本轮真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0；未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、评测 release/fixture/history、production provider/prompt/retrieval/rerank/citation/no-answer 默认行为或 V1-V10 migration。
 - 剩余风险：当前仍只有单一 legacy tenant，SQL/vector/cache/task/history 等数据面未做 tenant enforcement，不能创建第二业务 tenant或作多租户隔离承诺。真实组织层级、多 membership、provisioning/SSO、跨租户管理员、数据保留与生产迁移回退策略仍需后续独立决策。
 - Commit：`pending`；建议用户手动提交 `chore(openspec): 验收并归档C13a租户模型与上下文`。
+
+## 2026-07-26｜C13b tenant data-plane enforcement readiness 及规划启动
+
+- 用户决策与提交责任：用户要求检查当前项目状态，满足条件则直接开始 C13b 规划。提交责任按默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 HEAD=`69cd868`，工作区干净，`main...origin/main [ahead 6]`，`.ai/ACTIVE_TASK.md=IDLE`；C13a 的 4 requirements / 12 scenarios 已接受进 `rag-system` baseline 并归档，tasks unchecked=0，当前无未归档 change。C13a 已建立 V10 tenant/user/KB、JWT tenant claim、refresh reload 与 immutable `RequestIdentity`，冻结下一项明确为 C13b，结论为 `GO`。
+- 当前事实：多数 controller/service/authorization 仍只传裸 userId/resource ID；document/chunk/kb_permission/history/feedback/task 没有 tenant column；vector/RAG/keyword 接口接受裸 collection/filter，三个 adapter 的 get/delete/count/lifecycle 没有 tenant contract；QA/embedding/session/idempotency/task Redis key、durable recovery/input path 未统一 tenant namespace。因此当前不能开放第二业务 tenant或宣称租户隔离成立。
+- 能力分类：`confirmed` 为 C13a identity、单 KB vector collection、MySQL/Redis/Milvus integration 入口与 durable ledger；`partial` 为 KB tenant root、少数 RequestIdentity 创建路径及普通 vector filter；`planned` 为 V11 child tenant backfill、显式 SQL/API/permission、tenant-local public/permission、Milvus contract、unsupported adapter fail startup、legacy vector maintenance/readiness、Redis/task/input/keyword 隔离；`out_of_scope` 为 tenant CRUD/switch/membership、tenant RBAC、C14/C15/C16；`unknown` 为真实组织/容量、真实向量规模、生产 Qdrant/Elasticsearch 使用情况与合规政策。
+- 规划 artifacts：创建 active change `tenant-data-plane-enforcement` 的 proposal、design、tasks 与 `rag-system` spec delta，并将 `.ai/ACTIVE_TASK.md` 置为 `ACTIVE`。Design 包含 15 条真实决策记录，delta 为 6 requirements / 18 scenarios，tasks 为 62 个未执行项。
+- 关键方案：用户请求路径显式传播 `RequestIdentity`，六类 child/business table 冗余非空 tenantId；跨 tenant not-found、同 tenant无权限 forbidden，public/permission 只在 tenant 内生效。Milvus 是最小已验证 adapter，Qdrant/Elasticsearch 未通过完整 contract 时启动失败。旧向量由默认关闭的 maintenance mode 复用现有 vector 原位补 marker，未 READY 的 KB fail closed，不允许 legacy-default fallback。
+- 缓存与异步边界：session/QA/embedding/idempotency/task projection 使用 v2 tenant key；旧业务 key 不双读，session 重新登录、cache 重算、task projection 从 tenant-scoped durable ledger 重建。token blacklist 与 global IP rate limit 保持明确 global security scope。后台恢复从 ledger tenantId 构造 execution scope，不使用 ThreadLocal/SecurityContext 推断。
+- 外调与范围安全：规划阶段真实 Milvus/Qdrant/Elasticsearch maintenance、embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0；未修改 accepted baseline、Java/POM/test/runtime config、migration、数据库实际 schema、评测资产、前端或 provider 默认值。
+- 剩余风险与下一闸门：child tenant 冗余、404/403 语义、Milvus-first、legacy vector readiness、Redis v2 冷启动和 15 条 decisions / 6/18 delta 仍需用户批准。规划不等于 schema/Java/Redis/Milvus 实现授权，也不证明真实向量已迁移或租户隔离成立。
+- Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C13b租户数据面隔离规划`。
+
+## 2026-07-26｜C13b 规划门禁验证
+
+- 结构与状态：proposal/design/tasks/spec delta 4 个必需 artifacts 齐全；design 的 15 条 decisions 均完整包含“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”；delta 为 6 requirements / 18 scenarios；`.ai/ACTIVE_TASK.md=ACTIVE` 且只指向 C13b，未归档 active change 数为 1。
+- 文档与安全：SensitiveLogs 扫描 317 source files / PASS；5 个本轮核心 Markdown 的本地相对链接为 0、missing=0，新增内容 trailing whitespace=0；credential value、Authorization token 与用户目录绝对路径定向扫描无命中；`git diff --check` 通过，仅有用户级 git ignore 权限 warning。
+- 范围检查：规划目标仅为 `.ai/ACTIVE_TASK.md`、append-only `.ai/AGENT_LOG.md` 与新增 C13b change 目录；accepted `openspec/specs/`、Java/POM/test/runtime config、V1-V10 migration、architecture/roadmap/optimization、评测资产、前端、`.env.local`、`application-dev.yml`、`.agents/` 与 `docs/学习文档/` 不在计划改动范围。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有实现改动，因此 Maven、Python、frontend build、Docker/Testcontainers、live database/backend/vector adapter/maintenance/provider 均 `SKIPPED`。
+- 外调与下一闸门：真实 vector maintenance、embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。等待用户审阅并批准 proposal、15 条 decisions、6/18 delta 与 tasks 后，才能从 V11 migration RED 开始实现；任何真实 legacy vector audit/backfill 仍需单独授权。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C13b租户数据面隔离规划`。

@@ -2,23 +2,41 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
-当前无活动 change。开始新的 Type C 工作前，必须先创建新的 OpenSpec change 并更新本文件。
+## Change
 
-## Previous Completed
+- Change：`tenant-data-plane-enforcement`
+- 阶段：C13b OpenSpec 规划与事前闸门
+- 位置：`openspec/changes/tenant-data-plane-enforcement/`
+- 类型：Type C（SQL/API/permission、vector、cache/task/history 跨数据面 tenant enforcement）
+- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 
-- Change：`2026-07-26-tenant-model-context-and-migration`
-- 位置：`openspec/changes/archive/2026-07-26-tenant-model-context-and-migration/`
-- 结果：完成唯一 legacy tenant、user/knowledge-base 非空归属、数据库认证与 access/refresh JWT tenant identity、refresh reload、旧 token fail-closed 及 immutable `RequestIdentity`。
-- 验收：用户已验收 migration、auth/context evidence、旧 token 边界与 C13a 非隔离声明；4 requirements / 12 scenarios 已原文接受进 `rag-system` baseline。C13a 不证明跨租户隔离。
+## Planning Artifacts
 
-## Execution Entry
+- `proposal.md`：问题、范围、非目标、能力分类、契约、风险与验收证据。
+- `design.md`：V11、显式 identity、权限、Milvus-first、legacy vector maintenance/readiness、Redis/task/recovery 与 15 条决策记录。
+- `tasks.md`：事前闸门与 migration→SQL/API→task/cache→RAG/vector→maintenance→full gates 的可验证切片。
+- `specs/rag-system/spec.md`：6 requirements / 18 scenarios 草案。
 
-1. 当前无活动任务，不从已归档 change 继续实现。
-2. 下一项重大变更 C13b 必须先建立 proposal、design、tasks 和 spec delta，并明确提交责任。
-3. C13b 必须从服务端 `RequestIdentity` 覆盖 SQL/API/permission、所有启用 vector adapters、cache/task/history 强制隔离；不支持的 adapter 必须 fail closed。
-4. C14 隔离与恶意样本评测通过前，不开放 C15 MCP 或 C16 Router，也不宣称租户隔离成立。
+## Current Gate
+
+1. 当前只完成规划草案，尚未批准 schema、Java、Redis、Milvus 或 maintenance 实现。
+2. 用户需审阅 proposal、15 条 decisions、6/18 spec delta 与 tasks，尤其确认：
+   - child business tables 冗余非空 tenantId；
+   - 跨 tenant not-found、tenant-local public/permission；
+   - Milvus-first，未通过 contract 的 Qdrant/Elasticsearch fail startup；
+   - legacy vector 默认关闭的 maintenance audit/backfill 与 READY 门禁；
+   - Redis v2 tenant key 冷启动、旧 session 重新登录；
+   - C13b 完成仍不代替 C14，不开放第二业务 tenant/C15/C16。
+3. 用户明确批准事前闸门后，才从 `tasks.md` 第 1 节 migration RED 开始实现。
+
+## Execution Boundaries
+
+- 不修改 V1-V10、accepted baseline、生产代码、测试、runtime config 或依赖，直到规划获批。
+- 不执行真实 Milvus/Qdrant/Elasticsearch maintenance，不调用 embedding/rerank/ask/generation/judge/LLM/provider。
+- 不修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`。
+- 不宣称租户隔离成立；C14 通过前不开放第二业务 tenant、MCP 或 Router。
 
 ## Emergency Rule
 
