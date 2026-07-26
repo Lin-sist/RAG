@@ -54,8 +54,8 @@
 
 ## 6. Acceptance And Closeout
 
-- [ ] 用户验收 migration、auth/context evidence、旧 token 边界与 C13a 非隔离声明。
-- [ ] 原文接受 delta 到 `openspec/specs/rag-system/spec.md`。
-- [ ] 同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`。
-- [ ] 归档 change，恢复 `.ai/ACTIVE_TASK.md=IDLE`，验证 archive structure 与 baseline exact match。
-- [ ] 明确下一阶段仍是 C13b 服务端跨数据面强制隔离；C14 通过前不开放 C15/C16。
+- [x] 用户验收 migration、auth/context evidence、旧 token 边界与 C13a 非隔离声明。
+- [x] 原文接受 delta 到 `openspec/specs/rag-system/spec.md`。
+- [x] 同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`。
+- [x] 归档 change，恢复 `.ai/ACTIVE_TASK.md=IDLE`，验证 archive structure 与 baseline exact match。
+- [x] 明确下一阶段仍是 C13b 服务端跨数据面强制隔离；C14 通过前不开放 C15/C16。

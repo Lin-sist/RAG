@@ -1407,3 +1407,19 @@
 - 外调与范围安全：真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、模型费用与限流事件均为 0；未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、生产 provider/prompt/retrieval/rerank/citation/no-answer 默认行为；未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险：C13a 仍是单一 legacy tenant 暗铺设，不证明跨租户隔离；SQL/API/permission、所有 vector adapters、cache/task/history 强制 tenant filtering 仍属于 C13b，C14 隔离评测通过前不得开放 C15/C16。Change 保持 `ACTIVE`，等待用户验收；验收前不接受 4 requirements / 12 scenarios delta、不归档、不恢复 `IDLE`。
 - Commit：`pending`；提交责任为用户手动提交。建议 `feat(租户): 实现C13a租户模型与身份上下文`。
+
+## 2026-07-26｜C13a implementation 提交补录
+
+- Commit：`a864020`（`feat(租户): 实现C13a租户模型与身份上下文`）。本条只补录上一执行提交的真实 hash，不记录本次验收归档改动。
+
+## 2026-07-26｜C13a 验收与归档
+
+- 用户验收：用户明确确认 C13a migration、auth/context evidence、旧 token 边界与非隔离声明验收通过，并要求满足条件时直接收口；提交责任继续为 `用户手动提交`，Agent 未暂存、未提交、未 push、未创建 PR、未部署。
+- 规格收口：`2026-07-26-tenant-model-context-and-migration` delta body 已原文接受为 `openspec/specs/rag-system/spec.md` 的 exact suffix，共 4 requirements / 12 scenarios；change 的 proposal、design、tasks 与 delta 已移入 `openspec/changes/archive/2026-07-26-tenant-model-context-and-migration/`，archive files=4、tasks unchecked=0、未归档 active change=0，`.ai/ACTIVE_TASK.md=IDLE`。
+- 长期事实源：同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`，记录 V10 唯一 legacy tenant、user/knowledge-base 非空 tenant identity、数据库认证与 JWT tenant claim、refresh reload、immutable `RequestIdentity`、旧 token fail-closed 和客户端 selector 不生效；同时明确 C13a 只证明 tenant model/context readiness，不证明跨租户隔离。
+- 下一阶段边界：下一轮是独立 Type C change C13b，必须从服务端 `RequestIdentity` 覆盖 SQL/API/permission、所有启用 vector adapters、cache/task/history/feedback；不支持的 adapter 必须 fail closed。C13b 完成且 C14 隔离与恶意样本评测通过前，不开放 C15 MCP/C16 Router，也不宣称租户隔离成立。
+- 本轮验证：baseline exact suffix=`true`；4 requirements / 12 scenarios；archive files=4；tasks unchecked=0；未归档 active change=0；`.ai/ACTIVE_TASK.md=IDLE`。Python 全量 159 tests / OK；SensitiveLogs 扫描 317 source files / PASS；11 个收口 Markdown 的本地相对链接 missing=0；代码/配置范围外改动=0；新增内容用户目录绝对路径与 credential value pattern 命中均为 0；`git diff --check` 通过。OpenSpec CLI 不在 PATH，未声称 CLI validation 通过。
+- 复用与跳过：本轮只做规格、文档和状态归档，未修改 Java/POM/前端/runtime config/migration，因此不重跑 Maven、frontend build、Docker/Testcontainers/C3 HappyPath。实现提交 `a864020` 已有同一代码状态的 `mvn -q test` 79 reports / 360 tests / 0 failures / 0 errors / 2 environment-gated OTLP smoke skips，MySQL migration 2/0/0/0 与 HappyPath 1/0/0/0 证据。
+- 外调与范围安全：本轮真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0；未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、评测 release/fixture/history、production provider/prompt/retrieval/rerank/citation/no-answer 默认行为或 V1-V10 migration。
+- 剩余风险：当前仍只有单一 legacy tenant，SQL/vector/cache/task/history 等数据面未做 tenant enforcement，不能创建第二业务 tenant或作多租户隔离承诺。真实组织层级、多 membership、provisioning/SSO、跨租户管理员、数据保留与生产迁移回退策略仍需后续独立决策。
+- Commit：`pending`；建议用户手动提交 `chore(openspec): 验收并归档C13a租户模型与上下文`。

@@ -13,8 +13,8 @@
 
 | 模块 | 当前职责 | 主要入口 |
 |---|---|---|
-| `rag-admin` | Spring Boot 启动、REST API、知识库/文档/任务/问答/历史/反馈编排、OTel SDK 与 OTLP export wiring | `RagQaApplication`、各 Controller、`DocumentIndexingServiceImpl`、`GenAiTracingConfiguration` |
-| `rag-auth` | Spring Security、JWT、刷新与注销、Redis token 黑名单 | `SecurityConfig`、`AuthServiceImpl`、`JwtTokenProvider` |
+| `rag-admin` | Spring Boot 启动、REST API、知识库/文档/任务/问答/历史/反馈编排、tenant migration/request identity、OTel SDK 与 OTLP export wiring | `RagQaApplication`、各 Controller、`CurrentUserService`、`DocumentIndexingServiceImpl`、`GenAiTracingConfiguration` |
+| `rag-auth` | 数据库 user/tenant 认证事实、Spring Security、tenant-aware JWT、刷新与注销、Redis token 黑名单 | `SecurityConfig`、`UserDetailsServiceImpl`、`AuthServiceImpl`、`JwtTokenProvider` |
 | `rag-common` | 响应与异常、Redis、限流、幂等、异步任务、安全 GenAI tracing/metrics facade | `GlobalExceptionHandler`、`RedisAsyncTaskManager`、`RequestObservationFilter`、`GenAiTelemetry` |
 | `rag-document` | TXT/Markdown/PDF/Word/代码解析，token 估算和分块 | `DocumentParserFactory`、`DocumentProcessorImpl`、`DocumentChunker` |
 | `rag-core` | Embedding、向量库、BM25、RRF、rerank、prompt、生成与引用 | `QueryEngineImpl`、`AnswerGeneratorImpl`、`CitationValidator` |
@@ -70,6 +70,7 @@
 - C9b 已验收归档：`rag-judge-v1` 固定 prompt/parser/`0.70` 双分数 threshold/model config identity；24 条独立静态 calibration v1 按 faithful×relevant 四象限各 6 条；normal eval 输出独立 objective/judge/global status 与 comparison safety。4 requirements / 12 scenarios 已接受进 `evaluation` baseline；live judge calibration 按 `SKIPPED` 收口，不能形成真实 agreement 或生产质量结论。
 - C11 已验收归档：默认关闭、fail-open 的 OTel 1.31 tracing core 为 durable ingest 与 ask 建立分离 trace，固定实际执行阶段 topology，并以稳定 task/document/chunk lineage 关联两条链路；W3C/custom context、MDC bridge、同步/流式终态和隐私白名单均由进程内 exporter/fake tests 锁定。4 requirements / 12 scenarios 已接受进 `rag-system` baseline。
 - C12 已验收归档：tracing/metrics/export 三个开关独立且默认关闭；OTLP gRPC exporter 使用有界 queue/batch/timeout 并保持业务 fail-open。低基数 metrics 独立于 trace sampling；本机 Collector→Tempo/Prometheus→Grafana reference stack 固定关键 trace 全保留、普通成功 trace 10% tail sampling、72h/7d retention、localhost 端口与认证边界。4 requirements / 12 scenarios 已接受进 `rag-system` baseline，synthetic evidence 不代表生产容量或 SLA。
+- C13a 已验收归档：V10 建立唯一 legacy tenant，并为 user/knowledge-base 回填非空 tenant identity；认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity` 使用服务端数据库事实，旧无 tenant claim token 被拒绝。4 requirements / 12 scenarios 已接受进 `rag-system` baseline，但 SQL/vector/cache/task/history 强制隔离仍未实现。
 - NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
@@ -77,12 +78,13 @@
 
 ## 5. 当前边界
 
-- `UserDetailsServiceImpl` 从数据库加载未删除用户及其有效角色；运行时不再初始化固定默认账号。
+- `UserDetailsServiceImpl` 从数据库加载未删除用户、有效 tenant 与角色；运行时不再初始化固定默认账号。客户端 tenant selector 不进入认证 context。
 - 真实 model reranker 已完成并验收 30 条开发样本 A/B，C7 delta 已接受进 `evaluation` baseline 并归档；默认 provider 仍为 heuristic。
 - 当前默认、已验收的 150 条 v2 是开发评测 release；30 条 v1 仍可显式复现。两者都不是生产数据集、隐藏 benchmark 或论文级基准。
 - C8b 只扩充并复核 question/annotation；C9a/C9b/C10 离线能力均已验收归档。C10 当前只有 DRAFT retrieval profile，reference calls 与具体阈值未授权，因此 active quality gate、live judge calibration 与真实 generation evidence 仍未完成。
 - 标题感知、长代码块和长段落专项仍待验证。
 - C12 已形成默认关闭的 OTLP export、低基数 metrics 与本机 reference backend 闭环，但它不是生产观测平台；生产 HA、容量、合规 retention、租户权限、跨主机传输、外部通知与 SLA 仍未知或 out of scope。
+- C13a 只完成 tenant model/context 暗铺设，仍是单一 legacy tenant。C13b 必须覆盖 SQL/API/permission、所有启用 vector adapters、cache/task/history；C14 隔离评测通过前不能宣称多租户隔离完成。
 
 ## 6. 文档真相源
 

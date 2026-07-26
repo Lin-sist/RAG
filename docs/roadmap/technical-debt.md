@@ -74,7 +74,8 @@
 
 ## P2：基线稳定后
 
-- 组织/租户模型与强制 tenant filter。
+- 组织/租户模型：C13a 已于 2026-07-26 验收归档，完成唯一 legacy tenant、user/knowledge-base 非空归属、服务端 JWT tenant identity 与 immutable request context；该阶段不提供 tenant CRUD/switch 或第二业务 tenant。
+- 强制 tenant filter：下一阶段 C13b 仍须覆盖 SQL/API/permission、Milvus 及所有启用 vector adapters、cache/task/history/feedback；未验证 adapter 必须 fail closed。C14 隔离与恶意样本评测通过前不得宣称租户隔离成立，也不开放 C15/C16。
 - 前端统一设计 token、空态/错态/处理中态和可访问性。
 - 生产数据评测集扩充与反馈闭环。
 - 有界 Query Router：按 fact、multi-hop、global、no-answer 选择策略。

@@ -2,28 +2,23 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
-## Change
+当前无活动 change。开始新的 Type C 工作前，必须先创建新的 OpenSpec change 并更新本文件。
 
-- ID：`2026-07-26-tenant-model-context-and-migration`
-- 阶段：C13a
-- 位置：`openspec/changes/2026-07-26-tenant-model-context-and-migration/`
-- 类型：Type C（租户模型、认证上下文与持久化迁移）
-- 当前状态：C13a 实现与本地验证已完成，等待用户验收；尚未接受 baseline 或归档。
+## Previous Completed
 
-## Scope
-
-- 建立最小 tenant 领域模型，并为现有用户与知识库设计向前兼容迁移。
-- tenant identity 只从数据库认证事实与服务端签发的身份上下文推导，不接受客户端 header、query、body 或 metadata 指定。
-- 本 change 只做 C13a 暗铺设，不声明跨租户隔离已成立，不启用第二租户，不修改 SQL/Milvus/cache/task/history 的强制过滤。
+- Change：`2026-07-26-tenant-model-context-and-migration`
+- 位置：`openspec/changes/archive/2026-07-26-tenant-model-context-and-migration/`
+- 结果：完成唯一 legacy tenant、user/knowledge-base 非空归属、数据库认证与 access/refresh JWT tenant identity、refresh reload、旧 token fail-closed 及 immutable `RequestIdentity`。
+- 验收：用户已验收 migration、auth/context evidence、旧 token 边界与 C13a 非隔离声明；4 requirements / 12 scenarios 已原文接受进 `rag-system` baseline。C13a 不证明跨租户隔离。
 
 ## Execution Entry
 
-1. 按 tasks 纵向执行 migration → auth/JWT → immutable request identity 的 RED→GREEN。
-2. 提交责任为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-3. 实现阶段不得把 C13b/C14/C15/C16 范围并入本 change。
-4. 实现完成后保持 change `ACTIVE`，等待用户验收；验收前不接受 baseline、不归档。
+1. 当前无活动任务，不从已归档 change 继续实现。
+2. 下一项重大变更 C13b 必须先建立 proposal、design、tasks 和 spec delta，并明确提交责任。
+3. C13b 必须从服务端 `RequestIdentity` 覆盖 SQL/API/permission、所有启用 vector adapters、cache/task/history 强制隔离；不支持的 adapter 必须 fail closed。
+4. C14 隔离与恶意样本评测通过前，不开放 C15 MCP 或 C16 Router，也不宣称租户隔离成立。
 
 ## Emergency Rule
 

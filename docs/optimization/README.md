@@ -72,6 +72,13 @@
 - 本机 reference stack 固定 Collector Contrib `0.157.0`、Tempo `2.10.7`、Prometheus `3.13.1`、Grafana OSS `13.1.1`；关键 trace 全保留、普通成功 trace 默认 10% tail sampling、metrics 不采样，retention 为 72h/7d，宿主只开放 localhost OTLP/Grafana 且 Grafana 禁止 anonymous。
 - 4 requirements / 12 scenarios 已接受进长期 `rag-system` baseline；synthetic smoke 验证本机查询、采样、隐私、访问与恢复闭环，但不证明生产 HA、容量、合规 retention、租户权限、跨主机传输、通知或 SLA。
 
+### C13a：Tenant Model, Context And Migration（已验收归档）
+
+- archived change：`../../openspec/changes/archive/2026-07-26-tenant-model-context-and-migration/`。
+- V10 创建唯一 `legacy-default` tenant，并按 nullable→全量回填→NOT NULL/index 顺序为既有 user 与 knowledge-base 建立持久化 tenant identity，保留主键、owner/public、逻辑删除状态与 `kb_permission` 关系。
+- 数据库认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity(userId, tenantId)` 统一使用服务端 tenant 事实；旧无 tenant claim token fail closed，客户端 header/query/body/metadata 不能选择或覆盖 tenant。
+- 4 requirements / 12 scenarios 已接受进长期 `rag-system` baseline；C13a 仍是单一 legacy tenant 暗铺设，不证明跨租户隔离。下一阶段 C13b 必须覆盖 SQL/vector/cache/task/history，C14 评测通过前不开放 C15/C16。
+
 ## 历史材料
 
 `history/` 保存 v3 正式计划形成前的 hybrid、reranker abstraction 和 token chunker 演进记录。它们可以解释代码为何形成当前结构，但不得单独用于判断当前阶段、指标或待办。
