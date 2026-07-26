@@ -1342,3 +1342,18 @@
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、数据库 schema、API/DTO、production provider/prompt/retrieval/rerank/citation/no-answer 默认行为；未暂存、提交、push、创建 PR、部署或发布。
 - 剩余风险：本实现只证明单机 reference 闭环；6/100 success sampling 是本次 deterministic synthetic 结果，不是统计 SLA/容量结论。Docker images 与 named volumes 保留在本机，生产 HA、容量、合规 retention、租户权限、跨主机传输和通知仍 out of scope。Change 保持 `ACTIVE`，等待用户验收；验收前不接受 4 requirements / 12 scenarios delta、不归档、不恢复 `IDLE`。
 - Commit：`pending`；提交责任为用户手动提交。建议 `feat(观测): 实现C12遥测导出与低基数指标`。
+
+## 2026-07-26｜C12 implementation 提交补录
+
+- Commit：`ac48cd0`（`feat(观测): 实现C12遥测导出与低基数指标`）。本条只补录上一执行提交的真实 hash，不记录本次验收归档改动。
+
+## 2026-07-26｜C12 验收与归档
+
+- 用户验收：用户明确确认 C12 验收通过并要求归档；提交责任继续为 `用户手动提交`，Agent 未暂存、未提交、未 push、未创建 PR、未部署。
+- 规格收口：`2026-07-26-otel-export-and-metrics` delta body 已原文接受为 `openspec/specs/rag-system/spec.md` 的 exact suffix，共 4 requirements / 12 scenarios；change 的 proposal、design、tasks 与 delta 已移入 `openspec/changes/archive/2026-07-26-otel-export-and-metrics/`，tasks unchecked=0，未归档 active change=0，`.ai/ACTIVE_TASK.md=IDLE`。
+- 长期事实源：同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`，记录 default-off/fail-open OTLP gRPC export、低基数 metrics、本机 Collector/Tempo/Prometheus/Grafana、关键 trace 全保留、普通成功 trace 10% tail sampling、72h/7d retention、认证访问及 non-SLA rules；生产 HA、容量、合规 retention、租户权限、跨主机传输、通知与 SLA 仍保持未完成或 out of scope。
+- 本轮验证：delta exact suffix=`true`；4 requirements / 12 scenarios；archive artifacts=4；tasks unchecked=0；未归档 active change=0；`.ai/ACTIVE_TASK.md=IDLE`。Python 全量 `159 tests / OK`；SensitiveLogs 扫描 315 source files / PASS；11 个归档相关 Markdown 本地链接 missing=0；受保护路径 diff=0；预期范围外改动=0；新增内容用户目录绝对路径与 secret value pattern 命中均为 0；`git diff --check` 通过。OpenSpec CLI 不在 PATH，未声称 CLI validation 通过。
+- 复用与跳过：本轮只做规格/文档/状态归档，未修改 Java/POM/前端/数据库 schema；因此不重跑 Maven、frontend build、Docker/Testcontainers/reference stack/live backend。实现提交 `ac48cd0` 已有同一代码状态的 `mvn -q test` 81 reports / 352 tests / 0 failures / 0 errors / 3 skipped，以及完整本机 synthetic reference 闭环证据。OpenSpec CLI 若仍不在 PATH，则不声称 CLI validation 通过。
+- 外调与范围：本轮真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter/SaaS 调用、telemetry 出站、业务数据出站、费用与限流事件均为 0；未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、评测 release/fixture/history 或 migration。
+- 剩余风险：C12 只证明默认关闭的单机 reference observability 闭环；6/100 success sampling 是 synthetic 结果，不是 SLA/容量结论。Docker images 与 named volumes 仍保留在本机；生产 HA、容量/费用、合规 retention、租户权限、跨主机传输、通知与 SLA 仍需独立 change。
+- Commit：`pending`；建议 `chore(openspec): 验收并归档C12遥测导出与指标`。

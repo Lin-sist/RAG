@@ -28,6 +28,7 @@
 - C9b 已验收归档：normal/calibration runner 共用版本化 `rag-judge-v1` contract 与 strict parser；独立 `judge-calibration-v1` 固定 24 条四象限人工 gold case；normal eval 分离 objective/judge/global status 与 per-channel comparison safety。4 requirements / 12 scenarios 已接受进 `evaluation` baseline；live calibration 未授权并按 `SKIPPED` 收口，不能声称已有真实 judge agreement 或生产 faithfulness 结论。
 - C10 已验收归档：新增 `rag-quality-gate-profile-v1`、独立离线 evaluator、固定切片、hard/reference AND、fail-closed completeness、脱敏 summary 与 `PASS/FAIL/NOT_EVALUABLE/INVALID=0/3/4/2`。4 requirements / 12 scenarios 已接受进 `evaluation` baseline；reference calls 未授权并按 `SKIPPED` 收口，首个 v2 retrieval profile 仍为 `DRAFT`，不能声称 active quality gate 或项目质量达标。
 - C11 已验收归档：基于 Spring Boot 3.2.1 BOM 管理的 OTel 1.31 API/SDK 建立默认关闭、fail-open 的进程内 GenAI tracing core；ingest/ask 使用分离 trace，以稳定 `ingestTaskId/documentId/chunkId` lineage 关联，覆盖同步/流式终态、W3C/custom context、MDC bridge 与隐私白名单。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；runtime 不含 network exporter，真实 provider/exporter 调用与数据出站为 0。
+- C12 已验收归档：在 C11 contract 上增加相互独立且默认关闭的 tracing/metrics/export 开关、OTLP gRPC fail-open export 与低基数 operation/stage/provider/fallback/token metrics；本机 reference stack 固定 Collector/Tempo/Prometheus/Grafana 版本，实行关键 trace 全保留、普通成功 trace 10% tail sampling、metrics 不采样、72h/7d retention、localhost 端口边界与 Grafana 认证。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；synthetic 闭环不包含真实业务 provider 或 SaaS 调用。
 
 ## 当前边界
 
@@ -35,7 +36,7 @@
 - 登录与 refresh 已使用数据库用户、状态和角色；bootstrap 默认关闭，运行时不提供固定默认账号。
 - LLM judge 默认关闭；C9b 已接受的是离线校准工具、静态 corpus 与状态语义，尚无 live provider evidence，不能声称 judge 已真实校准或逐 claim faithfulness 已成立。
 - C10 已接受的是离线门禁 contract/evaluator 与 DRAFT profile，不包含正式 v2 reference evidence、具体阈值或 ACTIVE profile；后续激活仍须单独披露并授权 reference calls。
-- C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项仍未完成。C11 只完成默认关闭的进程内 tracing contract；C12 exporter、metrics、alerts、sampling、retention、权限与部署仍未完成。
+- C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项仍未完成。C12 已完成默认关闭的单机 reference observability 闭环，但生产 HA、容量、合规 retention、租户观测权限、跨主机传输、通知与 SLA 仍未完成。
 
 ## 长期规格
 

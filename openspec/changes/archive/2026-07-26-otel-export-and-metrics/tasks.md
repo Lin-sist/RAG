@@ -57,7 +57,7 @@
 
 ## 6. Acceptance And Closeout
 
-- [ ] 用户验收实现、依赖/镜像清单、synthetic evidence、sampling/retention/access 与剩余风险。
-- [ ] 原文接受 4 requirements / 12 scenarios delta 到 `openspec/specs/rag-system/spec.md`。
-- [ ] 同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`。
-- [ ] 归档 change，恢复 `.ai/ACTIVE_TASK.md=IDLE`，验证 archive structure 与 baseline exact match。
+- [x] 用户验收实现、依赖/镜像清单、synthetic evidence、sampling/retention/access 与剩余风险。
+- [x] 原文接受 4 requirements / 12 scenarios delta 到 `openspec/specs/rag-system/spec.md`。
+- [x] 同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`。
+- [x] 归档 change，恢复 `.ai/ACTIVE_TASK.md=IDLE`，验证 archive structure 与 baseline exact match。

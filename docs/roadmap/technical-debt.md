@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-23
+> 状态日期：2026-07-26
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
@@ -65,10 +65,11 @@
 - 当前流式路径只输出文本 chunk，历史保存 citations 为空。
 - 需要设计兼容的结构化完成事件，明确 citations、contexts、metadata 和中断语义。
 
-### 5. 可观测性与恢复演练（C11 tracing core 已完成：2026-07-23）
+### 5. 可观测性与恢复演练（C12 本机 reference 闭环已完成：2026-07-26）
 
 - C11 已建立默认关闭、fail-open 的 OTel 1.31 进程内 tracing core：分离 ingest/ask trace、固定实际执行阶段、稳定 task/document/chunk lineage、W3C/custom context、MDC bridge、同步/流式终态与隐私白名单；4 requirements / 12 scenarios 已接受进 `rag-system` baseline 并归档。
-- C12 仍需独立立项决定 network exporter、metrics、alerts/dashboard、production sampling、retention、权限、部署和真实 backend 容量/费用；C11 未发送外部 telemetry，不能解释为生产观测栈完成。
+- C12 已增加默认关闭、fail-open 的 OTLP gRPC trace/metric export、低基数 metrics、本机 Collector/Tempo/Prometheus/Grafana、关键 trace 全保留与普通成功 trace 10% tail sampling、72h/7d retention、认证 dashboard 和 non-SLA local rules；4 requirements / 12 scenarios 已接受进 `rag-system` baseline 并归档。
+- 独立剩余债务：当前只证明单机 synthetic reference 闭环；生产 HA、容量/费用、合规 retention、租户观测权限、跨主机传输、通知渠道与 SLA 仍须独立立项，不能由本机采样结果外推。
 - LLM 429/503/timeout、Redis/Milvus 不可用语义已完成；继续演练索引输入丢失、进程中断与恢复。
 
 ## P2：基线稳定后

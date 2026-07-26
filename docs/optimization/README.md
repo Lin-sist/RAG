@@ -1,6 +1,6 @@
 # RAG 优化文档索引
 
-> 状态日期：2026-07-23
+> 状态日期：2026-07-26
 
 本目录只保留三类内容：当前 v3 证据、已关闭的 v4 阶段证据、历史演进证据。阶段编号只在所属版本目录内解释。
 
@@ -64,6 +64,13 @@
 - OTel 1.31 API/SDK 由 Spring Boot 3.2.1 BOM 管理，runtime 默认关闭且 fail-open；durable ingest 与 ask 使用分离 trace，并通过稳定 `ingestTaskId/documentId/chunkId` lineage 关联。
 - 固定阶段 topology、W3C/custom context、MDC bridge、同步/流式终态、bounded lineage events 与隐私白名单已用 in-memory exporter/fake dependencies 验证。
 - 4 requirements / 12 scenarios 已接受进长期 `rag-system` baseline；C11 不含 network exporter、metrics、alerts、dashboard、生产 sampling、retention、权限或部署，真实 provider/exporter 调用和数据出站为 0。
+
+### C12：OTel Export And Metrics（已验收归档）
+
+- archived change：`../../openspec/changes/archive/2026-07-26-otel-export-and-metrics/`。
+- tracing/metrics/export 三个开关独立且默认关闭；OTLP gRPC exporter 使用有界 queue/batch/timeout 并保持业务 fail-open，低基数 operation/stage/provider/fallback/token metrics 独立于 trace sampling。
+- 本机 reference stack 固定 Collector Contrib `0.157.0`、Tempo `2.10.7`、Prometheus `3.13.1`、Grafana OSS `13.1.1`；关键 trace 全保留、普通成功 trace 默认 10% tail sampling、metrics 不采样，retention 为 72h/7d，宿主只开放 localhost OTLP/Grafana 且 Grafana 禁止 anonymous。
+- 4 requirements / 12 scenarios 已接受进长期 `rag-system` baseline；synthetic smoke 验证本机查询、采样、隐私、访问与恢复闭环，但不证明生产 HA、容量、合规 retention、租户权限、跨主机传输、通知或 SLA。
 
 ## 历史材料
 
