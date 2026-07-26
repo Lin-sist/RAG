@@ -2,22 +2,28 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
-当前无活动 change。开始新的 Type C 工作前，必须先创建新的 OpenSpec change 并更新本文件。
+## Change
 
-## Previous Completed
+- ID：`2026-07-26-tenant-model-context-and-migration`
+- 阶段：C13a
+- 位置：`openspec/changes/2026-07-26-tenant-model-context-and-migration/`
+- 类型：Type C（租户模型、认证上下文与持久化迁移）
+- 当前状态：proposal/design/tasks/spec delta 已起草，等待用户事前闸门审阅；尚未进入实现。
 
-- Change：`2026-07-26-otel-export-and-metrics`
-- 位置：`openspec/changes/archive/2026-07-26-otel-export-and-metrics/`
-- 结果：完成默认关闭、fail-open 的 OTLP gRPC trace/metric export、低基数 GenAI metrics 与本机 Collector/Tempo/Prometheus/Grafana reference 闭环，固定关键 trace 全保留、普通成功 trace 10% tail sampling、72h/7d retention、localhost 端口和 Grafana 认证边界。
-- 验收：用户已验收实现与 synthetic evidence；4 requirements / 12 scenarios 已原文接受进 `rag-system` baseline。生产 HA、容量、合规 retention、租户权限、跨主机传输、通知与 SLA 仍不在已完成范围。
+## Scope
+
+- 建立最小 tenant 领域模型，并为现有用户与知识库设计向前兼容迁移。
+- tenant identity 只从数据库认证事实与服务端签发的身份上下文推导，不接受客户端 header、query、body 或 metadata 指定。
+- 本 change 只做 C13a 暗铺设，不声明跨租户隔离已成立，不启用第二租户，不修改 SQL/Milvus/cache/task/history 的强制过滤。
 
 ## Execution Entry
 
-1. 当前无活动任务，不从已归档 change 继续实现。
-2. 下一项重大变更必须先建立 proposal、design、tasks 和 spec delta，并明确提交责任。
-3. 后续生产观测能力必须重新确认数据出站、费用、容量、保留期、权限、通知与部署边界。
+1. 先审阅 proposal、design 的决策记录、tasks 与 `rag-system` spec delta。
+2. 未经用户批准，不修改 migration、Java、测试、配置或运行行为。
+3. 提交责任为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+4. 实现阶段不得把 C13b/C14/C15/C16 范围并入本 change。
 
 ## Emergency Rule
 

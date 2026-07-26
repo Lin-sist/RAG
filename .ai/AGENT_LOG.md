@@ -1357,3 +1357,26 @@
 - 外调与范围：本轮真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter/SaaS 调用、telemetry 出站、业务数据出站、费用与限流事件均为 0；未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、评测 release/fixture/history 或 migration。
 - 剩余风险：C12 只证明默认关闭的单机 reference observability 闭环；6/100 success sampling 是 synthetic 结果，不是 SLA/容量结论。Docker images 与 named volumes 仍保留在本机；生产 HA、容量/费用、合规 retention、租户权限、跨主机传输、通知与 SLA 仍需独立 change。
 - Commit：`pending`；建议 `chore(openspec): 验收并归档C12遥测导出与指标`。
+
+## 2026-07-26｜C13a tenant model/context/migration readiness 及规划启动
+
+- 用户决策与提交责任：用户要求检查项目状况，若允许则直接开始 C13 规划。提交责任按默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动前 HEAD=`250a5c3`，工作区干净，`main...origin/main [ahead 3]`，`.ai/ACTIVE_TASK.md=IDLE`；C12 的 4 requirements / 12 scenarios 已接受进 `rag-system` baseline 并归档，tasks unchecked=0，当前无未归档 change。冻结蓝图下一顺序项为拆分后的 C13a，结论为 `GO`。
+- 当前事实：已有数据库用户认证、JWT access/refresh、refresh 时重载用户、`CurrentUserService`、owner/public/用户级 KB 授权与 Flyway V1-V9；`user`、`knowledge_base`、`UserPrincipal`、JWT 和 request context 均没有 tenant identity，不能宣称多租户隔离。
+- 能力分类：`confirmed` 为 user/owner/permission 与 migration test 入口；`partial` 为已有用户级授权但没有 tenant 根边界；`planned` 为 legacy tenant、user/KB tenant_id、服务端 JWT tenant claim、immutable request identity、旧 token fail-closed 与 fresh/V9 migration tests；`out_of_scope` 为 C13b SQL/vector/cache/task/history enforcement、tenant CRUD/switch、多 membership、C14 隔离评测、C15 MCP 与 C16 Router；`unknown` 为真实组织层级、SSO/provisioning、跨租户管理员与合规政策。
+- 规划 artifacts：创建 `2026-07-26-tenant-model-context-and-migration` 的 proposal、design、tasks 与 `rag-system` spec delta，激活 `.ai/ACTIVE_TASK.md`。Design 包含 12 条真实决策记录，delta 为 4 requirements / 12 scenarios。
+- 关键方案：C13 继续拆分；C13a 只建立单用户单 tenant、稳定 `legacy-default` 回填、`user/knowledge_base.tenant_id`、数据库 principal→服务端 JWT→immutable context 的身份链。部署前无 tenant claim token fail closed 并要求重新登录；不信任 header/query/body/metadata，不使用全局 tenant ThreadLocal。
+- 范围边界：C13a 只做暗铺设，不开放 tenant CRUD/membership/switch 或第二业务 tenant，不修改 SQL/API/Milvus/Qdrant/Elasticsearch/cache/task/history 的强制过滤，不把字段/JWT 就绪描述为隔离完成。C13b 实现且 C14 评测通过前不得开放 C15/C16。
+- 外调与范围安全：规划阶段真实 embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0；未修改 accepted baseline、Java/POM/test/runtime config、migration、API/DTO、数据库实际 schema、评测资产、前端或 provider 默认值。
+- 跳过项：规划只修改 OpenSpec/ACTIVE_TASK/AGENT_LOG，因此尚未运行 Maven、Python、frontend build、Docker/Testcontainers、live database/backend/provider。OpenSpec CLI 可用性和文档/安全门禁将在本轮规划验证中记录。
+- 剩余风险与下一闸门：单用户单 tenant、legacy 回填、旧 token 重新登录、无物理外键、12 条 decisions 与 4/12 delta 仍需用户批准；规划不等于批准 migration/Java 实现，也不证明跨租户隔离。
+- Commit：`pending`；建议用户手动提交 `docs(openspec): 启动C13a租户模型与上下文规划`。
+
+## 2026-07-26｜C13a 规划门禁验证
+
+- 结构与状态：proposal/design/tasks/spec delta 4 个必需 artifacts 齐全；design 的 12 条 decisions 均完整包含“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”；delta 为 4 requirements / 12 scenarios；`.ai/ACTIVE_TASK.md=ACTIVE` 且只指向 C13a，未归档 active change 数为 1。
+- 文档与安全：SensitiveLogs 扫描 315 source files / PASS；5 个本轮核心 Markdown 的本地相对链接 missing=0、trailing whitespace=0、CRLF files=0；新增规划内容的 credential value、Authorization token 与用户目录绝对路径命中为 0；`git diff --check` 通过。
+- 范围检查：当前状态只包含 `.ai/ACTIVE_TASK.md`、append-only `.ai/AGENT_LOG.md` 与新增 C13a change 目录；accepted `openspec/specs/`、Java/POM/test/runtime config、migration、docs、评测资产、前端、`.env.local`、`application-dev.yml`、`.agents/` 与 `docs/学习文档/` tracked diff 均为 0。
+- 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有实现改动，因此 Maven、Python 全量、frontend build、Docker/Testcontainers、live database/backend/provider 均 `SKIPPED`。
+- 外调与下一闸门：真实 embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。等待用户审阅并批准 proposal、12 条 decisions、4/12 delta、旧 token 重新登录和 C13a/C13b 边界后，才能进入 migration/auth/context TDD。
+- Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C13a租户模型与上下文规划`。
