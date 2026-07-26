@@ -104,6 +104,19 @@ proxy:
 
 # RAG Configuration
 rag:
+  observability:
+    tracing:
+      enabled: ${RAG_OBSERVABILITY_TRACING_ENABLED:false}
+    metrics:
+      enabled: ${RAG_OBSERVABILITY_METRICS_ENABLED:false}
+    export:
+      enabled: ${RAG_OBSERVABILITY_EXPORT_ENABLED:false}
+      endpoint: ${RAG_OBSERVABILITY_OTLP_ENDPOINT:http://127.0.0.1:4317}
+      timeout-millis: ${RAG_OBSERVABILITY_EXPORT_TIMEOUT_MILLIS:3000}
+      schedule-delay-millis: ${RAG_OBSERVABILITY_EXPORT_SCHEDULE_DELAY_MILLIS:5000}
+      metric-interval-millis: ${RAG_OBSERVABILITY_METRIC_INTERVAL_MILLIS:30000}
+      max-queue-size: ${RAG_OBSERVABILITY_EXPORT_MAX_QUEUE_SIZE:2048}
+      max-export-batch-size: ${RAG_OBSERVABILITY_EXPORT_MAX_BATCH_SIZE:512}
   # ===== 大模型配置（用于生成回答） =====
   llm:
     provider: openai

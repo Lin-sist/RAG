@@ -8,7 +8,7 @@
 
 - Change：`2026-07-26-otel-export-and-metrics`
 - 位置：`openspec/changes/2026-07-26-otel-export-and-metrics/`
-- 阶段：proposal/design/tasks/spec delta 已起草，等待用户事前门禁审阅；尚未进入实现。
+- 阶段：Java/config/reference stack implementation 与 synthetic verification 已完成，等待用户验收；尚未接受 baseline 或归档。
 - 提交责任：`用户手动提交`。Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 
 ## Scope
@@ -19,15 +19,16 @@
 
 ## Approval Gate
 
-1. 用户需批准 proposal 的 backend、default-off、metrics、sampling、retention、权限、dashboard/alerts 与 non-goals。
-2. 用户需批准 design 的 15 条决策记录和 `rag-system` delta 的 4 requirements / 12 scenarios。
-3. 进入实现前，用户需明确授权新增 OTel OTLP exporter/metrics SDK 依赖、下载固定 Collector/Tempo/Prometheus/Grafana images 并执行本机 synthetic smoke。
-4. 上述实现授权不包含真实 embedding/rerank/ask/generation/judge/LLM/provider、SaaS、付费服务、公网数据出站、push、PR 或部署。
+1. 用户已批准 proposal 的 backend、default-off、metrics、sampling、retention、权限、dashboard/alerts 与 non-goals。
+2. 用户已批准 design 的 15 条决策记录和 `rag-system` delta 的 4 requirements / 12 scenarios。
+3. 用户已授权新增 OTel OTLP exporter/metrics SDK 依赖、下载固定 Collector/Tempo/Prometheus/Grafana images，并执行仅含 synthetic telemetry 的本机 smoke。
+4. 实现授权不包含真实 embedding/rerank/ask/generation/judge/LLM/provider、SaaS、付费服务、公网数据出站、push、PR 或部署。
 
 ## Current External-Call State
 
-- 规划阶段真实 provider/exporter 调用、Docker image 下载、telemetry 出站与费用均为 0。
-- 不得把规划或后续本机 synthetic smoke 解释为 production observability readiness、SLA、容量或长期费用证据。
+- 实现阶段真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider/SaaS 调用与业务数据出站均为 0；只发生固定镜像下载及本机 synthetic OTLP。
+- 首次 Grafana 13.1.1 启动暴露默认插件预装下载，已通过 `GF_PLUGINS_PREINSTALL_DISABLED=true` 等配置关闭；全新 volume 重建后验证无插件下载或 provisioning error。
+- 不得把本机 synthetic smoke 解释为 production observability readiness、SLA、容量或长期费用证据。
 
 ## Emergency Rule
 

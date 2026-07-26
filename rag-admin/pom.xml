@@ -34,10 +34,14 @@
             <artifactId>rag-core</artifactId>
         </dependency>
 
-        <!-- C11 in-process tracing SDK; no network exporter is included. -->
+        <!-- C11/C12 tracing and metrics SDK. -->
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
         </dependency>
 
         <!-- Swagger/OpenAPI -->

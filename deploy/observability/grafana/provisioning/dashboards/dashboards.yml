@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: Enterprise RAG local reference
+    orgId: 1
+    folder: Enterprise RAG
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

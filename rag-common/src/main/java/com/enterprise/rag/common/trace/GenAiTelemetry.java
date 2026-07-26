@@ -2,6 +2,10 @@ package com.enterprise.rag.common.trace;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.metrics.DoubleHistogram;
+import io.opentelemetry.api.metrics.LongCounter;
+import io.opentelemetry.api.metrics.LongUpDownCounter;
+import io.opentelemetry.api.metrics.Meter;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.StatusCode;
@@ -10,6 +14,7 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 
 import java.util.Map;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,6 +33,7 @@ public final class GenAiTelemetry {
     private static final Pattern SAFE_STRING = Pattern.compile("[A-Za-z0-9_./:@-]{1,128}");
 
     private final Tracer tracer;
+    private final MetricInstruments metrics;
 
     public GenAiTelemetry(OpenTelemetry openTelemetry) {
         OpenTelemetry effective = openTelemetry == null ? OpenTelemetry.noop() : openTelemetry;
@@ -38,6 +44,7 @@ public final class GenAiTelemetry {
             resolved = OpenTelemetry.noop().getTracer(INSTRUMENTATION_SCOPE, INSTRUMENTATION_VERSION);
         }
         this.tracer = resolved;
+        this.metrics = MetricInstruments.create(effective);
     }
 
     public static GenAiTelemetry noop() {
@@ -55,7 +62,7 @@ public final class GenAiTelemetry {
             if (linkedContext != null && Span.fromContext(linkedContext).getSpanContext().isValid()) {
                 builder.addLink(Span.fromContext(linkedContext).getSpanContext());
             }
-            return start(builder, attributes);
+            return start(builder, attributes, spanName);
         } catch (RuntimeException telemetryFailure) {
             return SpanScope.noop();
         }
@@ -66,7 +73,7 @@ public final class GenAiTelemetry {
             return SpanScope.noop();
         }
         try {
-            return start(tracer.spanBuilder(spanName), attributes);
+            return start(tracer.spanBuilder(spanName), attributes, spanName);
         } catch (RuntimeException telemetryFailure) {
             return SpanScope.noop();
         }
@@ -98,6 +105,8 @@ public final class GenAiTelemetry {
                 current.addEvent("rag.retry", io.opentelemetry.api.common.Attributes.of(
                         Attributes.RETRY_COUNT, Math.max(0L, retryCount)));
             }
+            metrics.providerCalls(SpanNames.LLM_REQUEST, requestedProvider, effectiveProvider,
+                    "success", attemptCount);
         } catch (RuntimeException telemetryFailure) {
             // telemetry 必须 fail open
         }
@@ -112,6 +121,7 @@ public final class GenAiTelemetry {
             if (outputTokens != null && outputTokens >= 0L) {
                 current.setAttribute(Attributes.TOKEN_OUTPUT, outputTokens);
             }
+            metrics.tokenUsage(inputTokens, outputTokens);
         } catch (RuntimeException telemetryFailure) {
             // telemetry 必须 fail open
         }
@@ -123,14 +133,16 @@ public final class GenAiTelemetry {
         }
     }
 
-    private SpanScope start(SpanBuilder builder, Map<? extends AttributeKey<?>, ?> attributes) {
+    private SpanScope start(SpanBuilder builder,
+            Map<? extends AttributeKey<?>, ?> attributes,
+            String spanName) {
         Span span = null;
         Scope scope = null;
         try {
             span = builder.startSpan();
             applyAttributes(span, attributes);
             scope = span.makeCurrent();
-            return new SpanScope(span, scope);
+            return new SpanScope(span, scope, metrics, spanName);
         } catch (RuntimeException telemetryFailure) {
             if (scope != null) {
                 try {
@@ -180,16 +192,24 @@ public final class GenAiTelemetry {
     public static final class SpanScope implements AutoCloseable {
         private final Span span;
         private final Scope scope;
+        private final MetricInstruments metrics;
+        private final String spanName;
+        private final long startedNanos;
         private final AtomicBoolean scopeClosed = new AtomicBoolean();
         private final AtomicBoolean ended = new AtomicBoolean();
+        private volatile String finalOutcome;
 
-        private SpanScope(Span span, Scope scope) {
+        private SpanScope(Span span, Scope scope, MetricInstruments metrics, String spanName) {
             this.span = Objects.requireNonNull(span, "span");
             this.scope = Objects.requireNonNull(scope, "scope");
+            this.metrics = Objects.requireNonNull(metrics, "metrics");
+            this.spanName = spanName;
+            this.startedNanos = System.nanoTime();
+            this.metrics.started(spanName);
         }
 
         private static SpanScope noop() {
-            return new SpanScope(Span.getInvalid(), () -> { });
+            return new SpanScope(Span.getInvalid(), () -> { }, MetricInstruments.noop(), null);
         }
 
         public Span span() {
@@ -210,6 +230,7 @@ public final class GenAiTelemetry {
 
         public SpanScope outcome(String outcome) {
             try {
+                this.finalOutcome = outcome;
                 setSafeString(Attributes.OUTCOME, outcome);
             } catch (RuntimeException telemetryFailure) {
                 // telemetry 必须 fail open
@@ -252,15 +273,18 @@ public final class GenAiTelemetry {
                 return this;
             }
             try {
-                stringFact(Attributes.PROVIDER_REQUESTED,
-                        first(diagnostics, "rerankRequestedProvider", "requestedProvider", "provider"));
-                stringFact(Attributes.PROVIDER_EFFECTIVE,
-                        first(diagnostics, "rerankEffectiveProvider", "effectiveProvider", "provider"));
+                String requestedProvider =
+                        first(diagnostics, "rerankRequestedProvider", "requestedProvider", "provider");
+                String effectiveProvider =
+                        first(diagnostics, "rerankEffectiveProvider", "effectiveProvider", "provider");
+                stringFact(Attributes.PROVIDER_REQUESTED, requestedProvider);
+                stringFact(Attributes.PROVIDER_EFFECTIVE, effectiveProvider);
                 stringFact(Attributes.MODEL, first(diagnostics, "rerankModel", "model"));
                 stringFact(Attributes.PROTOCOL, first(diagnostics, "rerankProtocol", "protocol"));
-                stringFact(Attributes.FALLBACK_REASON,
-                        first(diagnostics, "rerankFallbackReason", "fallbackReason"));
-                longFact(Attributes.FALLBACK_COUNT, number(diagnostics, "rerankFallbackCount", "fallbackCount"));
+                String fallbackReason = first(diagnostics, "rerankFallbackReason", "fallbackReason");
+                stringFact(Attributes.FALLBACK_REASON, fallbackReason);
+                long fallbackCount = number(diagnostics, "rerankFallbackCount", "fallbackCount");
+                longFact(Attributes.FALLBACK_COUNT, fallbackCount);
                 longFact(Attributes.ATTEMPT_COUNT, number(diagnostics, "attemptCount"));
                 long retryCount = number(diagnostics, "retryCount");
                 longFact(Attributes.RETRY_COUNT, retryCount);
@@ -268,6 +292,11 @@ public final class GenAiTelemetry {
                     span.addEvent("rag.retry", io.opentelemetry.api.common.Attributes.of(
                             Attributes.RETRY_COUNT, retryCount));
                 }
+                long modelCallCount = number(diagnostics, "modelCallCount", "rerankModelCallCount");
+                metrics.providerCalls(spanName, requestedProvider, effectiveProvider,
+                        fallbackCount > 0L ? "fallback_success" : "success", modelCallCount);
+                metrics.fallbacks(spanName, requestedProvider, effectiveProvider,
+                        fallbackReason, fallbackCount);
             } catch (RuntimeException telemetryFailure) {
                 // telemetry 必须 fail open
             }
@@ -294,6 +323,8 @@ public final class GenAiTelemetry {
                     // telemetry 必须 fail open
                 }
             }
+            metrics.providerCalls(spanName, requestedProvider, effectiveProvider,
+                    "success", attemptCount);
             return this;
         }
 
@@ -368,7 +399,9 @@ public final class GenAiTelemetry {
         }
 
         public void finish(String finalOutcome) {
-            outcome(finalOutcome);
+            if (finalOutcome != null) {
+                outcome(finalOutcome);
+            }
             detach();
             if (ended.compareAndSet(false, true)) {
                 try {
@@ -376,12 +409,232 @@ public final class GenAiTelemetry {
                 } catch (RuntimeException telemetryFailure) {
                     // telemetry 必须 fail open
                 }
+                metrics.finished(spanName, this.finalOutcome,
+                        Math.max(0L, System.nanoTime() - startedNanos));
             }
         }
 
         @Override
         public void close() {
             finish(null);
+        }
+    }
+
+    private static final class MetricInstruments {
+        private static final AttributeKey<String> OPERATION = AttributeKey.stringKey("rag.operation");
+        private static final AttributeKey<String> STAGE = AttributeKey.stringKey("rag.stage");
+        private static final AttributeKey<String> OUTCOME = AttributeKey.stringKey("rag.outcome");
+        private static final AttributeKey<String> PROVIDER_REQUESTED =
+                AttributeKey.stringKey("rag.provider.requested");
+        private static final AttributeKey<String> PROVIDER_EFFECTIVE =
+                AttributeKey.stringKey("rag.provider.effective");
+        private static final AttributeKey<String> FALLBACK_REASON =
+                AttributeKey.stringKey("rag.fallback.reason");
+        private static final AttributeKey<String> TOKEN_DIRECTION =
+                AttributeKey.stringKey("rag.token.direction");
+        private static final AttributeKey<String> TOKEN_COVERAGE =
+                AttributeKey.stringKey("rag.token.coverage");
+        private static final Set<String> OUTCOMES = Set.of(
+                "success", "cache_hit", "no_result", "error", "cancelled", "timeout",
+                "fallback_success", "invalid_request", "unknown");
+        private static final Set<String> PROVIDERS = Set.of(
+                "openai", "qwen", "nvidia", "heuristic", "bge", "none", "disabled", "unknown");
+        private static final Set<String> FALLBACK_REASONS = Set.of(
+                "not_configured", "health_check_failed", "timeout", "http_4xx", "http_5xx",
+                "network", "invalid_response", "incomplete_rankings", "invalid_input",
+                "provider_failure", "none", "unknown");
+        private final LongCounter operationCount;
+        private final DoubleHistogram operationDuration;
+        private final LongUpDownCounter operationInflight;
+        private final DoubleHistogram stageDuration;
+        private final LongCounter providerCallCount;
+        private final LongCounter fallbackCount;
+        private final LongCounter tokenUsage;
+        private final LongCounter tokenUsageCoverage;
+
+        private MetricInstruments(Meter meter) {
+            this.operationCount = meter.counterBuilder("rag.operation.count")
+                    .setDescription("Completed RAG operations")
+                    .setUnit("{operation}")
+                    .build();
+            this.operationDuration = meter.histogramBuilder("rag.operation.duration")
+                    .setDescription("RAG operation lifecycle duration")
+                    .setUnit("s")
+                    .build();
+            this.operationInflight = meter.upDownCounterBuilder("rag.operation.inflight")
+                    .setDescription("In-flight RAG operations")
+                    .setUnit("{operation}")
+                    .build();
+            this.stageDuration = meter.histogramBuilder("rag.stage.duration")
+                    .setDescription("RAG fixed-stage duration")
+                    .setUnit("s")
+                    .build();
+            this.providerCallCount = meter.counterBuilder("rag.provider.call.count")
+                    .setDescription("Actual provider calls")
+                    .setUnit("{call}")
+                    .build();
+            this.fallbackCount = meter.counterBuilder("rag.fallback.count")
+                    .setDescription("Provider fallbacks")
+                    .setUnit("{fallback}")
+                    .build();
+            this.tokenUsage = meter.counterBuilder("rag.token.usage")
+                    .setDescription("Provider-reported actual token usage")
+                    .setUnit("{token}")
+                    .build();
+            this.tokenUsageCoverage = meter.counterBuilder("rag.token.usage_coverage")
+                    .setDescription("Provider token usage observation coverage")
+                    .setUnit("{observation}")
+                    .build();
+        }
+
+        private static MetricInstruments create(OpenTelemetry openTelemetry) {
+            try {
+                return new MetricInstruments(openTelemetry.meterBuilder(INSTRUMENTATION_SCOPE)
+                        .setInstrumentationVersion(INSTRUMENTATION_VERSION)
+                        .build());
+            } catch (RuntimeException telemetryFailure) {
+                return noop();
+            }
+        }
+
+        private static MetricInstruments noop() {
+            return new MetricInstruments(OpenTelemetry.noop().meterBuilder(INSTRUMENTATION_SCOPE)
+                    .setInstrumentationVersion(INSTRUMENTATION_VERSION)
+                    .build());
+        }
+
+        private void started(String spanName) {
+            String operation = operation(spanName);
+            if (operation == null) {
+                return;
+            }
+            try {
+                operationInflight.add(1L, io.opentelemetry.api.common.Attributes.of(
+                        OPERATION, operation));
+            } catch (RuntimeException telemetryFailure) {
+                // telemetry 必须 fail open
+            }
+        }
+
+        private void finished(String spanName, String rawOutcome, long durationNanos) {
+            String operation = operation(spanName);
+            String outcome = normalizeOutcome(rawOutcome);
+            double seconds = durationNanos / 1_000_000_000.0d;
+            try {
+                if (operation != null) {
+                    io.opentelemetry.api.common.Attributes labels =
+                            io.opentelemetry.api.common.Attributes.of(
+                                    OPERATION, operation,
+                                    OUTCOME, outcome);
+                    operationCount.add(1L, labels);
+                    operationDuration.record(seconds, labels);
+                    operationInflight.add(-1L, io.opentelemetry.api.common.Attributes.of(
+                            OPERATION, operation));
+                } else if (spanName != null && SpanNames.ALLOWED.contains(spanName)) {
+                    stageDuration.record(seconds, io.opentelemetry.api.common.Attributes.of(
+                            STAGE, spanName,
+                            OUTCOME, outcome));
+                }
+            } catch (RuntimeException telemetryFailure) {
+                // telemetry 必须 fail open
+            }
+        }
+
+        private void providerCalls(String spanName,
+                String requestedProvider,
+                String effectiveProvider,
+                String outcome,
+                long callCount) {
+            if (callCount <= 0L) {
+                return;
+            }
+            try {
+                providerCallCount.add(callCount, io.opentelemetry.api.common.Attributes.builder()
+                        .put(STAGE, normalizeStage(spanName))
+                        .put(PROVIDER_REQUESTED, normalizeProvider(requestedProvider))
+                        .put(PROVIDER_EFFECTIVE, normalizeProvider(effectiveProvider))
+                        .put(OUTCOME, normalizeOutcome(outcome))
+                        .build());
+            } catch (RuntimeException telemetryFailure) {
+                // telemetry 必须 fail open
+            }
+        }
+
+        private void fallbacks(String spanName,
+                String requestedProvider,
+                String effectiveProvider,
+                String fallbackReason,
+                long count) {
+            if (count <= 0L) {
+                return;
+            }
+            try {
+                fallbackCount.add(count, io.opentelemetry.api.common.Attributes.builder()
+                        .put(STAGE, normalizeStage(spanName))
+                        .put(PROVIDER_REQUESTED, normalizeProvider(requestedProvider))
+                        .put(PROVIDER_EFFECTIVE, normalizeProvider(effectiveProvider))
+                        .put(FALLBACK_REASON, normalizeFallbackReason(fallbackReason))
+                        .build());
+            } catch (RuntimeException telemetryFailure) {
+                // telemetry 必须 fail open
+            }
+        }
+
+        private void tokenUsage(Long inputTokens, Long outputTokens) {
+            try {
+                boolean inputPresent = inputTokens != null && inputTokens >= 0L;
+                boolean outputPresent = outputTokens != null && outputTokens >= 0L;
+                if (inputPresent) {
+                    tokenUsage.add(inputTokens, io.opentelemetry.api.common.Attributes.of(
+                            TOKEN_DIRECTION, "input"));
+                }
+                if (outputPresent) {
+                    tokenUsage.add(outputTokens, io.opentelemetry.api.common.Attributes.of(
+                            TOKEN_DIRECTION, "output"));
+                }
+                tokenUsageCoverage.add(1L, io.opentelemetry.api.common.Attributes.of(
+                        TOKEN_COVERAGE, inputPresent && outputPresent ? "present" : "missing"));
+            } catch (RuntimeException telemetryFailure) {
+                // telemetry 必须 fail open
+            }
+        }
+
+        private static String operation(String spanName) {
+            if (SpanNames.ASK.equals(spanName)) {
+                return "ask";
+            }
+            if (SpanNames.INGEST.equals(spanName)) {
+                return "ingest";
+            }
+            return null;
+        }
+
+        private static String normalizeOutcome(String rawOutcome) {
+            if (rawOutcome == null) {
+                return "unknown";
+            }
+            String normalized = rawOutcome.toLowerCase(Locale.ROOT);
+            return OUTCOMES.contains(normalized) ? normalized : "unknown";
+        }
+
+        private static String normalizeProvider(String rawProvider) {
+            if (rawProvider == null) {
+                return "unknown";
+            }
+            String normalized = rawProvider.toLowerCase(Locale.ROOT);
+            return PROVIDERS.contains(normalized) ? normalized : "other";
+        }
+
+        private static String normalizeFallbackReason(String rawReason) {
+            if (rawReason == null) {
+                return "unknown";
+            }
+            String normalized = rawReason.toLowerCase(Locale.ROOT);
+            return FALLBACK_REASONS.contains(normalized) ? normalized : "other";
+        }
+
+        private static String normalizeStage(String spanName) {
+            return spanName != null && SpanNames.ALLOWED.contains(spanName) ? spanName : "unknown";
         }
     }
 

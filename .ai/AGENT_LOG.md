@@ -1315,3 +1315,30 @@
 - 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有 Java/POM/Python/前端/部署实现改动，因此 Maven、Python 全量、frontend build、Docker/Collector/Tempo/Prometheus/Grafana、live backend/provider 与 network exporter 均 `SKIPPED`。
 - 外调与下一闸门：真实 embedding/rerank/ask/generation/judge/LLM/provider/exporter 调用、镜像下载、telemetry 出站、费用与限流事件均为 0。等待用户审阅并批准本机 backend、default-off OTLP、metrics cardinality、tail sampling、72h/7d retention、Grafana access、dashboard/rules、15 条 decisions、4/12 delta，并授权新增依赖/固定 images/synthetic smoke 后才能进入实现。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C12遥测导出与指标规划`。
+
+## 2026-07-26｜C12 规划提交补录
+
+- Commit：`8f36b9d`（`docs(openspec): 启动C12遥测导出与指标规划`）。本条只补录上一规划提交的真实 hash，不记录本次 implementation 改动。
+
+## 2026-07-26｜C12 规划批准并获准进入 Java/config TDD
+
+- 用户批准：proposal 的本机自托管 backend、default-off OTLP、metrics、tail sampling、72h/7d retention、Grafana access、dashboard/local rules 与 non-goals；design 的 15 条 decisions 和 `rag-system` delta 的 4 requirements / 12 scenarios 全部通过事前门禁。
+- 实现授权：用户明确要求开始实现，授权新增 OTel OTLP exporter/metrics SDK 依赖、下载固定 Collector/Tempo/Prometheus/Grafana images，并执行仅含 synthetic telemetry 的本机 smoke；提交责任继续为 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 外调边界：授权不包含真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider、SaaS backend、付费服务或公网/跨主机 telemetry；业务数据出站必须为 0。本机 reference stack 只接收 synthetic smoke 与显式启用后的本机应用 telemetry。
+- 执行方式：按 `tdd` skill 采用纵向 RED→GREEN，先锁 default-off/config/export fail-open，再推进低基数 metrics、业务 lifecycle、reference stack、dashboard/rules 和 synthetic smoke；不一次性横向写完测试。
+- Commit：`pending`。
+
+## 2026-07-26｜C12 OTel export、低基数 metrics 与本机参考栈 implementation 完成
+
+- 实现范围与文件：`rag-common/GenAiTelemetry` 在 C11 固定 lifecycle 上增加 operation count/duration/in-flight、stage duration、actual provider calls、fallback、actual token usage/coverage；`rag-admin` 新增 typed `GenAiObservabilityProperties`、OTLP gRPC trace/metric exporter、固定 histogram views、bounded batch/queue/timeout、`GenAiExportDiagnostics` 安全成功/失败计数与 endpoint/exception 日志脱敏，`application.yml` 的 tracing/metrics/export 三个开关继续默认关闭。新增 common/admin unit tests 与环境门控 synthetic/recovery smoke，`rag-admin/pom.xml` 只增加 BOM 管理的 `opentelemetry-exporter-otlp`。
+- 参考栈：新增独立 `deploy/observability/`，固定官方发行版本 Collector Contrib `0.157.0`、Tempo `2.10.7`、Prometheus `3.13.1`、Grafana OSS `13.1.1`；Collector 使用 memory limiter/resource/tail sampling/batch，ERROR/TIMEOUT/CANCELLED/fallback 100% 保留、普通 success 10%，metrics pipeline 不采样；Tempo retention=72h，Prometheus retention=7d。宿主只绑定 `127.0.0.1:4317` 与 `127.0.0.1:3000`，Grafana anonymous=false，credential 只从未跟踪 env 注入。
+- Dashboard/rules：provision Prometheus/Tempo datasource 与 `Enterprise RAG Observability` dashboard，覆盖 traffic/outcome/in-flight、operation/stage P50/P95/P99、provider/fallback、actual token coverage、Collector failure 和 TraceQL；Prometheus 成功加载 3 条 `non_sla_reference` rules：ask 10m error ratio、provider 15m fallback ratio、Collector receive/export/refuse failure。未加入 latency SLA、Alertmanager 或外部通知。
+- TDD：default-off、metrics-only、trace-only/local export、远程/null endpoint 禁用、数值 clamp、固定 buckets、unreachable/timeout、queue pressure、export/flush/shutdown 安全事实均先得到预期 RED 再转 GREEN。5000-span / queue=64 / batch=1 的 blocking-exporter 压力测试在 5 秒边界内完成业务 lifecycle；OTLP 原始 warning 被收敛为固定 `OTLP export failed`，不含 endpoint、header、credential、异常 message/stack。
+- Synthetic 闭环：只向 `127.0.0.1:4317` 发送 synthetic telemetry。Prometheus 查询得到 operation/stage/provider/fallback=`1/1/1/1`、actual token=`18`、coverage=`1`；扩展 smoke 的 101 个 operation metrics 全量可见，100 个普通 success traces 在 Tempo 保留 6 个，2 次 error/timeout smoke 均保留。exported trace sentinel 与禁止的 metric labels 均 0 命中。停止 Collector 后同一 JVM 先记录 trace/metric failure facts，12 秒后恢复 Collector 又记录两个 signal 的 success facts，无需重启 SDK。
+- Backend/access 证据：compose render、Collector `validate`、Prometheus `promtool check config/rules`、dashboard JSON 与 provisioning parse 全部通过；Tempo `/ready=ready`，Grafana authenticated API 返回 dashboard uid/title，anonymous dashboard API 返回 401。实际 `HostConfig.PortBindings`：Collector 仅 localhost 4317、Grafana 仅 localhost 3000、Tempo/Prometheus 为空。稳定运行日志无 deprecated OTLP alias、插件下载或 provisioning error。
+- 回归结果：最终 `mvn -q test` 退出码 0，81 个 Surefire reports / 352 tests / 0 failures / 0 errors / 3 skipped；skip 为两个默认关闭的 synthetic/recovery smoke 与既有 Milvus live IT，两个 smoke 已在明确环境门控下分别真实执行通过。Python 全量 `159 tests / OK`；reference 静态契约 `5 tests / OK`；SensitiveLogs 扫描 315 source files / PASS；受保护路径与 tracked workspace 绝对路径命中 0；官方 release links 已逐项打开验证；`git diff --check` 通过，仅保留既有 POM CRLF→LF 提示。
+- 外调与异常处理：真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider/SaaS 调用、业务数据出站、模型费用与限流事件均为 0。授权内下载了四个固定 Docker images。首次 Grafana 13.1.1 启动发现默认预装插件会额外下载公网插件；随即增加 `GF_PLUGINS_PREINSTALL_DISABLED=true`、禁用 plugin admin/auto-update/public-key retrieval，并用全新 project/volume 重建验证不再下载。首次验证的 Docker volumes 未删除，避免未经授权的数据删除。
+- 跳过项：前端无改动，正式 frontend build `SKIPPED`。未执行真实业务 provider、SaaS、公网 telemetry、Alertmanager、push、PR、部署或生产容量/SLA 验证。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、数据库 schema、API/DTO、production provider/prompt/retrieval/rerank/citation/no-answer 默认行为；未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：本实现只证明单机 reference 闭环；6/100 success sampling 是本次 deterministic synthetic 结果，不是统计 SLA/容量结论。Docker images 与 named volumes 保留在本机，生产 HA、容量、合规 retention、租户权限、跨主机传输和通知仍 out of scope。Change 保持 `ACTIVE`，等待用户验收；验收前不接受 4 requirements / 12 scenarios delta、不归档、不恢复 `IDLE`。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(观测): 实现C12遥测导出与低基数指标`。
