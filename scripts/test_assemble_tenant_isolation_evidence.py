@@ -92,6 +92,33 @@ class AssembleTenantIsolationEvidenceTest(unittest.TestCase):
 
         self.assertEqual("driver_identity_mismatch", raised.exception.code)
 
+    def test_parameterized_selector_requires_every_expected_invocation_to_pass(self) -> None:
+        selector = {
+            "report": "surefire",
+            "className": "example.ParameterizedTest",
+            "testNamePrefix": "rejectsReservedAlias",
+            "expectedMatches": 2,
+        }
+        indexed = {
+            "surefire": [
+                {
+                    "className": "example.ParameterizedTest",
+                    "testName": "rejectsReservedAlias(String)[1]",
+                    "outcome": "PASS",
+                    "source": "TEST-example.xml",
+                },
+                {
+                    "className": "example.ParameterizedTest",
+                    "testName": "rejectsReservedAlias(String)[2]",
+                    "outcome": "FAIL",
+                    "source": "TEST-example.xml",
+                },
+            ],
+            "failsafe": [],
+        }
+
+        self.assertEqual("FAIL", assembler._selector_outcome(indexed, selector))
+
     def write_reports(
         self,
         root: Path,
@@ -119,10 +146,13 @@ class AssembleTenantIsolationEvidenceTest(unittest.TestCase):
             testcases = []
             for index, selector in enumerate(values):
                 child = "<failure message=\"synthetic failure\"/>" if fail_first and index == 0 else ""
-                testcases.append(
-                    f'<testcase classname="{selector["className"]}" '
-                    f'name="{selector["testNamePrefix"]}()">{child}</testcase>'
-                )
+                expected_matches = selector.get("expectedMatches", 1)
+                for match_index in range(expected_matches):
+                    suffix = f"(String)[{match_index + 1}]" if expected_matches > 1 else "()"
+                    testcases.append(
+                        f'<testcase classname="{selector["className"]}" '
+                        f'name="{selector["testNamePrefix"]}{suffix}">{child}</testcase>'
+                    )
             (report_dir / "TEST-c14.xml").write_text(
                 "<testsuite>" + "".join(testcases) + "</testsuite>", encoding="utf-8"
             )

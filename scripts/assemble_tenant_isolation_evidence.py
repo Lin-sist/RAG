@@ -93,7 +93,7 @@ def _read_junit(report_dirs: dict[str, list[Path]]) -> dict[str, list[dict[str, 
 
 
 def _selector_outcome(
-    indexed: dict[str, list[dict[str, str]]], selector: dict[str, str]
+    indexed: dict[str, list[dict[str, str]]], selector: dict[str, Any]
 ) -> str:
     matches = [
         item for item in indexed[selector["report"]]
@@ -103,9 +103,17 @@ def _selector_outcome(
     label = f"{selector['className']}#{selector['testNamePrefix']}"
     if not matches:
         raise EvidenceAssemblyError("mapped_test_missing", label)
-    if len(matches) != 1:
-        raise EvidenceAssemblyError("mapped_test_ambiguous", label)
-    return matches[0]["outcome"]
+    expected_matches = selector.get("expectedMatches", 1)
+    if len(matches) != expected_matches:
+        raise EvidenceAssemblyError(
+            "mapped_test_count_mismatch",
+            f"{label}: expected={expected_matches} actual={len(matches)}",
+        )
+    outcomes = {match["outcome"] for match in matches}
+    for outcome in ("ERROR", "FAIL", "SKIPPED"):
+        if outcome in outcomes:
+            return outcome
+    return "PASS"
 
 
 def _timing_status(timing: Any, profile: dict[str, Any]) -> str:

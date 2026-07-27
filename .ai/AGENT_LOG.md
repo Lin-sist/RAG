@@ -1654,3 +1654,12 @@
 - 外调与范围安全：driver 只记录 bounded timing、镜像、health、Git HEAD 与零外调边界；真实 provider/model calls=0、业务数据出站=false、真实 Milvus maintenance=`SKIPPED`。未修改 migration、DTO、依赖、前端、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或 accepted baseline；未 push、未创建 PR、未部署。
 - 剩余项：需在干净提交 HEAD 上重跑 mapped Surefire + C14 完整 Failsafe，生成不可覆盖的 26/26 evidence/details/summary，再跑全量/静态门禁并同步 closeout 文档。前端无改动，正式 build待记录 `SKIPPED`。
 - Commit：`pending`；提交责任为 Agent，建议 `feat(隔离): 补全C14双租户证据驱动与错误边界`。
+
+## 2026-07-27｜C14 双租户证据驱动提交补录与参数化映射修正
+
+- Commit 补录：`612ecbe2e8082c6507ce432e01854561d5d8d7fc`（`feat(隔离): 补全C14双租户证据驱动与错误边界`）。本条只补录上一执行提交的真实 hash。
+- 干净 HEAD 验证：在 `612ecbe2e8082c6507ce432e01854561d5d8d7fc` 上重跑 mapped Surefire 组合退出码 0；完整 `c14-isolation-eval` Failsafe profile 退出码 0、约 131 秒，合成 Testcontainers 正常完成，provider/model calls=0、businessDataOutbound=false、realMaintenanceStatus=`SKIPPED`。
+- 组装器严格检查发现 `ReservedScopeFilterTest` 的两个 selector 分别对应 9 组与 3 组参数化调用，原先“每 selector 必须恰好一条”会错误报 `mapped_test_ambiguous`。按 TDD 先新增参数化聚合 RED，再引入受限 `expectedMatches`（1..100）并要求命中数完全一致、任一 ERROR/FAIL/SKIPPED 向 case 聚合；映射明确为 9/9 与 3/3，不放宽 missing/extra 防线。
+- 聚焦验证：assembler 5 tests / OK；release contract 15 tests / OK。manifest 已同步 evidence map 新 bytes/hash；正式 26/26 evidence 尚未生成，需在本修正提交后的干净 HEAD 重跑容器评测并绑定新 Git HEAD。
+- 范围安全：仅修改 C14 evidence map/manifest、标准库 validator/assembler tests 与本追加日志；未修改生产 Java、migration、依赖、前端、accepted baseline 或受保护路径，未外调、未 push、未创建 PR、未部署。
+- Commit：`pending`；建议 `fix(评测): 严格聚合参数化隔离证据`。

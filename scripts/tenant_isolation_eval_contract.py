@@ -61,7 +61,8 @@ EXPECTED_FIELDS = {
 }
 EVIDENCE_MAP_FIELDS = {"mapVersion", "releaseVersion", "driverVersion", "cases"}
 EVIDENCE_CASE_FIELDS = {"selectors"}
-EVIDENCE_SELECTOR_FIELDS = {"report", "className", "testNamePrefix"}
+EVIDENCE_SELECTOR_REQUIRED_FIELDS = {"report", "className", "testNamePrefix"}
+EVIDENCE_SELECTOR_OPTIONAL_FIELDS = {"expectedMatches"}
 ALLOWED_REPORT_TYPES = {"surefire", "failsafe"}
 
 
@@ -267,7 +268,13 @@ def validate_release(repo_root: Path, manifest_path: Path) -> dict[str, Any]:
         if not isinstance(selectors, list) or not selectors:
             raise IsolationContractError("evidence_map_invalid", artifact, "selectors must be non-empty")
         for selector in selectors:
-            if not isinstance(selector, dict) or set(selector) != EVIDENCE_SELECTOR_FIELDS:
+            if (
+                not isinstance(selector, dict)
+                or not EVIDENCE_SELECTOR_REQUIRED_FIELDS.issubset(selector)
+                or not set(selector).issubset(
+                    EVIDENCE_SELECTOR_REQUIRED_FIELDS | EVIDENCE_SELECTOR_OPTIONAL_FIELDS
+                )
+            ):
                 raise IsolationContractError("evidence_selector_invalid", artifact, "selector fields")
             if selector.get("report") not in ALLOWED_REPORT_TYPES:
                 raise IsolationContractError("evidence_selector_invalid", artifact, "report")
@@ -279,6 +286,13 @@ def validate_release(repo_root: Path, manifest_path: Path) -> dict[str, Any]:
                 selector["testNamePrefix"]
             ):
                 raise IsolationContractError("evidence_selector_invalid", artifact, "testNamePrefix")
+            expected_matches = selector.get("expectedMatches", 1)
+            if (
+                not isinstance(expected_matches, int)
+                or isinstance(expected_matches, bool)
+                or not 1 <= expected_matches <= 100
+            ):
+                raise IsolationContractError("evidence_selector_invalid", artifact, "expectedMatches")
         if case_id in timing_case_ids:
             key = mapping.get("driverEvidenceKey")
             if key != case_id:
