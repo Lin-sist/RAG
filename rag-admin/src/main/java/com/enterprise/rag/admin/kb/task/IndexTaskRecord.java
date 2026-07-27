@@ -2,6 +2,7 @@ package com.enterprise.rag.admin.kb.task;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.enterprise.rag.common.model.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -14,6 +15,9 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = true)
 @TableName("async_task")
 public class IndexTaskRecord extends BaseEntity {
+
+    @JsonIgnore
+    private Long tenantId;
 
     private String taskId;
     private String taskType;

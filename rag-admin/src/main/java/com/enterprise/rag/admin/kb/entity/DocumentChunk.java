@@ -2,6 +2,7 @@ package com.enterprise.rag.admin.kb.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.enterprise.rag.common.model.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,6 +13,9 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @TableName("document_chunk")
 public class DocumentChunk extends BaseEntity {
+
+    @JsonIgnore
+    private Long tenantId;
 
     /**
      * 文档ID

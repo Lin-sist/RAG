@@ -11,6 +11,7 @@ class DocumentSerializationTest {
     @Test
     void publicDocumentJsonDoesNotExposeDurableInputFacts() throws Exception {
         Document document = new Document();
+        document.setTenantId(901L);
         document.setFilePath("objects/secret-storage-key.bin");
         document.setInputSizeBytes(123L);
         document.setInputSha256("secret-sha256-marker");
@@ -22,5 +23,7 @@ class DocumentSerializationTest {
         assertFalse(json.contains("secret-sha256-marker"));
         assertFalse(json.contains("inputSizeBytes"));
         assertFalse(json.contains("inputState"));
+        assertFalse(json.contains("tenantId"));
+        assertFalse(json.contains("901"));
     }
 }

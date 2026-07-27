@@ -124,6 +124,12 @@ class KnownSeedMigrationMySqlTest {
         try (Connection connection = MYSQL.createConnection("");
                 Statement statement = connection.createStatement()) {
             statement.executeUpdate(
+                    "INSERT INTO `user` (id, username, password_hash, enabled) "
+                            + "VALUES (20, 'legacy-document-owner', 'test-only', 1)");
+            statement.executeUpdate(
+                    "INSERT INTO knowledge_base (id, name, owner_id, vector_collection) "
+                            + "VALUES (10, 'legacy-document-kb', 20, 'legacy_document_kb')");
+            statement.executeUpdate(
                     "INSERT INTO document (kb_id, uploader_id, title, file_path, file_type, status) "
                             + "VALUES (10, 20, 'legacy', NULL, 'md', 'COMPLETED')");
         }

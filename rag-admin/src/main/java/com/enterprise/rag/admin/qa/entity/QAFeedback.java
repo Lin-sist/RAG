@@ -2,6 +2,7 @@ package com.enterprise.rag.admin.qa.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.enterprise.rag.common.model.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,6 +13,9 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @TableName("qa_feedback")
 public class QAFeedback extends BaseEntity {
+
+    @JsonIgnore
+    private Long tenantId;
 
     /**
      * 问答历史ID

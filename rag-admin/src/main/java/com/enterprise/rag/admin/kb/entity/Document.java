@@ -15,6 +15,12 @@ import lombok.EqualsAndHashCode;
 public class Document extends BaseEntity {
 
     /**
+     * 服务端租户归属；不得通过业务 REST 响应暴露。
+     */
+    @JsonIgnore
+    private Long tenantId;
+
+    /**
      * 知识库ID
      */
     private Long kbId;
