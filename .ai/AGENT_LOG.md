@@ -1638,3 +1638,7 @@
 - 归档审计：`tasks.md` 仍有 26 个 unchecked items；尚未形成 26/26 case-level 正式 evidence，task/history/feedback、reserved filter、cache/idempotency、sync/SSE、durable input 与 requirement→case/test/evidence 映射未闭环；全仓 Maven 仍因既有 OTel collector 时序波动保持非 GREEN。因此归档结论为 `NO-GO`，不得接受双 delta、移动 change 或把 ACTIVE_TASK 置为 IDLE。
 - 状态决策：本轮只提交可验证实现检查点；change 继续 `ACTIVE / C14 实现中`。后续完成剩余 attack matrix 和正式 evidence 后，再重新执行归档审计。
 - Commit：`pending`。
+
+## 2026-07-27｜C14 隔离对抗评测实现检查点提交补录
+
+- Commit：`3965c60`（`feat(评测): 建立C14隔离对抗评测实现检查点`）。本条只补录上一执行提交的真实 hash；归档审计仍为 `NO-GO`，change 保持 ACTIVE。
