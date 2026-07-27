@@ -1680,3 +1680,16 @@
 
 - 最终 changed Markdown 10 files、relative link missing=0；protected paths=0、frontend changes=0、report sensitive matches=0；details 为 `PASS`、cases=26/26、missing/failed/errors/skipped 全为 0；`git diff --check` 通过。
 - `tasks.md` unchecked=1，唯一未完成项是“用户验收后接受双 delta、归档 change、ACTIVE_TASK 置为 IDLE”，符合归档前状态；本条随 C14 正式证据收口提交，不额外扩大范围。
+
+## 2026-07-27｜C14 正式证据收口提交补录与验收归档
+
+- Commit 补录：`e9e9700`（`docs(评测): 收口C14正式隔离证据`）。本条只补录上一执行提交的真实 hash。
+- 用户验收与提交责任：用户明确要求归档 C14 并提交 commit；继续按 `Agent 提交` 执行，仅包含 baseline 接受、change 归档、ACTIVE_TASK/长期文档/日志同步，不 push、不创建 PR、不部署。
+- Baseline 接受：将 C14 delta body 原文接受到 `openspec/specs/evaluation/spec.md` 与 `openspec/specs/rag-system/spec.md`；前者 exact suffix 134 lines、5 requirements / 15 scenarios，后者 exact suffix 53 lines、2 requirements / 6 scenarios，目标 requirement 无重复。
+- 归档状态：change 移至 `openspec/changes/archive/2026-07-27-tenant-isolation-adversarial-evaluation/`，archive files=5、tasks unchecked=0、未归档 active change=0；`.ai/ACTIVE_TASK.md=IDLE`。同步 project、architecture、roadmap、optimization、eval guide 与 traceability，当前事实源的待验收/未归档残留=0。
+- 正式证据复核：details 仍为 `PASS`，cases=26/26，missing/failed/errors/skipped 全为 0，provider calls=0、businessDataOutbound=false、realMaintenanceStatus=`SKIPPED`；归档不改写 evidence identity 或扩大结论。
+- 静态验证：SensitiveLogs 329 source files / PASS；14 个 changed Markdown relative links missing=0；protected paths=0、code/dependency paths=0；`git diff --check` 通过。OpenSpec CLI 不在 PATH，未声称 CLI validation 通过。
+- 跳过项：本轮只变更 OpenSpec baseline/archive 与治理文档，未修改 Java/Python/POM/前端/runtime config，因此不重跑 Maven、Python、Docker/Testcontainers 或 frontend build；复用归档前已提交的 C14 71/0/0/0 Surefire、5/0/0/0 Failsafe、58/0/0/0 相邻边界、Python 190 tests / OK 正式证据。全仓 Maven 的既有 OTel collector 时序债务保持原记录。
+- 外调与范围安全：真实 embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0；未连接或写入真实 Milvus，没有 collection copy、mapping/readiness switch、重试或清理。未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`，未修改代码、依赖、migration、DTO 或前端。
+- 剩余风险：C14 只证明 Milvus 支持配置和固定 synthetic attack matrix；真实 shadow migration、生产拓扑/容量/合规/网关 timing、Qdrant/Elasticsearch 等价 evidence、生产第二业务 tenant/tenant management、C15/C16 仍需独立 Type C change 与授权。
+- Commit：`pending`；建议 `chore(openspec): 验收并归档C14租户隔离评测`。

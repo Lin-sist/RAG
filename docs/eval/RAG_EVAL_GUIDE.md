@@ -761,3 +761,5 @@ C14 使用独立 release `tenant-isolation-adversarial-v1`，不复用 retrieval
 - requirement traceability：`isolation/tenant-isolation-adversarial-v1-traceability.md`
 
 该结果只支持 Milvus 配置和固定 synthetic attack matrix 下的隔离 evidence。它不证明 retrieval/generation/citation/no-answer/judge 质量，不代表生产级多租户、全 adapter、真实 shadow migration、渗透测试或所有 timing side-channel 已验证；真实 provider/model calls=0、业务数据出站=false、真实 maintenance=`SKIPPED`。
+
+C14 已于 2026-07-27 验收归档；`evaluation` 5 requirements / 15 scenarios 与 `rag-system` 2 requirements / 6 scenarios 已接受进长期 baseline。归档不改变上述证据和声明边界。

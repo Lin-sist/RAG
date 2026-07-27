@@ -31,6 +31,7 @@
 - C12 已验收归档：在 C11 contract 上增加相互独立且默认关闭的 tracing/metrics/export 开关、OTLP gRPC fail-open export 与低基数 operation/stage/provider/fallback/token metrics；本机 reference stack 固定 Collector/Tempo/Prometheus/Grafana 版本，实行关键 trace 全保留、普通成功 trace 10% tail sampling、metrics 不采样、72h/7d retention、localhost 端口边界与 Grafana 认证。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；synthetic 闭环不包含真实业务 provider 或 SaaS 调用。
 - C13a 已验收归档：V10 创建唯一 `legacy-default` tenant，并为所有既有 user/knowledge-base 原地回填非空 tenant identity；数据库认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity(userId, tenantId)` 只使用服务端身份事实，旧无 tenant claim token fail closed。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；该结果只证明 tenant model/context readiness，不证明跨租户隔离。
 - C13b 已验收归档：SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 tenant-aware shadow collection/readiness 维护路径已形成指定测试证据。6 requirements / 18 scenarios 已接受进 `rag-system` baseline；真实 Milvus 迁移/切换未授权并 `SKIPPED`，全仓 Maven 仍因既有 OTel collector 时序断言保持非 GREEN。
+- C14 已验收归档：固定 `tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上完成 26/26 required cases，functional/content/error/timing 四通道与 global report 均为 `PASS`。`evaluation` 5 requirements / 15 scenarios 与 `rag-system` 2 requirements / 6 scenarios 已接受进 baseline；provider calls=0、真实 Milvus maintenance=`SKIPPED`。
 
 ## 当前边界
 
@@ -39,7 +40,7 @@
 - LLM judge 默认关闭；C9b 已接受的是离线校准工具、静态 corpus 与状态语义，尚无 live provider evidence，不能声称 judge 已真实校准或逐 claim faithfulness 已成立。
 - C10 已接受的是离线门禁 contract/evaluator 与 DRAFT profile，不包含正式 v2 reference evidence、具体阈值或 ACTIVE profile；后续激活仍须单独披露并授权 reference calls。
 - C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项仍未完成。C12 已完成默认关闭的单机 reference observability 闭环，但生产 HA、容量、合规 retention、租户观测权限、跨主机传输、通知与 SLA 仍未完成。
-- C14 实现与正式 evidence 已完成，固定 `tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上为 26/26 required cases、四通道 `PASS`；change 正等待用户最终验收，尚未接受 delta 或归档。该结果只支持 Milvus 配置和固定 synthetic attack matrix，不开放生产第二业务 tenant、tenant management、C15 MCP 或 C16 Router。
+- C14 已验收归档，但结果只支持 Milvus 配置和固定 synthetic attack matrix；不构成生产级多租户、全 adapter、真实迁移或所有 timing side-channel 证明，也不自动开放生产第二业务 tenant、tenant management、C15 MCP 或 C16 Router。
 
 ## 长期规格
 

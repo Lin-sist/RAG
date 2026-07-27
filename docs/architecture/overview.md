@@ -84,7 +84,7 @@
 - C8b 只扩充并复核 question/annotation；C9a/C9b/C10 离线能力均已验收归档。C10 当前只有 DRAFT retrieval profile，reference calls 与具体阈值未授权，因此 active quality gate、live judge calibration 与真实 generation evidence 仍未完成。
 - 标题感知、长代码块和长段落专项仍待验证。
 - C12 已形成默认关闭的 OTLP export、低基数 metrics 与本机 reference backend 闭环，但它不是生产观测平台；生产 HA、容量、合规 retention、租户权限、跨主机传输、外部通知与 SLA 仍未知或 out of scope。
-- C13b 已验收归档；其后的 C14 实现与证据闭环已完成但待最终验收归档。`tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上以自有 MySQL/Redis/Milvus 双 tenant fixture 得到 26/26 cases 与 functional/content/error/timing 四通道 `PASS`，provider calls=0、真实 maintenance=`SKIPPED`。该结论仅适用于 Milvus 支持配置和固定 synthetic matrix；Qdrant/Elasticsearch enforcement mode 继续 fail startup。
+- C14 已验收归档：`tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上以自有 MySQL/Redis/Milvus 双 tenant fixture 得到 26/26 cases 与 functional/content/error/timing 四通道 `PASS`；`evaluation` 5 requirements / 15 scenarios、`rag-system` 2 requirements / 6 scenarios 已接受进 baseline。provider calls=0、真实 maintenance=`SKIPPED`；结论仅适用于 Milvus 支持配置和固定 synthetic matrix，Qdrant/Elasticsearch enforcement mode 继续 fail startup。
 
 ## 6. 文档真相源
 

@@ -7,6 +7,7 @@
 - 固定样本：26 required cases，12 categories
 - 正式结果：`PASS`，functional/content/error/timing 四通道均为 `PASS`
 - 输出：[summary](../reports/c14-tenant-isolation-report-v1.md)、[details](../reports/c14-tenant-isolation-details-v1.json)、[case evidence](../reports/c14-tenant-isolation-evidence-v1.json)
+- OpenSpec：已于 2026-07-27 验收归档，`evaluation` 5 requirements / 15 scenarios 与 `rag-system` 2 requirements / 6 scenarios 已接受进长期 baseline。
 
 ## Evaluation delta
 

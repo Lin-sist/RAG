@@ -79,5 +79,5 @@
 - [x] 运行 SensitiveLogs、protected paths、credential/absolute path、raw payload/canary report、unknown driver、Markdown links 与 `git diff --check` 门禁，全部通过。
 - [x] 通过 `tenant-isolation-adversarial-v1-traceability.md` 将每个 requirement/scenario 映射到 case/test/evidence；mock-only、single-tenant、`PARTIAL`、`RETRIEVAL_ONLY` 不替代 C14 PASS。
 - [x] 更新 tasks、`.ai/AGENT_LOG.md`、`openspec/project.md` 与相关 architecture/roadmap/optimization/eval guide 文档。
-- [ ] 用户验收后才把两个 delta body 原文接受进对应 baseline、归档 change 并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
+- [x] 用户已于 2026-07-27 最终验收；两个 delta body 原文接受进对应 baseline，change 归档并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
 - [x] 收口措辞限定为“Milvus 支持配置和固定 synthetic attack matrix 下 C14 evidence 通过”；不宣称生产级多租户、全 adapter、真实迁移或所有 timing side-channel 已验证。
