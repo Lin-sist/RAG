@@ -1583,3 +1583,7 @@
 - 外调与范围安全：没有连接、盘点或写入真实 Milvus，没有创建 collection、复制 vector、切换 mapping/readiness、重试或清理；真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`，未 push、未创建 PR、未部署。
 - 剩余风险与下一阶段：真实 Milvus collection/record 数、容量、超时/重试、shadow 额外空间和回滚窗口仍未知，任何真实写入或切换必须另行授权；OTel collector 时序波动保留为独立维护债务。下一项重大变更必须另立 C14 隔离与恶意样本评测 change；C14 通过前不得宣称租户隔离成立，也不得开放第二业务 tenant、tenant management、C15 MCP 或 C16 Router。
 - Commit：`pending`；建议 `chore(openspec): 验收并归档C13b数据面约束`。
+
+## 2026-07-27｜C13b 验收归档提交补录
+
+- Commit：`243860a`（`chore(openspec): 验收并归档C13b数据面约束`）。本条只补录上一归档提交的真实 hash；本纯日志补录提交不递归记录自身 hash。
