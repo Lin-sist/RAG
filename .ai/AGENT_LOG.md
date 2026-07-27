@@ -1568,3 +1568,7 @@
 - 范围安全：未修改 V1-V10、accepted baseline、依赖、前端、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未 push、未创建 PR、未部署。OTel 时序波动没有混入 C13b 修复。
 - 剩余风险：真实 Milvus collection/record 数、容量、超时/重试、shadow 额外空间和回滚窗口仍未知；执行任何真实 shadow copy/switch 前必须重新披露并取得授权。Qdrant/Elasticsearch 尚未通过同等 tenant adapter contract，只能在 enforcement mode 下 fail startup。当前只可表述“C13b data-plane enforcement 已实现并通过指定测试”；C14 通过前不得宣称租户隔离成立，也不得开放第二业务 tenant、C15 MCP 或 C16 Router。
 - Commit：`pending`；提交责任为 Agent，建议 `docs(openspec): 收口C13b实现与验证证据`。用户验收前不接受 delta、不归档 change、不将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
+
+## 2026-07-27｜C13b 实现与验证收口提交补录
+
+- Commit：`2f18827`（`docs(openspec): 收口C13b实现与验证证据`）。本条只补录上一治理提交的真实 hash；本补录提交不递归记录自身 hash。
