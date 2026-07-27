@@ -1529,3 +1529,16 @@
 - 跳过与外调：本轮未运行 Python 全量（无 evaluation/Python 改动），前端 build 因无前端改动记为 `SKIPPED`；Milvus tenant adapter contract、legacy readiness/maintenance、QA/embedding cache v2 与完整 RAG/keyword scope 尚未实现。真实 vector maintenance、embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。
 - 剩余风险与决策：design 决策 16 仍需用户在 shadow collection + SQL mapping/readiness 切换与另立依赖升级/schema-evolution contract 之间确认；确认前 legacy collection/runtime/maintenance 保持非 READY/fail closed。Qdrant/Elasticsearch 继续只具备 enforcement-mode startup guard，C14 前不开放第二业务 tenant、MCP/Router，也不宣称租户隔离成立。
 - Commit：`pending`；本条与 ACTIVE_TASK/tasks 检查点建议独立提交 `docs(openspec): 记录C13b阶段实现检查点`。
+
+## 2026-07-27｜C13b 阶段检查点提交补录
+
+- Commit：`f0a4ffd`（`docs(openspec): 记录C13b阶段实现检查点`）。本条只补录上一治理提交的真实 hash，不记录后续 C13b 实现改动。
+
+## 2026-07-27｜C13b 决策 16=A 与执行边界确认
+
+- 用户确认：D16 选择方案 A，采用 tenant-aware shadow collection；维护实现复用既有 vector/content，完成 expected/observed/migrated/missing/mismatch 全量审计后，才允许原子切换 SQL active collection mapping/readiness。既有 source collection 不原位改 schema、不删除，部分失败保持原 mapping 与非 READY。
+- 授权边界：真实 Milvus 当前只授权只读盘点；任何真实 collection 创建、vector 复制、mapping/readiness 切换、重试或清理均未授权，必须另行披露范围与风险并取得授权。合成 unit/Testcontainers 可用于实现验证，真实 maintenance write/switch 继续 `SKIPPED`。
+- 范围决策：既有 `GenAiTracingConfigurationTest` 的 OTel collector 时序波动不扩入 C13b；若完整门禁再次仅命中该项，记录全仓非 GREEN 与独立复跑事实，必要时另立维护任务，不在 tenant change 内顺手修改观测实现。
+- 实现顺序：先完成 QA/embedding cache v2，再贯通 RAG/Keyword tenant scope、Milvus adapter contract 与 shadow collection/readiness，最后执行完整门禁。遵循纵向 TDD，每个行为先 RED 后最小 GREEN。
+- 外调与安全：本条仅修改 design/tasks/append-only AGENT_LOG；真实 Milvus 写入、provider、embedding、rerank、ask/generation/judge/LLM 调用、数据出站、push、PR、部署均为 0。
+- Commit：`pending`；提交责任为 Agent，建议 `docs(openspec): 确认C13b影子集合迁移决策`。

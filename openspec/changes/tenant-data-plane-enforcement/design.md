@@ -99,24 +99,25 @@ Milvus 是 C13b 的最小已支持 adapter。目标 contract：
 
 该边界允许后续独立 change 为 Qdrant/Elasticsearch 补齐 tenant contract，而不在 C13b 为追求“接口看起来兼容”写未验证过滤。
 
-### 5.4 Legacy Vector Audit And Backfill
+### 5.4 Legacy Vector Audit And Shadow Migration
 
-旧向量没有可信 tenant marker，且原始 durable input 可能已清理。采用维护态原位 metadata backfill：
+旧向量没有可信 tenant marker，且原始 durable input 可能已清理。决策 16 已选择 tenant-aware shadow collection，不修改既有 collection schema：
 
-1. 默认关闭的 maintenance command 从 tenant-scoped SQL 读取 KB、document_chunk.vector_id 与 tenantId。
-2. 通过 adapter 的受控 legacy maintenance capability 按 ID 读取现有 vector/content/metadata；该 capability 不由 runtime `VectorStore` 接口或业务 API 暴露。
-3. 校验 collection、vector ID、documentId、kbId 与 SQL 关系；冲突、缺失、重复或读取失败记为稳定错误，整个 KB 不置 READY。
-4. 保留原 vector/content，补写服务端 tenantId/kbId marker 后 upsert；不调用 embedding/rerank/LLM。
-5. 复核 expected/observed/migrated/missing/mismatch 数量，只有全量一致才写入 SQL readiness 状态。
-6. runtime 对非 READY 且存在 vector rows 的 KB fail closed；空 KB 可在首次 tenant-scoped collection 初始化后 READY。
+1. 默认关闭的 maintenance command 从 tenant-scoped SQL 读取 KB、当前 collection mapping、document_chunk.vector_id 与 tenantId。
+2. 通过 adapter 的受控 legacy maintenance capability 按 ID 只读既有 collection 的 vector/content/metadata；该 capability 不由 runtime `VectorStore` 接口或业务 API 暴露。
+3. 校验 source collection、vector ID、documentId、kbId 与 SQL 关系；冲突、缺失、重复或读取失败记为稳定错误，整个 KB 不置 READY，也不切换 mapping。
+4. 把已验证的原 vector/content 复制到具备独立 tenantId/kbId 标量字段的 canonical shadow collection；不重新生成 vector，不调用 embedding/rerank/LLM，不修改或删除 source collection。
+5. 对 shadow collection 复核 expected/observed/migrated/missing/mismatch 数量；只有全量一致且无错误时，才在同一 SQL 状态转换中切换 active collection mapping 并写入 READY。
+6. 部分失败保持原 mapping 与非 READY，shadow collection 只保留为不可服务的维护产物，供显式重试或清理；runtime 不得把它当作 active collection。
+7. runtime 对非 READY KB fail closed；新建空 KB 可在 canonical tenant-aware collection 初始化成功后原子写入 mapping/READY。
 
-真实 Milvus backfill 会读写外部依赖并可能涉及业务内容，执行前必须披露记录量、adapter、数据路径、超时/重试和风险并取得用户授权。本轮规划不执行。
+真实 Milvus 目前只授权只读盘点。任何真实 shadow collection 创建、vector 复制、mapping/readiness 切换、重试或清理都属于写入/迁移，执行前必须披露 collection/record 数、读写范围、数据出站、容量、超时/重试和回滚风险，并另行取得用户授权。
 
 ### 5.4 实现期 Legacy Schema 闸门
 
 实现审计确认当前 `pom.xml` 固定 `milvus-sdk-java 2.3.4`，而既有 `MilvusVectorStore` 将 `metadata` 建为 `VarChar`，collection 中没有可用于所有操作的独立 `tenant_id` / `kb_id` 标量字段。当前依赖暴露的 collection alter 能力不能证明可给既有 schema 原位增加这两个字段，因此决策 8 的“原位补 marker”不能按已批准文字直接落地。
 
-在下方决策 16 获用户确认前，legacy collection 保持非 READY，runtime 与 maintenance 均 fail closed；不得把 JSON 字符串拼接、仅 search 过滤或 mock 结果当作替代。migration、SQL/API、task/cache、reserved filter 与新 collection scope 等不依赖该选择的切片可继续实现。
+用户已确认下方决策 16 选择方案 A：tenant-aware shadow collection + 全量复制审计 + SQL mapping/readiness 原子切换。实现与合成 Testcontainers 验证可继续；真实 collection 仍只允许只读盘点，未获单独写授权时 maintenance write/switch 必须 `SKIPPED`。不得把 JSON 字符串拼接、仅 search 过滤或 mock/unit 结果当作真实迁移证据。
 
 ## 6. Keyword Index And Query Fallback
 
@@ -235,9 +236,9 @@ C13b 验收后仍只可描述为 server-side data-plane enforcement 已实现并
 - **放弃的代价**：直接信任会越权；静默覆盖虽可安全执行，但会掩盖调用方错误并留下别名漏检风险。
 
 ### 决策 8：旧向量如何获得 tenant marker
-- **面临的选择**：重新读取原文并调用 embedding；把无 marker 向量当 legacy tenant 隐式可见；维护态读取现有向量并原位补 marker。
-- **选了哪个 + 为什么**：选择维护态原位补 marker，因为 C5 已可能清理原始输入，现有向量可保留且不产生模型调用；全量审计后才置 READY。
-- **放弃的代价**：重新 embedding 可能无原文、产生费用且改变 baseline；隐式 legacy fallback 会成为永久跨租户后门。
+- **面临的选择**：重新读取原文并调用 embedding；把无 marker 向量当 legacy tenant 隐式可见；维护态读取现有向量并复制到 tenant-aware shadow collection。
+- **选了哪个 + 为什么**：选择维护态复用现有 vector/content 并写入 shadow collection，因为 C5 已可能清理原始输入，复制不产生模型调用；只有全量审计通过并原子切换 SQL mapping/readiness 后才可服务。
+- **放弃的代价**：重新 embedding 可能无原文、产生费用且改变 baseline；隐式 legacy fallback 会成为永久跨租户后门；直接改旧 collection 又没有当前 SDK/schema 能力证据。
 
 ### 决策 9：legacy vector maintenance 是否属于 runtime API
 - **面临的选择**：管理员 REST API；应用启动自动迁移；默认关闭的 maintenance command/profile。
@@ -274,7 +275,12 @@ C13b 验收后仍只可描述为 server-side data-plane enforcement 已实现并
 - **选了哪个 + 为什么**：选择 C13b+C14 都通过后才宣称成立；C13b 完成时只报告 data-plane enforcement evidence。
 - **放弃的代价**：前两种都会把代码存在或可控 fixture 当成对漏路与恶意输入的完整证明，造成过度承诺。
 
-### 决策 16：既有 Milvus 2.3 collection 无法原位增加标量字段时怎样迁移（待用户确认）
+### 决策 16：既有 Milvus 2.3 collection 无法原位增加标量字段时怎样迁移
 - **面临的选择**：建立 tenant-aware shadow collection、复制现有 vector/content 并在全量审计后切换 SQL mapping；另立依赖升级闸门并先用真实 contract 证明新版可安全演进既有 schema；继续把 marker 写进当前 `VarChar metadata` 并只在 search 拼表达式。
-- **选了哪个 + 为什么**：待用户在实现期事前闸门确认；当前不猜测方案，legacy collection 保持非 READY，因为前两项分别改变迁移拓扑或依赖基线，第三项不能覆盖 get/delete/count/drop 的隔离契约。
+- **选了哪个 + 为什么**：选择 tenant-aware shadow collection，复制既有 vector/content，经全量审计后原子切换 SQL mapping/readiness；这不改依赖基线、不依赖未证明的 schema evolution，也能让新 collection 对全部 adapter 操作使用独立 tenant/kb 标量字段。
 - **放弃的代价**：shadow copy 需要额外 collection 容量、切换与回滚设计；依赖升级扩大兼容验证范围且不保证旧 schema 可原地改变；VarChar workaround 会留下未过滤操作与伪完成证据。
+
+### 决策 17：是否把 OTel Collector 时序波动纳入 C13b
+- **面临的选择**：在 C13b 内修改 collector/exporter 时序实现或测试；只记录已知波动并独立复跑；另立小范围维护任务处理稳定性。
+- **选了哪个 + 为什么**：选择不扩入 C13b；完整门禁若再次只命中该既有时序失败，记录全仓非 GREEN 与独立复跑证据，后续必要时另立维护任务，因为它不属于 tenant data-plane contract。
+- **放弃的代价**：在 C13b 顺手修复会混入无关观测实现并扩大回归面；只忽略失败会伪报完整门禁通过；独立维护会增加一次后续流程但保留范围清晰。

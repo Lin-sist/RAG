@@ -70,18 +70,20 @@
 
 ## 7. Legacy Vector Maintenance And Readiness
 
-- [ ] 实现期事前闸门：确认决策 16（tenant-aware shadow collection + SQL mapping/readiness 切换，或另立依赖升级与 schema-evolution contract）；确认前 legacy collection 保持非 READY，禁止实现 VarChar/search-only workaround。
+- [x] 实现期事前闸门：用户确认决策 16=A，采用 tenant-aware shadow collection，复制既有 vector/content，全量审计后原子切换 SQL mapping/readiness；不升级依赖，不实现 VarChar/search-only workaround。
 - [ ] RED：构造 missing/mismatch/duplicate/partial legacy vector fixtures，验证 runtime 非 READY 时 fail closed。
 - [ ] 实现默认关闭、非 REST 的 maintenance audit/backfill 入口；runtime `VectorStore` 不暴露 unscoped legacy read。
-- [ ] 从 tenant-scoped SQL 读取 KB/document/chunk/vector identity，复用现有 vector/content/metadata 原位补 tenant marker；不得调用 embedding/rerank/LLM。
-- [ ] 记录 expected/observed/migrated/missing/mismatch 和稳定错误类别；仅全量一致时写 KB readiness。
+- [ ] 从 tenant-scoped SQL 读取 KB/current mapping/document/chunk/vector identity，只读 source collection 并把既有 vector/content/metadata 复制到 tenant-aware shadow collection；不得调用 embedding/rerank/LLM，不修改或删除 source collection。
+- [ ] 记录 expected/observed/migrated/missing/mismatch 和稳定错误类别；仅 shadow 全量一致且无错误时，在同一 SQL 状态转换中切换 active collection mapping 并写 KB readiness；部分失败保持原 mapping + 非 READY。
 - [ ] 空 KB/new KB 的 READY 规则可重复执行；部分失败不得留下可服务的 false READY。
 - [ ] 在任何真实 Milvus audit/backfill 前，向用户披露 collection/record 数、读写范围、数据出站、超时/重试与回滚风险并取得单独授权。
 - [ ] 真实 maintenance 未获授权时明确 `SKIPPED`，不能用 mock/unit 结果宣称现有数据已迁移。
+- [ ] 当前真实 Milvus 只授权只读盘点；任何真实 collection 创建、复制、mapping/readiness 切换、重试或清理必须另行授权。
 
 ## 8. Full Gates And Closeout
 
 - [ ] 运行各模块聚焦测试后执行 `mvn -q test`，记录 Surefire/Failsafe tests/failures/errors/skips。
+- [ ] OTel collector 既有时序波动不扩入 C13b；若完整门禁再次仅命中该项，记录非 GREEN 与独立复跑证据，必要时另立维护任务。
 - [ ] 运行 `python -B -m unittest discover -s scripts -p 'test_*.py'`；确认 evaluation contract 未变化。
 - [ ] 前端无改动时正式 build 记为 `SKIPPED`；若有前端/DTO 联动则运行包含 `vue-tsc` 的正式 build。
 - [ ] 运行 SensitiveLogs、protected paths、credential、ThreadLocal、裸 tenant-bypass mapper/vector/cache key、Markdown links 与 `git diff --check` 门禁。
