@@ -18,6 +18,7 @@ CASE_SCHEMA_VERSION = "tenant-isolation-case-v1"
 DRIVER_VERSION = "tenant-isolation-driver-v1"
 FIXTURE_VERSION = "tenant-isolation-fixture-v1"
 PROFILE_VERSION = "tenant-isolation-profile-v1"
+EVIDENCE_MAP_VERSION = "tenant-isolation-evidence-map-v1"
 ALLOWED_CATEGORIES = {
     "identity_override",
     "id_guessing",
@@ -58,6 +59,10 @@ EXPECTED_FIELDS = {
     "forbiddenCanaryClasses",
     "stateInvariants",
 }
+EVIDENCE_MAP_FIELDS = {"mapVersion", "releaseVersion", "driverVersion", "cases"}
+EVIDENCE_CASE_FIELDS = {"selectors"}
+EVIDENCE_SELECTOR_FIELDS = {"report", "className", "testNamePrefix"}
+ALLOWED_REPORT_TYPES = {"surefire", "failsafe"}
 
 
 class IsolationContractError(ValueError):
@@ -138,6 +143,7 @@ def validate_release(repo_root: Path, manifest_path: Path) -> dict[str, Any]:
         "driverVersion": DRIVER_VERSION,
         "fixtureVersion": FIXTURE_VERSION,
         "profileVersion": PROFILE_VERSION,
+        "evidenceMapVersion": EVIDENCE_MAP_VERSION,
     }
     for field, expected in expected_versions.items():
         if manifest.get(field) != expected:
@@ -148,6 +154,7 @@ def validate_release(repo_root: Path, manifest_path: Path) -> dict[str, Any]:
         raise IsolationContractError("manifest_invalid", manifest_path.as_posix(), "artifacts")
     schema_path = _validate_artifact(root, artifacts.get("schema"), "schema")
     cases_path = _validate_artifact(root, artifacts.get("cases"), "cases")
+    evidence_map_path = _validate_artifact(root, artifacts.get("evidenceMap"), "evidenceMap")
     schema = _load_object(schema_path, "schema")
     if schema.get("schemaVersion") != CASE_SCHEMA_VERSION:
         raise IsolationContractError("case_schema_mismatch", schema_path.as_posix(), "schemaVersion")
@@ -225,6 +232,60 @@ def validate_release(repo_root: Path, manifest_path: Path) -> dict[str, Any]:
     if distribution != actual_distribution:
         raise IsolationContractError("case_distribution_mismatch", cases_path.as_posix(), "distribution")
 
+    evidence_map = _load_object(evidence_map_path, "evidenceMap")
+    if set(evidence_map) != EVIDENCE_MAP_FIELDS:
+        raise IsolationContractError(
+            "evidence_map_invalid", evidence_map_path.as_posix(), "root fields must exact match"
+        )
+    if evidence_map.get("mapVersion") != EVIDENCE_MAP_VERSION:
+        raise IsolationContractError(
+            "evidence_map_identity_mismatch", evidence_map_path.as_posix(), "mapVersion"
+        )
+    if evidence_map.get("releaseVersion") != RELEASE_VERSION:
+        raise IsolationContractError(
+            "evidence_map_identity_mismatch", evidence_map_path.as_posix(), "releaseVersion"
+        )
+    if evidence_map.get("driverVersion") != DRIVER_VERSION:
+        raise IsolationContractError(
+            "evidence_map_identity_mismatch", evidence_map_path.as_posix(), "driverVersion"
+        )
+    evidence_cases = evidence_map.get("cases")
+    if not isinstance(evidence_cases, dict) or set(evidence_cases) != case_ids:
+        raise IsolationContractError(
+            "evidence_map_case_mismatch", evidence_map_path.as_posix(), "case IDs must exact match release"
+        )
+    safe_class_name = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+")
+    safe_test_prefix = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]{2,127}")
+    timing_case_ids = {str(case["id"]) for case in cases if case["category"] == "timing_disclosure"}
+    for case_id in ordered_ids:
+        mapping = evidence_cases[case_id]
+        artifact = f"{evidence_map_path.as_posix()}:{case_id}"
+        allowed_fields = EVIDENCE_CASE_FIELDS | ({"driverEvidenceKey"} if case_id in timing_case_ids else set())
+        if not isinstance(mapping, dict) or set(mapping) != allowed_fields:
+            raise IsolationContractError("evidence_map_invalid", artifact, "case fields must exact match")
+        selectors = mapping.get("selectors")
+        if not isinstance(selectors, list) or not selectors:
+            raise IsolationContractError("evidence_map_invalid", artifact, "selectors must be non-empty")
+        for selector in selectors:
+            if not isinstance(selector, dict) or set(selector) != EVIDENCE_SELECTOR_FIELDS:
+                raise IsolationContractError("evidence_selector_invalid", artifact, "selector fields")
+            if selector.get("report") not in ALLOWED_REPORT_TYPES:
+                raise IsolationContractError("evidence_selector_invalid", artifact, "report")
+            if not isinstance(selector.get("className"), str) or not safe_class_name.fullmatch(
+                selector["className"]
+            ):
+                raise IsolationContractError("evidence_selector_invalid", artifact, "className")
+            if not isinstance(selector.get("testNamePrefix"), str) or not safe_test_prefix.fullmatch(
+                selector["testNamePrefix"]
+            ):
+                raise IsolationContractError("evidence_selector_invalid", artifact, "testNamePrefix")
+        if case_id in timing_case_ids:
+            key = mapping.get("driverEvidenceKey")
+            if key != case_id:
+                raise IsolationContractError(
+                    "evidence_driver_key_mismatch", artifact, "timing driver key must equal case ID"
+                )
+
     timing = manifest.get("timingProfile")
     if not isinstance(timing, dict) or timing != {
         "warmupPairs": 10,
@@ -245,6 +306,9 @@ def validate_release(repo_root: Path, manifest_path: Path) -> dict[str, Any]:
         "driverVersion": DRIVER_VERSION,
         "fixtureVersion": FIXTURE_VERSION,
         "profileVersion": PROFILE_VERSION,
+        "evidenceMapVersion": EVIDENCE_MAP_VERSION,
+        "evidenceMapPath": evidence_map_path.relative_to(root).as_posix(),
+        "evidenceMapCaseCount": len(evidence_cases),
         "manifestPath": manifest_path.as_posix(),
         "manifestSha256": hashlib.sha256(manifest_file.read_bytes()).hexdigest(),
         "caseCount": len(cases),

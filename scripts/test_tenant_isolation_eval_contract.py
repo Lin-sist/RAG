@@ -20,6 +20,8 @@ class TenantIsolationEvalContractTest(unittest.TestCase):
 
         self.assertEqual(26, identity["caseCount"])
         self.assertEqual(set(contract.ALLOWED_CATEGORIES), set(identity["distribution"]["category"]))
+        self.assertEqual("tenant-isolation-evidence-map-v1", identity["evidenceMapVersion"])
+        self.assertEqual(26, identity["evidenceMapCaseCount"])
 
     def test_valid_release_returns_stable_identity(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -32,6 +34,43 @@ class TenantIsolationEvalContractTest(unittest.TestCase):
         self.assertEqual(2, identity["caseCount"])
         self.assertEqual(["case-001", "case-002"], identity["orderedCaseIds"])
         self.assertEqual(0, identity["providerCallCount"])
+        self.assertEqual(2, identity["evidenceMapCaseCount"])
+
+    def test_evidence_map_missing_case_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            manifest_path = self.write_minimal_release(repo_root)
+            manifest_file = repo_root / manifest_path
+            manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+            map_path = repo_root / manifest["artifacts"]["evidenceMap"]["path"]
+            evidence_map = json.loads(map_path.read_text(encoding="utf-8"))
+            del evidence_map["cases"]["case-001"]
+            map_path.write_text(json.dumps(evidence_map), encoding="utf-8")
+            manifest["artifacts"]["evidenceMap"] = self.descriptor(repo_root, map_path)
+            manifest_file.write_text(json.dumps(manifest), encoding="utf-8")
+
+            with self.assertRaises(contract.IsolationContractError) as raised:
+                contract.validate_release(repo_root, manifest_path)
+
+        self.assertEqual("evidence_map_case_mismatch", raised.exception.code)
+
+    def test_timing_evidence_key_must_match_case_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            manifest_path = self.write_minimal_release(repo_root)
+            manifest_file = repo_root / manifest_path
+            manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+            map_path = repo_root / manifest["artifacts"]["evidenceMap"]["path"]
+            evidence_map = json.loads(map_path.read_text(encoding="utf-8"))
+            evidence_map["cases"]["case-002"]["driverEvidenceKey"] = "wrong-key"
+            map_path.write_text(json.dumps(evidence_map), encoding="utf-8")
+            manifest["artifacts"]["evidenceMap"] = self.descriptor(repo_root, map_path)
+            manifest_file.write_text(json.dumps(manifest), encoding="utf-8")
+
+            with self.assertRaises(contract.IsolationContractError) as raised:
+                contract.validate_release(repo_root, manifest_path)
+
+        self.assertEqual("evidence_driver_key_mismatch", raised.exception.code)
 
     def test_case_artifact_hash_drift_fails_before_execution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -191,6 +230,7 @@ class TenantIsolationEvalContractTest(unittest.TestCase):
     def write_minimal_release(self, repo_root: Path) -> Path:
         schema_path = repo_root / "docs/eval/schema/tenant-isolation-case-v1.json"
         cases_path = repo_root / "docs/eval/isolation/cases.jsonl"
+        evidence_map_path = repo_root / "docs/eval/isolation/evidence-map.json"
         manifest_path = repo_root / "docs/eval/isolation/manifest.json"
         schema_path.parent.mkdir(parents=True)
         cases_path.parent.mkdir(parents=True)
@@ -211,6 +251,26 @@ class TenantIsolationEvalContractTest(unittest.TestCase):
             "".join(json.dumps(case, ensure_ascii=False, separators=(",", ":")) + "\n" for case in cases),
             encoding="utf-8",
         )
+        evidence_map_path.write_text(json.dumps({
+            "mapVersion": "tenant-isolation-evidence-map-v1",
+            "releaseVersion": "tenant-isolation-adversarial-v1",
+            "driverVersion": "tenant-isolation-driver-v1",
+            "cases": {
+                "case-001": {"selectors": [{
+                    "report": "surefire",
+                    "className": "example.IsolationTest",
+                    "testNamePrefix": "case001IsIsolated",
+                }]},
+                "case-002": {
+                    "selectors": [{
+                        "report": "failsafe",
+                        "className": "example.IsolationIT",
+                        "testNamePrefix": "case002TimingIsOpaque",
+                    }],
+                    "driverEvidenceKey": "case-002",
+                },
+            },
+        }), encoding="utf-8")
         manifest = {
             "manifestSchemaVersion": "tenant-isolation-manifest-v1",
             "releaseVersion": "tenant-isolation-adversarial-v1",
@@ -218,9 +278,11 @@ class TenantIsolationEvalContractTest(unittest.TestCase):
             "driverVersion": "tenant-isolation-driver-v1",
             "fixtureVersion": "tenant-isolation-fixture-v1",
             "profileVersion": "tenant-isolation-profile-v1",
+            "evidenceMapVersion": "tenant-isolation-evidence-map-v1",
             "artifacts": {
                 "schema": self.descriptor(repo_root, schema_path),
                 "cases": self.descriptor(repo_root, cases_path),
+                "evidenceMap": self.descriptor(repo_root, evidence_map_path),
             },
             "caseCount": 2,
             "orderedCaseIdsSha256": hashlib.sha256(

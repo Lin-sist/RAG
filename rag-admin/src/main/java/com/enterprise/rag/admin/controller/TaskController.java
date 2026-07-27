@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -180,14 +181,18 @@ public class TaskController {
 
     private TaskStatus requireTaskOwner(RequestIdentity identity, String taskId) {
         TaskStatus status = asyncTaskManager.getStatus(identity.tenantId(), taskId)
-                .orElseThrow(() -> new BusinessException("TASK_001", "任务不存在: " + taskId));
+                .orElseThrow(() -> taskNotFound(taskId));
 
         if (status.tenantId() == null || status.tenantId() != identity.tenantId()) {
-            throw new BusinessException("TASK_001", "任务不存在: " + taskId);
+            throw taskNotFound(taskId);
         }
         if (status.ownerId() == null || !status.ownerId().equals(identity.userId())) {
             throw new BusinessException("AUTH_004", "无权限访问该任务");
         }
         return status;
+    }
+
+    private BusinessException taskNotFound(String taskId) {
+        return new BusinessException("TASK_NOT_FOUND", "任务不存在: " + taskId, HttpStatus.NOT_FOUND);
     }
 }

@@ -5,6 +5,7 @@
   "driverVersion": "tenant-isolation-driver-v1",
   "fixtureVersion": "tenant-isolation-fixture-v1",
   "profileVersion": "tenant-isolation-profile-v1",
+  "evidenceMapVersion": "tenant-isolation-evidence-map-v1",
   "artifacts": {
     "schema": {
       "path": "docs/eval/schema/tenant-isolation-case-v1.json",
@@ -15,6 +16,11 @@
       "path": "docs/eval/isolation/tenant-isolation-adversarial-v1-cases.jsonl",
       "bytes": 9621,
       "sha256": "d408a03fa08d344bb1f02ecf882a740ceaa306ebf6a2ba0385e14e9461b75f67"
+    },
+    "evidenceMap": {
+      "path": "docs/eval/isolation/tenant-isolation-adversarial-v1-evidence-map.json",
+      "bytes": 6551,
+      "sha256": "57947e1254b34bb33968405920a931f455748f181f601932adc364d9040db154"
     }
   },
   "caseCount": 26,

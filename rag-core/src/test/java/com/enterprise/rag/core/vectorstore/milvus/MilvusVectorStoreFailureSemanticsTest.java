@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import java.net.ConnectException;
 import java.util.Map;
 import java.util.List;
+import java.util.LinkedHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -189,6 +190,33 @@ class MilvusVectorStoreFailureSemanticsTest {
                         InsertParam.Field::getName, InsertParam.Field::getValues));
         assertEquals(List.of(11L), fields.get("tenant_id"));
         assertEquals(List.of(31L), fields.get("kb_id"));
+    }
+
+    @Test
+    void scopedUpsertShouldIgnoreNullMetadataValuesBeforeAddingServerScope() {
+        when(milvusClient.delete(any(DeleteParam.class))).thenReturn(R.success());
+        when(milvusClient.insert(any(InsertParam.class)))
+                .thenThrow(new IllegalStateException("synthetic insert stop"));
+        TenantVectorScope scope = new TenantVectorScope(11L, 31L, "tenant_11_kb_31_v2");
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("headingPath", "");
+        metadata.put("headingLevel", null);
+
+        assertThrows(VectorDependencyException.class,
+                () -> vectorStore.upsert(scope, List.of(new VectorDocument(
+                        "doc-1", new float[] {0.1f, 0.2f}, "content", metadata))));
+
+        ArgumentCaptor<InsertParam> insertCaptor = ArgumentCaptor.forClass(InsertParam.class);
+        verify(milvusClient).insert(insertCaptor.capture());
+        String serialized = String.valueOf(insertCaptor.getValue().getFields().stream()
+                .filter(field -> "metadata".equals(field.getName()))
+                .findFirst()
+                .orElseThrow()
+                .getValues()
+                .get(0));
+        assertFalse(serialized.contains("headingLevel"));
+        assertTrue(serialized.contains("tenantId"));
+        assertTrue(serialized.contains("kbId"));
     }
 
     @Test

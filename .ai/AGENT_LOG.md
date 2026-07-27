@@ -1642,3 +1642,15 @@
 ## 2026-07-27｜C14 隔离对抗评测实现检查点提交补录
 
 - Commit：`3965c60`（`feat(评测): 建立C14隔离对抗评测实现检查点`）。本条只补录上一执行提交的真实 hash；归档审计仍为 `NO-GO`，change 保持 ACTIVE。
+
+## 2026-07-27｜C14 证据映射、完整双租户驱动与最小 gap 修复
+
+- 范围与修改：新增版本化 `tenant-isolation-evidence-map-v1`，把 26 条冻结 case 映射到具体 Surefire/Failsafe testcase selector；release validator 校验 map hash、identity、exact case set、有限 report type、安全 class/test prefix 与 timing evidence key。新增纯标准库 evidence assembler，从 JUnit XML 和受限 driver JSON 逐 selector 组装证据，missing/ambiguous test、driver/Git HEAD 漂移、外调边界或 overwrite 均 fail closed。
+- 双租户驱动：`C14IsolationAdversarialIT` 现在建立 A owner/A reader/B owner、同租户 READ permission、A/B KB/document/index task 与 B history；真实经过 KB/detail/list/update/delete/statistics、document list/delete/upload、task status/result/cancel/exists/completed、reserved filters、sync ask、SSE、history/feedback，以及 owner/reader 两组 10 warmup + 40 fixed-seed interleaved timing。SQL document/task/history 与 foreign KB 后置快照保持不变；响应与 matched nonexistent control 比较稳定 status/error/schema，禁止 B canary/tenant/user identity。
+- TDD gap 1：真实索引先因 `MilvusVectorStore.withServerScope` 对允许 null 的 metadata 使用 `Map.copyOf` 抛 NPE；新增 `scopedUpsertShouldIgnoreNullMetadataValuesBeforeAddingServerScope` 先稳定 RED，再只过滤 null key/value 后添加服务端 tenant/kb marker，`MilvusVectorStoreFailureSemanticsTest` 全类通过。
+- TDD gap 2：foreign/nonexistent task 指纹均为 `400/TASK_001`，与冻结 release 的 `404/TASK_NOT_FOUND` 不符；先收紧 `TaskControllerTest` 取得 RED，再让两个 not-found 分支共用 `HttpStatus.NOT_FOUND`，owner mismatch 的 `AUTH_004` 不变，TaskController 5/0/0/0。
+- 真实容器迭代：首次扩展 IT 因上述 Milvus NPE失败；修复后因索引前 KB version 快照误报，移动为正常 fixture 建成后的攻击前快照；随后发现 task 400 gap 并修复；SSE control 又暴露共享 USER rate-limit 测试干扰，改用同租户 reader + READ permission，不关闭生产限流；负向 SSE 增加 text/event-stream/application-json 双 Accept 以确保请求进入鉴权。最终 `C14IsolationAdversarialIT` 为 1/0/0/0，Docker Desktop 28.4.0、自有 MySQL 8.0.36、固定 digest Redis、etcd 3.5.5、固定 MinIO 与 Milvus 2.3.4 全部运行。
+- 聚焦验证：证据映射 contract 15 tests / OK，assembler 4 tests / OK；mapped Surefire 组合退出码 0，覆盖 permission、reserved filter、QA/embedding cache、idempotency、task ledger/finalizer、history/feedback、TaskController 与 Milvus null metadata 相邻回归。Python 全量 189 tests / OK；`git diff --check` 通过。
+- 外调与范围安全：driver 只记录 bounded timing、镜像、health、Git HEAD 与零外调边界；真实 provider/model calls=0、业务数据出站=false、真实 Milvus maintenance=`SKIPPED`。未修改 migration、DTO、依赖、前端、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或 accepted baseline；未 push、未创建 PR、未部署。
+- 剩余项：需在干净提交 HEAD 上重跑 mapped Surefire + C14 完整 Failsafe，生成不可覆盖的 26/26 evidence/details/summary，再跑全量/静态门禁并同步 closeout 文档。前端无改动，正式 build待记录 `SKIPPED`。
+- Commit：`pending`；提交责任为 Agent，建议 `feat(隔离): 补全C14双租户证据驱动与错误边界`。

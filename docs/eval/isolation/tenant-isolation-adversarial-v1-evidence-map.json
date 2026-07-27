@@ -1,0 +1,33 @@
+{
+  "mapVersion": "tenant-isolation-evidence-map-v1",
+  "releaseVersion": "tenant-isolation-adversarial-v1",
+  "driverVersion": "tenant-isolation-driver-v1",
+  "cases": {
+    "identity-header-override": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "identity-body-override": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "guess-foreign-kb": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "guess-nonexistent-kb": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "guess-nonexistent-task": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "guess-nonexistent-kb-reader": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "foreign-public-kb": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "foreign-permission-grant": {"selectors": [{"report": "surefire", "className": "com.enterprise.rag.admin.kb.service.KBPermissionTenantEnforcementTest", "testNamePrefix": "crossTenantTargetUserIsNotFoundBeforePermissionMutation"}]},
+    "reserved-filter-alias": {"selectors": [{"report": "surefire", "className": "com.enterprise.rag.core.rag.model.ReservedScopeFilterTest", "testNamePrefix": "qaRequestRejectsClientControlledTenantKnowledgeBaseAndCollectionAliases"}]},
+    "reserved-filter-expression": {"selectors": [{"report": "surefire", "className": "com.enterprise.rag.core.rag.model.ReservedScopeFilterTest", "testNamePrefix": "searchOptionsRejectsReservedScopeAliases"}]},
+    "cache-query-collision": {"selectors": [{"report": "surefire", "className": "com.enterprise.rag.core.rag.RAGServiceCacheKeyTest", "testNamePrefix": "shouldNamespaceCacheByTenantAndKnowledgeBase"}, {"report": "surefire", "className": "com.enterprise.rag.core.embedding.EmbeddingServicePropertyTest", "testNamePrefix": "embeddingCacheShouldBeTenantScoped"}]},
+    "idempotency-key-collision": {"selectors": [{"report": "surefire", "className": "com.enterprise.rag.common.idempotency.RedisIdempotencyHandlerTenantScopeTest", "testNamePrefix": "shouldWriteTenantScopedKeyAndIdentityPayload"}, {"report": "surefire", "className": "com.enterprise.rag.common.idempotency.RedisIdempotencyHandlerTenantScopeTest", "testNamePrefix": "shouldFailClosedBeforeOperationWhenPayloadScopeMismatches"}]},
+    "task-projection-miss": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.RedisFailureSemanticsIT", "testNamePrefix": "restartThenProjectionMissRebuildsOwnerStatusFromDurableStore"}]},
+    "task-foreign-recovery": {"selectors": [{"report": "surefire", "className": "com.enterprise.rag.admin.kb.task.MySqlIndexTaskLedgerTest", "testNamePrefix": "scanFailsClosedWhenMapperReturnsRecordWithoutTenantIdentity"}, {"report": "surefire", "className": "com.enterprise.rag.admin.kb.task.IndexTaskSqlFinalizerTest", "testNamePrefix": "mapperReturningForeignTenantDocumentFailsBeforeChunkMutation"}]},
+    "vector-foreign-id": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.MilvusFailureSemanticsIT", "testNamePrefix": "tenantAdapterContractShouldIsolateAllDocumentOperationsInOnePhysicalCollection"}]},
+    "keyword-fallback-scope": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.MilvusFailureSemanticsIT", "testNamePrefix": "isolatedStopStartShouldProduceStableFailureAndRecoverApplicationSearch"}]},
+    "sync-foreign-kb": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "sync-local-canary": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "stream-foreign-kb": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "stream-local-canary": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "history-foreign-read": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}, {"report": "surefire", "className": "com.enterprise.rag.admin.qa.QAHistoryTenantEnforcementTest", "testNamePrefix": "readPageAndDeleteShouldAlwaysCarryTenantAndAuthenticatedUserPredicates"}]},
+    "feedback-foreign-write": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}, {"report": "surefire", "className": "com.enterprise.rag.admin.qa.service.QAFeedbackTenantEnforcementTest", "testNamePrefix": "feedbackForHistoryOutsideIdentityScopeIsNotFoundBeforeInsert"}]},
+    "error-foreign-kb-fingerprint": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}]},
+    "error-foreign-task-fingerprint": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}, {"report": "surefire", "className": "com.enterprise.rag.admin.controller.TaskControllerTest", "testNamePrefix": "crossTenantTaskLookupUsesTenantScopedProjectionAndReturnsNotFound"}]},
+    "timing-foreign-kb": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}], "driverEvidenceKey": "timing-foreign-kb"},
+    "timing-foreign-public-kb": {"selectors": [{"report": "failsafe", "className": "com.enterprise.rag.integration.C14IsolationAdversarialIT", "testNamePrefix": "fixedSyntheticMatrix"}], "driverEvidenceKey": "timing-foreign-public-kb"}
+  }
+}

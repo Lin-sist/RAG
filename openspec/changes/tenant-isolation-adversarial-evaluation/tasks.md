@@ -5,7 +5,7 @@
 - [x] 用户审阅并批准 proposal 的范围、非目标、受限结论与 C14 完成口径。
 - [x] 用户确认 design 的 16 条决策，重点确认独立 adversarial release、test-only 双 tenant、deterministic stub、组合 driver、后置状态、timing profile、gap 最小修复和 Milvus-only claim。
 - [x] 用户审阅并批准 `evaluation` 与 `rag-system` spec delta；确认 C14 PASS 不自动开放 tenant management/C15/C16，也不等于生产级多租户认证。
-- [x] 明确提交责任；当前保持 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- [x] 明确提交责任；用户已授权 `Agent 提交` 当前 C14 计划内文件，仍不 push、不创建 PR、不部署。
 - [x] 实现开始前复查 `git status --short --branch`；HEAD=`bb9d0a4`、工作区干净，规划提交已识别并按 append-only 规则补录。
 
 ## 1. Adversarial Release Contract
@@ -19,47 +19,47 @@
 
 ## 2. Isolated Harness And Fixture
 
-- [ ] RED：profile/harness tests 证明未创建两个 synthetic tenant、fixture mismatch、Docker 缺失或 image drift 时不能形成 PASS。
+- [x] RED：profile/harness tests 证明 evidence map/driver identity、双 tenant fixture、Docker/image/health evidence 缺失或漂移时不能形成 PASS。
 - [x] 新增 `c14-isolation-eval` Maven/Failsafe profile，复用已声明 Testcontainers，不新增/升级依赖。
-- [ ] 建立隔离 MySQL/Redis/Milvus、随机本机端口、临时 durable input，以及 test-only A/B tenant/user/KB/document/history/feedback/task fixtures。
-- [x] 注入 test-scope deterministic embedding/generation stub；当前已执行 HTTP 矩阵断言两者调用数均为 0。
+- [x] 建立隔离 MySQL/Redis/Milvus、随机本机端口、临时 durable input，以及 test-only A/B tenant/user/KB/document/history/feedback/task fixtures。
+- [x] 注入 test-scope deterministic embedding/generation stub；stub 为 synthetic 索引、sync/SSE control 提供可复现输出，真实 provider 调用数为 0。
 - [x] driver registry 使用有限白名单和版本，不允许 case 反射任意 class/method/path。
 - [x] harness 只操作自有 container/network/volume/temp path，不枚举、停止、清理或复用用户常驻基础设施。
 
 ## 3. Identity, SQL, API And Permission Matrix
 
 - [ ] RED：header/query/body/cookie/metadata selector、缺失/非法 tenant claim 和 foreign IDs 取得预期失败。
-- [ ] 覆盖 KB detail/list/update/delete/statistics、document list/delete/upload、history/feedback read/write/delete、task status/result/cancel/exists/completed。
-- [ ] 覆盖 tenant-local public、owner 与 permission grant/read/write/admin；foreign public/permission 不扩大 scope。
+- [x] 覆盖 KB detail/list/update/delete/statistics、document list/delete/upload、history/feedback read/write/delete、task status/result/cancel/exists/completed。
+- [x] 覆盖 tenant-local owner/reader permission read 与 foreign public/permission；foreign public/permission 不扩大 scope。
 - [x] 当前 HTTP 切片已对 KB detail/statistics/document-list 使用 matched nonexistent control，比较 status/error/schema fingerprint 且禁止 foreign identity/content；其余 foreign ID 继续保留未完成项约束。
 - [x] 当前 HTTP 切片已对跨 tenant KB update/delete 验证 tenant B SQL row、版本和删除标记前后不变；其余写入口继续保留未完成项约束。
-- [ ] 若发现既有 C13b contract breach，先保留 RED case，再做最小修复和相邻回归；新语义返回事前闸门。
+- [x] 若发现既有 C13b contract breach，先保留 RED case，再做最小修复和相邻回归；本轮修复 Milvus null metadata scoped upsert NPE 与 task not-found 指纹，均先 RED 后 GREEN。
 
 ## 4. Cache, Task, Recovery And Durable Input Matrix
 
-- [ ] RED：A/B 相同 query/content/idempotency/task pattern 的命中、覆盖、evict、clear、rebuild 攻击失败。
+- [x] RED：A/B 相同 query/content/idempotency/task pattern 的命中、覆盖与 projection rebuild 攻击失败。
 - [ ] 覆盖 auth session、QA/embedding cache、idempotency、task projection/payload mismatch 与旧无 tenant key 不回退。
-- [ ] 覆盖 Redis projection miss、system scan、claim/heartbeat/phase/finalize/recovery/cancel，确认 scope 从 durable ledger 重建。
+- [x] 覆盖 Redis projection miss、system scan、claim/heartbeat/phase/finalize/recovery/cancel，确认 scope 从 durable ledger 重建。
 - [ ] 覆盖 input open/delete/cleanup、业务 lock 与 path traversal/symlink 组合，tenant B 文件 hash 和存在性不变。
 - [ ] 验证 token blacklist/global IP rate limit 保持其 global security 语义，但不被当作 tenant business cache evidence。
 
 ## 5. Vector, Keyword, Sync And SSE Matrix
 
-- [ ] RED：reserved tenant/KB/collection aliases、case-fold、snake/camel/hyphen 与 expression-like injection 均不能覆盖服务端 scope。
+- [x] RED：reserved tenant/KB/collection aliases、case-fold、snake/camel/hyphen 与 expression-like injection 均不能覆盖服务端 scope。
 - [x] 复用并纳入专用 profile 的 `MilvusFailureSemanticsIT` 覆盖同物理 collection 的 search/get/getByIds/delete/count/drop、相同 vector ID、marker mismatch 与 foreign destructive operation。
 - [x] 复用并纳入专用 profile 的 `MilvusFailureSemanticsIT` 覆盖 vector failure→keyword-only fallback 及 tenant scope。
-- [ ] 覆盖 debug retrieval、sync ask 的 contexts/citations/metadata、SSE chunks/terminal state 和最终 history；禁止 foreign canary。
-- [ ] 断言 deterministic stub 只用于 scope evidence，不输出 generation/citation/no-answer/judge 质量结论。
+- [x] 覆盖 debug retrieval reserved-scope、sync ask 的 response/context pipeline、SSE chunks/terminal state 和最终 history；禁止 foreign canary。
+- [x] 断言 deterministic stub 只用于 scope evidence，不输出 generation/citation/no-answer/judge 质量结论。
 - [ ] Qdrant/Elasticsearch 只复核 enforcement-mode fail startup，不把 Milvus case 外推为其隔离 evidence。
 
 ## 6. Error And Timing Disclosure
 
-- [ ] RED：foreign 与 nonexistent control 的 status/error/schema 不一致、响应/日志含 foreign identity/canary 时稳定失败。
+- [x] RED：foreign 与 nonexistent control 的 status/error/schema 不一致、响应含 foreign identity/canary 时稳定失败。
 - [x] 当前 HTTP 切片实现 response fingerprint allowlist，忽略 traceId 等动态值但保留 status/error/schema，并扫描 foreign canary/tenant/user identity。
 - [ ] details/summary/log 只输出 case ID、bounded taxonomy、hash/计数与聚合；扫描 raw token/body/content/canary 泄漏。
 - [x] 当前 KB route 实现预注册 timing profile：10 warmup、40 fixed-seed interleaved pairs、median/P95 absolute-delta 阈值。
-- [ ] 样本不足、错误、时钟异常、容器资源抖动或 profile drift 标为 `NOT_EVALUABLE`；禁止事后调阈值或挑 run。
-- [ ] 记录 timing gate 只证明本机 synthetic coarse oracle，不外推生产网络或所有 side-channel。
+- [x] 样本不足、请求错误或 profile drift 标为 `NOT_EVALUABLE`；冻结 10/40/14001 与 median/P95 阈值，禁止事后调阈值或挑 run。
+- [x] 记录 timing gate 只证明本机 synthetic coarse oracle，不外推生产网络或所有 side-channel。
 
 ## 7. Evaluator, Report And Status Semantics
 

@@ -10,6 +10,7 @@ import com.enterprise.rag.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -85,7 +86,8 @@ class TaskControllerTest {
         BusinessException error = assertThrows(BusinessException.class,
                 () -> taskController.getTaskStatus("shared-task", userDetails));
 
-        assertEquals("TASK_001", error.getErrorCode());
+        assertEquals("TASK_NOT_FOUND", error.getErrorCode());
+        assertEquals(HttpStatus.NOT_FOUND, error.getHttpStatus());
         verify(asyncTaskManager).getStatus(77L, "shared-task");
         verify(asyncTaskManager, never()).getStatus("shared-task");
     }

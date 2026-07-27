@@ -362,6 +362,7 @@ public class MilvusVectorStore implements VectorStore, LegacyVectorSourceReader 
         Objects.requireNonNull(document, "document");
         Map<String, Object> metadata = new LinkedHashMap<>(
                 document.metadata() == null ? Map.of() : document.metadata());
+        metadata.entrySet().removeIf(entry -> entry.getKey() == null || entry.getValue() == null);
         rejectConflictingScope(metadata, "tenantId", scope.tenantId());
         rejectConflictingScope(metadata, "kbId", scope.knowledgeBaseId());
         metadata.put("tenantId", scope.tenantId());
