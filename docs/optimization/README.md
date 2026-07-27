@@ -85,6 +85,12 @@
 - 已实现 SQL/API/permission、task/cache/history、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 shadow collection/readiness 维护路径；本地 Milvus 2.3.4 仅使用合成数据验证，真实模型调用为 0。
 - 6 requirements / 18 scenarios 已接受进长期 `rag-system` baseline。真实 Milvus shadow copy/mapping switch 未获授权并 `SKIPPED`；全仓 Maven 唯一命中既有 OTel collector 时序波动且独立复跑通过，因此不记录为全仓 GREEN。C14 前不宣称租户隔离成立，不开放第二业务 tenant、tenant management、C15 或 C16。
 
+### C14：Tenant Isolation Adversarial Evaluation（实现完成，待验收归档）
+
+- 固定 release `tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上完成 26/26 required cases，functional/content/error/timing 四通道与 global report 均为 `PASS`；正式 summary/details/evidence 与 requirement traceability 位于 `../eval/reports/` 和 `../eval/isolation/`。
+- 只使用自有 Testcontainers 与 deterministic test stub，provider/model calls=0、businessDataOutbound=false、真实 Milvus maintenance=`SKIPPED`。结论只适用于 Milvus 支持配置和固定 synthetic attack matrix，不外推 Qdrant/Elasticsearch、生产拓扑、真实迁移或所有 timing side-channel。
+- change 尚待用户最终验收，因此双 delta 尚未接受进 baseline，也未归档；生产第二业务 tenant、tenant management、C15/C16 仍需独立 Type C change。
+
 ## 历史材料
 
 `history/` 保存 v3 正式计划形成前的 hybrid、reranker abstraction 和 token chunker 演进记录。它们可以解释代码为何形成当前结构，但不得单独用于判断当前阶段、指标或待办。

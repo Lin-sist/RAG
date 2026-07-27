@@ -39,7 +39,7 @@
 - LLM judge 默认关闭；C9b 已接受的是离线校准工具、静态 corpus 与状态语义，尚无 live provider evidence，不能声称 judge 已真实校准或逐 claim faithfulness 已成立。
 - C10 已接受的是离线门禁 contract/evaluator 与 DRAFT profile，不包含正式 v2 reference evidence、具体阈值或 ACTIVE profile；后续激活仍须单独披露并授权 reference calls。
 - C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项仍未完成。C12 已完成默认关闭的单机 reference observability 闭环，但生产 HA、容量、合规 retention、租户观测权限、跨主机传输、通知与 SLA 仍未完成。
-- 下一阶段必须通过独立 Type C change 完成 C14 隔离及恶意样本评测。C14 通过前不开放第二业务 tenant、tenant management、C15 MCP 或 C16 Router，也不宣称租户隔离成立。
+- C14 实现与正式 evidence 已完成，固定 `tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上为 26/26 required cases、四通道 `PASS`；change 正等待用户最终验收，尚未接受 delta 或归档。该结果只支持 Milvus 配置和固定 synthetic attack matrix，不开放生产第二业务 tenant、tenant management、C15 MCP 或 C16 Router。
 
 ## 长期规格
 

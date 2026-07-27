@@ -7,7 +7,7 @@
 ## Active Change
 
 - Change：`tenant-isolation-adversarial-evaluation`
-- 阶段：C14 实现中
+- 阶段：C14 实现与证据闭环完成，待用户最终验收/归档
 - 位置：`openspec/changes/tenant-isolation-adversarial-evaluation/`
 - 类型：Type C（新增版本化隔离/恶意样本评测能力与租户能力声明门禁）
 - 提交责任：用户已于 2026-07-27 明确授权 Agent 提交当前 C14 计划内实现与治理文件；不 push、不创建 PR、不部署。
@@ -29,10 +29,11 @@
 
 ## Current Implementation Checkpoint
 
-- 已完成 adversarial v1 release/schema/manifest、纯标准库 validator、`--plan-only`、四通道 evaluator 与 no-overwrite 输出契约。
-- 已建立 `c14-isolation-eval` profile 和首个真实双 tenant HTTP/Milvus/Redis 对抗切片；专用 profile 当前 5 tests / 0 failures / 0 errors / 0 skipped。
-- 当前仍未形成 26/26 case-level 正式 evidence：task/history/feedback、reserved filter、cache/idempotency、sync/SSE 与 durable input 的统一 driver/report 映射继续实现中，因此不得宣称 C14 PASS 或进入归档。
-- 全仓 `mvn -q test` 仍仅命中既有 OTel collector 时序波动；失败用例独立复跑通过，但全仓状态按规则保持非 GREEN。
+- 已完成 adversarial v1 release/schema/manifest/evidence map、纯标准库 validator/assembler/evaluator、`--plan-only`、四通道聚合与 no-overwrite 输出契约。
+- 正式 evidence 绑定 Git HEAD `dc9e3e6ed1434989a646b36389d6d9eeeea4ea83`：26/26 required cases，missing/unexpected/failed/errors/skipped 均为 0，functional/content/error/timing 四通道与 global `Report status` 均为 `PASS`。
+- C14 映射 Surefire 71/0/0/0、C14 Failsafe 5/0/0/0、相邻 claim/session/global-security/durable-input/adapter 边界 58/0/0/0、Python 190 tests / OK。全仓 `mvn -q test` 仍只命中既有 OTel collector 时序波动，失败用例独立复跑通过；全仓状态按规则保持非 GREEN。
+- provider/model calls=0、businessDataOutbound=false、真实 Milvus maintenance=`SKIPPED`；前端/DTO 无改动，正式 build=`SKIPPED`。
+- 实现收口条件已满足；按项目规则仍需用户对最终 evidence 与受限结论明确验收，之后才可接受两个 delta、归档 change 并置 `IDLE`。
 
 ## Readiness Basis
 

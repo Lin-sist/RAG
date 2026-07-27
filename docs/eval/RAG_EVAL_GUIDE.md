@@ -750,3 +750,14 @@ C9a/C9b 只改离线评测工具，不修改 Java 生成、生产 prompt、citat
 - 关键词答案评分无法替代人工评估。
 - 无答案题依赖回答中的拒答信号和 `metadata.status=no_result`。
 - citations 能证明“引用片段来自检索上下文”；C9a 还能证明固定规则下的“生成 claim 与已验证 citation snippet 有客观词法对齐”，但仍不能证明语义蕴含或完整 faithfulness。
+
+## 11. C14 Tenant Isolation Adversarial Evaluation
+
+C14 使用独立 release `tenant-isolation-adversarial-v1`，不复用 retrieval/generation quality baseline。正式 evidence 在 Git HEAD `dc9e3e6ed1434989a646b36389d6d9eeeea4ea83` 上覆盖 26 条 required cases，functional/content/error/timing 四通道均为 `PASS`，missing/unexpected/failed/errors/skipped 均为 0。
+
+- 正式报告：`reports/c14-tenant-isolation-report-v1.md`
+- machine details：`reports/c14-tenant-isolation-details-v1.json`
+- case evidence：`reports/c14-tenant-isolation-evidence-v1.json`
+- requirement traceability：`isolation/tenant-isolation-adversarial-v1-traceability.md`
+
+该结果只支持 Milvus 配置和固定 synthetic attack matrix 下的隔离 evidence。它不证明 retrieval/generation/citation/no-answer/judge 质量，不代表生产级多租户、全 adapter、真实 shadow migration、渗透测试或所有 timing side-channel 已验证；真实 provider/model calls=0、业务数据出站=false、真实 maintenance=`SKIPPED`。

@@ -1663,3 +1663,20 @@
 - 聚焦验证：assembler 5 tests / OK；release contract 15 tests / OK。manifest 已同步 evidence map 新 bytes/hash；正式 26/26 evidence 尚未生成，需在本修正提交后的干净 HEAD 重跑容器评测并绑定新 Git HEAD。
 - 范围安全：仅修改 C14 evidence map/manifest、标准库 validator/assembler tests 与本追加日志；未修改生产 Java、migration、依赖、前端、accepted baseline 或受保护路径，未外调、未 push、未创建 PR、未部署。
 - Commit：`pending`；建议 `fix(评测): 严格聚合参数化隔离证据`。
+
+## 2026-07-27｜C14 参数化证据修正提交补录与正式 evidence 收口
+
+- Commit 补录：`dc9e3e6`（`fix(评测): 严格聚合参数化隔离证据`）。本条只补录上一执行提交的真实 hash。
+- 正式执行：在干净 Git HEAD `dc9e3e6ed1434989a646b36389d6d9eeeea4ea83` 上，mapped Surefire 71 tests / 0 failures / 0 errors / 0 skipped；`c14-isolation-eval` Failsafe 5/0/0/0，约 129 秒。assembler 严格读取 mapped JUnit 与 driver JSON，生成 26 条 case evidence；evaluator 退出码 0，`Report status=PASS`，expected/observed=26/26，missing/unexpected/failed/errors/skipped 全为 0，functional/content/error/timing 四通道均为 `PASS`。
+- 证据输出：新增 `docs/eval/reports/c14-tenant-isolation-evidence-v1.json`、`c14-tenant-isolation-details-v1.json`、`c14-tenant-isolation-report-v1.md`，均采用 no-overwrite；新增 `docs/eval/isolation/tenant-isolation-adversarial-v1-traceability.md`，逐 requirement/scenario 映射 release/case/test/evidence。
+- 相邻边界：claim/session、global token blacklist/IP rate-limit、durable input 跨租户/open/delete/cleanup/traversal/symlink、Qdrant/Elasticsearch enforcement-mode fail-startup 聚焦 58/0/0/0。它们用于确认边界，不冒充 26-case tenant business evidence。
+- 全量门禁：Python 190 tests / OK。全仓 `mvn -q test` 仍在 `rag-admin` 217 tests 中只有既有 `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` 1 failure / 0 errors / 2 skipped；该 OTel collector 时序用例独立复跑退出码 0，因此如实保持全仓非 GREEN，不扩入 C14。
+- 静态门禁：SensitiveLogs 扫描 329 source files / PASS；release `--plan-only` 为 `VALID`、26 cases、12 categories、executionStarted=false；protected paths=0、frontend changes=0；正式报告 raw token/body/content/canary/credential/用户绝对路径扫描 0 命中。Markdown links 与 `git diff --check` 在最终文档同步后再次执行。
+- 状态与边界：tasks 除“用户验收后接受双 delta 并归档”外均闭环；ACTIVE_TASK 标为“实现与证据闭环完成，待用户最终验收/归档”。同步 project、architecture、roadmap、optimization 与 eval guide，结论限定为 Milvus 支持配置和固定 synthetic matrix；不开放生产第二业务 tenant、tenant management、C15/C16，不声称生产级多租户、全 adapter、真实迁移、渗透测试或所有 timing side-channel 已验证。
+- 外调与跳过：provider/model calls=0、businessDataOutbound=false、真实 Milvus maintenance=`SKIPPED`；前端/DTO 无改动，正式 build=`SKIPPED`。未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`，未 push、未创建 PR、未部署。
+- Commit：`pending`；建议 `docs(评测): 收口C14正式隔离证据`。
+
+## 2026-07-27｜C14 最终静态门禁补充
+
+- 最终 changed Markdown 10 files、relative link missing=0；protected paths=0、frontend changes=0、report sensitive matches=0；details 为 `PASS`、cases=26/26、missing/failed/errors/skipped 全为 0；`git diff --check` 通过。
+- `tasks.md` unchecked=1，唯一未完成项是“用户验收后接受双 delta、归档 change、ACTIVE_TASK 置为 IDLE”，符合归档前状态；本条随 C14 正式证据收口提交，不额外扩大范围。

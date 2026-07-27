@@ -1,0 +1,403 @@
+{
+  "schemaVersion": "tenant-isolation-evidence-v1",
+  "releaseVersion": "tenant-isolation-adversarial-v1",
+  "manifestSha256": "cce5c8a7794dbabe330189c9c9830cc4db6d1d0e8ee62dd544ba64aae0c16740",
+  "driverVersion": "tenant-isolation-driver-v1",
+  "fixtureVersion": "tenant-isolation-fixture-v1",
+  "profileVersion": "tenant-isolation-profile-v1",
+  "gitHead": "dc9e3e6ed1434989a646b36389d6d9eeeea4ea83",
+  "infrastructure": {
+    "healthy": true,
+    "milvusImage": "milvusdb/milvus:v2.3.4",
+    "mysqlImage": "mysql:8.0.36",
+    "owned": true,
+    "redisImage": "redis:7-alpine@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065"
+  },
+  "providerCallCount": 0,
+  "businessDataOutbound": false,
+  "realMaintenanceStatus": "SKIPPED",
+  "cases": [
+    {
+      "id": "identity-header-override",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "identity-body-override",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "guess-foreign-kb",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "guess-nonexistent-kb",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "guess-nonexistent-task",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "guess-nonexistent-kb-reader",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "foreign-public-kb",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "foreign-permission-grant",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "reserved-filter-alias",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "reserved-filter-expression",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "cache-query-collision",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "idempotency-key-collision",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "task-projection-miss",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "task-foreign-recovery",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "vector-foreign-id",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "keyword-fallback-scope",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "sync-foreign-kb",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "sync-local-canary",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "stream-foreign-kb",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "stream-local-canary",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "history-foreign-read",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "feedback-foreign-write",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "error-foreign-kb-fingerprint",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "PASS",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "error-foreign-task-fingerprint",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "PASS",
+        "timingDisclosure": "NOT_APPLICABLE"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": null
+    },
+    {
+      "id": "timing-foreign-kb",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "PASS"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": {
+        "foreignP95Ms": 11.5593,
+        "controlMedianMs": 9.0506,
+        "requestErrors": 0,
+        "interleavingSeed": 14001,
+        "warmupPairs": 10,
+        "controlP95Ms": 12.6118,
+        "foreignMedianMs": 9.6765,
+        "measuredPairs": 40
+      }
+    },
+    {
+      "id": "timing-foreign-public-kb",
+      "outcome": "PASS",
+      "checks": {
+        "functionalIsolation": "PASS",
+        "contentDisclosure": "PASS",
+        "errorDisclosure": "NOT_APPLICABLE",
+        "timingDisclosure": "PASS"
+      },
+      "forbiddenCanaryCount": 0,
+      "foreignStateUnchanged": true,
+      "errorCategory": "none",
+      "timing": {
+        "foreignP95Ms": 10.0327,
+        "controlMedianMs": 7.9058,
+        "requestErrors": 0,
+        "interleavingSeed": 14001,
+        "warmupPairs": 10,
+        "controlP95Ms": 8.7235,
+        "foreignMedianMs": 8.109,
+        "measuredPairs": 40
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "reportStatus": "PASS",
+  "exitCode": 0,
+  "reason": "all_required_channels_passed",
+  "releaseVersion": "tenant-isolation-adversarial-v1",
+  "manifestSha256": "cce5c8a7794dbabe330189c9c9830cc4db6d1d0e8ee62dd544ba64aae0c16740",
+  "driverVersion": "tenant-isolation-driver-v1",
+  "fixtureVersion": "tenant-isolation-fixture-v1",
+  "profileVersion": "tenant-isolation-profile-v1",
+  "gitHead": "dc9e3e6ed1434989a646b36389d6d9eeeea4ea83",
+  "functionalIsolationStatus": "PASS",
+  "contentDisclosureStatus": "PASS",
+  "errorDisclosureStatus": "PASS",
+  "timingDisclosureStatus": "PASS",
+  "caseCounts": {
+    "expected": 26,
+    "observed": 26,
+    "missing": 0,
+    "unexpected": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "providerCallCount": 0,
+  "businessDataOutbound": false,
+  "realMaintenanceStatus": "SKIPPED",
+  "timingBoundary": "local-synthetic-coarse-oracle-only",
+  "claimBoundary": "milvus-supported-profile-fixed-synthetic-matrix-only"
+}
