@@ -84,7 +84,7 @@
 - C8b 只扩充并复核 question/annotation；C9a/C9b/C10 离线能力均已验收归档。C10 当前只有 DRAFT retrieval profile，reference calls 与具体阈值未授权，因此 active quality gate、live judge calibration 与真实 generation evidence 仍未完成。
 - 标题感知、长代码块和长段落专项仍待验证。
 - C12 已形成默认关闭的 OTLP export、低基数 metrics 与本机 reference backend 闭环，但它不是生产观测平台；生产 HA、容量、合规 retention、租户权限、跨主机传输、外部通知与 SLA 仍未知或 out of scope。
-- C13a 只完成 tenant model/context 暗铺设，仍是单一 legacy tenant。C13b 必须覆盖 SQL/API/permission、所有启用 vector adapters、cache/task/history；C14 隔离评测通过前不能宣称多租户隔离完成。
+- C13b active change 已实现 SQL/API/permission、task/cache/history、RAG/keyword、Milvus tenant adapter contract 与默认关闭的 shadow collection/readiness 路径；Qdrant/Elasticsearch 在 enforcement mode 下 fail startup。真实 Milvus 迁移/切换仍 `SKIPPED`，change 尚待用户验收；C14 隔离评测通过前不能宣称租户隔离成立。
 
 ## 6. 文档真相源
 

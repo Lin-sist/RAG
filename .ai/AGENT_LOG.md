@@ -1542,3 +1542,29 @@
 - 实现顺序：先完成 QA/embedding cache v2，再贯通 RAG/Keyword tenant scope、Milvus adapter contract 与 shadow collection/readiness，最后执行完整门禁。遵循纵向 TDD，每个行为先 RED 后最小 GREEN。
 - 外调与安全：本条仅修改 design/tasks/append-only AGENT_LOG；真实 Milvus 写入、provider、embedding、rerank、ask/generation/judge/LLM 调用、数据出站、push、PR、部署均为 0。
 - Commit：`pending`；提交责任为 Agent，建议 `docs(openspec): 确认C13b影子集合迁移决策`。
+
+## 2026-07-27｜C13b 影子集合迁移决策提交补录
+
+- Commit：`dc20355`（`docs(openspec): 确认C13b影子集合迁移决策`）。本条只补录上一治理提交的真实 hash，不记录后续 C13b 实现改动。
+
+## 2026-07-27｜C13b tenant data-plane enforcement 实现提交补录
+
+- Commit：`fbe8e17`（`feat(rag): 强制租户数据面与影子向量就绪`）。本条只补录上一执行提交的真实 hash，不记录后续 duplicate/partial fixture 补测。
+
+## 2026-07-27｜C13b shadow 异常夹具提交补录
+
+- Commit：`9f0dc68`（`test(rag): 补全影子迁移异常夹具`）。本条只补录上一执行提交的真实 hash，不记录本次治理收口改动。
+
+## 2026-07-27｜C13b data-plane enforcement 实现与指定测试收口
+
+- 范围与修改：QA cache 使用 `qa:cache:v2:{tenantId}:{kbId}:queryHash:optionHash` 并校验 payload scope，embedding cache 使用 tenant/effective provider/model/content hash v2 namespace；两者只允许 tenant-local evict/clear，Redis 异常仅降级 miss/重算。`QARequest`、`RetrieveOptions`、`RAGService`、`QueryEngine`、`KeywordIndex` 贯通 immutable `TenantVectorScope`，keyword-only fallback 保持相同 scope；无 tenant 的 KB/document service lookup 兼容签名改为 fail closed。
+- Milvus contract：新 schema 增加独立 Int64 `tenant_id/kb_id`；upsert 强制服务端 marker 并拒绝冲突，search 将 scope 与普通 metadata filter 做 AND，get/getByIds/delete/count/drop 都使用 tenant scope。跨 tenant ID 或 marker mismatch 抛稳定 scope error，canonical drop 前以强一致 foreign-row count 防止删除含其他 scope 的集合。runtime `VectorStore` 已移除无租户 get/getByIds surface，legacy 读取仅由独立只读 `LegacyVectorSourceReader` 提供。
+- Shadow/readiness：V12 增加 KB readiness、source/shadow mapping 与 expected/observed/migrated/missing/mismatch/error 审计字段。新 KB 使用 canonical tenant-aware collection 且仅在创建成功后 READY；问答、索引、恢复、删除、统计与 keyword bootstrap 均要求 tenant-scoped READY。默认关闭、非 REST 的 maintenance 从 tenant-scoped SQL 读取 vector identity，只读 source vector/content/metadata 与 schema dimension，复制到 shadow 后全量回读审计，再以单条条件 SQL 切换 mapping/READY；source 不修改不删除，失败保持原 mapping 与非 READY。
+- TDD：QA/embedding payload mismatch、RAG/keyword scope、Milvus marker/predicate、runtime readiness、shadow missing/mismatch/duplicate/partial/empty/success 均先取得预期 RED 再转 GREEN。最后补测发现 duplicate SQL 行的 expected 应按唯一 vector ID 计数，已在 `9f0dc68` 修正并由 `VectorShadowMigrationServiceTest` 6/0/0/0 证明。
+- 聚焦与容器验证：core/admin cache-query-readiness 组合命令退出码 0；最终 scoped-only vector/service/shadow 聚焦 suites 退出码 0。`mvn -q -pl rag-admin -Pc4d-milvus-fault failsafe:integration-test failsafe:verify` 使用 Docker Desktop 28.4.0、Milvus `2.3.4`、etcd `3.5.5`、MinIO `RELEASE.2023-03-20T20-16-18Z`，Tests 2 / Failures 0 / Errors 0 / Skipped 0；覆盖同物理集合双 scope create/has/upsert/search/get/getByIds/delete/count/drop、marker mismatch、真实容器 stop/start、keyword-only degradation 与恢复，全部数据为合成数据，真实模型调用 0。
+- 全仓 Java：最终 `mvn -q test` 退出码 1；`rag-admin` 为 214 tests / 1 failure / 0 errors / 2 skipped，唯一失败是已确认越界的 `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` collector 时序断言。该用例随后独立复跑退出码 0；因此只记录“其他 C13b suites 未见回归 + OTel 独立通过”，不把全仓门禁写成 GREEN。该波动不在本 change 修改，必要时另立维护任务。
+- 其他门禁：`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 159 tests / OK，evaluation contract 未修改；SensitiveLogs 扫描 326 source files / PASS；7 个 changed Markdown 本地相对链接 missing=0；protected paths=0、runtime unscoped vector reads=0、bare tenant-bypass mapper hits=0、legacy QA/embedding cache runtime uses=0；task/recovery main source 无 `SecurityContextHolder` 或 tenant ThreadLocal（仅通用 trace ID 使用 `ThreadLocalRandom`）；`git diff --check` 通过。前端无改动，正式 build `SKIPPED`。
+- 真实环境与外调：没有连接或盘点真实 Milvus，也没有创建 collection、复制 vector、切换 mapping/readiness、重试或清理；真实 maintenance write/switch 明确 `SKIPPED`，mock/unit/Testcontainers 不代表现有数据已迁移。真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。
+- 范围安全：未修改 V1-V10、accepted baseline、依赖、前端、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未 push、未创建 PR、未部署。OTel 时序波动没有混入 C13b 修复。
+- 剩余风险：真实 Milvus collection/record 数、容量、超时/重试、shadow 额外空间和回滚窗口仍未知；执行任何真实 shadow copy/switch 前必须重新披露并取得授权。Qdrant/Elasticsearch 尚未通过同等 tenant adapter contract，只能在 enforcement mode 下 fail startup。当前只可表述“C13b data-plane enforcement 已实现并通过指定测试”；C14 通过前不得宣称租户隔离成立，也不得开放第二业务 tenant、C15 MCP 或 C16 Router。
+- Commit：`pending`；提交责任为 Agent，建议 `docs(openspec): 收口C13b实现与验证证据`。用户验收前不接受 delta、不归档 change、不将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。

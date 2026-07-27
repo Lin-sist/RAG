@@ -79,6 +79,12 @@
 - 数据库认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity(userId, tenantId)` 统一使用服务端 tenant 事实；旧无 tenant claim token fail closed，客户端 header/query/body/metadata 不能选择或覆盖 tenant。
 - 4 requirements / 12 scenarios 已接受进长期 `rag-system` baseline；C13a 仍是单一 legacy tenant 暗铺设，不证明跨租户隔离。下一阶段 C13b 必须覆盖 SQL/vector/cache/task/history，C14 评测通过前不开放 C15/C16。
 
+### C13b：Tenant Data-Plane Enforcement（待验收）
+
+- active change：`../../openspec/changes/tenant-data-plane-enforcement/`；尚未接受进 baseline 或归档。
+- 已实现 SQL/API/permission、task/cache/history、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 shadow collection/readiness 维护路径；本地 Milvus 2.3.4 仅使用合成数据验证，真实模型调用为 0。
+- 真实 Milvus shadow copy/mapping switch 未获授权并 `SKIPPED`；全仓 Maven 唯一命中既有 OTel collector 时序波动且独立复跑通过，因此不记录为全仓 GREEN。C14 前不宣称租户隔离成立，不开放第二业务 tenant、C15 或 C16。
+
 ## 历史材料
 
 `history/` 保存 v3 正式计划形成前的 hybrid、reranker abstraction 和 token chunker 演进记录。它们可以解释代码为何形成当前结构，但不得单独用于判断当前阶段、指标或待办。
