@@ -6,7 +6,11 @@ import net.jqwik.api.*;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -22,6 +26,58 @@ class EmbeddingServicePropertyTest {
 
     private static final int TEST_DIMENSION = 1536;
     private static final long CACHE_TTL = 3600L;
+    private static final long TEST_TENANT_ID = 11L;
+
+    @Example
+    void embeddingCacheShouldBeTenantScoped() {
+        EmbeddingProvider provider = createMockProvider(TEST_DIMENSION);
+        RedisUtil redisUtil = createMockRedisUtil();
+        Set<String> writtenKeys = new HashSet<>();
+        doAnswer(invocation -> {
+            writtenKeys.add(invocation.getArgument(0));
+            return null;
+        }).when(redisUtil).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+        EmbeddingService service = new EmbeddingServiceImpl(
+                List.of(provider), redisUtil, new ObjectMapper(), true, CACHE_TTL);
+
+        service.embed(11L, "same content");
+        service.embed(12L, "same content");
+
+        assertThat(writtenKeys.size() == 2)
+                .as("Embedding cache should use different keys for two tenants")
+                .isTrue();
+        assertThat(writtenKeys.stream().anyMatch(key -> key.startsWith("embedding:v2:11:")))
+                .as("Tenant A embedding key should use v2 namespace")
+                .isTrue();
+        assertThat(writtenKeys.stream().anyMatch(key -> key.startsWith("embedding:v2:12:")))
+                .as("Tenant B embedding key should use v2 namespace")
+                .isTrue();
+    }
+
+    @Example
+    void embeddingCacheShouldTreatPayloadScopeMismatchAsMiss() {
+        EmbeddingProvider provider = createMockProvider(TEST_DIMENSION);
+        RedisUtil redisUtil = createMockRedisUtil();
+        Map<String, String> cache = new HashMap<>();
+        when(redisUtil.getString(anyString())).thenAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            if (key.startsWith("embedding:v2:12:") && !cache.isEmpty()) {
+                return cache.values().iterator().next();
+            }
+            return cache.get(key);
+        });
+        doAnswer(invocation -> {
+            cache.put(invocation.getArgument(0), invocation.getArgument(1));
+            return null;
+        }).when(redisUtil).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+        EmbeddingService service = new EmbeddingServiceImpl(
+                List.of(provider), redisUtil, new ObjectMapper(), true, CACHE_TTL);
+
+        service.embed(11L, "same content");
+        service.embed(12L, "same content");
+
+        verify(provider, times(2)).getEmbedding("same content");
+    }
 
     @Example
     void embeddingShouldRemainAvailableWhenCacheWriteFails() {
@@ -32,7 +88,7 @@ class EmbeddingServicePropertyTest {
         EmbeddingService service = new EmbeddingServiceImpl(
                 List.of(provider), redisUtil, new ObjectMapper(), true, CACHE_TTL);
 
-        float[] embedding = service.embed("cache write failure");
+        float[] embedding = service.embed(TEST_TENANT_ID, "cache write failure");
 
         assertThat(embedding.length == TEST_DIMENSION)
                 .as("Embedding should remain available when Redis cache write fails")
@@ -48,7 +104,7 @@ class EmbeddingServicePropertyTest {
         EmbeddingService service = new EmbeddingServiceImpl(
                 List.of(provider), redisUtil, new ObjectMapper(), true, CACHE_TTL);
 
-        service.evictCache("cache eviction failure");
+        service.evictCache(TEST_TENANT_ID, "cache eviction failure");
     }
 
     @Example
@@ -60,7 +116,7 @@ class EmbeddingServicePropertyTest {
         EmbeddingService service = new EmbeddingServiceImpl(
                 List.of(provider), redisUtil, new ObjectMapper(), true, CACHE_TTL);
 
-        service.clearAllCache();
+        service.clearCache(TEST_TENANT_ID);
     }
 
     /**
@@ -88,7 +144,7 @@ class EmbeddingServicePropertyTest {
         );
         
         // Execute
-        float[] embedding = service.embed(text);
+        float[] embedding = service.embed(TEST_TENANT_ID, text);
         
         // Verify dimension is correct
         assertThat(embedding.length == TEST_DIMENSION)
@@ -129,28 +185,16 @@ class EmbeddingServicePropertyTest {
         ObjectMapper objectMapper = new ObjectMapper();
         
         // Track cached values
-        final float[][] cachedValue = {null};
+        final String[] cachedValue = {null};
         
         // Mock getString to return cached value if exists
         when(mockRedisUtil.getString(anyString())).thenAnswer(invocation -> {
-            if (cachedValue[0] != null) {
-                try {
-                    return objectMapper.writeValueAsString(cachedValue[0]);
-                } catch (Exception e) {
-                    return null;
-                }
-            }
-            return null;
+            return cachedValue[0];
         });
         
         // Mock setString to store the value
         doAnswer(invocation -> {
-            String json = invocation.getArgument(1);
-            try {
-                cachedValue[0] = objectMapper.readValue(json, float[].class);
-            } catch (Exception e) {
-                // ignore
-            }
+            cachedValue[0] = invocation.getArgument(1);
             return null;
         }).when(mockRedisUtil).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
         
@@ -163,13 +207,13 @@ class EmbeddingServicePropertyTest {
         );
         
         // First call - should call provider
-        float[] firstResult = service.embed(text);
+        float[] firstResult = service.embed(TEST_TENANT_ID, text);
         
         // Second call - should use cache
-        float[] secondResult = service.embed(text);
+        float[] secondResult = service.embed(TEST_TENANT_ID, text);
         
         // Third call - should also use cache
-        float[] thirdResult = service.embed(text);
+        float[] thirdResult = service.embed(TEST_TENANT_ID, text);
         
         // Verify all results are identical
         assertThat(Arrays.equals(firstResult, secondResult))
@@ -205,7 +249,7 @@ class EmbeddingServicePropertyTest {
         );
         
         // Execute batch embedding
-        List<float[]> embeddings = service.embedBatch(texts);
+        List<float[]> embeddings = service.embedBatch(TEST_TENANT_ID, texts);
         
         // Verify count matches
         assertThat(embeddings.size() == texts.size())
@@ -260,7 +304,7 @@ class EmbeddingServicePropertyTest {
         );
         
         // Execute - should fallback to second provider
-        float[] embedding = service.embed(text);
+        float[] embedding = service.embed(TEST_TENANT_ID, text);
         
         // Verify we got a valid result from fallback
         assertThat(embedding != null)

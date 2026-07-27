@@ -27,6 +27,7 @@ import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.core.vectorstore.VectorDocument;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.enterprise.rag.core.vectorstore.config.VectorStoreProperties;
 import com.enterprise.rag.core.vectorstore.milvus.MilvusVectorStore;
 import com.enterprise.rag.document.chunker.DocumentChunk;
@@ -39,6 +40,9 @@ import io.milvus.param.ConnectParam;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -66,6 +70,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -76,6 +81,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @Testcontainers(disabledWithoutDocker = true)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MilvusFailureSemanticsIT {
 
     private static final String ETCD_IMAGE = "quay.io/coreos/etcd:v3.5.5";
@@ -147,28 +153,60 @@ class MilvusFailureSemanticsIT {
     }
 
     @Test
+    @Order(2)
     void isolatedStopStartShouldProduceStableFailureAndRecoverApplicationSearch() throws Exception {
-        String collection = "c4d_" + UUID.randomUUID().toString().replace("-", "");
-        vectorStore.createCollection(collection, 2);
-        vectorStore.upsert(collection, List.of(
+        TenantVectorScope scope = scope(77L, 10L);
+        vectorStore.createCollection(scope, 2);
+        vectorStore.upsert(scope, List.of(
                 new VectorDocument("synthetic-1", new float[] { 1.0f, 0.0f }, "synthetic evidence", Map.of())));
         assertFalse(vectorStore.search(
-                collection, new float[] { 1.0f, 0.0f }, new SearchOptions(3, 0.0f, Map.of())).isEmpty());
+                scope, new float[] { 1.0f, 0.0f }, new SearchOptions(3, 0.0f, Map.of())).isEmpty());
 
         String containerId = MILVUS.getContainerId();
         MILVUS.getDockerClient().stopContainerCmd(containerId).exec();
-        VectorDependencyException outage = assertNoKeywordStableErrorFromRealOutage(collection);
+        VectorDependencyException outage = assertNoKeywordStableErrorFromRealOutage(scope);
         assertEquals(VectorDependencyException.ERROR_CODE_UNAVAILABLE, outage.getErrorCode());
-        assertKeywordOnlyDegradationFromObservedOutage(outage, collection);
-        assertIndexTaskFailureFromObservedOutage(outage, collection);
+        assertKeywordOnlyDegradationFromObservedOutage(outage, scope);
+        assertIndexTaskFailureFromObservedOutage(outage, scope);
 
         MILVUS.getDockerClient().startContainerCmd(containerId).exec();
         assertEquals(MILVUS_HOST_PORT, MILVUS.getMappedPort(19530));
-        awaitSearchRecovery(collection, Duration.ofMinutes(2));
-        vectorStore.dropCollection(collection);
+        awaitSearchRecovery(scope, Duration.ofMinutes(2));
+        vectorStore.dropCollection(scope);
     }
 
-    private static VectorDependencyException assertNoKeywordStableErrorFromRealOutage(String collection) {
+    @Test
+    @Order(1)
+    void tenantAdapterContractShouldIsolateAllDocumentOperationsInOnePhysicalCollection() {
+        TenantVectorScope tenantA = scope(77L, 10L);
+        TenantVectorScope tenantB = new TenantVectorScope(88L, 20L, tenantA.collectionName());
+        vectorStore.createCollection(tenantA, 2);
+        vectorStore.upsert(tenantA, List.of(new VectorDocument(
+                "a-1", new float[] {1.0f, 0.0f}, "tenant A", Map.of("kind", "contract"))));
+        vectorStore.upsert(tenantB, List.of(new VectorDocument(
+                "b-1", new float[] {1.0f, 0.0f}, "tenant B", Map.of("kind", "contract"))));
+
+        assertEquals(1L, vectorStore.count(tenantA));
+        assertEquals(1L, vectorStore.count(tenantB));
+        assertEquals(List.of("a-1"), vectorStore.search(
+                tenantA, new float[] {1.0f, 0.0f}, new SearchOptions(5, 0.0f, Map.of("kind", "contract")))
+                .stream().map(result -> result.id()).toList());
+        assertEquals("tenant A", vectorStore.getById(tenantA, "a-1").content());
+        assertThrows(VectorDependencyException.class, () -> vectorStore.getById(tenantA, "b-1"));
+        assertThrows(VectorDependencyException.class,
+                () -> vectorStore.getByIds(tenantB, List.of("a-1", "b-1")));
+
+        assertThrows(VectorDependencyException.class,
+                () -> vectorStore.delete(tenantA, List.of("a-1", "b-1")));
+        vectorStore.delete(tenantA, List.of("a-1"));
+        assertEquals(0L, vectorStore.count(tenantA));
+        assertEquals(1L, vectorStore.count(tenantB));
+        assertThrows(VectorDependencyException.class, () -> vectorStore.dropCollection(tenantB));
+        assertThrows(VectorDependencyException.class, () -> vectorStore.dropCollection(tenantA));
+        vectorStore.dropCollection(tenantA.collectionName());
+    }
+
+    private static VectorDependencyException assertNoKeywordStableErrorFromRealOutage(TenantVectorScope scope) {
         EmbeddingService embeddingService = deterministicEmbedding();
         RetrievalProperties properties = new RetrievalProperties();
         properties.getKeyword().setEnabled(false);
@@ -179,17 +217,17 @@ class MilvusFailureSemanticsIT {
                 VectorDependencyException.class,
                 () -> queryEngine.retrieveWithDiagnostics(
                         "synthetic no-keyword query",
-                        new RetrieveOptions(collection, 3, 0.0f, Map.of(), false)));
+                        new RetrieveOptions(scope, 3, 0.0f, Map.of(), false)));
     }
 
     private static void assertKeywordOnlyDegradationFromObservedOutage(
             VectorDependencyException outage,
-            String collection) {
+            TenantVectorScope scope) {
         VectorStore unavailableVectorStore = mock(VectorStore.class);
-        when(unavailableVectorStore.search(anyString(), any(float[].class), any(SearchOptions.class)))
+        when(unavailableVectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class)))
                 .thenThrow(outage);
         KeywordIndex keywordIndex = mock(KeywordIndex.class);
-        when(keywordIndex.search(eq(collection), anyString(), eq(6), eq(Map.of())))
+        when(keywordIndex.search(eq(scope), anyString(), eq(6), eq(Map.of())))
                 .thenReturn(List.of(new RetrievedContext(
                         "synthetic keyword evidence", "keyword-1", 0.8f, Map.of())));
         QueryEngineImpl queryEngine = queryEngine(
@@ -197,7 +235,7 @@ class MilvusFailureSemanticsIT {
 
         RetrievalResult result = queryEngine.retrieveWithDiagnostics(
                 "synthetic keyword query",
-                new RetrieveOptions(collection, 3, 0.0f, Map.of(), false));
+                new RetrieveOptions(scope, 3, 0.0f, Map.of(), false));
 
         assertEquals("keyword_only", result.diagnostics().get("retrievalMode"));
         assertEquals(true, result.diagnostics().get("retrievalDegraded"));
@@ -208,7 +246,7 @@ class MilvusFailureSemanticsIT {
     @SuppressWarnings("unchecked")
     private static void assertIndexTaskFailureFromObservedOutage(
             VectorDependencyException outage,
-            String collection) throws Exception {
+            TenantVectorScope scope) throws Exception {
         DocumentService documentService = mock(DocumentService.class);
         KnowledgeBaseService knowledgeBaseService = mock(KnowledgeBaseService.class);
         DocumentProcessor documentProcessor = mock(DocumentProcessor.class);
@@ -238,7 +276,7 @@ class MilvusFailureSemanticsIT {
         created.setId(101L);
         created.setTitle("synthetic.md");
         KnowledgeBaseDTO kb = new KnowledgeBaseDTO();
-        kb.setVectorCollection(collection);
+        kb.setVectorCollection(scope.collectionName());
         DocumentChunk chunk = new DocumentChunk("chunk-1", "synthetic content", 0, 17, Map.of());
         ProcessResult processed = ProcessResult.newDocument(
                 "doc-1", "hash-1", "synthetic content", List.of(chunk));
@@ -256,16 +294,17 @@ class MilvusFailureSemanticsIT {
         when(documentProcessor.process(any())).thenReturn(processed);
         when(documentService.getByKnowledgeBaseAndContentHash(77L, 10L, "hash-1"))
                 .thenReturn(Optional.empty());
-        when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
-        doThrow(outage).when(unavailableVectorStore).upsert(eq(collection), anyList());
+        when(knowledgeBaseService.requireReadyVectorScope(77L, 10L)).thenReturn(scope);
+        doThrow(outage).when(unavailableVectorStore).upsert(eq(scope), anyList());
 
         indexingService.submitIndexing(77L, 10L, 20L, file, "synthetic.md");
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
-        verify(taskManager).submit(eq("task-101"), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+        verify(taskManager).submit(
+                eq(77L), eq("task-101"), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
 
         assertThrows(RuntimeException.class, () -> taskCaptor.getValue().execute(progress -> {
         }));
-        verify(unavailableVectorStore, times(1)).upsert(eq(collection), anyList());
+        verify(unavailableVectorStore, times(1)).upsert(eq(scope), anyList());
         verify(documentService).updateStatus(77L, 101L, DocumentStatus.FAILED.name());
         verify(documentService, never()).saveChunks(anyList());
     }
@@ -285,18 +324,18 @@ class MilvusFailureSemanticsIT {
 
     private static EmbeddingService deterministicEmbedding() {
         EmbeddingService embeddingService = mock(EmbeddingService.class);
-        when(embeddingService.embed(anyString())).thenReturn(new float[] { 1.0f, 0.0f });
-        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] { 1.0f, 0.0f }));
+        when(embeddingService.embed(anyLong(), anyString())).thenReturn(new float[] { 1.0f, 0.0f });
+        when(embeddingService.embedBatch(anyLong(), anyList())).thenReturn(List.of(new float[] { 1.0f, 0.0f }));
         when(embeddingService.getDimension()).thenReturn(2);
         return embeddingService;
     }
 
-    private static void awaitSearchRecovery(String collection, Duration timeout) throws InterruptedException {
+    private static void awaitSearchRecovery(TenantVectorScope scope, Duration timeout) throws InterruptedException {
         Instant deadline = Instant.now().plus(timeout);
         while (Instant.now().isBefore(deadline)) {
             try {
                 if (!vectorStore.search(
-                        collection, new float[] { 1.0f, 0.0f }, new SearchOptions(3, 0.0f, Map.of())).isEmpty()) {
+                        scope, new float[] { 1.0f, 0.0f }, new SearchOptions(3, 0.0f, Map.of())).isEmpty()) {
                     return;
                 }
             } catch (VectorDependencyException ignored) {
@@ -305,6 +344,12 @@ class MilvusFailureSemanticsIT {
             Thread.sleep(1_000L);
         }
         fail("isolated Milvus did not recover application-level search within timeout");
+    }
+
+    private static TenantVectorScope scope(long tenantId, long kbId) {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        return new TenantVectorScope(
+                tenantId, kbId, "tenant_" + tenantId + "_kb_" + kbId + "_" + suffix);
     }
 
     private static int findFreePort() {

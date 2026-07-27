@@ -131,7 +131,7 @@ public class QueryEngineImpl implements QueryEngine {
         List<RetrievedContext> vectorContexts;
         VectorDependencyException vectorFailure = null;
         try {
-            vectorContexts = mergeRetrievedContexts(queryVariants, options.collectionName(), searchOptions);
+            vectorContexts = mergeRetrievedContexts(queryVariants, options.scope(), searchOptions);
             log.debug("Vector route merged {} contexts from {} query variants", vectorContexts.size(), queryVariants.size());
         } catch (VectorDependencyException e) {
             vectorContexts = List.of();
@@ -146,7 +146,7 @@ public class QueryEngineImpl implements QueryEngine {
             try {
                 keywordContexts = traceStage(GenAiTelemetry.SpanNames.KEYWORD_SEARCH,
                         () -> keywordIndex.search(
-                                options.collectionName(),
+                                options.scope(),
                                 query,
                                 keywordTopK(options.topK()),
                                 options.filter()));
@@ -252,17 +252,17 @@ public class QueryEngineImpl implements QueryEngine {
     }
 
     private List<RetrievedContext> mergeRetrievedContexts(List<QueryVariant> queryVariants,
-            String collectionName,
+            com.enterprise.rag.core.vectorstore.TenantVectorScope scope,
             SearchOptions searchOptions) {
         Map<String, RetrievedContext> merged = new LinkedHashMap<>();
 
         for (QueryVariant queryVariant : queryVariants) {
             float[] queryVector = traceStage(GenAiTelemetry.SpanNames.QUERY_EMBEDDING,
-                    () -> embeddingService.embed(queryVariant.query()));
+                    () -> embeddingService.embed(scope.tenantId(), queryVariant.query()));
             log.debug("Query variant embedded: weight={}", queryVariant.weight());
 
             List<SearchResult> searchResults = traceStage(GenAiTelemetry.SpanNames.VECTOR_SEARCH,
-                    () -> vectorStore.search(collectionName, queryVector, searchOptions));
+                    () -> vectorStore.search(scope, queryVector, searchOptions));
             log.debug("Vector search returned {} results for query variant", searchResults.size());
 
             for (SearchResult searchResult : searchResults) {

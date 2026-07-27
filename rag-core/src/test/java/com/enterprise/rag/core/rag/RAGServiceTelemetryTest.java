@@ -10,6 +10,7 @@ import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.query.RetrievalResult;
 import com.enterprise.rag.core.rag.service.RAGServiceImpl;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
@@ -33,6 +34,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class RAGServiceTelemetryTest {
+
+    private static TenantVectorScope scope(String collectionName) {
+        return new TenantVectorScope(1L, 1L, collectionName);
+    }
 
     private final InMemorySpanExporter exporter = InMemorySpanExporter.create();
     private final SdkTracerProvider provider = SdkTracerProvider.builder()
@@ -71,7 +76,7 @@ class RAGServiceTelemetryTest {
                 queryEngine, answerGenerator, redis, new ObjectMapper(), new GenAiTelemetry(openTelemetry));
 
         var response = service.ask(new QARequest(
-                "raw-sensitive-question", "raw-sensitive-collection", 1, 0.3f, Map.of(), false, false));
+                "raw-sensitive-question", scope("raw-sensitive-collection"), 1, 0.3f, Map.of(), false, false));
 
         assertTrue(response.hasResult());
         Set<String> names = exporter.getFinishedSpanItems().stream()
@@ -114,12 +119,14 @@ class RAGServiceTelemetryTest {
         RedisUtil redis = mock(RedisUtil.class);
         ObjectMapper objectMapper = new ObjectMapper();
         when(answerGenerator.getModelName()).thenReturn("test-model");
-        when(redis.getString(any())).thenReturn(objectMapper.writeValueAsString(
-                com.enterprise.rag.core.rag.model.QAResponse.noResult("cached-question")));
+        when(redis.getString(any())).thenReturn(objectMapper.writeValueAsString(Map.of(
+                "tenantId", 1L,
+                "knowledgeBaseId", 1L,
+                "response", com.enterprise.rag.core.rag.model.QAResponse.noResult("cached-question"))));
         RAGServiceImpl service = new RAGServiceImpl(
                 queryEngine, answerGenerator, redis, objectMapper, new GenAiTelemetry(openTelemetry));
 
-        service.ask(QARequest.of("cached-question", "kb"));
+        service.ask(QARequest.of("cached-question", scope("kb")));
 
         Set<String> names = exporter.getFinishedSpanItems().stream()
                 .map(span -> span.getName())
@@ -141,7 +148,7 @@ class RAGServiceTelemetryTest {
         RAGServiceImpl service = new RAGServiceImpl(
                 queryEngine, answerGenerator, redis, new ObjectMapper(), new GenAiTelemetry(openTelemetry));
 
-        reactor.core.Disposable subscription = service.askStream(QARequest.stream("question", "kb")).subscribe();
+        reactor.core.Disposable subscription = service.askStream(QARequest.stream("question", scope("kb"))).subscribe();
         assertTrue(exporter.getFinishedSpanItems().stream()
                 .noneMatch(span -> GenAiTelemetry.SpanNames.ASK.equals(span.getName())));
 
@@ -173,7 +180,7 @@ class RAGServiceTelemetryTest {
         RAGServiceImpl service = new RAGServiceImpl(
                 queryEngine, answerGenerator, redis, new ObjectMapper(), new GenAiTelemetry(openTelemetry));
 
-        service.ask(new QARequest("question", "kb", 2, 0.3f, Map.of(), false, false));
+        service.ask(new QARequest("question", scope("kb"), 2, 0.3f, Map.of(), false, false));
 
         var events = exporter.getFinishedSpanItems().stream()
                 .filter(span -> GenAiTelemetry.SpanNames.ASK.equals(span.getName()))
@@ -199,7 +206,7 @@ class RAGServiceTelemetryTest {
         RAGServiceImpl service = new RAGServiceImpl(
                 queryEngine, answerGenerator, redis, new ObjectMapper(), new GenAiTelemetry(openTelemetry));
 
-        service.askStream(QARequest.stream("question", "kb"))
+        service.askStream(QARequest.stream("question", scope("kb")))
                 .onErrorResume(ignored -> reactor.core.publisher.Flux.empty())
                 .blockLast();
 
@@ -221,7 +228,7 @@ class RAGServiceTelemetryTest {
                 queryEngine, answerGenerator, mock(RedisUtil.class), new ObjectMapper(),
                 new GenAiTelemetry(openTelemetry));
 
-        service.ask(new QARequest("RAG", "kb", 2, 0.3f, Map.of(), false, false));
+        service.ask(new QARequest("RAG", scope("kb"), 2, 0.3f, Map.of(), false, false));
 
         var ask = exporter.getFinishedSpanItems().stream()
                 .filter(span -> GenAiTelemetry.SpanNames.ASK.equals(span.getName()))
@@ -247,8 +254,8 @@ class RAGServiceTelemetryTest {
                 queryEngine, answerGenerator, mock(RedisUtil.class), new ObjectMapper(),
                 new GenAiTelemetry(openTelemetry));
 
-        service.askStream(QARequest.stream("question", "kb")).blockLast();
-        service.askStream(QARequest.stream("question", "kb"))
+        service.askStream(QARequest.stream("question", scope("kb"))).blockLast();
+        service.askStream(QARequest.stream("question", scope("kb")))
                 .onErrorResume(ignored -> reactor.core.publisher.Flux.empty())
                 .blockLast();
 
@@ -276,7 +283,7 @@ class RAGServiceTelemetryTest {
         com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal terminalSignal =
                 new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
 
-        reactor.core.Disposable subscription = service.askStream(QARequest.stream("question", "kb"))
+        reactor.core.Disposable subscription = service.askStream(QARequest.stream("question", scope("kb")))
                 .contextWrite(context -> context.put(
                         com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY,
                         terminalSignal))

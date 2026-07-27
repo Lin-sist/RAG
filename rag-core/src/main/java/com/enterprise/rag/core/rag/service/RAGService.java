@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag.service;
 
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import reactor.core.publisher.Flux;
 
 /**
@@ -49,20 +50,38 @@ public interface RAGService {
      * @param collectionName 知识库集合名称
      * @return 问答响应
      */
+    default QAResponse ask(String question, TenantVectorScope scope) {
+        return ask(QARequest.of(question, scope));
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
     default QAResponse ask(String question, String collectionName) {
-        return ask(QARequest.of(question, collectionName));
+        throw new IllegalArgumentException("Tenant vector scope is required");
     }
 
     /**
      * 清除查询缓存
      *
      * @param question       问题
-     * @param collectionName 知识库集合名称
+     * @param scope          服务端解析的租户向量范围
      */
-    void evictCache(String question, String collectionName);
+    void evictCache(String question, TenantVectorScope scope);
+
+    /** @deprecated Global/unscoped cache eviction is forbidden. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    default void evictCache(String question, String collectionName) {
+        throw new IllegalArgumentException("Tenant vector scope is required");
+    }
 
     /**
      * 清除所有查询缓存
      */
-    void clearAllCache();
+    void clearCache(TenantVectorScope scope);
+
+    /** @deprecated Global business cache clearing is forbidden. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    default void clearAllCache() {
+        throw new IllegalStateException("Global QA cache clear is disabled");
+    }
 }

@@ -27,6 +27,7 @@ import com.enterprise.rag.core.rag.keyword.KeywordDocument;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorDocument;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.document.chunker.DocumentChunk;
 import com.enterprise.rag.document.chunker.DocumentChunkingProperties;
@@ -325,9 +326,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             }
             List<DocumentChunk> chunks = DeterministicChunkIdentity.remap(
                     task.getIndexContractVersion(), document.getId(), result.contentHash(), result.chunks());
-            String collectionName = knowledgeBaseService.getById(tenantId, document.getKbId())
-                    .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
-                    .getVectorCollection();
+            String collectionName = knowledgeBaseService
+                    .requireReadyVectorScope(tenantId, document.getKbId()).collectionName();
             PreparedIndex prepared = prepareFinalization(
                     task.getTaskId(), document.getKbId(), document.getId(), fileName, document.getTitle(), chunks);
             leaseGuard.assertOwned();
@@ -421,9 +421,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                         result.contentHash(),
                         chunks);
 
-                String collectionName = knowledgeBaseService.getById(tenantId, kbId)
-                        .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
-                        .getVectorCollection();
+                String collectionName = knowledgeBaseService
+                        .requireReadyVectorScope(tenantId, kbId).collectionName();
 
                 ProcessResult indexed = indexWithRetry(
                         tenantId, taskId, kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
@@ -472,7 +471,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         RuntimeException lastException = null;
         leaseGuard.assertOwned();
         PreparedIndex preparedIndex = prepareIndex(
-                taskId, kbId, documentId, fileName, documentTitle, chunks, progressCallback);
+                tenantId, taskId, kbId, documentId, fileName, documentTitle, chunks, progressCallback);
         boolean vectorConfirmed = false;
 
         for (int attempt = 1; attempt <= MAX_INDEX_ATTEMPTS; attempt++) {
@@ -481,7 +480,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                     progressCallback.accept(AsyncTask.TaskProgress.of(45, "文档入库重试中，第 " + attempt + " 次"));
                 }
                 if (!vectorConfirmed) {
-                    writeVectorOnce(tenantId, taskId, result, chunks,
+                    writeVectorOnce(tenantId, kbId, taskId, result, chunks,
                             collectionName, preparedIndex.vectorDocuments(),
                             progressCallback, leaseGuard);
                     vectorConfirmed = true;
@@ -506,7 +505,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         throw lastException == null ? new RuntimeException("文档入库失败") : lastException;
     }
 
-    private PreparedIndex prepareIndex(String taskId,
+    private PreparedIndex prepareIndex(long tenantId,
+            String taskId,
             Long kbId,
             Long documentId,
             String fileName,
@@ -518,7 +518,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         progressCallback.accept(AsyncTask.TaskProgress.of(50, "生成向量嵌入"));
         List<float[]> vectors = traceStage(
                 GenAiTelemetry.SpanNames.DOCUMENT_EMBEDDING,
-                () -> embeddingService.embedBatch(chunkTexts));
+                () -> embeddingService.embedBatch(tenantId, chunkTexts));
 
         // 构造向量文档列表及对应的 DB Chunk 实体
         List<VectorDocument> vectorDocs = new ArrayList<>(chunks.size());
@@ -573,7 +573,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         return new PreparedIndex(vectorDocs, entityChunks);
     }
 
-    private void writeVectorOnce(long tenantId, String taskId,
+    private void writeVectorOnce(long tenantId, long kbId, String taskId,
             ProcessResult result,
             List<DocumentChunk> chunks,
             String collectionName,
@@ -585,7 +585,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         indexTaskLedger.markVectorInFlight(tenantId, taskId, result.contentHash(), chunks.size());
         leaseGuard.assertOwned();
         traceStage(GenAiTelemetry.SpanNames.VECTOR_UPSERT,
-                () -> vectorStore.upsert(collectionName, vectorDocs));
+                () -> vectorStore.upsert(
+                        new TenantVectorScope(tenantId, kbId, collectionName), vectorDocs));
         log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
         try {
             indexTaskLedger.markVectorConfirmed(tenantId, taskId);
@@ -605,7 +606,9 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         indexTaskLedger.markFinalizing(tenantId, taskId);
         progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
         traceStage(GenAiTelemetry.SpanNames.KEYWORD_UPSERT,
-                () -> upsertKeywordIndex(collectionName, preparedIndex.vectorDocuments()));
+                () -> upsertKeywordIndex(
+                        new TenantVectorScope(tenantId, kbId, collectionName),
+                        preparedIndex.vectorDocuments()));
 
         progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
         traceStage(GenAiTelemetry.SpanNames.INDEX_FINALIZE,
@@ -665,15 +668,15 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         }
     }
 
-    private void upsertKeywordIndex(String collectionName, List<VectorDocument> vectorDocs) {
+    private void upsertKeywordIndex(TenantVectorScope scope, List<VectorDocument> vectorDocs) {
         try {
             List<KeywordDocument> keywordDocuments = vectorDocs.stream()
                     .map(doc -> new KeywordDocument(doc.id(), doc.content(), compactMetadata(doc.metadata())))
                     .toList();
-            keywordIndex.upsert(collectionName, keywordDocuments);
+            keywordIndex.upsert(scope, keywordDocuments);
         } catch (Exception e) {
             log.warn("关键词索引写入失败，保留向量主链路: collection={}, errorType={}",
-                    collectionName, e.getClass().getSimpleName());
+                    scope.collectionName(), e.getClass().getSimpleName());
         }
     }
 

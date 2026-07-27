@@ -12,6 +12,7 @@ import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -79,13 +80,13 @@ class KnowledgeBaseServiceImplTest {
 
         when(embeddingService.getDimension()).thenReturn(1024);
         org.mockito.Mockito.doThrow(new RuntimeException("milvus down"))
-                .when(vectorStore).createCollection(anyString(), anyInt());
+                .when(vectorStore).createCollection(any(TenantVectorScope.class), anyInt());
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.create(request, REQUEST_IDENTITY));
 
         assertEquals("KB_005", ex.getErrorCode());
-        verify(vectorStore).createCollection(anyString(), anyInt());
+        verify(vectorStore).createCollection(any(TenantVectorScope.class), anyInt());
     }
 
     @Test
@@ -97,7 +98,7 @@ class KnowledgeBaseServiceImplTest {
                 .build();
         when(embeddingService.getDimension()).thenReturn(1024);
         doThrow(VectorDependencyException.unavailable("create", new IllegalStateException("raw-marker")))
-                .when(vectorStore).createCollection(anyString(), anyInt());
+                .when(vectorStore).createCollection(any(TenantVectorScope.class), anyInt());
 
         VectorDependencyException exception = assertThrows(
                 VectorDependencyException.class,
@@ -141,48 +142,53 @@ class KnowledgeBaseServiceImplTest {
     }
 
     @Test
+    void unscopedLookupAndExistsShouldFailClosedWithoutMapperAccess() {
+        assertThrows(IllegalStateException.class, () -> service.getById(7L));
+        assertThrows(IllegalStateException.class, () -> service.exists(7L));
+
+        verify(knowledgeBaseMapper, never()).selectById(7L);
+    }
+
+    @Test
     void statisticsShouldReportRedisUnavailableInsteadOfFakeZero() {
         KnowledgeBase kb = new KnowledgeBase();
         kb.setId(7L);
-        when(knowledgeBaseMapper.selectById(7L)).thenReturn(kb);
+        kb.setTenantId(901L);
+        kb.setVectorReadiness("READY");
+        when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
         @SuppressWarnings("unchecked")
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("kb:query:count:7"))
+        when(valueOperations.get("kb:query:count:v2:901:7"))
                 .thenThrow(new RuntimeException("synthetic redis marker"));
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> service.getStatistics(7L));
+                () -> service.getStatistics(7L, REQUEST_IDENTITY));
 
         assertEquals("REDIS_DEPENDENCY_UNAVAILABLE", exception.getErrorCode());
         assertEquals(503, exception.getHttpStatus().value());
     }
 
     @Test
-    void deleteShouldContinueWhenQueryCounterCleanupFails() {
-        KnowledgeBase kb = new KnowledgeBase();
-        kb.setId(7L);
-        when(knowledgeBaseMapper.selectById(7L)).thenReturn(kb);
-        doThrow(new RuntimeException("synthetic redis marker"))
-                .when(redisTemplate).delete("kb:query:count:7");
-
-        service.delete(7L);
-
-        verify(knowledgeBaseMapper).deleteById(7L);
+    void unscopedDeleteShouldFailClosed() {
+        assertThrows(IllegalStateException.class, () -> service.delete(7L));
+        verify(knowledgeBaseMapper, never()).deleteById(7L);
     }
 
     @Test
     void corruptQueryCounterShouldNotBeReportedAsZero() {
         KnowledgeBase kb = new KnowledgeBase();
         kb.setId(7L);
-        when(knowledgeBaseMapper.selectById(7L)).thenReturn(kb);
+        kb.setTenantId(901L);
+        kb.setVectorReadiness("READY");
+        when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
         @SuppressWarnings("unchecked")
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("kb:query:count:7")).thenReturn("not-a-number");
+        when(valueOperations.get("kb:query:count:v2:901:7")).thenReturn("not-a-number");
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> service.getStatistics(7L));
+                () -> service.getStatistics(7L, REQUEST_IDENTITY));
 
         assertEquals("REDIS_DEPENDENCY_UNAVAILABLE", exception.getErrorCode());
     }
@@ -202,14 +208,17 @@ class KnowledgeBaseServiceImplTest {
     void statisticsShouldFailInsteadOfReportingFakeZeroWhenVectorCountIsUnavailable() {
         KnowledgeBase kb = new KnowledgeBase();
         kb.setId(7L);
+        kb.setTenantId(901L);
         kb.setVectorCollection("kb_vectors");
-        when(knowledgeBaseMapper.selectById(7L)).thenReturn(kb);
-        when(vectorStore.count("kb_vectors"))
+        kb.setVectorReadiness("READY");
+        when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
+        when(documentService.countByKnowledgeBaseId(901L, 7L)).thenReturn(0);
+        when(vectorStore.count(any(TenantVectorScope.class)))
                 .thenThrow(VectorDependencyException.unavailable("count", new IllegalStateException("raw-marker")));
 
         VectorDependencyException exception = assertThrows(
                 VectorDependencyException.class,
-                () -> service.getStatistics(7L));
+                () -> service.getStatistics(7L, REQUEST_IDENTITY));
 
         assertEquals(VectorDependencyException.ERROR_CODE_UNAVAILABLE, exception.getErrorCode());
     }
@@ -218,16 +227,34 @@ class KnowledgeBaseServiceImplTest {
     void deleteShouldFailClosedWhenCollectionDropOutcomeIsUnknown() {
         KnowledgeBase kb = new KnowledgeBase();
         kb.setId(7L);
+        kb.setTenantId(901L);
         kb.setVectorCollection("kb_vectors");
-        when(knowledgeBaseMapper.selectById(7L)).thenReturn(kb);
+        kb.setVectorReadiness("READY");
+        when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
         doThrow(VectorDependencyException.outcomeUnknown("drop", new IllegalStateException("raw-marker")))
-                .when(vectorStore).dropCollection("kb_vectors");
+                .when(vectorStore).dropCollection(any(TenantVectorScope.class));
 
         VectorDependencyException exception = assertThrows(
                 VectorDependencyException.class,
-                () -> service.delete(7L));
+                () -> service.delete(7L, REQUEST_IDENTITY));
 
         assertEquals(VectorDependencyException.ERROR_CODE_OUTCOME_UNKNOWN, exception.getErrorCode());
-        verify(knowledgeBaseMapper, never()).deleteById(7L);
+        verify(knowledgeBaseMapper, never()).deleteByTenantAndId(901L, 7L);
+    }
+
+    @Test
+    void nonReadyLegacyMappingShouldFailClosedBeforeVectorAccess() {
+        KnowledgeBase kb = new KnowledgeBase();
+        kb.setId(7L);
+        kb.setTenantId(901L);
+        kb.setVectorCollection("legacy_vectors");
+        kb.setVectorReadiness("LEGACY_PENDING");
+        when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
+
+        VectorDependencyException exception = assertThrows(VectorDependencyException.class,
+                () -> service.requireReadyVectorScope(901L, 7L));
+
+        assertEquals(VectorDependencyException.ERROR_CODE_INDEX_NOT_READY, exception.getErrorCode());
+        verify(vectorStore, never()).hasCollection(any(TenantVectorScope.class));
     }
 }

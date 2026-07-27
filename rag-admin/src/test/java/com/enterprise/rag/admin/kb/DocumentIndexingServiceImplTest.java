@@ -92,6 +92,10 @@ class DocumentIndexingServiceImplTest {
             sqlFinalizer,
             new DocumentChunkingProperties());
 
+    private com.enterprise.rag.core.vectorstore.TenantVectorScope scope(String collectionName) {
+        return new com.enterprise.rag.core.vectorstore.TenantVectorScope(77L, 10L, collectionName);
+    }
+
     @BeforeEach
     void setUpAcceptedTaskId() {
         when(indexTaskLedger.createAccepted(anyLong(), any(Long.class), any(Long.class)))
@@ -296,8 +300,8 @@ class DocumentIndexingServiceImplTest {
         when(documentProcessor.process(any())).thenReturn(result);
         when(documentService.getByKnowledgeBaseAndContentHash(77L, 10L, "hash-1"))
                 .thenReturn(Optional.empty());
-        when(knowledgeBaseService.getById(77L, 10L)).thenReturn(Optional.of(kb));
-        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] { 0.1f, 0.2f }));
+        when(knowledgeBaseService.requireReadyVectorScope(77L, 10L)).thenReturn(scope("kb_retry"));
+        when(embeddingService.embedBatch(anyLong(), anyList())).thenReturn(List.of(new float[] { 0.1f, 0.2f }));
         doThrow(new RuntimeException("db glitch"))
                 .doNothing()
                 .when(sqlFinalizer).finalizeSql(eq(77L), eq("task-99"), eq(10L), eq(99L),
@@ -311,7 +315,7 @@ class DocumentIndexingServiceImplTest {
         taskCaptor.getValue().execute(progress -> {
         });
 
-        verify(vectorStore, times(1)).upsert(eq("kb_retry"), anyList());
+        verify(vectorStore, times(1)).upsert(eq(scope("kb_retry")), anyList());
         verify(indexTaskLedger).markVectorConfirmed(77L, "task-99");
         verify(sqlFinalizer, times(2)).finalizeSql(eq(77L), eq("task-99"), eq(10L), eq(99L),
                 eq("hash-1"), anyList());
@@ -376,8 +380,9 @@ class DocumentIndexingServiceImplTest {
         verify(documentService).updateInputState(77L, 140L, IndexInputState.CORRUPT.name());
         verify(documentService).updateStatus(77L, 140L, DocumentStatus.FAILED.name());
         verify(documentProcessor, never()).process(any());
-        verify(embeddingService, never()).embedBatch(anyList());
-        verify(vectorStore, never()).upsert(any(), anyList());
+        verify(embeddingService, never()).embedBatch(anyLong(), anyList());
+        verify(vectorStore, never()).upsert(
+                any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class), anyList());
     }
 
     @Test
@@ -411,8 +416,9 @@ class DocumentIndexingServiceImplTest {
         verify(documentService).updateInputState(77L, 145L, IndexInputState.MISSING.name());
         verify(documentService).updateStatus(77L, 145L, DocumentStatus.FAILED.name());
         verify(documentProcessor, never()).process(any());
-        verify(embeddingService, never()).embedBatch(anyList());
-        verify(vectorStore, never()).upsert(any(), anyList());
+        verify(embeddingService, never()).embedBatch(anyLong(), anyList());
+        verify(vectorStore, never()).upsert(
+                any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class), anyList());
     }
 
     @Test
@@ -436,10 +442,10 @@ class DocumentIndexingServiceImplTest {
         when(documentProcessor.process(any())).thenReturn(result);
         when(documentService.getByKnowledgeBaseAndContentHash(77L, 10L, "hash-1"))
                 .thenReturn(Optional.empty());
-        when(knowledgeBaseService.getById(77L, 10L)).thenReturn(Optional.of(kb));
-        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] { 0.1f, 0.2f }));
+        when(knowledgeBaseService.requireReadyVectorScope(77L, 10L)).thenReturn(scope("kb_vector_failure"));
+        when(embeddingService.embedBatch(anyLong(), anyList())).thenReturn(List.of(new float[] { 0.1f, 0.2f }));
         doThrow(VectorDependencyException.outcomeUnknown("upsert", new IllegalStateException("raw-marker")))
-                .when(vectorStore).upsert(eq("kb_vector_failure"), anyList());
+                .when(vectorStore).upsert(eq(scope("kb_vector_failure")), anyList());
 
         service.submitIndexing(77L, 10L, 20L, file, "vector-failure.md");
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
@@ -448,7 +454,7 @@ class DocumentIndexingServiceImplTest {
 
         assertThrows(RuntimeException.class, () -> taskCaptor.getValue().execute(progress -> {
         }));
-        verify(vectorStore, times(1)).upsert(eq("kb_vector_failure"), anyList());
+        verify(vectorStore, times(1)).upsert(eq(scope("kb_vector_failure")), anyList());
         verify(indexTaskLedger).markVectorInFlight(77L, "task-101", "hash-1", 1);
         verify(indexTaskLedger).markReconciliationRequired(
                 77L, "task-101", VectorDependencyException.ERROR_CODE_OUTCOME_UNKNOWN);
@@ -490,13 +496,14 @@ class DocumentIndexingServiceImplTest {
         when(documentService.getById(77L, 160L)).thenReturn(Optional.of(document));
         stubStoredInput();
         when(documentProcessor.process(any())).thenReturn(result);
-        when(knowledgeBaseService.getById(77L, 10L)).thenReturn(Optional.of(kb));
+        when(knowledgeBaseService.requireReadyVectorScope(77L, 10L)).thenReturn(scope("kb_resume"));
         when(documentService.getChunksByDocumentId(160L)).thenReturn(List.of());
 
         service.resumeIndexTask(task);
 
         verify(embeddingService, never()).embedBatch(anyList());
-        verify(vectorStore, never()).upsert(any(String.class), anyList());
+        verify(vectorStore, never()).upsert(
+                any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class), anyList());
         verify(sqlFinalizer).finalizeSql(eq(77L), eq("task-160"), eq(10L), eq(160L),
                 eq("hash-160"), anyList());
         verify(documentService, never()).getById(160L);
@@ -565,15 +572,15 @@ class DocumentIndexingServiceImplTest {
         when(documentProcessor.process(any())).thenReturn(result);
         when(documentService.getByKnowledgeBaseAndContentHash(77L, 10L, "hash-170"))
                 .thenReturn(Optional.empty());
-        when(knowledgeBaseService.getById(77L, 10L)).thenReturn(Optional.of(kb));
-        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] { 0.1f }));
+        when(knowledgeBaseService.requireReadyVectorScope(77L, 10L)).thenReturn(scope("kb_safe_resume"));
+        when(embeddingService.embedBatch(anyLong(), anyList())).thenReturn(List.of(new float[] { 0.1f }));
         when(documentService.getChunksByDocumentId(170L)).thenReturn(List.of());
 
         service.resumeIndexTask(task);
 
         verify(indexTaskLedger).markSafePreVector(77L, "task-170");
         verify(indexTaskLedger).markVectorInFlight(77L, "task-170", "hash-170", 1);
-        verify(vectorStore, times(1)).upsert(eq("kb_safe_resume"), anyList());
+        verify(vectorStore, times(1)).upsert(eq(scope("kb_safe_resume")), anyList());
         verify(sqlFinalizer).finalizeSql(eq(77L), eq("task-170"), eq(10L), eq(170L),
                 eq("hash-170"), anyList());
         verify(documentService, never()).getByKnowledgeBaseAndContentHash(10L, "hash-170");
@@ -610,15 +617,16 @@ class DocumentIndexingServiceImplTest {
         when(documentProcessor.process(any())).thenReturn(result);
         when(documentService.getByKnowledgeBaseAndContentHash(77L, 10L, "hash-171"))
                 .thenReturn(Optional.empty());
-        when(knowledgeBaseService.getById(77L, 10L)).thenReturn(Optional.of(kb));
-        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] {0.1f}));
+        when(knowledgeBaseService.requireReadyVectorScope(77L, 10L)).thenReturn(scope("kb_lost_lease"));
+        when(embeddingService.embedBatch(anyLong(), anyList())).thenReturn(List.of(new float[] {0.1f}));
 
         assertThrows(IndexTaskLeaseLostException.class,
                 () -> service.resumeIndexTask(task,
                         () -> { throw new IndexTaskLeaseLostException(task.getTaskId()); }));
 
         verify(embeddingService, never()).embedBatch(anyList());
-        verify(vectorStore, never()).upsert(any(String.class), anyList());
+        verify(vectorStore, never()).upsert(
+                any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class), anyList());
         verify(indexTaskLedger, never()).markVectorInFlight(anyLong(), any(), any(),
                 org.mockito.ArgumentMatchers.anyInt());
     }

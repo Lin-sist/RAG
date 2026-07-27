@@ -276,7 +276,7 @@ class TenantDataPlaneMigrationMySqlTest {
     }
 
     @Test
-    void freshInstallMigratesV1ThroughV11AndCreatesExactTenantIndexes() throws Exception {
+    void freshInstallMigratesV1ThroughV12AndCreatesExactTenantIndexes() throws Exception {
         Flyway flyway = flyway(null);
         flyway.clean();
         flyway.migrate();
@@ -284,7 +284,11 @@ class TenantDataPlaneMigrationMySqlTest {
 
         try (Connection connection = MYSQL.createConnection("");
                 Statement statement = connection.createStatement()) {
-            assertEquals("11", currentMigrationVersion(statement));
+            assertEquals("12", currentMigrationVersion(statement));
+            assertEquals(1, scalar(statement,
+                    "SELECT COUNT(*) FROM information_schema.columns "
+                            + "WHERE table_schema = DATABASE() AND table_name = 'knowledge_base' "
+                            + "AND column_name = 'vector_readiness' AND is_nullable = 'NO'"));
             for (String table : new String[]{
                     "document", "document_chunk", "kb_permission",
                     "qa_history", "qa_feedback", "async_task"}) {

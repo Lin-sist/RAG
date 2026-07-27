@@ -48,14 +48,16 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     }
 
     @Override
-    public float[] embed(String text) {
+    public float[] embed(long tenantId, String text) {
+        requireTenantId(tenantId);
         if (text == null || text.isBlank()) {
             throw new EmbeddingException("Input text cannot be null or empty");
         }
 
         // Try to get from cache first
-        String cacheKey = getCacheKey(text);
-        float[] cached = getFromCache(cacheKey);
+        EmbeddingProvider requestedProvider = getActiveProvider();
+        String cacheKey = getCacheKey(tenantId, text, requestedProvider);
+        float[] cached = getFromCache(cacheKey, tenantId, requestedProvider);
         if (cached != null) {
             log.debug("Cache hit for embedding: {}", cacheKey);
             return cached;
@@ -65,13 +67,16 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         float[] embedding = getEmbeddingWithFallback(text);
         
         // Cache the result
-        saveToCache(cacheKey, embedding);
+        EmbeddingProvider effectiveProvider = getActiveProvider();
+        saveToCache(getCacheKey(tenantId, text, effectiveProvider),
+                tenantId, effectiveProvider, embedding);
         
         return embedding;
     }
 
     @Override
-    public List<float[]> embedBatch(List<String> texts) {
+    public List<float[]> embedBatch(long tenantId, List<String> texts) {
+        requireTenantId(tenantId);
         if (texts == null || texts.isEmpty()) {
             throw new EmbeddingException("Input texts cannot be null or empty");
         }
@@ -84,8 +89,9 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         // Check cache for each text
         for (int i = 0; i < texts.size(); i++) {
             String text = texts.get(i);
-            String cacheKey = getCacheKey(text);
-            float[] cached = getFromCache(cacheKey);
+            EmbeddingProvider requestedProvider = getActiveProvider();
+            String cacheKey = getCacheKey(tenantId, text, requestedProvider);
+            float[] cached = getFromCache(cacheKey, tenantId, requestedProvider);
             if (cached != null) {
                 cachedResults.put(i, cached);
             } else {
@@ -100,8 +106,9 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             
             // Cache new embeddings
             for (int i = 0; i < uncachedTexts.size(); i++) {
-                String cacheKey = getCacheKey(uncachedTexts.get(i));
-                saveToCache(cacheKey, newEmbeddings.get(i));
+                EmbeddingProvider effectiveProvider = getActiveProvider();
+                String cacheKey = getCacheKey(tenantId, uncachedTexts.get(i), effectiveProvider);
+                saveToCache(cacheKey, tenantId, effectiveProvider, newEmbeddings.get(i));
                 cachedResults.put(uncachedIndices.get(i), newEmbeddings.get(i));
             }
         }
@@ -127,8 +134,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     }
 
     @Override
-    public void evictCache(String text) {
-        String cacheKey = getCacheKey(text);
+    public void evictCache(long tenantId, String text) {
+        String cacheKey = getCacheKey(tenantId, text, getActiveProvider());
         try {
             redisUtil.delete(cacheKey);
             log.debug("Evicted embedding cache");
@@ -140,10 +147,11 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     }
 
     @Override
-    public void clearAllCache() {
+    public void clearCache(long tenantId) {
+        requireTenantId(tenantId);
         try {
-            redisUtil.deleteByPattern(RedisKeyConstants.EMBEDDING_CACHE_PREFIX + "*");
-            log.info("Cleared all embedding cache");
+            redisUtil.deleteByPattern(RedisKeyConstants.EMBEDDING_CACHE_V2_PREFIX + tenantId + ":*");
+            log.info("Cleared tenant-scoped embedding cache");
         } catch (Exception e) {
             log.warn("Embedding cache clear degraded: dependency=redis, subsystem=embedding_cache, "
                             + "operation=clear, failMode=open, errorType={}",
@@ -249,9 +257,17 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         return sorted;
     }
 
-    private String getCacheKey(String text) {
+    private String getCacheKey(long tenantId, String text, EmbeddingProvider provider) {
         String hash = computeHash(text);
-        return RedisKeyConstants.embeddingCacheKey(hash);
+        return RedisKeyConstants.embeddingCacheV2Key(
+                requireTenantId(tenantId), providerName(provider), provider.getModelName(), hash);
+    }
+
+    private long requireTenantId(long tenantId) {
+        if (tenantId <= 0) {
+            throw new EmbeddingException("Tenant scope is required");
+        }
+        return tenantId;
     }
 
     private String computeHash(String text) {
@@ -272,11 +288,16 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         }
     }
 
-    private float[] getFromCache(String cacheKey) {
+    private float[] getFromCache(String cacheKey, long tenantId, EmbeddingProvider provider) {
         try {
             String json = redisUtil.getString(cacheKey);
             if (json != null) {
-                return objectMapper.readValue(json, float[].class);
+                TenantCachedEmbedding cached = objectMapper.readValue(json, TenantCachedEmbedding.class);
+                if (cached.tenantId() == tenantId
+                        && providerName(provider).equals(cached.provider())
+                        && provider.getModelName().equals(cached.model())) {
+                    return cached.embedding();
+                }
             }
         } catch (Exception e) {
             log.warn("Embedding cache read degraded: dependency=redis, subsystem=embedding_cache, "
@@ -286,14 +307,30 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         return null;
     }
 
-    private void saveToCache(String cacheKey, float[] embedding) {
+    private void saveToCache(String cacheKey,
+            long tenantId,
+            EmbeddingProvider provider,
+            float[] embedding) {
         try {
-            String json = objectMapper.writeValueAsString(embedding);
+            String json = objectMapper.writeValueAsString(new TenantCachedEmbedding(
+                    tenantId, providerName(provider), provider.getModelName(), embedding));
             redisUtil.setString(cacheKey, json, cacheTtlSeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.warn("Embedding cache write degraded: dependency=redis, subsystem=embedding_cache, "
                             + "operation=write, failMode=open, errorType={}",
                     e.getClass().getSimpleName());
         }
+    }
+
+    private String providerName(EmbeddingProvider provider) {
+        String name = provider.getClass().getSimpleName();
+        return name == null || name.isBlank() ? "provider" : name;
+    }
+
+    private record TenantCachedEmbedding(
+            long tenantId,
+            String provider,
+            String model,
+            float[] embedding) {
     }
 }

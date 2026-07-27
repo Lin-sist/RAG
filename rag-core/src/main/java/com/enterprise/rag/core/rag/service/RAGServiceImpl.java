@@ -102,7 +102,7 @@ public class RAGServiceImpl implements RAGService {
             String modelName = answerGenerator.getModelName();
             if (request.enableCache()) {
                 QAResponse cachedResponse = traceStage(GenAiTelemetry.SpanNames.CACHE_LOOKUP,
-                        () -> getFromCache(question, collectionName, request.topK(), request.filter(), modelName));
+                        () -> getFromCache(question, request.scope(), request.topK(), request.filter(), modelName));
                 if (cachedResponse != null) {
                     log.debug("QA cache hit for collection: {}", collectionName);
                     askSpan.outcome("CACHE_HIT");
@@ -112,7 +112,7 @@ public class RAGServiceImpl implements RAGService {
 
             // 2. 检索相关文档
             RetrieveOptions retrieveOptions = new RetrieveOptions(
-                    collectionName,
+                    request.scope(),
                     request.topK(),
                     request.minScore(),
                     request.filter(),
@@ -164,7 +164,7 @@ public class RAGServiceImpl implements RAGService {
 
             // 6. 缓存结果
             if (request.enableCache() && !retrievalResult.degraded()) {
-                saveToCache(question, collectionName, request.topK(), request.filter(), modelName, response);
+                saveToCache(question, request.scope(), request.topK(), request.filter(), modelName, response);
             }
 
             log.info("Successfully generated answer for collection: {}", collectionName);
@@ -278,7 +278,7 @@ public class RAGServiceImpl implements RAGService {
 
             // 检索相关文档
             RetrieveOptions retrieveOptions = new RetrieveOptions(
-                    collectionName,
+                    request.scope(),
                     request.topK(),
                     request.minScore(),
                     request.filter(),
@@ -560,7 +560,7 @@ public class RAGServiceImpl implements RAGService {
         attempts.add(initialResult);
         for (String fallbackQuery : fallbackQueries) {
             RetrieveOptions fallbackOptions = new RetrieveOptions(
-                    collectionName,
+                    request.scope(),
                     request.topK(),
                     fallbackMinScore,
                     request.filter(),
@@ -695,12 +695,12 @@ public class RAGServiceImpl implements RAGService {
     }
 
     @Override
-    public void evictCache(String question, String collectionName) {
+    public void evictCache(String question, com.enterprise.rag.core.vectorstore.TenantVectorScope scope) {
         String queryHash = hashString(question.toLowerCase().trim());
-        String pattern = RedisKeyConstants.QA_CACHE_PREFIX + queryHash + ":" + collectionName + ":*";
+        String pattern = qaCachePrefix(scope) + queryHash + ":*";
         try {
             redisUtil.deleteByPattern(pattern);
-            log.debug("Evicted QA cache for collection: {}", collectionName);
+            log.debug("Evicted tenant-scoped QA cache");
         } catch (Exception e) {
             log.warn("QA cache eviction degraded: dependency=redis, subsystem=qa_cache, "
                             + "operation=delete, failMode=open, errorType={}",
@@ -709,10 +709,10 @@ public class RAGServiceImpl implements RAGService {
     }
 
     @Override
-    public void clearAllCache() {
+    public void clearCache(com.enterprise.rag.core.vectorstore.TenantVectorScope scope) {
         try {
-            redisUtil.deleteByPattern(RedisKeyConstants.QA_CACHE_PREFIX + "*");
-            log.info("Cleared all QA cache");
+            redisUtil.deleteByPattern(qaCachePrefix(scope) + "*");
+            log.info("Cleared tenant-scoped QA cache");
         } catch (Exception e) {
             log.warn("QA cache clear degraded: dependency=redis, subsystem=qa_cache, "
                             + "operation=clear, failMode=open, errorType={}",
@@ -724,15 +724,19 @@ public class RAGServiceImpl implements RAGService {
      * 从缓存获取响应
      */
     private QAResponse getFromCache(String question,
-            String collectionName,
+            com.enterprise.rag.core.vectorstore.TenantVectorScope scope,
             int topK,
             Map<String, Object> filter,
         String modelName) {
-        String cacheKey = buildCacheKey(question, collectionName, topK, filter, modelName);
+        String cacheKey = buildCacheKey(question, scope, topK, filter, modelName);
         try {
             String cachedJson = redisUtil.getString(cacheKey);
             if (cachedJson != null) {
-                return objectMapper.readValue(cachedJson, QAResponse.class);
+                TenantCachedQAResponse cached = objectMapper.readValue(cachedJson, TenantCachedQAResponse.class);
+                if (cached.tenantId() == scope.tenantId()
+                        && cached.knowledgeBaseId() == scope.knowledgeBaseId()) {
+                    return cached.response();
+                }
             }
         } catch (Exception e) {
             log.warn("QA cache read degraded: dependency=redis, subsystem=qa_cache, "
@@ -746,16 +750,17 @@ public class RAGServiceImpl implements RAGService {
      * 保存响应到缓存
      */
     private void saveToCache(String question,
-            String collectionName,
+            com.enterprise.rag.core.vectorstore.TenantVectorScope scope,
             int topK,
             Map<String, Object> filter,
             String modelName,
             QAResponse response) {
-        String cacheKey = buildCacheKey(question, collectionName, topK, filter, modelName);
+        String cacheKey = buildCacheKey(question, scope, topK, filter, modelName);
         try {
-            String json = objectMapper.writeValueAsString(response);
+            String json = objectMapper.writeValueAsString(new TenantCachedQAResponse(
+                    scope.tenantId(), scope.knowledgeBaseId(), response));
             redisUtil.setString(cacheKey, json, RedisKeyConstants.QA_CACHE_TTL, TimeUnit.SECONDS);
-            log.debug("Cached QA response for collection: {}", collectionName);
+            log.debug("Cached tenant-scoped QA response");
         } catch (Exception e) {
             log.warn("QA cache write degraded: dependency=redis, subsystem=qa_cache, "
                             + "operation=write, failMode=open, errorType={}",
@@ -767,14 +772,22 @@ public class RAGServiceImpl implements RAGService {
      * 构建缓存键
      */
     private String buildCacheKey(String question,
-            String collectionName,
+            com.enterprise.rag.core.vectorstore.TenantVectorScope scope,
             int topK,
             Map<String, Object> filter,
             String modelName) {
         String queryHash = hashString(question.toLowerCase().trim());
         String filterHash = hashString(canonicalizeFilter(filter));
         String optionHash = hashString(topK + "|" + modelName + "|" + filterHash);
-        return RedisKeyConstants.QA_CACHE_PREFIX + queryHash + ":" + collectionName + ":" + optionHash;
+        return qaCachePrefix(scope) + queryHash + ":" + optionHash;
+    }
+
+    private String qaCachePrefix(com.enterprise.rag.core.vectorstore.TenantVectorScope scope) {
+        return RedisKeyConstants.QA_CACHE_V2_PREFIX
+                + scope.tenantId() + ":" + scope.knowledgeBaseId() + ":";
+    }
+
+    private record TenantCachedQAResponse(long tenantId, long knowledgeBaseId, QAResponse response) {
     }
 
     private String canonicalizeFilter(Map<String, Object> filter) {

@@ -274,13 +274,11 @@ public class QdrantVectorStore implements VectorStore {
         }
     }
 
-    @Override
     public VectorDocument getById(String collectionName, String id) {
         List<VectorDocument> docs = getByIds(collectionName, List.of(id));
         return docs.isEmpty() ? null : docs.get(0);
     }
 
-    @Override
     public List<VectorDocument> getByIds(String collectionName, List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();

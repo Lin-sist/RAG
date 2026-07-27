@@ -5,6 +5,7 @@ import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseStatistics;
 import com.enterprise.rag.admin.kb.dto.UpdateKnowledgeBaseRequest;
 import com.enterprise.rag.admin.security.RequestIdentity;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +47,15 @@ public interface KnowledgeBaseService {
      * @return 当前 tenant 内的知识库（如果存在）
      */
     Optional<KnowledgeBaseDTO> getById(Long id, RequestIdentity identity);
+
+    /** Resolve the SQL-owned active mapping and reject non-READY vector state. */
+    default TenantVectorScope requireReadyVectorScope(long tenantId, Long id) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    default TenantVectorScope requireReadyVectorScope(Long id, RequestIdentity identity) {
+        return requireReadyVectorScope(identity.tenantId(), id);
+    }
 
     /**
      * 获取用户的所有知识库

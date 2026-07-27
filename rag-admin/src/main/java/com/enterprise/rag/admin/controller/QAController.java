@@ -15,6 +15,7 @@ import com.enterprise.rag.common.ratelimit.RateLimitDimension;
 import com.enterprise.rag.common.trace.TraceContext;
 import com.enterprise.rag.core.rag.model.Citation;
 import com.enterprise.rag.core.rag.model.QARequest;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.enterprise.rag.core.rag.model.QAResponse;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
@@ -110,13 +111,14 @@ public class QAController {
         log.info("问答请求: traceId={}, kbId={}, userId={}", traceId, request.kbId(), userId);
 
         var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), identity);
+        TenantVectorScope vectorScope = knowledgeBaseService.requireReadyVectorScope(request.kbId(), identity);
 
         long startTime = System.currentTimeMillis();
 
         // 构建 QA 请求
         QARequest qaRequest = new QARequest(
                 request.question(),
-                kb.getVectorCollection(),
+                vectorScope,
                 request.topK() != null ? request.topK() : QARequest.DEFAULT_TOP_K,
                 request.minScore() != null ? request.minScore() : QARequest.DEFAULT_MIN_SCORE,
                 request.filter() != null ? request.filter() : Map.of(),
@@ -175,12 +177,13 @@ public class QAController {
         log.info("流式问答请求: traceId={}, kbId={}, userId={}", traceId, request.kbId(), userId);
 
         var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), identity);
+        TenantVectorScope vectorScope = knowledgeBaseService.requireReadyVectorScope(request.kbId(), identity);
         long startTime = System.currentTimeMillis();
 
         // 构建流式 QA 请求
         QARequest qaRequest = QARequest.stream(
                 request.question(),
-                kb.getVectorCollection(),
+                vectorScope,
                 request.topK() != null ? request.topK() : QARequest.DEFAULT_TOP_K,
                 request.minScore() != null ? request.minScore() : QARequest.DEFAULT_MIN_SCORE,
                 request.filter() != null ? request.filter() : Map.of(),
@@ -288,6 +291,7 @@ public class QAController {
         RequestIdentity identity = currentUserService.requireIdentity(userDetails);
         Long userId = identity.userId();
         var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), identity);
+        TenantVectorScope vectorScope = knowledgeBaseService.requireReadyVectorScope(request.kbId(), identity);
 
         int topK = normalizeTopK(request.topK());
         float minScore = normalizeMinScore(request.minScore());
@@ -295,7 +299,7 @@ public class QAController {
         boolean enableRerank = request.enableRerank() == null ? true : request.enableRerank();
 
         RetrieveOptions retrieveOptions = new RetrieveOptions(
-                kb.getVectorCollection(),
+                vectorScope,
                 topK,
                 minScore,
                 filter,

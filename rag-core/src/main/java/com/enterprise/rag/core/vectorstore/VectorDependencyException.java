@@ -15,6 +15,8 @@ public final class VectorDependencyException extends BusinessException {
     public static final String ERROR_CODE_UNAVAILABLE = "VECTOR_STORE_UNAVAILABLE";
     public static final String ERROR_CODE_INDEX_UNAVAILABLE = "VECTOR_INDEX_UNAVAILABLE";
     public static final String ERROR_CODE_OUTCOME_UNKNOWN = "VECTOR_OPERATION_OUTCOME_UNKNOWN";
+    public static final String ERROR_CODE_SCOPE_MISMATCH = "VECTOR_SCOPE_MISMATCH";
+    public static final String ERROR_CODE_INDEX_NOT_READY = "VECTOR_INDEX_NOT_READY";
 
     private final String dependency;
     private final String subsystem;
@@ -94,6 +96,28 @@ public final class VectorDependencyException extends BusinessException {
                 null,
                 "outcome_unknown",
                 cause);
+    }
+
+    public static VectorDependencyException scopeMismatch(String operation) {
+        return new VectorDependencyException(
+                ERROR_CODE_SCOPE_MISMATCH,
+                "向量数据范围校验失败，请联系管理员检查索引状态",
+                "vector_store",
+                operation,
+                "scope_mismatch",
+                "closed",
+                null);
+    }
+
+    public static VectorDependencyException indexNotReady(String operation) {
+        return new VectorDependencyException(
+                ERROR_CODE_INDEX_NOT_READY,
+                "向量索引尚未完成租户范围审计，请稍后重试",
+                "vector_readiness",
+                operation,
+                "not_ready",
+                "closed",
+                null);
     }
 
     public String getDependency() {

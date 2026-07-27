@@ -10,6 +10,7 @@ import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.service.RAGService;
 import com.enterprise.rag.core.rag.service.RAGServiceImpl;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -35,6 +37,7 @@ class RAGServiceCacheKeyTest {
     private AnswerGenerator answerGenerator;
     private RedisUtil redisUtil;
     private RAGService ragService;
+    private Map<String, String> cache;
 
     @BeforeEach
     void setUp() {
@@ -51,7 +54,7 @@ class RAGServiceCacheKeyTest {
                 GeneratedAnswer.of("answer", List.of(Citation.of("doc-thread-pool", "Java 线程池参数详解")),
                         Map.of("model", "mock-model")));
 
-        Map<String, String> cache = new HashMap<>();
+        cache = new HashMap<>();
         when(redisUtil.getString(anyString())).thenAnswer(invocation -> cache.get(invocation.getArgument(0)));
         doAnswer(invocation -> {
             cache.put(invocation.getArgument(0), invocation.getArgument(1));
@@ -63,8 +66,9 @@ class RAGServiceCacheKeyTest {
 
     @Test
     void shouldNotShareCacheBetweenDifferentTopK() {
-        QARequest topK3 = new QARequest("什么是线程池", "kb_java", 3, Map.of(), true, false);
-        QARequest topK6 = new QARequest("什么是线程池", "kb_java", 6, Map.of(), true, false);
+        TenantVectorScope scope = new TenantVectorScope(11L, 31L, "kb_java");
+        QARequest topK3 = new QARequest("什么是线程池", scope, 3, Map.of(), true, false);
+        QARequest topK6 = new QARequest("什么是线程池", scope, 6, Map.of(), true, false);
 
         ragService.ask(topK3);
         ragService.ask(topK6);
@@ -77,14 +81,60 @@ class RAGServiceCacheKeyTest {
 
     @Test
     void shouldNotShareCacheBetweenDifferentFilter() {
-        QARequest filterA = new QARequest("什么是线程池", "kb_java", 5, Map.of("docType", "md"), true, false);
-        QARequest filterB = new QARequest("什么是线程池", "kb_java", 5, Map.of("docType", "pdf"), true, false);
+        TenantVectorScope scope = new TenantVectorScope(11L, 31L, "kb_java");
+        QARequest filterA = new QARequest("什么是线程池", scope, 5, Map.of("docType", "md"), true, false);
+        QARequest filterB = new QARequest("什么是线程池", scope, 5, Map.of("docType", "pdf"), true, false);
 
         var responseA = ragService.ask(filterA);
         var responseB = ragService.ask(filterB);
 
         assertTrue(responseA.isSuccess());
         assertTrue(responseB.isSuccess());
+        verify(queryEngine, times(2)).retrieve(anyString(), any(RetrieveOptions.class));
+    }
+
+    @Test
+    void shouldNamespaceCacheByTenantAndKnowledgeBase() {
+        TenantVectorScope tenantA = new TenantVectorScope(11L, 31L, "kb_shared");
+        TenantVectorScope tenantB = new TenantVectorScope(12L, 31L, "kb_shared");
+        QARequest requestA = new QARequest(
+                "什么是线程池", tenantA, 5, QARequest.DEFAULT_MIN_SCORE, Map.of(), true, false);
+        QARequest requestB = new QARequest(
+                "什么是线程池", tenantB, 5, QARequest.DEFAULT_MIN_SCORE, Map.of(), true, false);
+
+        ragService.ask(requestA);
+        ragService.ask(requestB);
+        ragService.ask(requestA);
+
+        verify(queryEngine, times(2)).retrieve(anyString(), any(RetrieveOptions.class));
+        var writtenKeys = new java.util.ArrayList<String>();
+        verify(redisUtil, times(2)).setString(
+                org.mockito.ArgumentMatchers.argThat(key -> {
+                    writtenKeys.add(key);
+                    return key.startsWith("qa:cache:v2:");
+                }),
+                anyString(), anyLong(), any(TimeUnit.class));
+        assertEquals(2, writtenKeys.stream().distinct().count());
+        assertTrue(writtenKeys.stream().anyMatch(key -> key.startsWith("qa:cache:v2:11:31:")));
+        assertTrue(writtenKeys.stream().anyMatch(key -> key.startsWith("qa:cache:v2:12:31:")));
+    }
+
+    @Test
+    void shouldTreatCachedPayloadScopeMismatchAsMiss() {
+        TenantVectorScope tenantA = new TenantVectorScope(11L, 31L, "kb_shared");
+        TenantVectorScope tenantB = new TenantVectorScope(12L, 31L, "kb_shared");
+        QARequest requestA = new QARequest(
+                "什么是线程池", tenantA, 5, QARequest.DEFAULT_MIN_SCORE, Map.of(), true, false);
+        QARequest requestB = new QARequest(
+                "什么是线程池", tenantB, 5, QARequest.DEFAULT_MIN_SCORE, Map.of(), true, false);
+
+        ragService.ask(requestA);
+        String tenantAKey = cache.keySet().iterator().next();
+        String tenantBKey = tenantAKey.replace("qa:cache:v2:11:31:", "qa:cache:v2:12:31:");
+        cache.put(tenantBKey, cache.get(tenantAKey));
+
+        ragService.ask(requestB);
+
         verify(queryEngine, times(2)).retrieve(anyString(), any(RetrieveOptions.class));
     }
 }

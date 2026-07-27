@@ -21,6 +21,10 @@ public interface VectorStore {
      */
     void createCollection(String collectionName, int dimension);
 
+    default void createCollection(TenantVectorScope scope, int dimension) {
+        throw new UnsupportedOperationException("Tenant vector create is not supported by this adapter");
+    }
+
     /**
      * 检查集合是否存在
      *
@@ -29,6 +33,10 @@ public interface VectorStore {
      */
     boolean hasCollection(String collectionName);
 
+    default boolean hasCollection(TenantVectorScope scope) {
+        throw new UnsupportedOperationException("Tenant vector lookup is not supported by this adapter");
+    }
+
     /**
      * 删除向量集合
      *
@@ -36,6 +44,10 @@ public interface VectorStore {
      * @throws VectorStoreException 当删除失败时抛出
      */
     void dropCollection(String collectionName);
+
+    default void dropCollection(TenantVectorScope scope) {
+        throw new UnsupportedOperationException("Tenant vector drop is not supported by this adapter");
+    }
 
     /**
      * 插入或更新向量文档（批量）
@@ -46,6 +58,14 @@ public interface VectorStore {
      * @throws VectorStoreException 当操作失败时抛出
      */
     void upsert(String collectionName, List<VectorDocument> documents);
+
+    default void upsert(TenantVectorScope scope, List<VectorDocument> documents) {
+        throw new UnsupportedOperationException("Tenant vector upsert is not supported by this adapter");
+    }
+
+    default void upsert(TenantVectorScope scope, VectorDocument document) {
+        upsert(scope, List.of(document));
+    }
 
     /**
      * 插入或更新单个向量文档
@@ -70,6 +90,15 @@ public interface VectorStore {
     List<SearchResult> search(String collectionName, float[] queryVector, SearchOptions options);
 
     /**
+     * Tenant-scoped search entry point. Adapter implementations must override this
+     * during C13b; the temporary bridge is removed once the adapter contract lands.
+     */
+    default List<SearchResult> search(
+            TenantVectorScope scope, float[] queryVector, SearchOptions options) {
+        throw new UnsupportedOperationException("Tenant vector search is not supported by this adapter");
+    }
+
+    /**
      * 使用默认选项进行向量搜索
      *
      * @param collectionName 集合名称
@@ -90,6 +119,14 @@ public interface VectorStore {
      */
     void delete(String collectionName, List<String> ids);
 
+    default void delete(TenantVectorScope scope, List<String> ids) {
+        throw new UnsupportedOperationException("Tenant vector delete is not supported by this adapter");
+    }
+
+    default void delete(TenantVectorScope scope, String id) {
+        delete(scope, List.of(id));
+    }
+
     /**
      * 删除单个向量文档
      *
@@ -100,23 +137,13 @@ public interface VectorStore {
         delete(collectionName, List.of(id));
     }
 
-    /**
-     * 根据ID获取向量文档
-     *
-     * @param collectionName 集合名称
-     * @param id             文档ID
-     * @return 向量文档，如果不存在返回null
-     */
-    VectorDocument getById(String collectionName, String id);
+    default VectorDocument getById(TenantVectorScope scope, String id) {
+        throw new UnsupportedOperationException("Tenant vector get is not supported by this adapter");
+    }
 
-    /**
-     * 批量获取向量文档
-     *
-     * @param collectionName 集合名称
-     * @param ids            文档ID列表
-     * @return 向量文档列表
-     */
-    List<VectorDocument> getByIds(String collectionName, List<String> ids);
+    default List<VectorDocument> getByIds(TenantVectorScope scope, List<String> ids) {
+        throw new UnsupportedOperationException("Tenant vector get is not supported by this adapter");
+    }
 
     /**
      * 获取集合中的文档数量
@@ -125,6 +152,10 @@ public interface VectorStore {
      * @return 文档数量
      */
     long count(String collectionName);
+
+    default long count(TenantVectorScope scope) {
+        throw new UnsupportedOperationException("Tenant vector count is not supported by this adapter");
+    }
 
     /**
      * 获取向量存储类型名称

@@ -132,7 +132,6 @@ public class InMemoryVectorStore implements VectorStore {
         }
     }
 
-    @Override
     public VectorDocument getById(String collectionName, String id) {
         Collection collection = collections.get(collectionName);
         if (collection == null) {
@@ -141,7 +140,6 @@ public class InMemoryVectorStore implements VectorStore {
         return collection.documents.get(id);
     }
 
-    @Override
     public List<VectorDocument> getByIds(String collectionName, List<String> ids) {
         Collection collection = collections.get(collectionName);
         if (collection == null) {

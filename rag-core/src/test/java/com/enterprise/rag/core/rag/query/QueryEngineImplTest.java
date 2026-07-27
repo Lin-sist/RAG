@@ -11,6 +11,7 @@ import com.enterprise.rag.core.vectorstore.SearchOptions;
 import com.enterprise.rag.core.vectorstore.SearchResult;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -29,6 +31,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class QueryEngineImplTest {
+
+    private static final TenantVectorScope TEST_SCOPE = new TenantVectorScope(11L, 22L, "kb_test");
 
     private EmbeddingService embeddingService;
     private VectorStore vectorStore;
@@ -40,7 +44,7 @@ class QueryEngineImplTest {
         vectorStore = mock(VectorStore.class);
         queryEngine = new QueryEngineImpl(embeddingService, vectorStore);
 
-        when(embeddingService.embed(anyString())).thenReturn(new float[] { 0.1f, 0.2f, 0.3f });
+        when(embeddingService.embed(anyLong(), anyString())).thenReturn(new float[] { 0.1f, 0.2f, 0.3f });
     }
 
     @Test
@@ -48,11 +52,11 @@ class QueryEngineImplTest {
         List<SearchResult> results = List.of(
                 new SearchResult("a", "这是缓存实现细节说明", 0.90f, Map.of()),
                 new SearchResult("b", "本文介绍重排策略优化方法与实践", 0.70f, Map.of()));
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenReturn(results);
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class))).thenReturn(results);
 
         List<RetrievedContext> contexts = queryEngine.retrieve(
                 "重排优化",
-                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), true));
 
         assertEquals(2, contexts.size());
         assertEquals("b", contexts.get(0).source());
@@ -63,11 +67,11 @@ class QueryEngineImplTest {
         List<SearchResult> results = List.of(
                 new SearchResult("a", "mysql index tuning guide", 0.88f, Map.of()),
                 new SearchResult("b", "spring security authentication best practices", 0.72f, Map.of()));
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenReturn(results);
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class))).thenReturn(results);
 
         List<RetrievedContext> contexts = queryEngine.retrieve(
                 "spring security auth",
-                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), true));
 
         assertEquals(2, contexts.size());
         assertEquals("b", contexts.get(0).source());
@@ -75,8 +79,8 @@ class QueryEngineImplTest {
 
     @Test
     void shouldRewriteConversationalJwtQueryAndMergeResults() {
-        when(embeddingService.embed(anyString())).thenAnswer(invocation -> {
-            String query = invocation.getArgument(0, String.class).toLowerCase();
+        when(embeddingService.embed(anyLong(), anyString())).thenAnswer(invocation -> {
+            String query = invocation.getArgument(1, String.class).toLowerCase();
             if (query.contains("json web token")) {
                 return new float[] { 2.0f, 0.0f, 0.0f };
             }
@@ -86,7 +90,7 @@ class QueryEngineImplTest {
             return new float[] { 0.0f, 0.0f, 0.0f };
         });
 
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenAnswer(invocation -> {
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class))).thenAnswer(invocation -> {
             float[] queryVector = invocation.getArgument(1, float[].class);
             if (queryVector[0] == 2.0f) {
                 return List.of(
@@ -103,18 +107,18 @@ class QueryEngineImplTest {
 
         List<RetrievedContext> contexts = queryEngine.retrieve(
                 "什么是JWT？",
-                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), true));
 
         assertEquals(2, contexts.size());
         assertEquals("jwt-doc", contexts.get(0).source());
-        verify(embeddingService).embed("JWT");
-        verify(embeddingService).embed("json web token");
+        verify(embeddingService).embed(11L, "JWT");
+        verify(embeddingService).embed(11L, "json web token");
     }
 
     @Test
     void shouldLimitMergedResultsBackToRequestedTopK() {
-        when(embeddingService.embed(anyString())).thenAnswer(invocation -> {
-            String query = invocation.getArgument(0, String.class).toLowerCase();
+        when(embeddingService.embed(anyLong(), anyString())).thenAnswer(invocation -> {
+            String query = invocation.getArgument(1, String.class).toLowerCase();
             if (query.contains("json web token")) {
                 return new float[] { 2.0f, 0.0f, 0.0f };
             }
@@ -124,7 +128,7 @@ class QueryEngineImplTest {
             return new float[] { 0.0f, 0.0f, 0.0f };
         });
 
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenAnswer(invocation -> {
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class))).thenAnswer(invocation -> {
             float[] queryVector = invocation.getArgument(1, float[].class);
             if (queryVector[0] == 2.0f) {
                 return List.of(
@@ -141,7 +145,7 @@ class QueryEngineImplTest {
 
         List<RetrievedContext> contexts = queryEngine.retrieve(
                 "请介绍一下JWT",
-                new RetrieveOptions("kb_test", 2, 0.0f, Map.of(), true));
+                new RetrieveOptions(TEST_SCOPE, 2, 0.0f, Map.of(), true));
 
         assertEquals(2, contexts.size());
         assertEquals("b", contexts.get(0).source());
@@ -150,8 +154,8 @@ class QueryEngineImplTest {
 
     @Test
     void shouldRewriteExplanatoryHowQueryToPrincipleAndProcessVariants() {
-        when(embeddingService.embed(anyString())).thenAnswer(invocation -> {
-            String query = invocation.getArgument(0, String.class);
+        when(embeddingService.embed(anyLong(), anyString())).thenAnswer(invocation -> {
+            String query = invocation.getArgument(1, String.class);
             return switch (query) {
                 case "RAG" -> new float[] { 1.0f, 0.0f, 0.0f };
                 case "RAG 工作原理" -> new float[] { 2.0f, 0.0f, 0.0f };
@@ -160,7 +164,7 @@ class QueryEngineImplTest {
             };
         });
 
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenAnswer(invocation -> {
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class))).thenAnswer(invocation -> {
             float[] queryVector = invocation.getArgument(1, float[].class);
             if (queryVector[0] == 2.0f) {
                 return List.of(
@@ -181,13 +185,13 @@ class QueryEngineImplTest {
 
         List<RetrievedContext> contexts = queryEngine.retrieve(
                 "你认为RAG是如何运作的？",
-                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), true));
 
         assertEquals(3, contexts.size());
         assertEquals("rag-principle", contexts.get(0).source());
-        verify(embeddingService, times(1)).embed("RAG");
-        verify(embeddingService, times(1)).embed("RAG 工作原理");
-        verify(embeddingService, times(1)).embed("RAG 运行流程");
+        verify(embeddingService, times(1)).embed(11L, "RAG");
+        verify(embeddingService, times(1)).embed(11L, "RAG 工作原理");
+        verify(embeddingService, times(1)).embed(11L, "RAG 运行流程");
     }
 
     @Test
@@ -196,21 +200,21 @@ class QueryEngineImplTest {
         RetrievalProperties properties = new RetrievalProperties();
         queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties);
 
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenReturn(List.of(
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class))).thenReturn(List.of(
                 new SearchResult("vector-only", "向量召回靠前但不是关键词最佳证据", 0.95f, Map.of()),
                 new SearchResult("shared", "缓存穿透 是指查询不存在的数据导致请求打到数据库", 0.70f, Map.of())));
-        when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any())).thenReturn(List.of(
+        when(keywordIndex.search(any(TenantVectorScope.class), anyString(), org.mockito.ArgumentMatchers.anyInt(), any())).thenReturn(List.of(
                 new RetrievedContext("缓存穿透 是指查询不存在的数据导致请求打到数据库", "shared", 1.0f, Map.of())));
 
         RetrievalResult result = queryEngine.retrieveWithDiagnostics(
                 "缓存穿透",
-                new RetrieveOptions("kb_test", 2, 0.0f, Map.of(), false));
+                new RetrieveOptions(TEST_SCOPE, 2, 0.0f, Map.of(), false));
 
         assertEquals(2, result.contexts().size());
         assertEquals("shared", result.contexts().get(0).source());
         assertEquals("disabled", result.diagnostics().get("rerankEffectiveProvider"));
         assertEquals(0, result.diagnostics().get("rerankModelCallCount"));
-        verify(keywordIndex).search(eq("kb_test"), eq("缓存穿透"), eq(4), eq(Map.of()));
+        verify(keywordIndex).search(eq(TEST_SCOPE), eq("缓存穿透"), eq(4), eq(Map.of()));
     }
 
     @Test
@@ -218,21 +222,21 @@ class QueryEngineImplTest {
         KeywordIndex keywordIndex = mock(KeywordIndex.class);
         RetrievalProperties properties = new RetrievalProperties();
         queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties);
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class)))
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class)))
                 .thenThrow(VectorDependencyException.unavailable("search", new IllegalStateException("raw-marker")));
-        when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
+        when(keywordIndex.search(any(TenantVectorScope.class), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
                 .thenReturn(List.of(new RetrievedContext("关键词证据", "keyword-doc", 0.8f, Map.of())));
 
         RetrievalResult result = queryEngine.retrieveWithDiagnostics(
                 "什么是JWT？",
-                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), false));
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), false));
 
         assertEquals(List.of("keyword-doc"), result.contexts().stream().map(RetrievedContext::source).toList());
         assertEquals("keyword_only", result.diagnostics().get("retrievalMode"));
         assertEquals(true, result.diagnostics().get("retrievalDegraded"));
         assertEquals("milvus", result.diagnostics().get("degradedDependency"));
-        verify(vectorStore, times(1)).search(anyString(), any(float[].class), any(SearchOptions.class));
-        verify(keywordIndex, times(1)).search(eq("kb_test"), eq("什么是JWT？"), eq(10), eq(Map.of()));
+        verify(vectorStore, times(1)).search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class));
+        verify(keywordIndex, times(1)).search(eq(TEST_SCOPE), eq("什么是JWT？"), eq(10), eq(Map.of()));
     }
 
     @Test
@@ -244,15 +248,15 @@ class QueryEngineImplTest {
                 List.of(new HeuristicReranker()),
                 properties);
         queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties, registry);
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class)))
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class)))
                 .thenThrow(VectorDependencyException.unavailable("search", new IllegalStateException("raw-marker")));
-        when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
+        when(keywordIndex.search(any(TenantVectorScope.class), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
                 .thenReturn(List.of(new RetrievedContext(
                         "spring security authentication best practices", "keyword-doc", 0.8f, Map.of())));
 
         RetrievalResult result = queryEngine.retrieveWithDiagnostics(
                 "spring security auth",
-                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), true));
 
         assertEquals("keyword_only", result.diagnostics().get("retrievalMode"));
         assertEquals(true, result.diagnostics().get("retrievalDegraded"));
@@ -269,19 +273,19 @@ class QueryEngineImplTest {
         queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties);
         VectorDependencyException failure = VectorDependencyException.unavailable(
                 "search", new IllegalStateException("raw-marker"));
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenThrow(failure);
-        when(keywordIndex.search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class))).thenThrow(failure);
+        when(keywordIndex.search(any(TenantVectorScope.class), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
                 .thenReturn(List.of());
 
         VectorDependencyException actual = assertThrows(
                 VectorDependencyException.class,
                 () -> queryEngine.retrieveWithDiagnostics(
                         "什么是JWT？",
-                        new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), false)));
+                        new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), false)));
 
         assertEquals(VectorDependencyException.ERROR_CODE_UNAVAILABLE, actual.getErrorCode());
-        verify(vectorStore, times(1)).search(anyString(), any(float[].class), any(SearchOptions.class));
-        verify(keywordIndex, times(1)).search(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), any());
+        verify(vectorStore, times(1)).search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class));
+        verify(keywordIndex, times(1)).search(any(TenantVectorScope.class), anyString(), org.mockito.ArgumentMatchers.anyInt(), any());
     }
 
     @Test
@@ -295,13 +299,13 @@ class QueryEngineImplTest {
         queryEngine = new QueryEngineImpl(embeddingService, vectorStore, new com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex(),
                 properties, registry);
 
-        when(vectorStore.search(anyString(), any(float[].class), any(SearchOptions.class))).thenReturn(List.of(
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class))).thenReturn(List.of(
                 new SearchResult("a", "mysql index tuning guide", 0.88f, Map.of()),
                 new SearchResult("b", "spring security authentication best practices", 0.72f, Map.of())));
 
         RetrievalResult result = queryEngine.retrieveWithDiagnostics(
                 "spring security auth",
-                new RetrieveOptions("kb_test", 5, 0.0f, Map.of(), true));
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), true));
 
         assertEquals("b", result.contexts().get(0).source());
         assertEquals("model", result.diagnostics().get("rerankRequestedProvider"));
@@ -309,5 +313,25 @@ class QueryEngineImplTest {
         assertEquals(1, result.diagnostics().get("rerankFallbackCount"));
         assertEquals("not_configured", result.diagnostics().get("rerankFallbackReason"));
         assertEquals(0, result.diagnostics().get("rerankModelCallCount"));
+    }
+
+    @Test
+    void shouldPropagateTheSameTenantScopeToEmbeddingVectorAndKeywordRoutes() {
+        TenantVectorScope scope = new TenantVectorScope(11L, 31L, "kb_shared");
+        KeywordIndex keywordIndex = mock(KeywordIndex.class);
+        RetrievalProperties properties = new RetrievalProperties();
+        queryEngine = new QueryEngineImpl(embeddingService, vectorStore, keywordIndex, properties);
+        when(embeddingService.embed(eq(11L), anyString())).thenReturn(new float[] {0.1f, 0.2f});
+        when(vectorStore.search(eq(scope), any(float[].class), any(SearchOptions.class))).thenReturn(List.of());
+        when(keywordIndex.search(eq(scope), anyString(), org.mockito.ArgumentMatchers.anyInt(), any()))
+                .thenReturn(List.of());
+
+        queryEngine.retrieveWithDiagnostics(
+                "tenant scoped query",
+                new RetrieveOptions(scope, 5, 0.0f, Map.of(), false));
+
+        verify(embeddingService).embed(11L, "tenant scoped query");
+        verify(vectorStore).search(eq(scope), any(float[].class), any(SearchOptions.class));
+        verify(keywordIndex).search(eq(scope), eq("tenant scoped query"), eq(10), eq(Map.of()));
     }
 }

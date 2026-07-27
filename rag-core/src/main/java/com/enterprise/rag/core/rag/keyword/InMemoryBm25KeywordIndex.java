@@ -1,6 +1,7 @@
 package com.enterprise.rag.core.rag.keyword;
 
 import com.enterprise.rag.core.rag.model.RetrievedContext;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -33,11 +34,11 @@ public class InMemoryBm25KeywordIndex implements KeywordIndex {
     private final Map<String, CollectionIndex> collections = new ConcurrentHashMap<>();
 
     @Override
-    public void upsert(String collectionName, List<KeywordDocument> documents) {
-        if (collectionName == null || collectionName.isBlank() || documents == null || documents.isEmpty()) {
+    public void upsert(TenantVectorScope scope, List<KeywordDocument> documents) {
+        if (scope == null || documents == null || documents.isEmpty()) {
             return;
         }
-        CollectionIndex index = collections.computeIfAbsent(collectionName, ignored -> new CollectionIndex());
+        CollectionIndex index = collections.computeIfAbsent(scopeKey(scope), ignored -> new CollectionIndex());
         synchronized (index) {
             for (KeywordDocument document : documents) {
                 if (document != null && document.isValid()) {
@@ -46,12 +47,12 @@ public class InMemoryBm25KeywordIndex implements KeywordIndex {
             }
             index.recalculate();
         }
-        log.info("BM25 keyword index upserted: collection={}, docs={}", collectionName, documents.size());
+        log.info("BM25 keyword index upserted: tenantScoped=true, docs={}", documents.size());
     }
 
     @Override
-    public void rebuildCollection(String collectionName, List<KeywordDocument> documents) {
-        if (collectionName == null || collectionName.isBlank()) {
+    public void rebuildCollection(TenantVectorScope scope, List<KeywordDocument> documents) {
+        if (scope == null) {
             return;
         }
         CollectionIndex index = new CollectionIndex();
@@ -65,16 +66,16 @@ public class InMemoryBm25KeywordIndex implements KeywordIndex {
         synchronized (index) {
             index.recalculate();
         }
-        collections.put(collectionName, index);
-        log.info("BM25 keyword index rebuilt: collection={}, docs={}", collectionName, index.documents.size());
+        collections.put(scopeKey(scope), index);
+        log.info("BM25 keyword index rebuilt: tenantScoped=true, docs={}", index.documents.size());
     }
 
     @Override
-    public void delete(String collectionName, List<String> ids) {
-        if (collectionName == null || ids == null || ids.isEmpty()) {
+    public void delete(TenantVectorScope scope, List<String> ids) {
+        if (scope == null || ids == null || ids.isEmpty()) {
             return;
         }
-        CollectionIndex index = collections.get(collectionName);
+        CollectionIndex index = collections.get(scopeKey(scope));
         if (index == null) {
             return;
         }
@@ -86,24 +87,24 @@ public class InMemoryBm25KeywordIndex implements KeywordIndex {
             }
             index.recalculate();
         }
-        log.info("BM25 keyword index deleted: collection={}, ids={}", collectionName, ids.size());
+        log.info("BM25 keyword index deleted: tenantScoped=true, ids={}", ids.size());
     }
 
     @Override
-    public void dropCollection(String collectionName) {
-        if (collectionName != null) {
-            collections.remove(collectionName);
-            log.info("BM25 keyword index dropped: collection={}", collectionName);
+    public void dropCollection(TenantVectorScope scope) {
+        if (scope != null) {
+            collections.remove(scopeKey(scope));
+            log.info("BM25 keyword index dropped: tenantScoped=true");
         }
     }
 
     @Override
-    public List<RetrievedContext> search(String collectionName, String query, int topK, Map<String, Object> filter) {
-        if (collectionName == null || query == null || query.isBlank() || topK <= 0) {
+    public List<RetrievedContext> search(TenantVectorScope scope, String query, int topK, Map<String, Object> filter) {
+        if (scope == null || query == null || query.isBlank() || topK <= 0) {
             return List.of();
         }
 
-        CollectionIndex index = collections.get(collectionName);
+        CollectionIndex index = collections.get(scopeKey(scope));
         if (index == null || index.documents.isEmpty()) {
             return List.of();
         }
@@ -137,6 +138,10 @@ public class InMemoryBm25KeywordIndex implements KeywordIndex {
                 .limit(topK)
                 .map(item -> toRetrievedContext(item.document(), normalizedScore(item.score(), maxScore)))
                 .toList();
+    }
+
+    private String scopeKey(TenantVectorScope scope) {
+        return scope.tenantId() + ":" + scope.knowledgeBaseId();
     }
 
     private double bm25Score(CollectionIndex index, IndexedKeywordDocument document, Map<String, Integer> queryTerms) {

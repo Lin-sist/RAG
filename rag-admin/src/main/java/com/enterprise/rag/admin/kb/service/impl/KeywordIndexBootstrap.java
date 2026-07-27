@@ -8,6 +8,7 @@ import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.core.rag.keyword.KeywordDocument;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -36,7 +37,9 @@ public class KeywordIndexBootstrap {
         try {
             List<KnowledgeBase> knowledgeBases = knowledgeBaseMapper.selectList(null);
             for (KnowledgeBase knowledgeBase : knowledgeBases) {
-                if (knowledgeBase.getVectorCollection() == null || knowledgeBase.getVectorCollection().isBlank()) {
+                if (!"READY".equals(knowledgeBase.getVectorReadiness())
+                        || knowledgeBase.getVectorCollection() == null
+                        || knowledgeBase.getVectorCollection().isBlank()) {
                     continue;
                 }
                 rebuildCollection(knowledgeBase);
@@ -74,7 +77,8 @@ public class KeywordIndexBootstrap {
                         buildMetadata(knowledgeBase, document, chunk)));
             }
         }
-        keywordIndex.rebuildCollection(knowledgeBase.getVectorCollection(), keywordDocuments);
+        keywordIndex.rebuildCollection(new TenantVectorScope(
+                tenantId, knowledgeBase.getId(), knowledgeBase.getVectorCollection()), keywordDocuments);
         log.info("关键词 BM25 索引启动重建完成: kbId={}, collection={}, chunks={}",
                 knowledgeBase.getId(), knowledgeBase.getVectorCollection(), keywordDocuments.size());
     }

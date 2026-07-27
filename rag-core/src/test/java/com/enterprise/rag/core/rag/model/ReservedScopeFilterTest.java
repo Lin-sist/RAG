@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag.model;
 
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.core.vectorstore.SearchOptions;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -21,7 +22,7 @@ class ReservedScopeFilterTest {
     void qaRequestRejectsClientControlledTenantKnowledgeBaseAndCollectionAliases(String key) {
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> new QARequest(
-                        "question", "server-mapped-collection", 5, 0.3f,
+                        "question", new TenantVectorScope(1L, 1L, "server-mapped-collection"), 5, 0.3f,
                         Map.of(key, "forged"), true, false));
 
         assertEquals("RAG_SCOPE_FILTER_RESERVED", exception.getErrorCode());
@@ -32,7 +33,7 @@ class ReservedScopeFilterTest {
     void retrieveOptionsRejectsReservedScopeAliases(String key) {
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> new RetrieveOptions(
-                        "server-mapped-collection", 5, 0.3f,
+                        new TenantVectorScope(1L, 1L, "server-mapped-collection"), 5, 0.3f,
                         Map.of(key, "forged"), true));
 
         assertEquals("RAG_SCOPE_FILTER_RESERVED", exception.getErrorCode());

@@ -8,6 +8,7 @@ import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.impl.KeywordIndexBootstrap;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -39,7 +40,8 @@ class KeywordIndexBootstrapTenantEnforcementTest {
         verify(documentService).getChunksByDocumentId(77L, 20L);
         verify(documentService, never()).getByKnowledgeBaseId(10L);
         verify(documentService, never()).getChunksByDocumentId(20L);
-        verify(keywordIndex).rebuildCollection(eq("kb_vectors"), anyList());
+        verify(keywordIndex).rebuildCollection(
+                eq(new TenantVectorScope(77L, 10L, "kb_vectors")), anyList());
     }
 
     @Test
@@ -52,7 +54,8 @@ class KeywordIndexBootstrapTenantEnforcementTest {
 
         new KeywordIndexBootstrap(kbMapper, documentService, keywordIndex).rebuildKeywordIndex();
 
-        verify(keywordIndex, never()).rebuildCollection(eq("kb_vectors"), anyList());
+        verify(keywordIndex, never()).rebuildCollection(
+                eq(new TenantVectorScope(77L, 10L, "kb_vectors")), anyList());
     }
 
     private static KnowledgeBase knowledgeBase(long tenantId) {
@@ -60,6 +63,7 @@ class KeywordIndexBootstrapTenantEnforcementTest {
         kb.setId(10L);
         kb.setTenantId(tenantId);
         kb.setVectorCollection("kb_vectors");
+        kb.setVectorReadiness("READY");
         return kb;
     }
 

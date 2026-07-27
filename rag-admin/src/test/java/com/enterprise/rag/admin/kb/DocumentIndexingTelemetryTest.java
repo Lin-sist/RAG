@@ -20,6 +20,7 @@ import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorDocument;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.enterprise.rag.document.chunker.DocumentChunk;
 import com.enterprise.rag.document.chunker.DocumentChunkingProperties;
 import com.enterprise.rag.document.parser.DocumentParserFactory;
@@ -115,8 +116,9 @@ class DocumentIndexingTelemetryTest {
         when(documentProcessor.process(any())).thenReturn(result);
         when(documentService.getByKnowledgeBaseAndContentHash(77L, 10L, "hash-99"))
                 .thenReturn(Optional.empty());
-        when(knowledgeBaseService.getById(77L, 10L)).thenReturn(Optional.of(kb));
-        when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] {0.1f, 0.2f}));
+        TenantVectorScope vectorScope = new TenantVectorScope(77L, 10L, "kb_test");
+        when(knowledgeBaseService.requireReadyVectorScope(77L, 10L)).thenReturn(vectorScope);
+        when(embeddingService.embedBatch(eq(77L), anyList())).thenReturn(List.of(new float[] {0.1f, 0.2f}));
         doThrow(new IllegalStateException("raw-finalize-retry-message"))
                 .doNothing()
                 .when(finalizer).finalizeSql(
@@ -162,7 +164,7 @@ class DocumentIndexingTelemetryTest {
                 GenAiTelemetry.SpanNames.INDEX_FINALIZE)));
 
         ArgumentCaptor<List<VectorDocument>> vectors = ArgumentCaptor.forClass(List.class);
-        verify(vectorStore).upsert(eq("kb_test"), vectors.capture());
+        verify(vectorStore).upsert(eq(vectorScope), vectors.capture());
         Map<String, Object> metadata = vectors.getValue().get(0).metadata();
         assertEquals("task-99", metadata.get("ingestTaskId"));
         assertEquals(99L, metadata.get("documentId"));

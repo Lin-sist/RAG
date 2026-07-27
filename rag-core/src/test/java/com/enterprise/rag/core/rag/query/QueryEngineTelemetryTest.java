@@ -52,16 +52,20 @@ class QueryEngineTelemetryTest {
         KeywordIndex keywordIndex = mock(KeywordIndex.class);
         RetrievalProperties properties = new RetrievalProperties();
         RerankerRegistry registry = new RerankerRegistry(List.of(new HeuristicReranker()), properties);
-        when(embedding.embed(any())).thenReturn(new float[] {0.1f});
-        when(vectorStore.search(any(), any(float[].class), any(SearchOptions.class)))
+        when(embedding.embed(org.mockito.ArgumentMatchers.anyLong(), any())).thenReturn(new float[] {0.1f});
+        when(vectorStore.search(any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class),
+                any(float[].class), any(SearchOptions.class)))
                 .thenReturn(List.of(new SearchResult("shared", "content", 0.8f, Map.of())));
-        when(keywordIndex.search(any(), any(), any(Integer.class), any()))
+        when(keywordIndex.search(any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class),
+                any(), any(Integer.class), any()))
                 .thenReturn(List.of(new RetrievedContext("content", "shared", 0.9f, Map.of())));
         QueryEngineImpl engine = new QueryEngineImpl(
                 embedding, vectorStore, keywordIndex, properties, registry,
                 new GenAiTelemetry(openTelemetry));
 
-        engine.retrieveWithDiagnostics("RAG", new RetrieveOptions("kb", 2, 0.0f, Map.of(), false));
+        engine.retrieveWithDiagnostics("RAG", new RetrieveOptions(
+                new com.enterprise.rag.core.vectorstore.TenantVectorScope(1L, 1L, "kb"),
+                2, 0.0f, Map.of(), false));
 
         Set<String> names = exporter.getFinishedSpanItems().stream()
                 .map(span -> span.getName())
@@ -82,14 +86,17 @@ class QueryEngineTelemetryTest {
         properties.getHybrid().setEnabled(false);
         properties.getRerank().setProvider("nvidia");
         RerankerRegistry registry = new RerankerRegistry(List.of(new HeuristicReranker()), properties);
-        when(embedding.embed(any())).thenReturn(new float[] {0.1f});
-        when(vectorStore.search(any(), any(float[].class), any(SearchOptions.class)))
+        when(embedding.embed(org.mockito.ArgumentMatchers.anyLong(), any())).thenReturn(new float[] {0.1f});
+        when(vectorStore.search(any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class),
+                any(float[].class), any(SearchOptions.class)))
                 .thenReturn(List.of(new SearchResult("doc", "content", 0.8f, Map.of())));
         QueryEngineImpl engine = new QueryEngineImpl(
                 embedding, vectorStore, mock(KeywordIndex.class), properties, registry,
                 new GenAiTelemetry(openTelemetry));
 
-        engine.retrieveWithDiagnostics("RAG", new RetrieveOptions("kb", 2, 0.0f, Map.of(), true));
+        engine.retrieveWithDiagnostics("RAG", new RetrieveOptions(
+                new com.enterprise.rag.core.vectorstore.TenantVectorScope(1L, 1L, "kb"),
+                2, 0.0f, Map.of(), true));
 
         var rerank = exporter.getFinishedSpanItems().stream()
                 .filter(span -> GenAiTelemetry.SpanNames.RERANK.equals(span.getName()))

@@ -15,6 +15,7 @@ import com.enterprise.rag.core.rag.model.QAResponse;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.service.RAGService;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -132,6 +133,8 @@ class QAControllerTest {
 
                 RequestIdentity identity = new RequestIdentity(1001L, 11L);
                 when(currentUserService.requireIdentity(any())).thenReturn(identity);
+                when(knowledgeBaseService.requireReadyVectorScope(anyLong(), any(RequestIdentity.class)))
+                                .thenReturn(new TenantVectorScope(11L, 10L, "kb_test_vector"));
                 doReturn(KnowledgeBaseDTO.builder()
                                 .id(10L)
                                 .ownerId(1001L)

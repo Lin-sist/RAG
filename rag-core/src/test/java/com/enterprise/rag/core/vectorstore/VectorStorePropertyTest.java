@@ -29,7 +29,7 @@ class VectorStorePropertyTest {
             @ForAll("validVectorDocuments") List<VectorDocument> documents) {
         
         // Setup
-        VectorStore store = new InMemoryVectorStore();
+        InMemoryVectorStore store = new InMemoryVectorStore();
         store.createCollection(TEST_COLLECTION, TEST_DIMENSION);
         
         // Store documents
@@ -83,7 +83,7 @@ class VectorStorePropertyTest {
         }
         
         // Setup
-        VectorStore store = new InMemoryVectorStore();
+        InMemoryVectorStore store = new InMemoryVectorStore();
         store.createCollection(TEST_COLLECTION, TEST_DIMENSION);
         store.upsert(TEST_COLLECTION, documents);
         
@@ -127,7 +127,7 @@ class VectorStorePropertyTest {
         }
         
         // Setup
-        VectorStore store = new InMemoryVectorStore();
+        InMemoryVectorStore store = new InMemoryVectorStore();
         store.createCollection(TEST_COLLECTION, TEST_DIMENSION);
         store.upsert(TEST_COLLECTION, documents);
         
@@ -163,7 +163,7 @@ class VectorStorePropertyTest {
         }
         
         // Setup
-        VectorStore store = new InMemoryVectorStore();
+        InMemoryVectorStore store = new InMemoryVectorStore();
         store.createCollection(TEST_COLLECTION, TEST_DIMENSION);
         store.upsert(TEST_COLLECTION, documents);
         
@@ -206,7 +206,7 @@ class VectorStorePropertyTest {
             @ForAll("validVectorDocument") VectorDocument original) {
         
         // Setup
-        VectorStore store = new InMemoryVectorStore();
+        InMemoryVectorStore store = new InMemoryVectorStore();
         store.createCollection(TEST_COLLECTION, TEST_DIMENSION);
         
         // Insert original

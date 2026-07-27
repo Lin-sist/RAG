@@ -49,6 +49,21 @@ public interface DocumentChunkMapper extends BaseMapper<DocumentChunk> {
     int countActiveByTenantAndDocumentId(@Param("tenantId") long tenantId,
             @Param("documentId") long documentId);
 
+    @Select("""
+            SELECT dc.*
+              FROM document_chunk dc
+              JOIN document d
+                ON d.id = dc.document_id
+               AND d.tenant_id = dc.tenant_id
+               AND d.deleted = 0
+             WHERE dc.tenant_id = #{tenantId}
+               AND d.kb_id = #{kbId}
+               AND dc.deleted = 0
+             ORDER BY dc.document_id, dc.chunk_index
+            """)
+    List<DocumentChunk> selectByTenantAndKnowledgeBaseId(@Param("tenantId") long tenantId,
+            @Param("kbId") long kbId);
+
     @Insert("""
             INSERT INTO document_chunk
                 (tenant_id, document_id, vector_id, content, chunk_index, start_pos, end_pos, metadata)

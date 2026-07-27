@@ -8,6 +8,7 @@ import com.enterprise.rag.core.rag.prompt.PromptStrategy;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.service.RAGService;
 import com.enterprise.rag.core.rag.service.RAGServiceImpl;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.jqwik.api.*;
 import org.mockito.Mockito;
@@ -103,7 +104,7 @@ class RAGServicePropertyTest {
         );
         
         // Execute
-        QARequest request = QARequest.of(question, collectionName);
+        QARequest request = QARequest.of(question, scope(collectionName));
         QAResponse response = ragService.ask(request);
         
         // Verify response is successful
@@ -185,7 +186,7 @@ class RAGServicePropertyTest {
         );
         
         // First call - should not hit cache
-        QARequest request = QARequest.of(question, collectionName);
+        QARequest request = QARequest.of(question, scope(collectionName));
         QAResponse firstResponse = ragService.ask(request);
         
         // Verify first call was successful
@@ -243,7 +244,7 @@ class RAGServicePropertyTest {
         );
         
         // Execute
-        QARequest request = QARequest.of(question, collectionName);
+        QARequest request = QARequest.of(question, scope(collectionName));
         QAResponse response = ragService.ask(request);
         
         // Verify response indicates no result
@@ -283,7 +284,7 @@ class RAGServicePropertyTest {
         );
         
         // Test with empty question
-        QARequest emptyRequest = new QARequest("", collectionName, 5, Map.of(), true, false);
+        QARequest emptyRequest = new QARequest("", scope(collectionName), 5, Map.of(), true, false);
         QAResponse emptyResponse = ragService.ask(emptyRequest);
         
         assertThat(!emptyResponse.isSuccess())
@@ -291,7 +292,7 @@ class RAGServicePropertyTest {
                 .isTrue();
         
         // Test with blank question
-        QARequest blankRequest = new QARequest("   ", collectionName, 5, Map.of(), true, false);
+        QARequest blankRequest = new QARequest("   ", scope(collectionName), 5, Map.of(), true, false);
         QAResponse blankResponse = ragService.ask(blankRequest);
         
         assertThat(!blankResponse.isSuccess())
@@ -372,6 +373,10 @@ class RAGServicePropertyTest {
     private String truncate(String text, int maxLength) {
         if (text == null) return "";
         return text.length() > maxLength ? text.substring(0, maxLength) + "..." : text;
+    }
+
+    private TenantVectorScope scope(String collectionName) {
+        return new TenantVectorScope(1L, 1L, collectionName);
     }
 
     // ==================== Assertion Helper ====================

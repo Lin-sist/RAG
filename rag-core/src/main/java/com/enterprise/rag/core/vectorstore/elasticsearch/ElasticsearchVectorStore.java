@@ -280,7 +280,6 @@ public class ElasticsearchVectorStore implements VectorStore {
         }
     }
 
-    @Override
     public VectorDocument getById(String collectionName, String id) {
         try {
             GetResponse<Map> response = esClient.get(g -> g
@@ -297,7 +296,6 @@ public class ElasticsearchVectorStore implements VectorStore {
         }
     }
 
-    @Override
     public List<VectorDocument> getByIds(String collectionName, List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();

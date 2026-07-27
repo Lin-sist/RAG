@@ -56,7 +56,7 @@ class C5RecoveryMySqlTest {
 
     @Test
     void freshAndV1DatabasesMigrateToLatest() throws Exception {
-        assertEquals("11", currentMigrationVersion());
+        assertEquals("12", currentMigrationVersion());
 
         Flyway v1 = flyway(MigrationVersion.fromVersion("1"));
         v1.clean();
@@ -65,7 +65,7 @@ class C5RecoveryMySqlTest {
         latest.migrate();
         latest.validate();
 
-        assertEquals("11", currentMigrationVersion());
+        assertEquals("12", currentMigrationVersion());
     }
 
     @Test

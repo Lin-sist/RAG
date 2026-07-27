@@ -1,6 +1,7 @@
 package com.enterprise.rag.core.rag.keyword;
 
 import com.enterprise.rag.core.rag.model.RetrievedContext;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 
 import java.util.List;
 import java.util.Map;
@@ -10,23 +11,23 @@ import java.util.Map;
  */
 public class NoOpKeywordIndex implements KeywordIndex {
     @Override
-    public void upsert(String collectionName, List<KeywordDocument> documents) {
+    public void upsert(TenantVectorScope scope, List<KeywordDocument> documents) {
     }
 
     @Override
-    public void rebuildCollection(String collectionName, List<KeywordDocument> documents) {
+    public void rebuildCollection(TenantVectorScope scope, List<KeywordDocument> documents) {
     }
 
     @Override
-    public void delete(String collectionName, List<String> ids) {
+    public void delete(TenantVectorScope scope, List<String> ids) {
     }
 
     @Override
-    public void dropCollection(String collectionName) {
+    public void dropCollection(TenantVectorScope scope) {
     }
 
     @Override
-    public List<RetrievedContext> search(String collectionName, String query, int topK, Map<String, Object> filter) {
+    public List<RetrievedContext> search(TenantVectorScope scope, String query, int topK, Map<String, Object> filter) {
         return List.of();
     }
 }

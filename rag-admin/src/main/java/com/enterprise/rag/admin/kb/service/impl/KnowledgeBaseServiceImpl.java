@@ -18,6 +18,7 @@ import com.enterprise.rag.common.idempotency.Idempotent;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -40,6 +41,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
+    private static final String VECTOR_READY = "READY";
+    private static final String VECTOR_INITIALIZING = "INITIALIZING";
+
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final DocumentService documentService;
     private final KBPermissionService permissionService;
@@ -60,17 +64,25 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         kb.setTenantId(identity.tenantId());
         kb.setIsPublic(request.getIsPublic() != null ? request.getIsPublic() : false);
         kb.setDocumentCount(0);
+        kb.setVectorReadiness(VECTOR_INITIALIZING);
 
         // 生成唯一的向量集合名称
-        String collectionName = "kb_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-        kb.setVectorCollection(collectionName);
-
         knowledgeBaseMapper.insert(kb);
+
+        String collectionName = "tenant_" + identity.tenantId() + "_kb_" + kb.getId() + "_"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        kb.setVectorCollection(collectionName);
+        knowledgeBaseMapper.updateById(kb);
+        TenantVectorScope vectorScope = new TenantVectorScope(identity.tenantId(), kb.getId(), collectionName);
 
         // 创建向量集合（使用当前 Embedding 模型的实际维度）
         try {
             int dimension = embeddingService.getDimension();
-            vectorStore.createCollection(collectionName, dimension);
+            vectorStore.createCollection(vectorScope, dimension);
+            kb.setVectorReadiness(VECTOR_READY);
+            kb.setVectorSourceCollection(null);
+            kb.setVectorShadowCollection(null);
+            knowledgeBaseMapper.updateById(kb);
             log.info("Created vector collection: {} with dimension: {}", collectionName, dimension);
         } catch (VectorDependencyException e) {
             log.error("Vector collection create failed: dependency=milvus, operation={}, errorCategory={}, failMode={}",
@@ -87,8 +99,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     @Override
     public Optional<KnowledgeBaseDTO> getById(Long id) {
-        KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
-        return Optional.ofNullable(kb).map(this::toDTO);
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 
     @Override
@@ -101,6 +112,19 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public Optional<KnowledgeBaseDTO> getById(Long id, RequestIdentity identity) {
         KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(identity.tenantId(), id);
         return Optional.ofNullable(kb).map(value -> toDTO(value, identity.tenantId()));
+    }
+
+    @Override
+    public TenantVectorScope requireReadyVectorScope(long tenantId, Long id) {
+        KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(tenantId, id);
+        if (kb == null) {
+            throw new BusinessException("KB_001", "知识库不存在", HttpStatus.NOT_FOUND);
+        }
+        if (!VECTOR_READY.equals(kb.getVectorReadiness())
+                || kb.getVectorCollection() == null || kb.getVectorCollection().isBlank()) {
+            throw VectorDependencyException.indexNotReady("resolve_scope");
+        }
+        return new TenantVectorScope(tenantId, id, kb.getVectorCollection());
     }
 
     @Override
@@ -196,34 +220,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     @Transactional
     @Idempotent(keyPrefix = "kb:delete", required = false, ttlSeconds = 600)
     public void delete(Long id) {
-        KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
-        if (kb == null) {
-            return;
-        }
-
-        // 删除所有文档（级联删除向量数据）
-        documentService.deleteByKnowledgeBaseId(id);
-
-        // 删除所有权限记录
-        permissionService.deleteByKnowledgeBaseId(id);
-
-        // 删除向量集合
-        if (kb.getVectorCollection() != null) {
-            vectorStore.dropCollection(kb.getVectorCollection());
-            log.info("Dropped vector collection for knowledge base");
-        }
-
-        // 删除查询计数
-        try {
-            redisTemplate.delete(QUERY_COUNT_KEY_PREFIX + id);
-        } catch (Exception e) {
-            log.warn("Query count cleanup degraded: dependency=redis, subsystem=query_counter, "
-                            + "operation=delete, failMode=open, errorType={}",
-                    e.getClass().getSimpleName());
-        }
-
-        // 删除知识库记录
-        knowledgeBaseMapper.deleteById(id);
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 
     @Override
@@ -239,7 +236,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         permissionService.deleteByKnowledgeBaseId(identity.tenantId(), id);
 
         if (kb.getVectorCollection() != null) {
-            vectorStore.dropCollection(kb.getVectorCollection());
+            vectorStore.dropCollection(requireReadyVectorScope(identity.tenantId(), id));
             log.info("Dropped tenant-scoped vector collection for knowledge base");
         }
 
@@ -259,61 +256,12 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     @Override
     public boolean exists(Long id) {
-        return knowledgeBaseMapper.selectById(id) != null;
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 
     @Override
     public KnowledgeBaseStatistics getStatistics(Long id) {
-        KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
-        if (kb == null) {
-            throw new BusinessException("KB_001", "知识库不存在");
-        }
-
-        // 获取实际文档数量
-        int documentCount = documentService.countByKnowledgeBaseId(id);
-
-        // 获取向量数量
-        long vectorCount = 0;
-        if (kb.getVectorCollection() != null) {
-            try {
-                vectorCount = vectorStore.count(kb.getVectorCollection());
-            } catch (VectorDependencyException e) {
-                throw e;
-            } catch (Exception e) {
-                log.error("Vector count read failed: dependency=milvus, operation=count, failMode=closed, errorType={}",
-                        e.getClass().getSimpleName());
-                throw VectorDependencyException.unavailable("count", e);
-            }
-        }
-
-        // 获取查询次数
-        long queryCount = 0;
-        String countStr;
-        try {
-            countStr = redisTemplate.opsForValue().get(QUERY_COUNT_KEY_PREFIX + id);
-        } catch (Exception e) {
-            log.error("Query count read failed: dependency=redis, subsystem=query_counter, "
-                            + "operation=read, failMode=closed, errorType={}",
-                    e.getClass().getSimpleName());
-            throw RedisDependencyException.unavailable("query_counter", "read", e);
-        }
-        if (countStr != null) {
-            try {
-                queryCount = Long.parseLong(countStr);
-            } catch (NumberFormatException e) {
-                log.error("Query count deserialize failed: dependency=redis, subsystem=query_counter, "
-                                + "operation=deserialize, failMode=closed, errorType={}",
-                        e.getClass().getSimpleName());
-                throw RedisDependencyException.unavailable("query_counter", "deserialize", e);
-            }
-        }
-
-        return KnowledgeBaseStatistics.builder()
-                .kbId(id)
-                .documentCount(documentCount)
-                .vectorCount(vectorCount)
-                .queryCount(queryCount)
-                .build();
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 
     @Override
@@ -327,7 +275,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         long vectorCount = 0;
         if (kb.getVectorCollection() != null) {
             try {
-                vectorCount = vectorStore.count(kb.getVectorCollection());
+                vectorCount = vectorStore.count(requireReadyVectorScope(identity.tenantId(), id));
             } catch (VectorDependencyException e) {
                 throw e;
             } catch (Exception e) {

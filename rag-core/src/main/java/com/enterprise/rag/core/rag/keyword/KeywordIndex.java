@@ -1,6 +1,7 @@
 package com.enterprise.rag.core.rag.keyword;
 
 import com.enterprise.rag.core.rag.model.RetrievedContext;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 
 import java.util.List;
 import java.util.Map;
@@ -10,13 +11,44 @@ import java.util.Map;
  */
 public interface KeywordIndex {
 
-    void upsert(String collectionName, List<KeywordDocument> documents);
+    void upsert(TenantVectorScope scope, List<KeywordDocument> documents);
 
-    void rebuildCollection(String collectionName, List<KeywordDocument> documents);
+    void rebuildCollection(TenantVectorScope scope, List<KeywordDocument> documents);
 
-    void delete(String collectionName, List<String> ids);
+    void delete(TenantVectorScope scope, List<String> ids);
 
-    void dropCollection(String collectionName);
+    void dropCollection(TenantVectorScope scope);
 
-    List<RetrievedContext> search(String collectionName, String query, int topK, Map<String, Object> filter);
+    List<RetrievedContext> search(TenantVectorScope scope, String query, int topK, Map<String, Object> filter);
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    default void upsert(String collectionName, List<KeywordDocument> documents) {
+        throw new IllegalArgumentException("Tenant vector scope is required");
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    default void rebuildCollection(String collectionName, List<KeywordDocument> documents) {
+        throw new IllegalArgumentException("Tenant vector scope is required");
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    default void delete(String collectionName, List<String> ids) {
+        throw new IllegalArgumentException("Tenant vector scope is required");
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    default void dropCollection(String collectionName) {
+        throw new IllegalArgumentException("Tenant vector scope is required");
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    default List<RetrievedContext> search(
+            String collectionName, String query, int topK, Map<String, Object> filter) {
+        throw new IllegalArgumentException("Tenant vector scope is required");
+    }
 }

@@ -1,12 +1,14 @@
 package com.enterprise.rag.core.rag.model;
 
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
+
 import java.util.Map;
 
 /**
  * 问答请求记录类
  *
  * @param question       用户问题
- * @param collectionName 知识库集合名称
+ * @param scope          服务端解析的租户向量范围
  * @param topK           检索结果数量
  * @param minScore       最小相似度阈值
  * @param filter         元数据过滤条件
@@ -15,7 +17,7 @@ import java.util.Map;
  */
 public record QARequest(
         String question,
-        String collectionName,
+        TenantVectorScope scope,
         int topK,
         float minScore,
         Map<String, Object> filter,
@@ -23,7 +25,14 @@ public record QARequest(
         boolean stream) {
 
     public QARequest {
+        if (scope == null) {
+            throw new IllegalArgumentException("Tenant vector scope is required");
+        }
         filter = ReservedScopeFilterValidator.validateAndCopy(filter);
+    }
+
+    public String collectionName() {
+        return scope.collectionName();
     }
 
     /**
@@ -40,59 +49,116 @@ public record QARequest(
      * 向后兼容构造函数（不显式传入 minScore 时使用默认值）
      */
     public QARequest(String question,
-            String collectionName,
+            TenantVectorScope scope,
             int topK,
             Map<String, Object> filter,
             boolean enableCache,
             boolean stream) {
-        this(question, collectionName, topK, DEFAULT_MIN_SCORE, filter, enableCache, stream);
+        this(question, scope, topK, DEFAULT_MIN_SCORE, filter, enableCache, stream);
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    public QARequest(String question, String collectionName, int topK, float minScore,
+            Map<String, Object> filter, boolean enableCache, boolean stream) {
+        this(question, rejectUnscopedCollection(collectionName), topK, minScore, filter, enableCache, stream);
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    public QARequest(String question, String collectionName, int topK,
+            Map<String, Object> filter, boolean enableCache, boolean stream) {
+        this(question, rejectUnscopedCollection(collectionName), topK, DEFAULT_MIN_SCORE,
+                filter, enableCache, stream);
     }
 
     /**
      * 创建基本请求
      */
-    public static QARequest of(String question, String collectionName) {
-        return new QARequest(question, collectionName, DEFAULT_TOP_K, DEFAULT_MIN_SCORE, Map.of(), true, false);
+    public static QARequest of(String question, TenantVectorScope scope) {
+        return new QARequest(question, scope, DEFAULT_TOP_K, DEFAULT_MIN_SCORE, Map.of(), true, false);
     }
 
     /**
      * 创建指定topK的请求
      */
-    public static QARequest of(String question, String collectionName, int topK) {
-        return new QARequest(question, collectionName, topK, DEFAULT_MIN_SCORE, Map.of(), true, false);
+    public static QARequest of(String question, TenantVectorScope scope, int topK) {
+        return new QARequest(question, scope, topK, DEFAULT_MIN_SCORE, Map.of(), true, false);
     }
 
     /**
      * 创建流式请求
      */
-    public static QARequest stream(String question, String collectionName) {
-        return new QARequest(question, collectionName, DEFAULT_TOP_K, DEFAULT_MIN_SCORE, Map.of(), false, true);
+    public static QARequest stream(String question, TenantVectorScope scope) {
+        return new QARequest(question, scope, DEFAULT_TOP_K, DEFAULT_MIN_SCORE, Map.of(), false, true);
     }
 
     /**
      * 创建带参数的流式请求
      */
-    public static QARequest stream(String question, String collectionName, int topK,
+    public static QARequest stream(String question, TenantVectorScope scope, int topK,
             Map<String, Object> filter, boolean enableCache) {
-        return new QARequest(question, collectionName, topK, DEFAULT_MIN_SCORE, filter, enableCache, true);
+        return new QARequest(question, scope, topK, DEFAULT_MIN_SCORE, filter, enableCache, true);
     }
 
     /**
      * 创建带最小相似度阈值的流式请求
      */
     public static QARequest stream(String question,
-            String collectionName,
+            TenantVectorScope scope,
             int topK,
             float minScore,
             Map<String, Object> filter,
             boolean enableCache) {
-        return new QARequest(question, collectionName, topK, minScore, filter, enableCache, true);
+        return new QARequest(question, scope, topK, minScore, filter, enableCache, true);
     }
 
     /**
      * 创建带过滤条件的请求
      */
+    public static QARequest withFilter(String question, TenantVectorScope scope, Map<String, Object> filter) {
+        return new QARequest(question, scope, DEFAULT_TOP_K, DEFAULT_MIN_SCORE, filter, true, false);
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    public static QARequest of(String question, String collectionName) {
+        return of(question, rejectUnscopedCollection(collectionName));
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    public static QARequest of(String question, String collectionName, int topK) {
+        return of(question, rejectUnscopedCollection(collectionName), topK);
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    public static QARequest stream(String question, String collectionName) {
+        return stream(question, rejectUnscopedCollection(collectionName));
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    public static QARequest stream(String question, String collectionName, int topK,
+            Map<String, Object> filter, boolean enableCache) {
+        return stream(question, rejectUnscopedCollection(collectionName), topK, filter, enableCache);
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
+    public static QARequest stream(String question, String collectionName, int topK, float minScore,
+            Map<String, Object> filter, boolean enableCache) {
+        return stream(question, rejectUnscopedCollection(collectionName), topK, minScore, filter, enableCache);
+    }
+
+    /** @deprecated Raw collection names cannot establish tenant scope. */
+    @Deprecated(since = "C13b", forRemoval = false)
     public static QARequest withFilter(String question, String collectionName, Map<String, Object> filter) {
-        return new QARequest(question, collectionName, DEFAULT_TOP_K, DEFAULT_MIN_SCORE, filter, true, false);
+        return withFilter(question, rejectUnscopedCollection(collectionName), filter);
+    }
+
+    private static TenantVectorScope rejectUnscopedCollection(String collectionName) {
+        throw new IllegalArgumentException("Tenant vector scope is required");
     }
 }

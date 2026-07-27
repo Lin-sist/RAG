@@ -39,6 +39,18 @@ public class KnowledgeBase extends BaseEntity {
      */
     private String vectorCollection;
 
+    /** Runtime may use vectorCollection only while this state is READY. */
+    private String vectorReadiness;
+
+    private String vectorSourceCollection;
+    private String vectorShadowCollection;
+    private Long vectorExpectedCount;
+    private Long vectorObservedCount;
+    private Long vectorMigratedCount;
+    private Long vectorMissingCount;
+    private Long vectorMismatchCount;
+    private String vectorLastErrorCategory;
+
     /**
      * 文档数量
      */

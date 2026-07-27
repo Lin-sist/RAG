@@ -11,6 +11,7 @@ import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.query.RetrievalResult;
 import com.enterprise.rag.core.rag.service.RAGServiceImpl;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class RAGServiceImplTest {
+    private static final TenantVectorScope SCOPE = new TenantVectorScope(1L, 1L, "kb_rag");
 
     private QueryEngine queryEngine;
     private AnswerGenerator answerGenerator;
@@ -87,7 +89,7 @@ class RAGServiceImplTest {
                 .when(queryEngine).retrieveWithDiagnostics(
                         eq("RAG 工作原理"), org.mockito.ArgumentMatchers.<RetrieveOptions>any());
 
-        QAResponse response = ragService.ask(QARequest.of("你认为RAG是如何运作的？", "kb_rag"));
+        QAResponse response = ragService.ask(QARequest.of("你认为RAG是如何运作的？", SCOPE));
 
         assertTrue(response.hasResult());
         assertEquals(1, response.contexts().size());
@@ -105,7 +107,7 @@ class RAGServiceImplTest {
     void shouldNotRetryNonExplanatoryQuestionWhenInitialRetrievalIsEmpty() {
         when(queryEngine.retrieve(eq("RAG"), org.mockito.ArgumentMatchers.<RetrieveOptions>any())).thenReturn(List.of());
 
-        QAResponse response = ragService.ask(QARequest.of("RAG", "kb_rag"));
+        QAResponse response = ragService.ask(QARequest.of("RAG", SCOPE));
 
         assertTrue(!response.hasResult());
         verify(queryEngine, never()).retrieve(eq("RAG 工作原理"), org.mockito.ArgumentMatchers.<RetrieveOptions>any());
@@ -135,7 +137,7 @@ class RAGServiceImplTest {
                                 "errorType", "TimeoutException",
                                 "errorCategory", "timeout")));
 
-        QAResponse response = ragService.ask(QARequest.of("Spring Boot 的核心特性有哪些？", "kb_rag"));
+        QAResponse response = ragService.ask(QARequest.of("Spring Boot 的核心特性有哪些？", SCOPE));
 
         assertEquals("error", response.metadata().get("status"));
         assertEquals("openai", response.metadata().get("llmProvider"));
@@ -163,7 +165,7 @@ class RAGServiceImplTest {
         when(queryEngine.retrieve(eq("缓存故障时还能回答吗？"),
                 org.mockito.ArgumentMatchers.<RetrieveOptions>any())).thenReturn(List.of(context));
 
-        QAResponse response = ragService.ask(QARequest.of("缓存故障时还能回答吗？", "kb_rag"));
+        QAResponse response = ragService.ask(QARequest.of("缓存故障时还能回答吗？", SCOPE));
 
         assertTrue(response.hasResult());
         assertEquals("RAG 的工作原理是先检索再生成。", response.answer());
@@ -181,7 +183,7 @@ class RAGServiceImplTest {
         doThrow(new RuntimeException("synthetic redis marker"))
                 .when(redisUtil).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
 
-        QAResponse response = ragService.ask(QARequest.of("缓存写失败会丢答案吗？", "kb_rag"));
+        QAResponse response = ragService.ask(QARequest.of("缓存写失败会丢答案吗？", SCOPE));
 
         assertTrue(response.hasResult());
         assertEquals("RAG 的工作原理是先检索再生成。", response.answer());
@@ -205,7 +207,7 @@ class RAGServiceImplTest {
                 .when(queryEngine).retrieveWithDiagnostics(eq("Milvus 故障时还能回答吗？"),
                         org.mockito.ArgumentMatchers.<RetrieveOptions>any());
 
-        QAResponse response = ragService.ask(QARequest.of("Milvus 故障时还能回答吗？", "kb_rag"));
+        QAResponse response = ragService.ask(QARequest.of("Milvus 故障时还能回答吗？", SCOPE));
 
         assertTrue(response.hasResult());
         assertEquals("keyword_only", response.metadata().get("retrievalMode"));
@@ -224,7 +226,7 @@ class RAGServiceImplTest {
         doThrow(new RuntimeException("synthetic redis marker"))
                 .when(redisUtil).deleteByPattern(anyString());
 
-        ragService.evictCache("缓存失效", "kb_rag");
+        ragService.evictCache("缓存失效", SCOPE);
     }
 
     @Test
@@ -232,6 +234,6 @@ class RAGServiceImplTest {
         doThrow(new RuntimeException("synthetic redis marker"))
                 .when(redisUtil).deleteByPattern(anyString());
 
-        ragService.clearAllCache();
+        ragService.clearCache(SCOPE);
     }
 }

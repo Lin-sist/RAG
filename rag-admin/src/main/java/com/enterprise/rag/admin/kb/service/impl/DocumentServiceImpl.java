@@ -13,6 +13,7 @@ import com.enterprise.rag.admin.kb.storage.IndexInputStore;
 import com.enterprise.rag.admin.kb.storage.IndexInputStorageException;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +47,7 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public Optional<Document> getById(Long id) {
-        return Optional.ofNullable(documentMapper.selectById(id));
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 
     @Override
@@ -189,14 +190,16 @@ public class DocumentServiceImpl implements DocumentService {
 
         if (!vectorIds.isEmpty()) {
             KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(tenantId, document.getKbId());
-            if (kb != null && kb.getVectorCollection() != null) {
-                vectorStore.delete(kb.getVectorCollection(), vectorIds);
-                keywordIndex.delete(kb.getVectorCollection(), vectorIds);
+            if (kb != null && "READY".equals(kb.getVectorReadiness())
+                    && kb.getVectorCollection() != null) {
+                TenantVectorScope vectorScope = new TenantVectorScope(
+                        tenantId, document.getKbId(), kb.getVectorCollection());
+                vectorStore.delete(vectorScope, vectorIds);
+                keywordIndex.delete(vectorScope, vectorIds);
                 log.info("Deleted tenant-scoped vectors for document");
             } else {
-                log.warn("向量删除前无法确认 tenant 内知识库集合，拒绝继续删除文档: tenantId={}, kbId={}, documentId={}",
-                        tenantId, document.getKbId(), id);
-                throw VectorDependencyException.indexUnavailable("delete", null);
+                log.warn("向量删除前知识库 mapping/readiness 未就绪，拒绝继续删除文档: tenantScoped=true");
+                throw VectorDependencyException.indexNotReady("delete");
             }
         }
 
