@@ -13,11 +13,14 @@ import org.springframework.http.HttpStatus;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AuthorizationServiceTest {
+
+    private static final RequestIdentity IDENTITY = new RequestIdentity(2L, 11L);
 
     private final KnowledgeBaseService knowledgeBaseService = mock(KnowledgeBaseService.class);
     private final KBPermissionService kbPermissionService = mock(KBPermissionService.class);
@@ -33,10 +36,9 @@ class AuthorizationServiceTest {
                 .ownerId(1L)
                 .isPublic(true)
                 .build();
-        when(knowledgeBaseService.getById(100L)).thenReturn(Optional.of(kb));
-        when(kbPermissionService.canAccess(100L, 2L, true, 1L)).thenReturn(true);
+        when(knowledgeBaseService.getById(100L, IDENTITY)).thenReturn(Optional.of(kb));
 
-        KnowledgeBaseDTO result = authorizationService.requireKnowledgeBaseReadAccess(100L, 2L);
+        KnowledgeBaseDTO result = authorizationService.requireKnowledgeBaseReadAccess(100L, IDENTITY);
 
         assertEquals(100L, result.getId());
     }
@@ -48,11 +50,11 @@ class AuthorizationServiceTest {
                 .ownerId(1L)
                 .isPublic(false)
                 .build();
-        when(knowledgeBaseService.getById(100L)).thenReturn(Optional.of(kb));
-        when(kbPermissionService.canAccess(100L, 2L, false, 1L)).thenReturn(false);
+        when(knowledgeBaseService.getById(100L, IDENTITY)).thenReturn(Optional.of(kb));
+        when(kbPermissionService.hasPermission(11L, 100L, 2L, PermissionType.READ)).thenReturn(false);
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> authorizationService.requireKnowledgeBaseReadAccess(100L, 2L));
+                () -> authorizationService.requireKnowledgeBaseReadAccess(100L, IDENTITY));
 
         assertEquals("AUTH_004", exception.getErrorCode());
         assertEquals(HttpStatus.FORBIDDEN, exception.getHttpStatus());
@@ -65,10 +67,10 @@ class AuthorizationServiceTest {
                 .ownerId(1L)
                 .isPublic(false)
                 .build();
-        when(knowledgeBaseService.getById(100L)).thenReturn(Optional.of(kb));
-        when(kbPermissionService.hasPermission(100L, 2L, PermissionType.WRITE)).thenReturn(true);
+        when(knowledgeBaseService.getById(100L, IDENTITY)).thenReturn(Optional.of(kb));
+        when(kbPermissionService.hasPermission(11L, 100L, 2L, PermissionType.WRITE)).thenReturn(true);
 
-        KnowledgeBaseDTO result = authorizationService.requireKnowledgeBaseWriteAccess(100L, 2L);
+        KnowledgeBaseDTO result = authorizationService.requireKnowledgeBaseWriteAccess(100L, IDENTITY);
 
         assertEquals(100L, result.getId());
     }
@@ -80,11 +82,11 @@ class AuthorizationServiceTest {
                 .ownerId(1L)
                 .isPublic(false)
                 .build();
-        when(knowledgeBaseService.getById(100L)).thenReturn(Optional.of(kb));
-        when(kbPermissionService.hasPermission(100L, 2L, PermissionType.WRITE)).thenReturn(false);
+        when(knowledgeBaseService.getById(100L, IDENTITY)).thenReturn(Optional.of(kb));
+        when(kbPermissionService.hasPermission(11L, 100L, 2L, PermissionType.WRITE)).thenReturn(false);
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> authorizationService.requireKnowledgeBaseWriteAccess(100L, 2L));
+                () -> authorizationService.requireKnowledgeBaseWriteAccess(100L, IDENTITY));
 
         assertEquals("AUTH_004", exception.getErrorCode());
     }
@@ -96,9 +98,9 @@ class AuthorizationServiceTest {
                 .ownerId(2L)
                 .isPublic(false)
                 .build();
-        when(knowledgeBaseService.getById(100L)).thenReturn(Optional.of(kb));
+        when(knowledgeBaseService.getById(100L, IDENTITY)).thenReturn(Optional.of(kb));
 
-        KnowledgeBaseDTO result = authorizationService.requireKnowledgeBaseAdminAccess(100L, 2L);
+        KnowledgeBaseDTO result = authorizationService.requireKnowledgeBaseAdminAccess(100L, IDENTITY);
 
         assertEquals(100L, result.getId());
     }
@@ -110,11 +112,11 @@ class AuthorizationServiceTest {
                 .ownerId(1L)
                 .isPublic(false)
                 .build();
-        when(knowledgeBaseService.getById(100L)).thenReturn(Optional.of(kb));
-        when(kbPermissionService.hasPermission(100L, 2L, PermissionType.ADMIN)).thenReturn(false);
+        when(knowledgeBaseService.getById(100L, IDENTITY)).thenReturn(Optional.of(kb));
+        when(kbPermissionService.hasPermission(11L, 100L, 2L, PermissionType.ADMIN)).thenReturn(false);
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> authorizationService.requireKnowledgeBaseAdminAccess(100L, 2L));
+                () -> authorizationService.requireKnowledgeBaseAdminAccess(100L, IDENTITY));
 
         assertEquals("AUTH_004", exception.getErrorCode());
     }
@@ -125,25 +127,38 @@ class AuthorizationServiceTest {
                 .id(88L)
                 .userId(2L)
                 .build();
-        when(qaHistoryService.getById(88L)).thenReturn(Optional.of(history));
+        when(qaHistoryService.getById(IDENTITY, 88L)).thenReturn(Optional.of(history));
 
-        QAHistoryDTO result = authorizationService.requireHistoryOwner(88L, 2L);
+        QAHistoryDTO result = authorizationService.requireHistoryOwner(88L, IDENTITY);
 
         assertEquals(88L, result.getId());
     }
 
     @Test
-    void shouldDenyHistoryWhenCurrentUserIsNotOwner() {
-        QAHistoryDTO history = QAHistoryDTO.builder()
-                .id(88L)
-                .userId(1L)
-                .build();
-        when(qaHistoryService.getById(88L)).thenReturn(Optional.of(history));
+    void shouldReturnNotFoundWhenHistoryIsOutsideIdentityScope() {
+        when(qaHistoryService.getById(IDENTITY, 88L)).thenReturn(Optional.empty());
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> authorizationService.requireHistoryOwner(88L, 2L));
+                () -> authorizationService.requireHistoryOwner(88L, IDENTITY));
 
-        assertEquals("AUTH_004", exception.getErrorCode());
-        assertEquals(HttpStatus.FORBIDDEN, exception.getHttpStatus());
+        assertEquals("HISTORY_001", exception.getErrorCode());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getHttpStatus());
+    }
+
+    @Test
+    void unscopedAuthorizationEntrypointsFailClosed() {
+        assertAll(
+                () -> assertEquals("TENANT_IDENTITY_REQUIRED",
+                        assertThrows(IllegalStateException.class,
+                                () -> authorizationService.requireKnowledgeBaseReadAccess(100L, 2L)).getMessage()),
+                () -> assertEquals("TENANT_IDENTITY_REQUIRED",
+                        assertThrows(IllegalStateException.class,
+                                () -> authorizationService.requireKnowledgeBaseWriteAccess(100L, 2L)).getMessage()),
+                () -> assertEquals("TENANT_IDENTITY_REQUIRED",
+                        assertThrows(IllegalStateException.class,
+                                () -> authorizationService.requireKnowledgeBaseAdminAccess(100L, 2L)).getMessage()),
+                () -> assertEquals("TENANT_IDENTITY_REQUIRED",
+                        assertThrows(IllegalStateException.class,
+                                () -> authorizationService.requireHistoryOwner(88L, 2L)).getMessage()));
     }
 }

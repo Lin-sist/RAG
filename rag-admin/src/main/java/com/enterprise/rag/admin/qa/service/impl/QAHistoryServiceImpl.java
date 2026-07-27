@@ -9,6 +9,8 @@ import com.enterprise.rag.admin.qa.dto.SaveQAHistoryRequest;
 import com.enterprise.rag.admin.qa.entity.QAHistory;
 import com.enterprise.rag.admin.qa.mapper.QAHistoryMapper;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
+import com.enterprise.rag.admin.security.RequestIdentity;
+import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.core.rag.model.Citation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
 
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +39,15 @@ public class QAHistoryServiceImpl implements QAHistoryService {
     @Override
     @Transactional
     public QAHistoryDTO save(SaveQAHistoryRequest request) {
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    @Transactional
+    public QAHistoryDTO save(RequestIdentity identity, SaveQAHistoryRequest request) {
+        requireAuthenticatedUser(identity, request == null ? null : request.getUserId());
         QAHistory history = new QAHistory();
+        history.setTenantId(identity.tenantId());
         history.setUserId(request.getUserId());
         history.setKbId(request.getKbId());
         history.setQuestion(request.getQuestion());
@@ -66,18 +77,31 @@ public class QAHistoryServiceImpl implements QAHistoryService {
 
     @Override
     public Optional<QAHistoryDTO> getById(Long id) {
-        QAHistory history = qaHistoryMapper.selectById(id);
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public Optional<QAHistoryDTO> getById(RequestIdentity identity, Long id) {
+        requireIdentity(identity);
+        LambdaQueryWrapper<QAHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(QAHistory::getTenantId, identity.tenantId())
+                .eq(QAHistory::getUserId, identity.userId())
+                .eq(QAHistory::getId, id);
+        QAHistory history = qaHistoryMapper.selectOne(wrapper);
         return Optional.ofNullable(history).map(this::toDTO);
     }
 
     @Override
     public PageResult<QAHistoryDTO> getPage(QAHistoryPageRequest request) {
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public PageResult<QAHistoryDTO> getPage(RequestIdentity identity, QAHistoryPageRequest request) {
+        requireAuthenticatedUser(identity, request == null ? null : request.getUserId());
         LambdaQueryWrapper<QAHistory> wrapper = new LambdaQueryWrapper<>();
-        
-        // 添加过滤条件
-        if (request.getUserId() != null) {
-            wrapper.eq(QAHistory::getUserId, request.getUserId());
-        }
+        wrapper.eq(QAHistory::getTenantId, identity.tenantId())
+                .eq(QAHistory::getUserId, identity.userId());
         if (request.getKbId() != null) {
             wrapper.eq(QAHistory::getKbId, request.getKbId());
         }
@@ -99,32 +123,88 @@ public class QAHistoryServiceImpl implements QAHistoryService {
 
     @Override
     public long countByUserId(Long userId) {
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public long countByUserId(long tenantId, Long userId) {
+        requireTenantId(tenantId);
         LambdaQueryWrapper<QAHistory> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(QAHistory::getUserId, userId);
+        wrapper.eq(QAHistory::getTenantId, tenantId)
+                .eq(QAHistory::getUserId, userId);
         return qaHistoryMapper.selectCount(wrapper);
     }
 
     @Override
     public long countByKbId(Long kbId) {
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public long countByKbId(long tenantId, Long kbId) {
+        requireTenantId(tenantId);
         LambdaQueryWrapper<QAHistory> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(QAHistory::getKbId, kbId);
+        wrapper.eq(QAHistory::getTenantId, tenantId)
+                .eq(QAHistory::getKbId, kbId);
         return qaHistoryMapper.selectCount(wrapper);
     }
 
     @Override
     @Transactional
     public void delete(Long id) {
-        qaHistoryMapper.deleteById(id);
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    @Transactional
+    public void delete(RequestIdentity identity, Long id) {
+        requireIdentity(identity);
+        LambdaQueryWrapper<QAHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(QAHistory::getTenantId, identity.tenantId())
+                .eq(QAHistory::getUserId, identity.userId())
+                .eq(QAHistory::getId, id);
+        qaHistoryMapper.delete(wrapper);
         log.info("Deleted QA history: id={}", id);
     }
 
     @Override
     @Transactional
     public void deleteByUserId(Long userId) {
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    @Transactional
+    public void deleteByUserId(RequestIdentity identity) {
+        requireIdentity(identity);
         LambdaQueryWrapper<QAHistory> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(QAHistory::getUserId, userId);
+        wrapper.eq(QAHistory::getTenantId, identity.tenantId())
+                .eq(QAHistory::getUserId, identity.userId());
         int deleted = qaHistoryMapper.delete(wrapper);
-        log.info("Deleted {} QA history records for userId={}", deleted, userId);
+        log.info("Deleted {} QA history records for userId={}", deleted, identity.userId());
+    }
+
+    private void requireAuthenticatedUser(RequestIdentity identity, Long requestedUserId) {
+        requireIdentity(identity);
+        if (requestedUserId == null || requestedUserId.longValue() != identity.userId()) {
+            throw new BusinessException("AUTH_004", "无权访问该资源", HttpStatus.FORBIDDEN);
+        }
+    }
+
+    private void requireIdentity(RequestIdentity identity) {
+        if (identity == null) {
+            throw tenantIdentityRequired();
+        }
+    }
+
+    private void requireTenantId(long tenantId) {
+        if (tenantId <= 0) {
+            throw tenantIdentityRequired();
+        }
+    }
+
+    private IllegalStateException tenantIdentityRequired() {
+        return new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 
     /**

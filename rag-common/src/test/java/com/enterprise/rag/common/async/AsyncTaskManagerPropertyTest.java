@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 class AsyncTaskManagerPropertyTest {
 
+    private static final long TENANT_ID = 77L;
     private static StringRedisTemplate stringRedisTemplate;
     private static RedisAsyncTaskManager asyncTaskManager;
     private static boolean redisAvailable = false;
@@ -84,7 +85,7 @@ class AsyncTaskManagerPropertyTest {
             // 提交异步任务
             long startTime = System.currentTimeMillis();
 
-            TaskHandle<String> handle = asyncTaskManager.submit(uniqueTaskType, progressCallback -> {
+            TaskHandle<String> handle = asyncTaskManager.submit(TENANT_ID, uniqueTaskType, 42L, progressCallback -> {
                 taskStarted.countDown();
                 try {
                     // 等待测试完成验证后再完成任务
@@ -112,7 +113,7 @@ class AsyncTaskManagerPropertyTest {
                     .isNotEmpty();
 
             // 验证任务 ID 可用于状态查询
-            Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(handle.taskId());
+            Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(TENANT_ID, handle.taskId());
 
             Assertions.assertThat(statusOpt.isPresent())
                     .as("Task status should be queryable by task ID")
@@ -179,7 +180,7 @@ class AsyncTaskManagerPropertyTest {
 
         try {
             // 提交异步任务
-            TaskHandle<String> handle = asyncTaskManager.submit(uniqueTaskType, progressCallback -> {
+            TaskHandle<String> handle = asyncTaskManager.submit(TENANT_ID, uniqueTaskType, 42L, progressCallback -> {
                 // 更新进度
                 progressCallback.accept(AsyncTask.TaskProgress.of(50, "处理中"));
                 progressUpdated.set(true);
@@ -201,7 +202,7 @@ class AsyncTaskManagerPropertyTest {
             Thread.sleep(100);
 
             // 查询任务状态
-            Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(handle.taskId());
+            Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(TENANT_ID, handle.taskId());
 
             Assertions.assertThat(statusOpt.isPresent())
                     .as("Task status should be present")
@@ -238,7 +239,7 @@ class AsyncTaskManagerPropertyTest {
                         .isEqualTo(100);
 
                 // 验证可以获取结果
-                Optional<String> resultOpt = asyncTaskManager.getResult(handle.taskId(), String.class);
+                Optional<String> resultOpt = asyncTaskManager.getResult(TENANT_ID, handle.taskId(), String.class);
 
                 Assertions.assertThat(resultOpt.isPresent())
                         .as("Completed task should have result")
@@ -275,12 +276,12 @@ class AsyncTaskManagerPropertyTest {
         String nonExistentTaskId = "non-existent-" + UUID.randomUUID();
 
         // 不存在的任务 ID 应该返回 false
-        Assertions.assertThat(asyncTaskManager.exists(nonExistentTaskId))
+        Assertions.assertThat(asyncTaskManager.exists(TENANT_ID, nonExistentTaskId))
                 .as("Non-existent task should return false")
                 .isFalse();
 
         // 提交任务
-        TaskHandle<String> handle = asyncTaskManager.submit(uniqueTaskType, progressCallback -> {
+        TaskHandle<String> handle = asyncTaskManager.submit(TENANT_ID, uniqueTaskType, 42L, progressCallback -> {
             try {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
@@ -290,7 +291,7 @@ class AsyncTaskManagerPropertyTest {
         });
 
         // 提交后应该存在
-        Assertions.assertThat(asyncTaskManager.exists(handle.taskId()))
+        Assertions.assertThat(asyncTaskManager.exists(TENANT_ID, handle.taskId()))
                 .as("Submitted task should exist")
                 .isTrue();
 
@@ -302,14 +303,14 @@ class AsyncTaskManagerPropertyTest {
         }
 
         // 完成后仍然存在
-        Assertions.assertThat(asyncTaskManager.exists(handle.taskId()))
+        Assertions.assertThat(asyncTaskManager.exists(TENANT_ID, handle.taskId()))
                 .as("Completed task should still exist")
                 .isTrue();
 
         // 删除后不存在
-        asyncTaskManager.remove(handle.taskId());
+        asyncTaskManager.remove(TENANT_ID, handle.taskId());
 
-        Assertions.assertThat(asyncTaskManager.exists(handle.taskId()))
+        Assertions.assertThat(asyncTaskManager.exists(TENANT_ID, handle.taskId()))
                 .as("Removed task should not exist")
                 .isFalse();
     }
@@ -328,7 +329,7 @@ class AsyncTaskManagerPropertyTest {
         CountDownLatch progressChecked = new CountDownLatch(1);
 
         // 提交任务
-        TaskHandle<String> handle = asyncTaskManager.submit(uniqueTaskType, progressCallback -> {
+        TaskHandle<String> handle = asyncTaskManager.submit(TENANT_ID, uniqueTaskType, 42L, progressCallback -> {
             // 更新进度到 50%
             progressCallback.accept(AsyncTask.TaskProgress.of(50, "半程"));
 
@@ -351,7 +352,7 @@ class AsyncTaskManagerPropertyTest {
 
         try {
             // 查询状态
-            Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(handle.taskId());
+            Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(TENANT_ID, handle.taskId());
 
             if (statusOpt.isPresent()) {
                 TaskStatus status = statusOpt.get();

@@ -5,6 +5,7 @@ import com.enterprise.rag.admin.qa.service.QAFeedbackService;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
 import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
 import com.enterprise.rag.common.ratelimit.RateLimit;
@@ -60,7 +61,8 @@ public class HistoryController {
                         @Parameter(description = "每页大小") @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
-                Long userId = currentUserService.requireUserId(userDetails);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                Long userId = identity.userId();
                 log.debug("查询问答历史: userId={}, kbId={}, page={}, size={}", userId, kbId, page, size);
 
                 QAHistoryPageRequest request = new QAHistoryPageRequest();
@@ -69,7 +71,7 @@ public class HistoryController {
                 request.setPage(page);
                 request.setSize(size);
 
-                PageResult<QAHistoryDTO> result = qaHistoryService.getPage(request);
+                PageResult<QAHistoryDTO> result = qaHistoryService.getPage(identity, request);
                 return ResponseEntity.ok(ApiResponse.success(result));
         }
 
@@ -85,8 +87,8 @@ public class HistoryController {
         public ResponseEntity<ApiResponse<QAHistoryDTO>> getHistoryById(
                         @Parameter(description = "历史记录 ID", required = true) @PathVariable Long id,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                QAHistoryDTO history = authorizationService.requireHistoryOwner(id, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                QAHistoryDTO history = authorizationService.requireHistoryOwner(id, identity);
                 log.debug("获取问答历史详情: id={}", id);
                 return ResponseEntity.ok(ApiResponse.success(history));
         }
@@ -104,10 +106,10 @@ public class HistoryController {
         public ResponseEntity<ApiResponse<Void>> deleteHistory(
                         @Parameter(description = "历史记录 ID", required = true) @PathVariable Long id,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireHistoryOwner(id, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                authorizationService.requireHistoryOwner(id, identity);
                 log.info("删除问答历史: id={}", id);
-                qaHistoryService.delete(id);
+                qaHistoryService.delete(identity, id);
                 return ResponseEntity.ok(ApiResponse.success());
         }
 
@@ -127,13 +129,14 @@ public class HistoryController {
                         @Valid @RequestBody FeedbackRequest request,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
-                Long userId = currentUserService.requireUserId(userDetails);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                Long userId = identity.userId();
                 log.info("提交反馈: qaId={}, userId={}, rating={}", id, userId, request.rating());
 
-                authorizationService.requireHistoryOwner(id, userId);
+                authorizationService.requireHistoryOwner(id, identity);
 
                 // 检查是否已提交过反馈
-                if (qaFeedbackService.hasUserFeedback(id, userId)) {
+                if (qaFeedbackService.hasUserFeedback(identity, id)) {
                         throw new BusinessException("FEEDBACK_001", "您已对此问答提交过反馈");
                 }
 
@@ -143,7 +146,7 @@ public class HistoryController {
                 submitRequest.setRating(request.rating());
                 submitRequest.setComment(request.comment());
 
-                QAFeedbackDTO feedback = qaFeedbackService.submit(submitRequest);
+                QAFeedbackDTO feedback = qaFeedbackService.submit(identity, submitRequest);
                 log.info("反馈提交成功: feedbackId={}", feedback.getId());
 
                 return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(feedback));
@@ -161,11 +164,11 @@ public class HistoryController {
         public ResponseEntity<ApiResponse<List<QAFeedbackDTO>>> getFeedback(
                         @Parameter(description = "历史记录 ID", required = true) @PathVariable Long id,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireHistoryOwner(id, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                authorizationService.requireHistoryOwner(id, identity);
                 log.debug("获取问答反馈: qaId={}", id);
 
-                List<QAFeedbackDTO> feedbacks = qaFeedbackService.listByQaId(id);
+                List<QAFeedbackDTO> feedbacks = qaFeedbackService.listByQaId(identity, id);
                 return ResponseEntity.ok(ApiResponse.success(feedbacks));
         }
 
@@ -179,9 +182,10 @@ public class HistoryController {
         })
         public ResponseEntity<ApiResponse<List<QAFeedbackDTO>>> getMyFeedbacks(
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                Long userId = identity.userId();
                 log.debug("获取用户反馈: userId={}", userId);
-                List<QAFeedbackDTO> feedbacks = qaFeedbackService.listByUserId(userId);
+                List<QAFeedbackDTO> feedbacks = qaFeedbackService.listByUserId(identity);
                 return ResponseEntity.ok(ApiResponse.success(feedbacks));
         }
 

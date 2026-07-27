@@ -4,6 +4,7 @@ import com.enterprise.rag.admin.qa.dto.PageResult;
 import com.enterprise.rag.admin.qa.dto.QAHistoryDTO;
 import com.enterprise.rag.admin.qa.dto.QAHistoryPageRequest;
 import com.enterprise.rag.admin.qa.dto.SaveQAHistoryRequest;
+import com.enterprise.rag.admin.security.RequestIdentity;
 
 import java.util.Optional;
 
@@ -20,6 +21,10 @@ public interface QAHistoryService {
      */
     QAHistoryDTO save(SaveQAHistoryRequest request);
 
+    default QAHistoryDTO save(RequestIdentity identity, SaveQAHistoryRequest request) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
     /**
      * 根据ID获取历史记录
      *
@@ -27,6 +32,10 @@ public interface QAHistoryService {
      * @return 历史记录（可选）
      */
     Optional<QAHistoryDTO> getById(Long id);
+
+    default Optional<QAHistoryDTO> getById(RequestIdentity identity, Long id) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
 
     /**
      * 分页查询历史记录
@@ -36,6 +45,10 @@ public interface QAHistoryService {
      */
     PageResult<QAHistoryDTO> getPage(QAHistoryPageRequest request);
 
+    default PageResult<QAHistoryDTO> getPage(RequestIdentity identity, QAHistoryPageRequest request) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
     /**
      * 根据用户ID统计历史记录数量
      *
@@ -43,6 +56,10 @@ public interface QAHistoryService {
      * @return 记录数量
      */
     long countByUserId(Long userId);
+
+    default long countByUserId(long tenantId, Long userId) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
 
     /**
      * 根据知识库ID统计历史记录数量
@@ -52,6 +69,10 @@ public interface QAHistoryService {
      */
     long countByKbId(Long kbId);
 
+    default long countByKbId(long tenantId, Long kbId) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
     /**
      * 删除历史记录
      *
@@ -59,10 +80,18 @@ public interface QAHistoryService {
      */
     void delete(Long id);
 
+    default void delete(RequestIdentity identity, Long id) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
     /**
      * 根据用户ID删除所有历史记录
      *
      * @param userId 用户ID
      */
     void deleteByUserId(Long userId);
+
+    default void deleteByUserId(RequestIdentity identity) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
 }

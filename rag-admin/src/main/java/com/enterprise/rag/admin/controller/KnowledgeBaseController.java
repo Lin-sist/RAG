@@ -86,12 +86,10 @@ public class KnowledgeBaseController {
         public ResponseEntity<ApiResponse<KnowledgeBaseDTO>> getById(
                         @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireKnowledgeBaseReadAccess(id, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                KnowledgeBaseDTO knowledgeBase = authorizationService.requireKnowledgeBaseReadAccess(id, identity);
                 log.debug("获取知识库详情: id={}", id);
-                return knowledgeBaseService.getById(id)
-                                .map(kb -> ResponseEntity.ok(ApiResponse.success(kb)))
-                                .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在: " + id));
+                return ResponseEntity.ok(ApiResponse.success(knowledgeBase));
         }
 
         /**
@@ -104,9 +102,9 @@ public class KnowledgeBaseController {
         })
         public ResponseEntity<ApiResponse<List<KnowledgeBaseDTO>>> list(
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                log.debug("获取知识库列表: userId={}", userId);
-                List<KnowledgeBaseDTO> kbs = knowledgeBaseService.getAccessibleByUserId(userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                log.debug("获取知识库列表: userId={}", identity.userId());
+                List<KnowledgeBaseDTO> kbs = knowledgeBaseService.getAccessibleByIdentity(identity);
                 return ResponseEntity.ok(ApiResponse.success(kbs));
         }
 
@@ -124,10 +122,10 @@ public class KnowledgeBaseController {
                         @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
                         @Valid @RequestBody UpdateKnowledgeBaseRequest request,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireKnowledgeBaseAdminAccess(id, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                authorizationService.requireKnowledgeBaseAdminAccess(id, identity);
                 log.info("更新知识库请求: id={}", id);
-                KnowledgeBaseDTO kb = knowledgeBaseService.update(id, request);
+                KnowledgeBaseDTO kb = knowledgeBaseService.update(id, request, identity);
                 log.info("知识库更新成功: id={}", id);
                 return ResponseEntity.ok(ApiResponse.success(kb));
         }
@@ -145,10 +143,10 @@ public class KnowledgeBaseController {
         public ResponseEntity<ApiResponse<Void>> delete(
                         @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireKnowledgeBaseAdminAccess(id, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                authorizationService.requireKnowledgeBaseAdminAccess(id, identity);
                 log.info("删除知识库请求: id={}", id);
-                knowledgeBaseService.delete(id);
+                knowledgeBaseService.delete(id, identity);
                 log.info("知识库删除成功: id={}", id);
                 return ResponseEntity.ok(ApiResponse.success());
         }
@@ -165,10 +163,10 @@ public class KnowledgeBaseController {
         public ResponseEntity<ApiResponse<KnowledgeBaseStatistics>> getStatistics(
                         @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireKnowledgeBaseReadAccess(id, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                authorizationService.requireKnowledgeBaseReadAccess(id, identity);
                 log.debug("获取知识库统计: id={}", id);
-                KnowledgeBaseStatistics stats = knowledgeBaseService.getStatistics(id);
+                KnowledgeBaseStatistics stats = knowledgeBaseService.getStatistics(id, identity);
                 return ResponseEntity.ok(ApiResponse.success(stats));
         }
 
@@ -189,8 +187,9 @@ public class KnowledgeBaseController {
                         @Parameter(description = "文档标题（可选）") @RequestParam(value = "title", required = false) String title,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) throws IOException {
 
-                Long uploaderId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireKnowledgeBaseWriteAccess(id, uploaderId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                Long uploaderId = identity.userId();
+                authorizationService.requireKnowledgeBaseWriteAccess(id, identity);
 
                 // DOC-05: 基本校验（文件类型白名单和大小限制由 DocumentIndexingService 及 multipart 配置负责）
                 if (file.isEmpty()) {
@@ -204,7 +203,8 @@ public class KnowledgeBaseController {
                 log.info("文档上传请求: kbId={}, uploaderId={}", id, uploaderId);
 
                 // DOC-01: 索引编排完全委托给 DocumentIndexingService
-                DocumentUploadResponse response = documentIndexingService.submitIndexing(id, uploaderId, file, title);
+                DocumentUploadResponse response = documentIndexingService.submitIndexing(
+                                identity.tenantId(), id, uploaderId, file, title);
 
                 return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success(response));
         }
@@ -221,10 +221,10 @@ public class KnowledgeBaseController {
         public ResponseEntity<ApiResponse<List<Document>>> listDocuments(
                         @Parameter(description = "知识库 ID", required = true) @PathVariable Long id,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireKnowledgeBaseReadAccess(id, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                authorizationService.requireKnowledgeBaseReadAccess(id, identity);
                 log.debug("获取文档列表: kbId={}", id);
-                List<Document> documents = documentService.getByKnowledgeBaseId(id);
+                List<Document> documents = documentService.getByKnowledgeBaseId(identity.tenantId(), id);
                 return ResponseEntity.ok(ApiResponse.success(documents));
         }
 
@@ -242,21 +242,22 @@ public class KnowledgeBaseController {
                         @Parameter(description = "知识库 ID", required = true) @PathVariable Long kbId,
                         @Parameter(description = "文档 ID", required = true) @PathVariable Long docId,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
-                Long userId = currentUserService.requireUserId(userDetails);
-                authorizationService.requireKnowledgeBaseWriteAccess(kbId, userId);
+                RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+                authorizationService.requireKnowledgeBaseWriteAccess(kbId, identity);
 
-                var document = documentService.getById(docId)
-                                .orElseThrow(() -> new BusinessException("DOC_004", "文档不存在"));
+                var document = documentService.getById(identity.tenantId(), docId)
+                                .orElseThrow(() -> new BusinessException(
+                                                "DOC_004", "文档不存在", HttpStatus.NOT_FOUND));
                 if (!kbId.equals(document.getKbId())) {
                         throw new BusinessException("DOC_005", "文档不属于当前知识库");
                 }
 
                 log.info("删除文档请求: kbId={}, docId={}", kbId, docId);
-                boolean deleted = documentService.delete(docId);
+                boolean deleted = documentService.delete(identity.tenantId(), docId);
                 if (!deleted) {
                         throw new BusinessException("DOC_006", "文档删除失败，请重试");
                 }
-                knowledgeBaseService.updateDocumentCount(kbId, -1);
+                knowledgeBaseService.updateDocumentCount(identity.tenantId(), kbId, -1);
                 log.info("文档删除成功: docId={}", docId);
                 return ResponseEntity.ok(ApiResponse.success());
         }

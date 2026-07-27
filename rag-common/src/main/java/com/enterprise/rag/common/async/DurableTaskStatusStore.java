@@ -7,9 +7,13 @@ import java.util.Optional;
  */
 public interface DurableTaskStatusStore {
 
-    Optional<TaskStatus> find(String taskId);
+    Optional<TaskStatus> find(long tenantId, String taskId);
+
+    default Optional<TaskStatus> find(String taskId) {
+        return Optional.empty();
+    }
 
     static DurableTaskStatusStore empty() {
-        return taskId -> Optional.empty();
+        return (tenantId, taskId) -> Optional.empty();
     }
 }

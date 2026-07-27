@@ -244,28 +244,29 @@ class MilvusFailureSemanticsIT {
                 "doc-1", "hash-1", "synthetic content", List.of(chunk));
 
         when(parserFactory.isSupported("md")).thenReturn(true);
-        when(indexInputStore.put(any())).thenReturn(
-                new StoredIndexInput("objects/synthetic.bin", 17L, "synthetic-sha"));
-        when(indexInputStore.openVerified("objects/synthetic.bin", 17L, "synthetic-sha"))
+        when(indexInputStore.put(eq(77L), any())).thenReturn(
+                new StoredIndexInput("objects/v2/77/synthetic.bin", 17L, "synthetic-sha"));
+        when(indexInputStore.openVerified(77L, "objects/v2/77/synthetic.bin", 17L, "synthetic-sha"))
                 .thenReturn(new ByteArrayInputStream("synthetic content".getBytes()));
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(indexTaskLedger.createAccepted(101L, 20L)).thenReturn("task-101");
-        when(taskManager.submit(eq("task-101"), eq("DOCUMENT_INDEX"), eq(20L),
+        when(indexTaskLedger.createAccepted(77L, 101L, 20L)).thenReturn("task-101");
+        when(taskManager.submit(eq(77L), eq("task-101"), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-101", CompletableFuture.completedFuture(processed)));
         when(documentProcessor.process(any())).thenReturn(processed);
-        when(documentService.getByKnowledgeBaseAndContentHash(10L, "hash-1")).thenReturn(Optional.empty());
+        when(documentService.getByKnowledgeBaseAndContentHash(77L, 10L, "hash-1"))
+                .thenReturn(Optional.empty());
         when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
         doThrow(outage).when(unavailableVectorStore).upsert(eq(collection), anyList());
 
-        indexingService.submitIndexing(10L, 20L, file, "synthetic.md");
+        indexingService.submitIndexing(77L, 10L, 20L, file, "synthetic.md");
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
         verify(taskManager).submit(eq("task-101"), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
 
         assertThrows(RuntimeException.class, () -> taskCaptor.getValue().execute(progress -> {
         }));
         verify(unavailableVectorStore, times(1)).upsert(eq(collection), anyList());
-        verify(documentService).updateStatus(101L, DocumentStatus.FAILED.name());
+        verify(documentService).updateStatus(77L, 101L, DocumentStatus.FAILED.name());
         verify(documentService, never()).saveChunks(anyList());
     }
 

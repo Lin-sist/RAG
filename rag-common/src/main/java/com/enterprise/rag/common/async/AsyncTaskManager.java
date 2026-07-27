@@ -48,6 +48,11 @@ public interface AsyncTaskManager {
      */
     <T> TaskHandle<T> submit(String taskId, String taskType, Long ownerId, AsyncTask<T> task);
 
+    <T> TaskHandle<T> submit(long tenantId, String taskType, Long ownerId, AsyncTask<T> task);
+
+    <T> TaskHandle<T> submit(
+            long tenantId, String taskId, String taskType, Long ownerId, AsyncTask<T> task);
+
     /**
      * 提交简单的异步任务（无进度回调）
      *
@@ -77,6 +82,8 @@ public interface AsyncTaskManager {
      */
     Optional<TaskStatus> getStatus(String taskId);
 
+    Optional<TaskStatus> getStatus(long tenantId, String taskId);
+
     /**
      * 获取任务结果
      * <p>
@@ -90,6 +97,8 @@ public interface AsyncTaskManager {
      */
     <T> Optional<T> getResult(String taskId, Class<T> resultType);
 
+    <T> Optional<T> getResult(long tenantId, String taskId, Class<T> resultType);
+
     /**
      * 更新任务进度
      *
@@ -99,6 +108,8 @@ public interface AsyncTaskManager {
      */
     void updateProgress(String taskId, int progress, String message);
 
+    void updateProgress(long tenantId, String taskId, int progress, String message);
+
     /**
      * 取消任务
      *
@@ -106,6 +117,8 @@ public interface AsyncTaskManager {
      * @return 是否成功取消
      */
     boolean cancel(String taskId);
+
+    boolean cancel(long tenantId, String taskId);
 
     /**
      * 判断任务是否存在
@@ -115,10 +128,14 @@ public interface AsyncTaskManager {
      */
     boolean exists(String taskId);
 
+    boolean exists(long tenantId, String taskId);
+
     /**
      * 删除任务状态（用于清理）
      *
      * @param taskId 任务 ID
      */
     void remove(String taskId);
+
+    void remove(long tenantId, String taskId);
 }

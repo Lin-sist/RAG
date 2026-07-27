@@ -7,6 +7,7 @@ import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
 import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.query.RetrievalResult;
@@ -118,7 +119,7 @@ class QAControllerTest {
                 Document doc = new Document();
                 doc.setKbId(10L);
                 doc.setTitle("Spring Boot 入门测试文档.md");
-                when(documentService.getById(4L)).thenReturn(Optional.of(doc));
+                when(documentService.getById(11L, 4L)).thenReturn(Optional.of(doc));
 
                 qaController = new QAController(
                                 ragService,
@@ -129,7 +130,8 @@ class QAControllerTest {
                                 queryEngine,
                                 documentService);
 
-                when(currentUserService.requireUserId(any())).thenReturn(1001L);
+                RequestIdentity identity = new RequestIdentity(1001L, 11L);
+                when(currentUserService.requireIdentity(any())).thenReturn(identity);
                 doReturn(KnowledgeBaseDTO.builder()
                                 .id(10L)
                                 .ownerId(1001L)
@@ -137,7 +139,7 @@ class QAControllerTest {
                                 .isPublic(false)
                                 .build())
                                 .when(authorizationService)
-                                .requireKnowledgeBaseReadAccess(anyLong(), anyLong());
+                                .requireKnowledgeBaseReadAccess(anyLong(), any(RequestIdentity.class));
         }
 
         @Test
@@ -155,8 +157,8 @@ class QAControllerTest {
 
                 qaController.ask(request, userDetails);
 
-                verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
-                verify(qaHistoryService, times(1)).save(any());
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, times(1)).save(any(RequestIdentity.class), any());
         }
 
         @Test
@@ -180,8 +182,8 @@ class QAControllerTest {
                 assertEquals("error", responseEntity.getBody().getData().metadata().get("status"));
                 assertTrue(responseEntity.getBody().getData().citations().isEmpty());
                 assertTrue(responseEntity.getBody().getData().contexts().isEmpty());
-                verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
-                verify(qaHistoryService, never()).save(any());
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
         }
 
         @Test
@@ -204,8 +206,8 @@ class QAControllerTest {
                                 && qaRequest.minScore() == QARequest.DEFAULT_MIN_SCORE
                                 && qaRequest.enableCache() == false
                                 && qaRequest.filter().isEmpty()));
-                verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
-                verify(qaHistoryService, times(1)).save(argThat(saveReq -> saveReq != null
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, times(1)).save(any(RequestIdentity.class), argThat(saveReq -> saveReq != null
                                 && "什么是RAG".equals(saveReq.getQuestion())
                                 && "chunk-1chunk-2".equals(saveReq.getAnswer())));
         }
@@ -225,8 +227,8 @@ class QAControllerTest {
 
                 qaController.askStream(request, userDetails);
 
-                verify(knowledgeBaseService, times(1)).incrementQueryCount(10L);
-                verify(qaHistoryService, never()).save(any());
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
         }
 
         @Test
@@ -270,9 +272,9 @@ class QAControllerTest {
                 assertEquals("heuristic", data.diagnostics().get("rerankEffectiveProvider"));
                 assertEquals("timeout", data.diagnostics().get("rerankFallbackReason"));
                 assertEquals(true, queryEngineCalled.get());
-                verify(documentService, times(1)).getById(4L);
-                verify(knowledgeBaseService, times(0)).incrementQueryCount(anyLong());
-                verify(qaHistoryService, times(0)).save(any());
+                verify(documentService, times(1)).getById(11L, 4L);
+                verify(knowledgeBaseService, times(0)).incrementQueryCount(anyLong(), anyLong());
+                verify(qaHistoryService, times(0)).save(any(RequestIdentity.class), any());
                 verify(ragService, times(0)).ask(any());
                 verify(ragService, times(0)).askStream(any());
                 assertEquals("ok", data.status());
@@ -283,7 +285,7 @@ class QAControllerTest {
                 Document doc = new Document();
                 doc.setKbId(999L);
                 doc.setTitle("不应泄露的标题.md");
-                when(documentService.getById(4L)).thenReturn(Optional.of(doc));
+                when(documentService.getById(11L, 4L)).thenReturn(Optional.of(doc));
 
                 QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
                                 10L,
@@ -300,12 +302,12 @@ class QAControllerTest {
                 assertNotNull(responseEntity.getBody().getData());
                 assertEquals("0", responseEntity.getBody().getData().contexts().get(0).source());
                 assertEquals("0", responseEntity.getBody().getData().contexts().get(0).displaySource());
-                verify(documentService, times(1)).getById(4L);
+                verify(documentService, times(1)).getById(11L, 4L);
         }
 
         @Test
         void debugRetrieveShouldFallbackWhenDocumentLookupFails() {
-                when(documentService.getById(4L)).thenThrow(new IllegalStateException("db down"));
+                when(documentService.getById(11L, 4L)).thenThrow(new IllegalStateException("db down"));
 
                 QAController.RetrievalDebugRequest request = new QAController.RetrievalDebugRequest(
                                 10L,
@@ -322,7 +324,7 @@ class QAControllerTest {
                 assertNotNull(responseEntity.getBody().getData());
                 assertEquals("0", responseEntity.getBody().getData().contexts().get(0).source());
                 assertEquals("0", responseEntity.getBody().getData().contexts().get(0).displaySource());
-                verify(documentService, times(1)).getById(4L);
+                verify(documentService, times(1)).getById(11L, 4L);
         }
 
         @Test

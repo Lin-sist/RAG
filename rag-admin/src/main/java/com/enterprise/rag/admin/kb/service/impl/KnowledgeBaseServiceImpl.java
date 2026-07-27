@@ -21,6 +21,7 @@ import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -91,6 +92,18 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     }
 
     @Override
+    public Optional<KnowledgeBaseDTO> getById(long tenantId, Long id) {
+        KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(tenantId, id);
+        return Optional.ofNullable(kb).map(value -> toDTO(value, tenantId));
+    }
+
+    @Override
+    public Optional<KnowledgeBaseDTO> getById(Long id, RequestIdentity identity) {
+        KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(identity.tenantId(), id);
+        return Optional.ofNullable(kb).map(value -> toDTO(value, identity.tenantId()));
+    }
+
+    @Override
     public List<KnowledgeBaseDTO> getByOwnerId(Long userId) {
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBase::getOwnerId, userId)
@@ -103,20 +116,28 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     @Override
     public List<KnowledgeBaseDTO> getAccessibleByUserId(Long userId) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    public List<KnowledgeBaseDTO> getAccessibleByIdentity(RequestIdentity identity) {
         Set<Long> accessibleIds = new HashSet<>();
 
         // 获取用户拥有的知识库
         LambdaQueryWrapper<KnowledgeBase> ownedWrapper = new LambdaQueryWrapper<>();
-        ownedWrapper.eq(KnowledgeBase::getOwnerId, userId);
+        ownedWrapper.eq(KnowledgeBase::getTenantId, identity.tenantId())
+                .eq(KnowledgeBase::getOwnerId, identity.userId());
         knowledgeBaseMapper.selectList(ownedWrapper)
                 .forEach(kb -> accessibleIds.add(kb.getId()));
 
         // 获取用户有权限的知识库
-        accessibleIds.addAll(permissionService.getAccessibleKnowledgeBaseIds(userId));
+        accessibleIds.addAll(permissionService.getAccessibleKnowledgeBaseIds(
+                identity.tenantId(), identity.userId()));
 
         // 获取公开的知识库
         LambdaQueryWrapper<KnowledgeBase> publicWrapper = new LambdaQueryWrapper<>();
-        publicWrapper.eq(KnowledgeBase::getIsPublic, true);
+        publicWrapper.eq(KnowledgeBase::getTenantId, identity.tenantId())
+                .eq(KnowledgeBase::getIsPublic, true);
         knowledgeBaseMapper.selectList(publicWrapper)
                 .forEach(kb -> accessibleIds.add(kb.getId()));
 
@@ -126,11 +147,14 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         // 查询所有可访问的知识库
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(KnowledgeBase::getId, accessibleIds)
+        wrapper.eq(KnowledgeBase::getTenantId, identity.tenantId())
+                .in(KnowledgeBase::getId, accessibleIds)
                 .orderByDesc(KnowledgeBase::getCreatedAt);
         return knowledgeBaseMapper.selectList(wrapper)
                 .stream()
-                .map(this::toDTO)
+                .filter(kb -> kb.getTenantId() != null
+                        && kb.getTenantId() == identity.tenantId())
+                .map(kb -> toDTO(kb, identity.tenantId()))
                 .toList();
     }
 
@@ -138,9 +162,16 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     @Transactional
     @Idempotent(keyPrefix = "kb:update", required = false, ttlSeconds = 3600)
     public KnowledgeBaseDTO update(Long id, UpdateKnowledgeBaseRequest request) {
-        KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    @Transactional
+    @Idempotent(keyPrefix = "kb:update", required = false, ttlSeconds = 3600)
+    public KnowledgeBaseDTO update(Long id, UpdateKnowledgeBaseRequest request, RequestIdentity identity) {
+        KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(identity.tenantId(), id);
         if (kb == null) {
-            throw new BusinessException("KB_001", "知识库不存在");
+            throw new BusinessException("KB_001", "知识库不存在", HttpStatus.NOT_FOUND);
         }
 
         if (request.getName() != null) {
@@ -153,8 +184,12 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             kb.setIsPublic(request.getIsPublic());
         }
 
-        knowledgeBaseMapper.updateById(kb);
-        return toDTO(kb);
+        int updated = knowledgeBaseMapper.updateMutableFieldsByTenantAndId(
+                identity.tenantId(), id, kb.getName(), kb.getDescription(), kb.getIsPublic());
+        if (updated != 1) {
+            throw new BusinessException("KB_001", "知识库不存在", HttpStatus.NOT_FOUND);
+        }
+        return toDTO(kb, identity.tenantId());
     }
 
     @Override
@@ -189,6 +224,37 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         // 删除知识库记录
         knowledgeBaseMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    @Idempotent(keyPrefix = "kb:delete", required = false, ttlSeconds = 600)
+    public void delete(Long id, RequestIdentity identity) {
+        KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(identity.tenantId(), id);
+        if (kb == null) {
+            throw new BusinessException("KB_001", "知识库不存在", HttpStatus.NOT_FOUND);
+        }
+
+        documentService.deleteByKnowledgeBaseId(identity.tenantId(), id);
+        permissionService.deleteByKnowledgeBaseId(identity.tenantId(), id);
+
+        if (kb.getVectorCollection() != null) {
+            vectorStore.dropCollection(kb.getVectorCollection());
+            log.info("Dropped tenant-scoped vector collection for knowledge base");
+        }
+
+        try {
+            redisTemplate.delete(queryCountKey(identity.tenantId(), id));
+        } catch (Exception e) {
+            log.warn("Query count cleanup degraded: dependency=redis, subsystem=query_counter, "
+                            + "operation=delete, failMode=open, errorType={}",
+                    e.getClass().getSimpleName());
+        }
+
+        int deleted = knowledgeBaseMapper.deleteByTenantAndId(identity.tenantId(), id);
+        if (deleted != 1) {
+            throw new BusinessException("KB_001", "知识库不存在", HttpStatus.NOT_FOUND);
+        }
     }
 
     @Override
@@ -251,6 +317,56 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     }
 
     @Override
+    public KnowledgeBaseStatistics getStatistics(Long id, RequestIdentity identity) {
+        KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(identity.tenantId(), id);
+        if (kb == null) {
+            throw new BusinessException("KB_001", "知识库不存在", HttpStatus.NOT_FOUND);
+        }
+
+        int documentCount = documentService.countByKnowledgeBaseId(identity.tenantId(), id);
+        long vectorCount = 0;
+        if (kb.getVectorCollection() != null) {
+            try {
+                vectorCount = vectorStore.count(kb.getVectorCollection());
+            } catch (VectorDependencyException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("Vector count read failed: dependency=milvus, operation=count, failMode=closed, errorType={}",
+                        e.getClass().getSimpleName());
+                throw VectorDependencyException.unavailable("count", e);
+            }
+        }
+
+        long queryCount = 0;
+        String countStr;
+        try {
+            countStr = redisTemplate.opsForValue().get(queryCountKey(identity.tenantId(), id));
+        } catch (Exception e) {
+            log.error("Query count read failed: dependency=redis, subsystem=query_counter, "
+                            + "operation=read, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("query_counter", "read", e);
+        }
+        if (countStr != null) {
+            try {
+                queryCount = Long.parseLong(countStr);
+            } catch (NumberFormatException e) {
+                log.error("Query count deserialize failed: dependency=redis, subsystem=query_counter, "
+                                + "operation=deserialize, failMode=closed, errorType={}",
+                        e.getClass().getSimpleName());
+                throw RedisDependencyException.unavailable("query_counter", "deserialize", e);
+            }
+        }
+
+        return KnowledgeBaseStatistics.builder()
+                .kbId(id)
+                .documentCount(documentCount)
+                .vectorCount(vectorCount)
+                .queryCount(queryCount)
+                .build();
+    }
+
+    @Override
     @Transactional
     public void updateDocumentCount(Long id, int delta) {
         LambdaUpdateWrapper<KnowledgeBase> wrapper = new LambdaUpdateWrapper<>();
@@ -260,9 +376,20 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     }
 
     @Override
+    @Transactional
+    public void updateDocumentCount(long tenantId, Long id, int delta) {
+        knowledgeBaseMapper.updateDocumentCountByTenantAndId(tenantId, id, delta);
+    }
+
+    @Override
     public void incrementQueryCount(Long id) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    public void incrementQueryCount(long tenantId, Long id) {
         try {
-            redisTemplate.opsForValue().increment(QUERY_COUNT_KEY_PREFIX + id);
+            redisTemplate.opsForValue().increment(queryCountKey(tenantId, id));
         } catch (Exception e) {
             log.warn("Query count increment degraded: dependency=redis, subsystem=query_counter, "
                             + "operation=increment, failMode=open, errorType={}",
@@ -274,6 +401,19 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         // 使用实时查询的文档数量，而不是缓存的 documentCount 字段
         // 因为异步处理失败的文档不会递增计数器，删除失败文档却会递减，导致计数器漂移
         int realDocumentCount = documentService.countByKnowledgeBaseId(kb.getId());
+        return toDTO(kb, realDocumentCount);
+    }
+
+    private String queryCountKey(long tenantId, Long kbId) {
+        return QUERY_COUNT_KEY_PREFIX + "v2:" + tenantId + ":" + kbId;
+    }
+
+    private KnowledgeBaseDTO toDTO(KnowledgeBase kb, long tenantId) {
+        int realDocumentCount = documentService.countByKnowledgeBaseId(tenantId, kb.getId());
+        return toDTO(kb, realDocumentCount);
+    }
+
+    private KnowledgeBaseDTO toDTO(KnowledgeBase kb, int realDocumentCount) {
         return KnowledgeBaseDTO.builder()
                 .id(kb.getId())
                 .name(kb.getName())

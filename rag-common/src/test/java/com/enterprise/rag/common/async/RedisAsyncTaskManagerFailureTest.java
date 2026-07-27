@@ -26,6 +26,8 @@ import static org.mockito.Mockito.when;
 
 class RedisAsyncTaskManagerFailureTest {
 
+    private static final long TENANT_ID = 77L;
+
     private ValueOperations<String, String> valueOperations;
     private RedisAsyncTaskManager manager;
 
@@ -47,7 +49,7 @@ class RedisAsyncTaskManagerFailureTest {
                 .when(valueOperations).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
 
         RedisDependencyException exception = assertThrows(RedisDependencyException.class,
-                () -> manager.submit("INDEX", ignored -> {
+                () -> manager.submit(TENANT_ID, "INDEX", 42L, ignored -> {
                     operationCalls.incrementAndGet();
                     return "done";
                 }));
@@ -63,7 +65,7 @@ class RedisAsyncTaskManagerFailureTest {
                 .thenThrow(new RuntimeException("synthetic redis marker"));
 
         RedisDependencyException exception = assertThrows(RedisDependencyException.class,
-                () -> manager.getStatus("task-id"));
+                () -> manager.getStatus(TENANT_ID, "task-id"));
 
         assertEquals("read", exception.getOperation());
     }
@@ -79,7 +81,7 @@ class RedisAsyncTaskManagerFailureTest {
             return null;
         }).when(valueOperations).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
 
-        TaskHandle<String> handle = manager.submit("INDEX", ignored -> {
+        TaskHandle<String> handle = manager.submit(TENANT_ID, "INDEX", 42L, ignored -> {
             operationCalls.incrementAndGet();
             return "done";
         });
@@ -92,7 +94,7 @@ class RedisAsyncTaskManagerFailureTest {
     @Test
     void progressWriteFailureShouldRemainObservable() {
         Instant now = Instant.now();
-        String json = "{\"taskId\":\"task-id\",\"taskType\":\"INDEX\",\"state\":\"RUNNING\","
+        String json = "{\"tenantId\":77,\"taskId\":\"task-id\",\"taskType\":\"INDEX\",\"state\":\"RUNNING\","
                 + "\"progress\":10,\"message\":\"running\",\"result\":null,\"error\":null,"
                 + "\"createdAt\":" + now.toEpochMilli() + ",\"updatedAt\":"
                 + now.toEpochMilli() + ",\"ownerId\":null}";
@@ -101,7 +103,7 @@ class RedisAsyncTaskManagerFailureTest {
                 .when(valueOperations).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
 
         RedisDependencyException exception = assertThrows(RedisDependencyException.class,
-                () -> manager.updateProgress("task-id", 50, "synthetic progress"));
+                () -> manager.updateProgress(TENANT_ID, "task-id", 50, "synthetic progress"));
 
         assertEquals("write_running", exception.getOperation());
     }
@@ -110,8 +112,8 @@ class RedisAsyncTaskManagerFailureTest {
     void cancelledStateWriteFailureShouldNotReturnSuccess() throws Exception {
         TaskStatus running = new TaskStatus(
                 "task-id", "INDEX", TaskState.RUNNING, 10, "running", null, null,
-                Instant.now(), Instant.now(), null);
-        String json = "{\"taskId\":\"task-id\",\"taskType\":\"INDEX\",\"state\":\"RUNNING\","
+                Instant.now(), Instant.now(), null, TENANT_ID);
+        String json = "{\"tenantId\":77,\"taskId\":\"task-id\",\"taskType\":\"INDEX\",\"state\":\"RUNNING\","
                 + "\"progress\":10,\"message\":\"running\",\"result\":null,\"error\":null,"
                 + "\"createdAt\":" + running.createdAt().toEpochMilli() + ",\"updatedAt\":"
                 + running.updatedAt().toEpochMilli() + ",\"ownerId\":null}";
@@ -120,7 +122,7 @@ class RedisAsyncTaskManagerFailureTest {
                 .when(valueOperations).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
 
         RedisDependencyException exception = assertThrows(RedisDependencyException.class,
-                () -> manager.cancel("task-id"));
+                () -> manager.cancel(TENANT_ID, "task-id"));
 
         assertEquals("write_cancelled", exception.getOperation());
     }

@@ -7,6 +7,7 @@ import com.enterprise.rag.admin.kb.mapper.DocumentMapper;
 import com.enterprise.rag.admin.kb.mapper.DocumentChunkMapper;
 import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.entity.DocumentChunk;
+import com.enterprise.rag.document.chunker.DocumentChunkingProperties;
 import org.apache.ibatis.datasource.unpooled.UnpooledDataSource;
 import org.apache.ibatis.mapping.Environment;
 import org.apache.ibatis.session.SqlSession;
@@ -55,7 +56,7 @@ class C5RecoveryMySqlTest {
 
     @Test
     void freshAndV1DatabasesMigrateToLatest() throws Exception {
-        assertEquals("10", currentMigrationVersion());
+        assertEquals("11", currentMigrationVersion());
 
         Flyway v1 = flyway(MigrationVersion.fromVersion("1"));
         v1.clean();
@@ -64,7 +65,7 @@ class C5RecoveryMySqlTest {
         latest.migrate();
         latest.validate();
 
-        assertEquals("10", currentMigrationVersion());
+        assertEquals("11", currentMigrationVersion());
     }
 
     @Test
@@ -74,6 +75,14 @@ class C5RecoveryMySqlTest {
         v7.migrate();
         try (Connection connection = MYSQL.createConnection("");
                 Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO `user` (id, username, password_hash, enabled)
+                    VALUES (20, 'legacy-recovery-owner', 'test-only', 1)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO knowledge_base (id, name, owner_id, vector_collection)
+                    VALUES (10, 'legacy-recovery-kb', 20, 'legacy_recovery_kb')
+                    """);
             statement.executeUpdate("""
                     INSERT INTO document
                         (id, kb_id, uploader_id, title, file_path, file_type, status,
@@ -89,6 +98,17 @@ class C5RecoveryMySqlTest {
             statement.executeUpdate("""
                     INSERT INTO async_task (task_id, task_type, status, progress)
                     VALUES ('legacy-generic-task', 'LEGACY_GENERIC', 'PENDING', 0)
+                    """);
+        }
+
+        Flyway v10 = flyway(MigrationVersion.fromVersion("10"));
+        v10.migrate();
+        try (Connection connection = MYSQL.createConnection("");
+                Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    UPDATE async_task
+                    SET owner_id = 20
+                    WHERE task_id = 'legacy-generic-task'
                     """);
         }
 
@@ -124,12 +144,14 @@ class C5RecoveryMySqlTest {
 
     @Test
     void twoClaimantsHeartbeatBackoffAndAttemptExhaustionUseMySqlFacts() throws Exception {
+        long tenantId = legacyTenantId();
         try (Connection connection = MYSQL.createConnection("");
                 Statement statement = connection.createStatement()) {
             statement.executeUpdate("""
                     INSERT INTO async_task
-                        (task_id, task_type, status, progress, execution_phase, attempt_count)
-                    VALUES ('task-c5-real', 'DOCUMENT_INDEX', 'RUNNING', 30,
+                        (tenant_id, task_id, task_type, status, progress, execution_phase, attempt_count)
+                    VALUES ((SELECT id FROM tenant WHERE code = 'legacy-default'),
+                            'task-c5-real', 'DOCUMENT_INDEX', 'RUNNING', 30,
                             'SAFE_PRE_VECTOR', 0)
                     """);
         }
@@ -138,8 +160,8 @@ class C5RecoveryMySqlTest {
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            Future<Boolean> workerA = pool.submit(() -> claim(factory, start, "worker-a"));
-            Future<Boolean> workerB = pool.submit(() -> claim(factory, start, "worker-b"));
+            Future<Boolean> workerA = pool.submit(() -> claim(factory, start, tenantId, "worker-a"));
+            Future<Boolean> workerB = pool.submit(() -> claim(factory, start, tenantId, "worker-b"));
             start.countDown();
             assertEquals(1, List.of(workerA.get(), workerB.get()).stream().filter(Boolean::booleanValue).count());
         } finally {
@@ -158,8 +180,8 @@ class C5RecoveryMySqlTest {
 
         try (SqlSession session = factory.openSession(true)) {
             IndexTaskMapper mapper = session.getMapper(IndexTaskMapper.class);
-            assertEquals(0, mapper.heartbeat("task-c5-real", "not-owner", 300));
-            assertEquals(1, mapper.heartbeat("task-c5-real", owner, 300));
+            assertEquals(0, mapper.heartbeat(tenantId, "task-c5-real", "not-owner", 300));
+            assertEquals(1, mapper.heartbeat(tenantId, "task-c5-real", owner, 300));
         }
         try (Connection connection = MYSQL.createConnection("");
                 Statement statement = connection.createStatement()) {
@@ -168,11 +190,11 @@ class C5RecoveryMySqlTest {
         }
         try (SqlSession session = factory.openSession(true)) {
             IndexTaskMapper mapper = session.getMapper(IndexTaskMapper.class);
-            assertEquals(0, mapper.heartbeat("task-c5-real", owner, 300));
-            assertEquals(1, mapper.claim("task-c5-real", "worker-retry", 300, 3));
+            assertEquals(0, mapper.heartbeat(tenantId, "task-c5-real", owner, 300));
+            assertEquals(1, mapper.claim(tenantId, "task-c5-real", "worker-retry", 300, 3));
             assertEquals(1, mapper.scheduleRetry(
-                    "task-c5-real", "worker-retry", "INDEX_TASK_RECOVERY_FAILED", 30));
-            assertEquals(0, mapper.claim("task-c5-real", "worker-too-early", 300, 3));
+                    tenantId, "task-c5-real", "worker-retry", "INDEX_TASK_RECOVERY_FAILED", 30));
+            assertEquals(0, mapper.claim(tenantId, "task-c5-real", "worker-too-early", 300, 3));
         }
         try (Connection connection = MYSQL.createConnection("");
                 Statement statement = connection.createStatement()) {
@@ -181,9 +203,9 @@ class C5RecoveryMySqlTest {
         }
         try (SqlSession session = factory.openSession(true)) {
             IndexTaskMapper mapper = session.getMapper(IndexTaskMapper.class);
-            assertEquals(1, mapper.claim("task-c5-real", "worker-final", 300, 3));
+            assertEquals(1, mapper.claim(tenantId, "task-c5-real", "worker-final", 300, 3));
             assertEquals(1, mapper.markAttemptsExhausted(
-                    "task-c5-real", "worker-final", "INDEX_TASK_RECOVERY_FAILED"));
+                    tenantId, "task-c5-real", "worker-final", "INDEX_TASK_RECOVERY_FAILED"));
             assertFalse(mapper.scanClaimable(20, 3).stream()
                     .anyMatch(task -> "task-c5-real".equals(task.getTaskId())));
         }
@@ -201,7 +223,44 @@ class C5RecoveryMySqlTest {
     }
 
     @Test
+    void tenantScopedLedgerPersistsFindsAndTransitionsOnlyWithinTenant() throws Exception {
+        long tenantId = legacyTenantId();
+        try (SqlSession session = sqlSessionFactory().openSession(true)) {
+            MySqlIndexTaskLedger ledger = new MySqlIndexTaskLedger(
+                    session.getMapper(IndexTaskMapper.class), new DocumentChunkingProperties());
+
+            String taskId = ledger.createAccepted(tenantId, null, null);
+            IndexTaskRecord accepted = ledger.find(tenantId, taskId).orElseThrow();
+            assertEquals(tenantId, accepted.getTenantId());
+            assertTrue(ledger.find(tenantId + 999, taskId).isEmpty());
+            assertThrows(IllegalStateException.class,
+                    () -> ledger.markSafePreVector(tenantId + 999, taskId));
+
+            ledger.markSafePreVector(tenantId, taskId);
+            ledger.markVectorInFlight(tenantId, taskId, "hash-ledger", 1);
+            ledger.markVectorConfirmed(tenantId, taskId);
+            ledger.markFinalizing(tenantId, taskId);
+            ledger.markCompleted(tenantId, taskId);
+            IndexTaskRecord completed = ledger.find(tenantId, taskId).orElseThrow();
+            assertEquals(IndexTaskStatus.COMPLETED.name(), completed.getStatus());
+            assertEquals(IndexTaskPhase.TERMINAL.name(), completed.getExecutionPhase());
+
+            String rejectedTaskId = ledger.createAccepted(tenantId, null, null);
+            ledger.markAcceptanceFailed(tenantId, rejectedTaskId, "TASK_PROJECTION_FAILED");
+            assertEquals(IndexTaskStatus.FAILED.name(),
+                    ledger.find(tenantId, rejectedTaskId).orElseThrow().getStatus());
+
+            String reconciliationTaskId = ledger.createAccepted(tenantId, null, null);
+            ledger.markReconciliationRequired(
+                    tenantId, reconciliationTaskId, "PREPARED_FACTS_MISMATCH");
+            assertEquals(IndexTaskStatus.RECONCILIATION_REQUIRED.name(),
+                    ledger.find(tenantId, reconciliationTaskId).orElseThrow().getStatus());
+        }
+    }
+
+    @Test
     void sqlFinalizerIsIdempotentAndAllFactsCanRollbackTogether() throws Exception {
+        long tenantId = legacyTenantId();
         try (Connection connection = MYSQL.createConnection("");
                 Statement statement = connection.createStatement()) {
             statement.executeUpdate("""
@@ -213,23 +272,25 @@ class C5RecoveryMySqlTest {
                     """);
             statement.executeUpdate("""
                     INSERT INTO document
-                        (id, kb_id, uploader_id, title, file_path, file_type, status,
+                        (id, tenant_id, kb_id, uploader_id, title, file_path, file_type, status,
                          input_size_bytes, input_sha256, input_state)
-                    VALUES (800, 800, 20, 'finalize', 'objects/finalize', 'md', 'PROCESSING',
+                    VALUES (800, (SELECT id FROM tenant WHERE code = 'legacy-default'),
+                            800, 20, 'finalize', 'objects/finalize', 'md', 'PROCESSING',
                             12, REPEAT('b', 64), 'AVAILABLE')
                     """);
             statement.executeUpdate("""
                     INSERT INTO async_task
-                        (task_id, task_type, status, progress, document_id,
+                        (tenant_id, task_id, task_type, status, progress, document_id, owner_id,
                          execution_phase, attempt_count)
-                    VALUES ('task-finalize-real', 'DOCUMENT_INDEX', 'RUNNING', 85, 800,
+                    VALUES ((SELECT id FROM tenant WHERE code = 'legacy-default'),
+                            'task-finalize-real', 'DOCUMENT_INDEX', 'RUNNING', 85, 800, 20,
                             'FINALIZING', 1)
                     """);
         }
         DocumentChunk chunk = chunk(800L, "vector-800-0");
         SqlSessionFactory factory = sqlSessionFactory();
-        finalizeAndCommit(factory, "task-finalize-real", 800L, 800L, "hash-800", chunk);
-        finalizeAndCommit(factory, "task-finalize-real", 800L, 800L, "hash-800", chunk);
+        finalizeAndCommit(factory, tenantId, "task-finalize-real", 800L, 800L, "hash-800", chunk);
+        finalizeAndCommit(factory, tenantId, "task-finalize-real", 800L, 800L, "hash-800", chunk);
 
         try (Connection connection = MYSQL.createConnection("");
                 Statement statement = connection.createStatement()) {
@@ -243,16 +304,18 @@ class C5RecoveryMySqlTest {
 
             statement.executeUpdate("""
                     INSERT INTO document
-                        (id, kb_id, uploader_id, title, file_path, file_type, status,
+                        (id, tenant_id, kb_id, uploader_id, title, file_path, file_type, status,
                          input_size_bytes, input_sha256, input_state)
-                    VALUES (801, 800, 20, 'rollback', 'objects/rollback', 'md', 'PROCESSING',
+                    VALUES (801, (SELECT id FROM tenant WHERE code = 'legacy-default'),
+                            800, 20, 'rollback', 'objects/rollback', 'md', 'PROCESSING',
                             12, REPEAT('c', 64), 'AVAILABLE')
                     """);
             statement.executeUpdate("""
                     INSERT INTO async_task
-                        (task_id, task_type, status, progress, document_id,
+                        (tenant_id, task_id, task_type, status, progress, document_id, owner_id,
                          execution_phase, attempt_count)
-                    VALUES ('task-finalize-rollback', 'DOCUMENT_INDEX', 'RUNNING', 80, 801,
+                    VALUES ((SELECT id FROM tenant WHERE code = 'legacy-default'),
+                            'task-finalize-rollback', 'DOCUMENT_INDEX', 'RUNNING', 80, 801, 20,
                             'SAFE_PRE_VECTOR', 1)
                     """);
         }
@@ -261,7 +324,7 @@ class C5RecoveryMySqlTest {
             IndexTaskSqlFinalizer finalizer = finalizer(session);
             assertThrows(IllegalStateException.class,
                     () -> finalizer.finalizeSql(
-                            "task-finalize-rollback", 800L, 801L, "hash-801",
+                            tenantId, "task-finalize-rollback", 800L, 801L, "hash-801",
                             List.of(chunk(801L, "vector-801-0"))));
             session.rollback();
         }
@@ -276,15 +339,27 @@ class C5RecoveryMySqlTest {
                     "SELECT COUNT(*) FROM document WHERE id = 801 AND status = 'PROCESSING'"));
         }
         assertTrue(IndexTaskSqlFinalizer.class
-                .getMethod("finalizeSql", String.class, long.class, long.class, String.class, List.class)
+                .getMethod("finalizeSql", long.class, String.class, long.class, long.class,
+                        String.class, List.class)
                 .isAnnotationPresent(Transactional.class));
     }
 
-    private static boolean claim(SqlSessionFactory factory, CountDownLatch start, String worker) throws Exception {
+    private static boolean claim(SqlSessionFactory factory, CountDownLatch start,
+            long tenantId, String worker) throws Exception {
         start.await();
         try (SqlSession session = factory.openSession(true)) {
             return session.getMapper(IndexTaskMapper.class)
-                    .claim("task-c5-real", worker, 300, 3) == 1;
+                    .claim(tenantId, "task-c5-real", worker, 300, 3) == 1;
+        }
+    }
+
+    private static long legacyTenantId() throws Exception {
+        try (Connection connection = MYSQL.createConnection("");
+                Statement statement = connection.createStatement();
+                ResultSet result = statement.executeQuery(
+                        "SELECT id FROM tenant WHERE code = 'legacy-default'")) {
+            assertTrue(result.next());
+            return result.getLong(1);
         }
     }
 
@@ -302,6 +377,7 @@ class C5RecoveryMySqlTest {
     }
 
     private static void finalizeAndCommit(SqlSessionFactory factory,
+            long tenantId,
             String taskId,
             long kbId,
             long documentId,
@@ -309,7 +385,7 @@ class C5RecoveryMySqlTest {
             DocumentChunk chunk) {
         try (SqlSession session = factory.openSession(false)) {
             finalizer(session).finalizeSql(
-                    taskId, kbId, documentId, contentHash, List.of(chunk));
+                    tenantId, taskId, kbId, documentId, contentHash, List.of(chunk));
             session.commit();
         }
     }

@@ -26,7 +26,11 @@ public class TaskStatusService {
      * @throws AsyncTaskException 如果任务不存在
      */
     public TaskStatus getStatus(String taskId) {
-        return asyncTaskManager.getStatus(taskId)
+        throw tenantIdentityRequired();
+    }
+
+    public TaskStatus getStatus(long tenantId, String taskId) {
+        return asyncTaskManager.getStatus(tenantId, taskId)
             .orElseThrow(() -> AsyncTaskException.notFound(taskId));
     }
 
@@ -37,7 +41,11 @@ public class TaskStatusService {
      * @return 任务状态，如果不存在返回 empty
      */
     public Optional<TaskStatus> getStatusOptional(String taskId) {
-        return asyncTaskManager.getStatus(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    public Optional<TaskStatus> getStatusOptional(long tenantId, String taskId) {
+        return asyncTaskManager.getStatus(tenantId, taskId);
     }
 
     /**
@@ -50,7 +58,11 @@ public class TaskStatusService {
      * @throws AsyncTaskException 如果任务不存在、未完成或执行失败
      */
     public <T> T getResult(String taskId, Class<T> resultType) {
-        TaskStatus status = getStatus(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    public <T> T getResult(long tenantId, String taskId, Class<T> resultType) {
+        TaskStatus status = getStatus(tenantId, taskId);
         
         if (status.state() == TaskState.FAILED) {
             throw AsyncTaskException.executionFailed(taskId, new RuntimeException(status.error()));
@@ -64,7 +76,7 @@ public class TaskStatusService {
             throw new AsyncTaskException(taskId, "TASK_NOT_COMPLETED", "任务尚未完成: " + taskId);
         }
         
-        return asyncTaskManager.getResult(taskId, resultType)
+        return asyncTaskManager.getResult(tenantId, taskId, resultType)
             .orElseThrow(() -> new AsyncTaskException(taskId, "RESULT_NOT_FOUND", "任务结果不存在: " + taskId));
     }
 
@@ -77,7 +89,11 @@ public class TaskStatusService {
      * @return 任务结果，如果任务未完成返回 empty
      */
     public <T> Optional<T> getResultOptional(String taskId, Class<T> resultType) {
-        return asyncTaskManager.getResult(taskId, resultType);
+        throw tenantIdentityRequired();
+    }
+
+    public <T> Optional<T> getResultOptional(long tenantId, String taskId, Class<T> resultType) {
+        return asyncTaskManager.getResult(tenantId, taskId, resultType);
     }
 
     /**
@@ -88,7 +104,11 @@ public class TaskStatusService {
      * @param message  进度消息
      */
     public void updateProgress(String taskId, int progress, String message) {
-        asyncTaskManager.updateProgress(taskId, progress, message);
+        throw tenantIdentityRequired();
+    }
+
+    public void updateProgress(long tenantId, String taskId, int progress, String message) {
+        asyncTaskManager.updateProgress(tenantId, taskId, progress, message);
     }
 
     /**
@@ -98,7 +118,11 @@ public class TaskStatusService {
      * @return 是否完成（成功、失败或取消）
      */
     public boolean isCompleted(String taskId) {
-        return asyncTaskManager.getStatus(taskId)
+        throw tenantIdentityRequired();
+    }
+
+    public boolean isCompleted(long tenantId, String taskId) {
+        return asyncTaskManager.getStatus(tenantId, taskId)
             .map(TaskStatus::isTerminal)
             .orElse(false);
     }
@@ -110,7 +134,11 @@ public class TaskStatusService {
      * @return 是否成功完成
      */
     public boolean isSuccessful(String taskId) {
-        return asyncTaskManager.getStatus(taskId)
+        throw tenantIdentityRequired();
+    }
+
+    public boolean isSuccessful(long tenantId, String taskId) {
+        return asyncTaskManager.getStatus(tenantId, taskId)
             .map(status -> status.state() == TaskState.COMPLETED)
             .orElse(false);
     }
@@ -122,7 +150,11 @@ public class TaskStatusService {
      * @return 是否失败
      */
     public boolean isFailed(String taskId) {
-        return asyncTaskManager.getStatus(taskId)
+        throw tenantIdentityRequired();
+    }
+
+    public boolean isFailed(long tenantId, String taskId) {
+        return asyncTaskManager.getStatus(tenantId, taskId)
             .map(status -> status.state() == TaskState.FAILED)
             .orElse(false);
     }
@@ -134,7 +166,11 @@ public class TaskStatusService {
      * @return 是否正在运行
      */
     public boolean isRunning(String taskId) {
-        return asyncTaskManager.getStatus(taskId)
+        throw tenantIdentityRequired();
+    }
+
+    public boolean isRunning(long tenantId, String taskId) {
+        return asyncTaskManager.getStatus(tenantId, taskId)
             .map(status -> status.state() == TaskState.RUNNING)
             .orElse(false);
     }
@@ -146,7 +182,11 @@ public class TaskStatusService {
      * @return 是否成功取消
      */
     public boolean cancel(String taskId) {
-        return asyncTaskManager.cancel(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    public boolean cancel(long tenantId, String taskId) {
+        return asyncTaskManager.cancel(tenantId, taskId);
     }
 
     /**
@@ -156,6 +196,14 @@ public class TaskStatusService {
      * @return 是否存在
      */
     public boolean exists(String taskId) {
-        return asyncTaskManager.exists(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    public boolean exists(long tenantId, String taskId) {
+        return asyncTaskManager.exists(tenantId, taskId);
+    }
+
+    private static IllegalStateException tenantIdentityRequired() {
+        return new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 }

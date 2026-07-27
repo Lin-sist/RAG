@@ -125,8 +125,9 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
 
     @Override
     @Idempotent(keyPrefix = "kb:upload", required = false, ttlSeconds = 3600)
-    public DocumentUploadResponse submitIndexing(Long kbId, Long uploaderId,
+    public DocumentUploadResponse submitIndexing(long tenantId, Long kbId, Long uploaderId,
             MultipartFile file, String title) {
+        requireTenantId(tenantId);
         String fileName = file.getOriginalFilename();
         if (fileName == null || fileName.isBlank()) {
             throw new BusinessException("DOC_003", "文件名不能为空");
@@ -142,13 +143,14 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
 
         StoredIndexInput storedInput;
         try {
-            storedInput = indexInputStore.put(file.getInputStream());
+            storedInput = indexInputStore.put(tenantId, file.getInputStream());
         } catch (IOException e) {
             throw new BusinessException("DOC_007", "上传文件读取失败", e);
         }
 
         // 创建文档记录（PENDING 状态），控制器日志由调用方记录
         Document document = new Document();
+        document.setTenantId(tenantId);
         document.setKbId(kbId);
         document.setUploaderId(uploaderId);
         document.setTitle(title != null ? title : fileName);
@@ -161,7 +163,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         try {
             document = documentService.create(document);
         } catch (RuntimeException e) {
-            cleanupUnacceptedInput(storedInput.storageKey());
+            cleanupUnacceptedInput(tenantId, storedInput.storageKey());
             throw e;
         }
 
@@ -172,29 +174,31 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         TaskHandle<ProcessResult> taskHandle;
         String acceptedTaskId = null;
         try {
-            String taskId = indexTaskLedger.createAccepted(documentId, uploaderId);
+            String taskId = indexTaskLedger.createAccepted(tenantId, documentId, uploaderId);
             acceptedTaskId = taskId;
             io.opentelemetry.context.Context submissionContext = telemetry.captureContext();
             taskHandle = asyncTaskManager.submit(
+                    tenantId,
                     taskId,
                     "DOCUMENT_INDEX",
                     uploaderId,
                     progressCallback -> runFreshIngest(
-                            submissionContext, taskId, kbId, documentId, fileName, documentTitle, fileType,
+                            submissionContext, tenantId, taskId, kbId, documentId, fileName, documentTitle, fileType,
                             storedInput.storageKey(), storedInput.sizeBytes(), storedInput.sha256(),
                             progressCallback, () -> {
                             }));
         } catch (RuntimeException e) {
             if (acceptedTaskId != null) {
                 try {
-                    indexTaskLedger.markAcceptanceFailed(acceptedTaskId, "TASK_PROJECTION_FAILED");
+                    indexTaskLedger.markAcceptanceFailed(
+                            tenantId, acceptedTaskId, "TASK_PROJECTION_FAILED");
                 } catch (RuntimeException ledgerFailure) {
                     log.error("索引任务接受失败状态待协调: documentId={}, taskId={}, errorType={}",
                             documentId, acceptedTaskId, ledgerFailure.getClass().getSimpleName());
                 }
             }
-            documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
-            cleanupCompletedInput(documentId, storedInput.storageKey());
+            documentService.updateStatus(tenantId, documentId, DocumentStatus.FAILED.name());
+            cleanupCompletedInput(tenantId, documentId, storedInput.storageKey());
             throw e;
         }
 
@@ -209,7 +213,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     }
 
     private ProcessResult runFreshIngest(io.opentelemetry.context.Context submissionContext,
-            String taskId, Long kbId, Long documentId, String fileName, String documentTitle,
+            long tenantId, String taskId, Long kbId, Long documentId, String fileName, String documentTitle,
             String fileType, String storageKey, long inputSizeBytes, String inputSha256,
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback,
             IndexTaskLeaseGuard leaseGuard) {
@@ -223,7 +227,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                         GenAiTelemetry.Attributes.INGEST_PHASE, "EXECUTION"),
                 submissionContext)) {
             try {
-                ProcessResult result = doIndex(taskId, kbId, documentId, fileName, documentTitle, fileType,
+                ProcessResult result = doIndex(tenantId, taskId, kbId, documentId, fileName, documentTitle, fileType,
                         storageKey, inputSizeBytes, inputSha256, progressCallback, leaseGuard);
                 ingest.longFact(GenAiTelemetry.Attributes.INGEST_CHUNK_COUNT,
                                 result.chunks() == null ? 0L : result.chunks().size())
@@ -267,7 +271,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     }
 
     private void resumeIndexTaskWithinTrace(IndexTaskRecord task, IndexTaskLeaseGuard leaseGuard) {
-        validateResumeContract(task);
+        long tenantId = requireTaskTenantId(task);
+        validateResumeContract(tenantId, task);
         IndexTaskPhase phase = IndexTaskPhase.valueOf(task.getExecutionPhase());
         if (phase != IndexTaskPhase.ACCEPTED
                 && phase != IndexTaskPhase.SAFE_PRE_VECTOR
@@ -276,11 +281,19 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             throw new IllegalArgumentException("Unsupported safe resume phase: " + phase);
         }
 
-        Document document = documentService.getById(task.getDocumentId())
+        Document document = documentService.getById(tenantId, task.getDocumentId())
                 .orElseThrow(() -> new BusinessException("DOC_002", "文档不存在"));
+        if (!Long.valueOf(tenantId).equals(document.getTenantId())
+                || !java.util.Objects.equals(task.getDocumentId(), document.getId())
+                || !java.util.Objects.equals(task.getOwnerId(), document.getUploaderId())
+                || document.getKbId() == null) {
+            indexTaskLedger.markReconciliationRequired(
+                    tenantId, task.getTaskId(), "TASK_SCOPE_MISMATCH");
+            throw new IllegalStateException("Index task scope does not match document facts");
+        }
         String fileName = "document-" + document.getId() + "." + document.getFileType();
         if (phase == IndexTaskPhase.ACCEPTED || phase == IndexTaskPhase.SAFE_PRE_VECTOR) {
-            doIndex(task.getTaskId(), document.getKbId(), document.getId(), fileName, document.getTitle(),
+            doIndex(tenantId, task.getTaskId(), document.getKbId(), document.getId(), fileName, document.getTitle(),
                     document.getFileType(), document.getFilePath(), document.getInputSizeBytes(),
                     document.getInputSha256(), ignored -> {
                     }, leaseGuard);
@@ -289,7 +302,10 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         InputStream verifiedInput = traceStage(
                 GenAiTelemetry.SpanNames.INGEST_INPUT_OPEN,
                 () -> indexInputStore.openVerified(
-                        document.getFilePath(), document.getInputSizeBytes(), document.getInputSha256()));
+                        tenantId,
+                        document.getFilePath(),
+                        document.getInputSizeBytes(),
+                        document.getInputSha256()));
         try (InputStream inputStream = verifiedInput) {
             DocumentInput input = DocumentInput.of(
                     inputStream,
@@ -303,32 +319,34 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                     () -> documentProcessor.process(input));
             if (!result.contentHash().equals(task.getPreparedContentHash())
                     || result.chunks().size() != task.getPreparedChunkCount()) {
-                indexTaskLedger.markReconciliationRequired(task.getTaskId(), "PREPARED_FACTS_MISMATCH");
+                indexTaskLedger.markReconciliationRequired(
+                        tenantId, task.getTaskId(), "PREPARED_FACTS_MISMATCH");
                 throw new IllegalStateException("Prepared index facts do not match durable checkpoint");
             }
             List<DocumentChunk> chunks = DeterministicChunkIdentity.remap(
                     task.getIndexContractVersion(), document.getId(), result.contentHash(), result.chunks());
-            String collectionName = knowledgeBaseService.getById(document.getKbId())
+            String collectionName = knowledgeBaseService.getById(tenantId, document.getKbId())
                     .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
                     .getVectorCollection();
             PreparedIndex prepared = prepareFinalization(
                     task.getTaskId(), document.getKbId(), document.getId(), fileName, document.getTitle(), chunks);
             leaseGuard.assertOwned();
-            finalizeIndex(task.getTaskId(), document.getKbId(), document.getId(), result, chunks,
+            finalizeIndex(tenantId, task.getTaskId(), document.getKbId(), document.getId(), result, chunks,
                     collectionName, prepared, ignored -> {
                     });
-            cleanupCompletedInput(document.getId(), document.getFilePath());
+            cleanupCompletedInput(tenantId, document.getId(), document.getFilePath());
         } catch (IOException e) {
             throw new RuntimeException("Failed to close durable index input", e);
         }
     }
 
-    private void validateResumeContract(IndexTaskRecord task) {
+    private void validateResumeContract(long tenantId, IndexTaskRecord task) {
         boolean matches = DeterministicChunkIdentity.CONTRACT_VERSION.equals(task.getIndexContractVersion())
                 && Integer.valueOf(chunkingProperties.getChunkSize()).equals(task.getChunkSize())
                 && Integer.valueOf(chunkingProperties.getChunkOverlap()).equals(task.getChunkOverlap());
         if (!matches) {
-            indexTaskLedger.markReconciliationRequired(task.getTaskId(), "INDEX_CONTRACT_MISMATCH");
+            indexTaskLedger.markReconciliationRequired(
+                    tenantId, task.getTaskId(), "INDEX_CONTRACT_MISMATCH");
             throw new IllegalStateException("Index task contract does not match current runtime");
         }
     }
@@ -336,7 +354,8 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     /**
      * 异步索引核心逻辑（解析 → 去重 → 向量化 → 持久化）
      */
-    private ProcessResult doIndex(String taskId, Long kbId, Long documentId, String fileName, String documentTitle,
+    private ProcessResult doIndex(long tenantId, String taskId, Long kbId, Long documentId,
+            String fileName, String documentTitle,
             String fileType,
             String storageKey,
             long inputSizeBytes,
@@ -344,12 +363,12 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback,
             IndexTaskLeaseGuard leaseGuard) {
         try {
-            indexTaskLedger.markSafePreVector(taskId);
+            indexTaskLedger.markSafePreVector(tenantId, taskId);
             progressCallback.accept(AsyncTask.TaskProgress.of(10, "开始解析文档"));
 
             InputStream verifiedInput = traceStage(
                     GenAiTelemetry.SpanNames.INGEST_INPUT_OPEN,
-                    () -> indexInputStore.openVerified(storageKey, inputSizeBytes, inputSha256));
+                    () -> indexInputStore.openVerified(tenantId, storageKey, inputSizeBytes, inputSha256));
             try (InputStream inputStream = verifiedInput) {
                 DocumentInput input = DocumentInput.of(
                         inputStream,
@@ -367,18 +386,21 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                         () -> documentProcessor.process(input));
 
                 // DOC-04: DB 级去重校验（覆盖重启后 in-memory map 失效的场景）
-                Optional<Document> existingDoc = documentService.getByKnowledgeBaseAndContentHash(kbId,
-                        result.contentHash());
+                Optional<Document> existingDoc = documentService.getByKnowledgeBaseAndContentHash(
+                        tenantId, kbId, result.contentHash());
                 if (existingDoc.isPresent() && !existingDoc.get().getId().equals(documentId)) {
                     Document existing = existingDoc.get();
                     if (isIndexReady(existing)) {
                         log.info("文档内容重复，复用已有索引: documentId={}, existingDocId={}",
                                 documentId, existing.getId());
-                        documentService.updateStatus(documentId, DocumentStatus.COMPLETED.name());
-                        documentService.updateChunkCount(documentId, existing.getChunkCount());
-                        documentService.updateContentHash(documentId, result.contentHash());
+                        documentService.updateStatus(
+                                tenantId, documentId, DocumentStatus.COMPLETED.name());
+                        documentService.updateChunkCount(
+                                tenantId, documentId, existing.getChunkCount());
+                        documentService.updateContentHash(
+                                tenantId, documentId, result.contentHash());
                         progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档内容已存在，复用已有索引"));
-                        cleanupCompletedInput(documentId, storageKey);
+                        cleanupCompletedInput(tenantId, documentId, storageKey);
                         return result;
                     }
                     log.warn(
@@ -399,14 +421,14 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                         result.contentHash(),
                         chunks);
 
-                String collectionName = knowledgeBaseService.getById(kbId)
+                String collectionName = knowledgeBaseService.getById(tenantId, kbId)
                         .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在"))
                         .getVectorCollection();
 
                 ProcessResult indexed = indexWithRetry(
-                        taskId, kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
+                        tenantId, taskId, kbId, documentId, fileName, documentTitle, result, chunks, collectionName,
                         progressCallback, leaseGuard);
-                cleanupCompletedInput(documentId, storageKey);
+                cleanupCompletedInput(tenantId, documentId, storageKey);
                 return indexed;
             }
 
@@ -417,18 +439,19 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                 String inputState = "INDEX_INPUT_CORRUPT".equals(storageException.getErrorCode())
                         ? IndexInputState.CORRUPT.name()
                         : IndexInputState.MISSING.name();
-                documentService.updateInputState(documentId, inputState);
+                documentService.updateInputState(tenantId, documentId, inputState);
             }
             if (e instanceof VectorDependencyException vectorException
                     && VectorDependencyException.ERROR_CODE_OUTCOME_UNKNOWN.equals(vectorException.getErrorCode())) {
                 try {
-                    indexTaskLedger.markReconciliationRequired(taskId, vectorException.getErrorCode());
+                    indexTaskLedger.markReconciliationRequired(
+                            tenantId, taskId, vectorException.getErrorCode());
                 } catch (RuntimeException ledgerFailure) {
                     log.error("向量结果未知任务隔离失败: documentId={}, taskId={}, errorType={}",
                             documentId, taskId, ledgerFailure.getClass().getSimpleName());
                 }
             }
-            documentService.updateStatus(documentId, DocumentStatus.FAILED.name());
+            documentService.updateStatus(tenantId, documentId, DocumentStatus.FAILED.name());
             if (e instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             }
@@ -436,7 +459,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         }
     }
 
-    private ProcessResult indexWithRetry(String taskId,
+    private ProcessResult indexWithRetry(long tenantId, String taskId,
             Long kbId,
             Long documentId,
             String fileName,
@@ -458,11 +481,12 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
                     progressCallback.accept(AsyncTask.TaskProgress.of(45, "文档入库重试中，第 " + attempt + " 次"));
                 }
                 if (!vectorConfirmed) {
-                    writeVectorOnce(taskId, result, chunks, collectionName, preparedIndex.vectorDocuments(),
+                    writeVectorOnce(tenantId, taskId, result, chunks,
+                            collectionName, preparedIndex.vectorDocuments(),
                             progressCallback, leaseGuard);
                     vectorConfirmed = true;
                 }
-                return finalizeIndex(taskId, kbId, documentId, result, chunks, collectionName,
+                return finalizeIndex(tenantId, taskId, kbId, documentId, result, chunks, collectionName,
                         preparedIndex, progressCallback);
             } catch (VectorDependencyException e) {
                 throw e;
@@ -549,7 +573,7 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         return new PreparedIndex(vectorDocs, entityChunks);
     }
 
-    private void writeVectorOnce(String taskId,
+    private void writeVectorOnce(long tenantId, String taskId,
             ProcessResult result,
             List<DocumentChunk> chunks,
             String collectionName,
@@ -558,19 +582,19 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             IndexTaskLeaseGuard leaseGuard) {
         progressCallback.accept(AsyncTask.TaskProgress.of(70, "写入向量数据库"));
         leaseGuard.assertOwned();
-        indexTaskLedger.markVectorInFlight(taskId, result.contentHash(), chunks.size());
+        indexTaskLedger.markVectorInFlight(tenantId, taskId, result.contentHash(), chunks.size());
         leaseGuard.assertOwned();
         traceStage(GenAiTelemetry.SpanNames.VECTOR_UPSERT,
                 () -> vectorStore.upsert(collectionName, vectorDocs));
         log.info("成功写入 {} 个向量到集合 {}", vectorDocs.size(), collectionName);
         try {
-            indexTaskLedger.markVectorConfirmed(taskId);
+            indexTaskLedger.markVectorConfirmed(tenantId, taskId);
         } catch (RuntimeException e) {
             throw VectorDependencyException.outcomeUnknown("checkpoint_after_upsert", e);
         }
     }
 
-    private ProcessResult finalizeIndex(String taskId,
+    private ProcessResult finalizeIndex(long tenantId, String taskId,
             Long kbId,
             Long documentId,
             ProcessResult result,
@@ -578,14 +602,14 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             String collectionName,
             PreparedIndex preparedIndex,
             java.util.function.Consumer<AsyncTask.TaskProgress> progressCallback) {
-        indexTaskLedger.markFinalizing(taskId);
+        indexTaskLedger.markFinalizing(tenantId, taskId);
         progressCallback.accept(AsyncTask.TaskProgress.of(85, "持久化分块记录"));
         traceStage(GenAiTelemetry.SpanNames.KEYWORD_UPSERT,
                 () -> upsertKeywordIndex(collectionName, preparedIndex.vectorDocuments()));
 
         progressCallback.accept(AsyncTask.TaskProgress.of(90, "更新文档状态"));
         traceStage(GenAiTelemetry.SpanNames.INDEX_FINALIZE,
-                () -> sqlFinalizer.finalizeSql(taskId, kbId, documentId, result.contentHash(),
+                () -> sqlFinalizer.finalizeSql(tenantId, taskId, kbId, documentId, result.contentHash(),
                         preparedIndex.entityChunks()));
 
         progressCallback.accept(AsyncTask.TaskProgress.of(100, "文档处理完成"));
@@ -595,6 +619,21 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
     private record PreparedIndex(
             List<VectorDocument> vectorDocuments,
             List<com.enterprise.rag.admin.kb.entity.DocumentChunk> entityChunks) {
+    }
+
+    private long requireTaskTenantId(IndexTaskRecord task) {
+        Long tenantId = task.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+        }
+        return requireTenantId(tenantId);
+    }
+
+    private long requireTenantId(long tenantId) {
+        if (tenantId <= 0) {
+            throw new IllegalArgumentException("tenantId must be positive");
+        }
+        return tenantId;
     }
 
     private <T> T traceStage(String spanName, java.util.function.Supplier<T> action) {
@@ -696,16 +735,17 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
         return text.length();
     }
 
-    private void cleanupCompletedInput(Long documentId, String storageKey) {
+    private void cleanupCompletedInput(long tenantId, Long documentId, String storageKey) {
         try {
-            documentService.updateInputState(documentId, IndexInputState.CLEANUP_PENDING.name());
+            documentService.updateInputState(
+                    tenantId, documentId, IndexInputState.CLEANUP_PENDING.name());
         } catch (RuntimeException e) {
             log.warn("索引输入清理状态待协调: documentId={}, errorType={}",
                     documentId, e.getClass().getSimpleName());
             return;
         }
         try {
-            IndexInputStore.DeleteResult deleteResult = indexInputStore.delete(storageKey);
+            IndexInputStore.DeleteResult deleteResult = indexInputStore.delete(tenantId, storageKey);
             if (deleteResult != IndexInputStore.DeleteResult.DELETED
                     && deleteResult != IndexInputStore.DeleteResult.ALREADY_MISSING) {
                 log.warn("索引输入等待后续清理: documentId={}, result={}",
@@ -718,16 +758,16 @@ public class DocumentIndexingServiceImpl implements DocumentIndexingService {
             return;
         }
         try {
-            documentService.updateInputState(documentId, IndexInputState.CLEANED.name());
+            documentService.updateInputState(tenantId, documentId, IndexInputState.CLEANED.name());
         } catch (RuntimeException e) {
             log.warn("索引输入已清理但状态待协调: documentId={}, errorType={}",
                     documentId, e.getClass().getSimpleName());
         }
     }
 
-    private void cleanupUnacceptedInput(String storageKey) {
+    private void cleanupUnacceptedInput(long tenantId, String storageKey) {
         try {
-            indexInputStore.delete(storageKey);
+            indexInputStore.delete(tenantId, storageKey);
         } catch (RuntimeException e) {
             log.warn("未接受索引输入清理失败: errorType={}", e.getClass().getSimpleName());
         }

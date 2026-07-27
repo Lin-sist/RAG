@@ -1,6 +1,7 @@
 package com.enterprise.rag.admin.kb;
 
 import com.enterprise.rag.admin.kb.dto.CreateKnowledgeBaseRequest;
+import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
 import com.enterprise.rag.admin.kb.entity.KnowledgeBase;
 import com.enterprise.rag.admin.kb.mapper.KnowledgeBaseMapper;
 import com.enterprise.rag.admin.kb.service.DocumentService;
@@ -124,6 +125,22 @@ class KnowledgeBaseServiceImplTest {
     }
 
     @Test
+    void scopedGetByIdShouldUseTenantScopedDocumentCountOnly() {
+        KnowledgeBase kb = new KnowledgeBase();
+        kb.setId(7L);
+        kb.setTenantId(901L);
+        kb.setName("tenant-kb");
+        when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
+        when(documentService.countByKnowledgeBaseId(901L, 7L)).thenReturn(3);
+
+        KnowledgeBaseDTO result = service.getById(7L, REQUEST_IDENTITY).orElseThrow();
+
+        assertEquals(3, result.getDocumentCount());
+        verify(documentService).countByKnowledgeBaseId(901L, 7L);
+        verify(documentService, never()).countByKnowledgeBaseId(7L);
+    }
+
+    @Test
     void statisticsShouldReportRedisUnavailableInsteadOfFakeZero() {
         KnowledgeBase kb = new KnowledgeBase();
         kb.setId(7L);
@@ -175,10 +192,10 @@ class KnowledgeBaseServiceImplTest {
         @SuppressWarnings("unchecked")
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment("kb:query:count:7"))
+        when(valueOperations.increment("kb:query:count:v2:11:7"))
                 .thenThrow(new RuntimeException("synthetic redis marker"));
 
-        assertDoesNotThrow(() -> service.incrementQueryCount(7L));
+        assertDoesNotThrow(() -> service.incrementQueryCount(11L, 7L));
     }
 
     @Test

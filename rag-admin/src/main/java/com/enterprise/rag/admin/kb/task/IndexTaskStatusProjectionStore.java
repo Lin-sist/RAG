@@ -21,8 +21,8 @@ public class IndexTaskStatusProjectionStore implements DurableTaskStatusStore {
     private final IndexTaskLedger ledger;
 
     @Override
-    public Optional<TaskStatus> find(String taskId) {
-        return ledger.find(taskId).map(this::toTaskStatus);
+    public Optional<TaskStatus> find(long tenantId, String taskId) {
+        return ledger.find(tenantId, taskId).map(this::toTaskStatus);
     }
 
     private TaskStatus toTaskStatus(IndexTaskRecord record) {
@@ -49,7 +49,8 @@ public class IndexTaskStatusProjectionStore implements DurableTaskStatusStore {
                 state == TaskState.FAILED ? record.getFailureCode() : null,
                 toInstant(record.getCreatedAt()),
                 toInstant(record.getUpdatedAt()),
-                record.getOwnerId());
+                record.getOwnerId(),
+                record.getTenantId());
     }
 
     private Instant toInstant(LocalDateTime value) {

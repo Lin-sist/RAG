@@ -22,13 +22,15 @@ class IndexInputCleanupCoordinatorTest {
         IndexInputStore inputStore = mock(IndexInputStore.class);
         Document document = new Document();
         document.setId(88L);
-        document.setFilePath("objects/pending.bin");
+        document.setTenantId(77L);
+        document.setFilePath("objects/v2/77/pending.bin");
         when(documentMapper.findCleanupPending(20)).thenReturn(List.of(document));
-        when(inputStore.delete("objects/pending.bin")).thenReturn(IndexInputStore.DeleteResult.DELETED);
+        when(inputStore.delete(77L, "objects/v2/77/pending.bin"))
+                .thenReturn(IndexInputStore.DeleteResult.DELETED);
 
         new IndexInputCleanupCoordinator(documentMapper, documentService, inputStore, 20).reconcileOnce();
 
-        verify(inputStore).delete("objects/pending.bin");
-        verify(documentService).updateInputState(88L, IndexInputState.CLEANED.name());
+        verify(inputStore).delete(77L, "objects/v2/77/pending.bin");
+        verify(documentService).updateInputState(77L, 88L, IndexInputState.CLEANED.name());
     }
 }

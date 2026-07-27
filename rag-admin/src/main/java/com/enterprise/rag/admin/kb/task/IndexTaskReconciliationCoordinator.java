@@ -86,50 +86,53 @@ public class IndexTaskReconciliationCoordinator {
             return;
         }
         for (IndexTaskRecord task : claimable) {
+            long tenantId = requireTenantId(task);
             IndexTaskPhase phase = IndexTaskPhase.valueOf(task.getExecutionPhase());
             if (!properties.isResumeEnabled() && phase != IndexTaskPhase.VECTOR_IN_FLIGHT) {
                 continue;
             }
-            if (!ledger.claim(task.getTaskId(), workerId,
+            if (!ledger.claim(tenantId, task.getTaskId(), workerId,
                     properties.getLeaseSeconds(), properties.getMaxAttempts())) {
                 continue;
             }
             try {
                 taskExecutor.execute(() -> reconcileClaimed(task));
             } catch (RejectedExecutionException e) {
-                ledger.release(task.getTaskId(), workerId);
+                ledger.release(tenantId, task.getTaskId(), workerId);
                 log.warn("索引恢复执行队列已满，已释放 lease: taskId={}", task.getTaskId());
             }
         }
     }
 
     private void reconcileClaimed(IndexTaskRecord task) {
+        long tenantId = requireTenantId(task);
         IndexTaskPhase phase = IndexTaskPhase.valueOf(task.getExecutionPhase());
         if (phase == IndexTaskPhase.VECTOR_IN_FLIGHT) {
             ledger.markReconciliationRequired(
-                    task.getTaskId(), VectorDependencyException.ERROR_CODE_OUTCOME_UNKNOWN);
+                    tenantId, task.getTaskId(), VectorDependencyException.ERROR_CODE_OUTCOME_UNKNOWN);
             return;
         }
         if (!properties.isResumeEnabled()) {
-            ledger.release(task.getTaskId(), workerId);
+            ledger.release(tenantId, task.getTaskId(), workerId);
             return;
         }
         AtomicBoolean leaseOwned = new AtomicBoolean(true);
         ScheduledFuture<?> heartbeatFuture = null;
         try {
-            if (!ledger.heartbeat(task.getTaskId(), workerId, properties.getLeaseSeconds())) {
+            if (!ledger.heartbeat(tenantId, task.getTaskId(), workerId, properties.getLeaseSeconds())) {
                 log.warn("索引任务 lease 已丢失，跳过恢复: taskId={}", task.getTaskId());
                 return;
             }
             if (heartbeatScheduler != null) {
                 long interval = Math.max(1, properties.getHeartbeatSeconds());
                 heartbeatFuture = heartbeatScheduler.scheduleAtFixedRate(
-                        () -> renewLease(task.getTaskId(), leaseOwned),
+                        () -> renewLease(tenantId, task.getTaskId(), leaseOwned),
                         interval, interval, TimeUnit.SECONDS);
             }
             IndexTaskLeaseGuard leaseGuard = () -> {
                 if (!leaseOwned.get()
-                        || !ledger.heartbeat(task.getTaskId(), workerId, properties.getLeaseSeconds())) {
+                        || !ledger.heartbeat(
+                                tenantId, task.getTaskId(), workerId, properties.getLeaseSeconds())) {
                     leaseOwned.set(false);
                     throw new IndexTaskLeaseLostException(task.getTaskId());
                 }
@@ -145,9 +148,10 @@ public class IndexTaskReconciliationCoordinator {
             }
             int claimedAttempt = (task.getAttemptCount() == null ? 0 : task.getAttemptCount()) + 1;
             if (claimedAttempt >= properties.getMaxAttempts()) {
-                ledger.markAttemptsExhausted(task.getTaskId(), workerId, RECOVERY_FAILURE_CODE);
+                ledger.markAttemptsExhausted(
+                        tenantId, task.getTaskId(), workerId, RECOVERY_FAILURE_CODE);
             } else {
-                ledger.scheduleRetry(task.getTaskId(), workerId, RECOVERY_FAILURE_CODE,
+                ledger.scheduleRetry(tenantId, task.getTaskId(), workerId, RECOVERY_FAILURE_CODE,
                         calculateBackoffSeconds(claimedAttempt));
             }
         } finally {
@@ -157,12 +161,12 @@ public class IndexTaskReconciliationCoordinator {
         }
     }
 
-    private void renewLease(String taskId, AtomicBoolean leaseOwned) {
+    private void renewLease(long tenantId, String taskId, AtomicBoolean leaseOwned) {
         if (!leaseOwned.get()) {
             return;
         }
         try {
-            if (!ledger.heartbeat(taskId, workerId, properties.getLeaseSeconds())) {
+            if (!ledger.heartbeat(tenantId, taskId, workerId, properties.getLeaseSeconds())) {
                 leaseOwned.set(false);
             }
         } catch (RuntimeException e) {
@@ -179,6 +183,14 @@ public class IndexTaskReconciliationCoordinator {
             delay = Math.min(maximum, delay * 2L);
         }
         return (int) Math.min(Integer.MAX_VALUE, delay);
+    }
+
+    private long requireTenantId(IndexTaskRecord task) {
+        Long tenantId = task.getTenantId();
+        if (tenantId == null || tenantId <= 0) {
+            throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+        }
+        return tenantId;
     }
 
     @PreDestroy

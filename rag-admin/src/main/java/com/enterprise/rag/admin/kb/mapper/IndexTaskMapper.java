@@ -12,6 +12,18 @@ import java.util.List;
 @Mapper
 public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
 
+    @Select("""
+            SELECT *
+              FROM async_task
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
+               AND task_type = 'DOCUMENT_INDEX'
+               AND deleted = 0
+             FOR UPDATE
+            """)
+    IndexTaskRecord lockByTenantAndTaskIdForUpdate(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId);
+
     @Update("""
             UPDATE async_task
                SET lease_owner = #{workerId},
@@ -20,7 +32,8 @@ public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
                    attempt_count = attempt_count + 1,
                    version = version + 1,
                    updated_at = CURRENT_TIMESTAMP(6)
-             WHERE task_id = #{taskId}
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
                AND task_type = 'DOCUMENT_INDEX'
                AND deleted = 0
                AND status IN ('ACCEPTED', 'RUNNING')
@@ -30,7 +43,8 @@ public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
                AND (next_attempt_at IS NULL OR next_attempt_at <= CURRENT_TIMESTAMP(6))
                AND (lease_until IS NULL OR lease_until < CURRENT_TIMESTAMP(6))
             """)
-    int claim(@Param("taskId") String taskId,
+    int claim(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId,
             @Param("workerId") String workerId,
             @Param("leaseSeconds") int leaseSeconds,
             @Param("maxAttempts") int maxAttempts);
@@ -58,11 +72,14 @@ public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
                    lease_until = NULL,
                    updated_at = CURRENT_TIMESTAMP(6),
                    version = version + 1
-             WHERE task_id = #{taskId}
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
                AND lease_owner = #{workerId}
                AND deleted = 0
             """)
-    int release(@Param("taskId") String taskId, @Param("workerId") String workerId);
+    int release(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId,
+            @Param("workerId") String workerId);
 
     @Update("""
             UPDATE async_task
@@ -70,12 +87,14 @@ public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
                    heartbeat_at = CURRENT_TIMESTAMP(6),
                    updated_at = CURRENT_TIMESTAMP(6),
                    version = version + 1
-             WHERE task_id = #{taskId}
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
                AND lease_owner = #{workerId}
                AND lease_until >= CURRENT_TIMESTAMP(6)
                AND deleted = 0
             """)
-    int heartbeat(@Param("taskId") String taskId,
+    int heartbeat(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId,
             @Param("workerId") String workerId,
             @Param("leaseSeconds") int leaseSeconds);
 
@@ -88,14 +107,16 @@ public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
                    next_attempt_at = NULL,
                    updated_at = CURRENT_TIMESTAMP(6),
                    version = version + 1
-             WHERE task_id = #{taskId}
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
                AND task_type = 'DOCUMENT_INDEX'
                AND deleted = 0
                AND status IN ('ACCEPTED', 'RUNNING')
                AND execution_phase IN ('ACCEPTED', 'SAFE_PRE_VECTOR', 'VECTOR_IN_FLIGHT',
                                        'VECTOR_CONFIRMED', 'FINALIZING')
             """)
-    int markReconciliationRequired(@Param("taskId") String taskId,
+    int markReconciliationRequired(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId,
             @Param("failureCode") String failureCode);
 
     @Update("""
@@ -109,13 +130,15 @@ public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
                    next_attempt_at = NULL,
                    updated_at = CURRENT_TIMESTAMP(6),
                    version = version + 1
-             WHERE task_id = #{taskId}
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
                AND task_type = 'DOCUMENT_INDEX'
                AND deleted = 0
                AND status IN ('ACCEPTED', 'RUNNING')
                AND lease_owner = #{workerId}
             """)
-    int markAttemptsExhausted(@Param("taskId") String taskId,
+    int markAttemptsExhausted(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId,
             @Param("workerId") String workerId,
             @Param("failureCode") String failureCode);
 
@@ -129,13 +152,15 @@ public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
                    lease_until = NULL,
                    updated_at = CURRENT_TIMESTAMP(6),
                    version = version + 1
-             WHERE task_id = #{taskId}
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
                AND task_type = 'DOCUMENT_INDEX'
                AND deleted = 0
                AND status IN ('ACCEPTED', 'RUNNING')
                AND lease_owner = #{workerId}
             """)
-    int scheduleRetry(@Param("taskId") String taskId,
+    int scheduleRetry(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId,
             @Param("workerId") String workerId,
             @Param("failureCode") String failureCode,
             @Param("backoffSeconds") int backoffSeconds);
@@ -152,22 +177,26 @@ public interface IndexTaskMapper extends BaseMapper<IndexTaskRecord> {
                    next_attempt_at = NULL,
                    updated_at = CURRENT_TIMESTAMP(6),
                    version = version + 1
-             WHERE task_id = #{taskId}
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
                AND task_type = 'DOCUMENT_INDEX'
                AND deleted = 0
                AND status IN ('ACCEPTED', 'RUNNING')
                AND execution_phase = 'FINALIZING'
             """)
-    int completeFinalization(@Param("taskId") String taskId);
+    int completeFinalization(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId);
 
     @Select("""
             SELECT CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END
               FROM async_task
-             WHERE task_id = #{taskId}
+             WHERE tenant_id = #{tenantId}
+               AND task_id = #{taskId}
                AND task_type = 'DOCUMENT_INDEX'
                AND deleted = 0
                AND status = 'COMPLETED'
                AND execution_phase = 'TERMINAL'
             """)
-    boolean isCompleted(@Param("taskId") String taskId);
+    boolean isCompleted(@Param("tenantId") long tenantId,
+            @Param("taskId") String taskId);
 }

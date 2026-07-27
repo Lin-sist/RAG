@@ -41,7 +41,7 @@ public class LocalDocumentIndexProducer implements DocumentIndexProducer {
             message.messageId(), message.documentId());
         
         // 使用异步任务管理器执行
-        asyncTaskManager.submit("DocumentIndex", progressCallback -> {
+        asyncTaskManager.submit(message.tenantId(), "DocumentIndex", null, progressCallback -> {
             if (consumer != null) {
                 try {
                     consumer.consume(message);

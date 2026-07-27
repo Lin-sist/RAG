@@ -63,15 +63,22 @@ public final class FileSystemIndexInputStore implements IndexInputStore {
     }
 
     @Override
-    public StoredIndexInput put(InputStream input) {
+    public StoredIndexInput put(long tenantId, InputStream input) {
+        requireTenantId(tenantId);
         String objectName = UUID.randomUUID() + ".bin";
-        Path staging = stagingRoot.resolve(objectName + ".part");
-        Path target = objectRoot.resolve(objectName);
+        Path tenantStagingRoot = tenantNamespace(stagingRoot, tenantId);
+        Path tenantObjectRoot = tenantNamespace(objectRoot, tenantId);
+        Path staging = tenantStagingRoot.resolve(objectName + ".part");
+        Path target = tenantObjectRoot.resolve(objectName);
         MessageDigest digest = sha256Digest();
         long size = 0L;
 
         try {
             ensureUsableSpace();
+            Files.createDirectories(tenantStagingRoot);
+            Files.createDirectories(tenantObjectRoot);
+            rejectLinkedOrEscapedSegments(tenantStagingRoot);
+            rejectLinkedOrEscapedSegments(tenantObjectRoot);
         } catch (IOException e) {
             throw IndexInputStorageException.writeFailed(e);
         }
@@ -117,8 +124,12 @@ public final class FileSystemIndexInputStore implements IndexInputStore {
     }
 
     @Override
-    public InputStream openVerified(String storageKey, long expectedSizeBytes, String expectedSha256) {
-        Path input = resolveStorageKey(storageKey);
+    public InputStream openVerified(
+            long tenantId,
+            String storageKey,
+            long expectedSizeBytes,
+            String expectedSha256) {
+        Path input = resolveStorageKey(tenantId, storageKey);
         try {
             if (!Files.isRegularFile(input) || Files.isSymbolicLink(input)) {
                 throw IndexInputStorageException.unavailable(null);
@@ -137,8 +148,8 @@ public final class FileSystemIndexInputStore implements IndexInputStore {
     }
 
     @Override
-    public DeleteResult delete(String storageKey) {
-        Path input = resolveStorageKey(storageKey);
+    public DeleteResult delete(long tenantId, String storageKey) {
+        Path input = resolveStorageKey(tenantId, storageKey);
         try {
             return Files.deleteIfExists(input) ? DeleteResult.DELETED : DeleteResult.ALREADY_MISSING;
         } catch (IOException e) {
@@ -146,7 +157,8 @@ public final class FileSystemIndexInputStore implements IndexInputStore {
         }
     }
 
-    private Path resolveStorageKey(String storageKey) {
+    private Path resolveStorageKey(long tenantId, String storageKey) {
+        requireTenantId(tenantId);
         if (storageKey == null || storageKey.isBlank()) {
             throw IndexInputStorageException.unavailable(null);
         }
@@ -160,11 +172,22 @@ public final class FileSystemIndexInputStore implements IndexInputStore {
             }
         }
         Path resolved = root.resolve(key).normalize();
-        if (!resolved.startsWith(objectRoot)) {
+        Path expectedNamespace = tenantNamespace(objectRoot, tenantId);
+        if (!resolved.startsWith(expectedNamespace) || !expectedNamespace.equals(resolved.getParent())) {
             throw IndexInputStorageException.unavailable(null);
         }
         rejectLinkedOrEscapedSegments(resolved);
         return resolved;
+    }
+
+    private static Path tenantNamespace(Path base, long tenantId) {
+        return base.resolve("v2").resolve(Long.toString(tenantId));
+    }
+
+    private static void requireTenantId(long tenantId) {
+        if (tenantId <= 0L) {
+            throw IndexInputStorageException.unavailable(null);
+        }
     }
 
     private void rejectLinkedOrEscapedSegments(Path resolved) {

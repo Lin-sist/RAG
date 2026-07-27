@@ -50,11 +50,25 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public Optional<Document> getById(long tenantId, Long id) {
+        return Optional.ofNullable(documentMapper.selectByTenantAndId(tenantId, id));
+    }
+
+    @Override
     public List<Document> getByKnowledgeBaseId(Long kbId) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    public List<Document> getByKnowledgeBaseId(long tenantId, Long kbId) {
         LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Document::getKbId, kbId)
+        wrapper.eq(Document::getTenantId, tenantId)
+                .eq(Document::getKbId, kbId)
                 .orderByDesc(Document::getCreatedAt);
-        return documentMapper.selectList(wrapper);
+        return documentMapper.selectList(wrapper).stream()
+                .filter(document -> document.getTenantId() != null
+                        && document.getTenantId() == tenantId)
+                .toList();
     }
 
     @Override
@@ -74,10 +88,32 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public Optional<Document> getByKnowledgeBaseAndContentHash(
+            long tenantId, Long kbId, String contentHash) {
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Document::getTenantId, tenantId)
+                .eq(Document::getKbId, kbId)
+                .eq(Document::getContentHash, contentHash)
+                .last("LIMIT 1");
+        Document document = documentMapper.selectOne(wrapper);
+        if (document == null || !Long.valueOf(tenantId).equals(document.getTenantId())) {
+            return Optional.empty();
+        }
+        return Optional.of(document);
+    }
+
+    @Override
     @Transactional
     public void updateStatus(Long id, String status) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    @Transactional
+    public void updateStatus(long tenantId, Long id, String status) {
         LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(Document::getId, id)
+        wrapper.eq(Document::getTenantId, tenantId)
+                .eq(Document::getId, id)
                 .set(Document::getStatus, status);
         documentMapper.update(null, wrapper);
     }
@@ -85,8 +121,15 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public void updateChunkCount(Long id, int chunkCount) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    @Transactional
+    public void updateChunkCount(long tenantId, Long id, int chunkCount) {
         LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(Document::getId, id)
+        wrapper.eq(Document::getTenantId, tenantId)
+                .eq(Document::getId, id)
                 .set(Document::getChunkCount, chunkCount);
         documentMapper.update(null, wrapper);
     }
@@ -94,8 +137,15 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public void updateContentHash(Long id, String contentHash) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    @Transactional
+    public void updateContentHash(long tenantId, Long id, String contentHash) {
         LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(Document::getId, id)
+        wrapper.eq(Document::getTenantId, tenantId)
+                .eq(Document::getId, id)
                 .set(Document::getContentHash, contentHash);
         documentMapper.update(null, wrapper);
     }
@@ -103,8 +153,15 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public void updateInputState(Long id, String inputState) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    @Transactional
+    public void updateInputState(long tenantId, Long id, String inputState) {
         LambdaUpdateWrapper<Document> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(Document::getId, id)
+        wrapper.eq(Document::getTenantId, tenantId)
+                .eq(Document::getId, id)
                 .set(Document::getInputState, inputState);
         documentMapper.update(null, wrapper);
     }
@@ -112,43 +169,47 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public boolean delete(Long id) {
-        Optional<Document> docOpt = getById(id);
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    @Override
+    @Transactional
+    public boolean delete(long tenantId, Long id) {
+        Optional<Document> docOpt = getById(tenantId, id);
         if (docOpt.isEmpty()) {
             return false;
         }
 
         Document document = docOpt.get();
+        List<DocumentChunk> chunks = chunkMapper.selectByTenantAndDocumentId(tenantId, id);
+        List<String> vectorIds = chunks.stream()
+                .map(DocumentChunk::getVectorId)
+                .filter(vectorId -> vectorId != null && !vectorId.isEmpty())
+                .toList();
 
-        // 获取所有向量ID
-        List<String> vectorIds = getVectorIdsByDocumentId(id);
-
-        // 删除向量数据（DOC-03: 使用知识库真实 vectorCollection，而非拼接 kb_{kbId}）
         if (!vectorIds.isEmpty()) {
-            KnowledgeBase kb = knowledgeBaseMapper.selectById(document.getKbId());
+            KnowledgeBase kb = knowledgeBaseMapper.selectByTenantAndId(tenantId, document.getKbId());
             if (kb != null && kb.getVectorCollection() != null) {
                 vectorStore.delete(kb.getVectorCollection(), vectorIds);
                 keywordIndex.delete(kb.getVectorCollection(), vectorIds);
-                log.info("Deleted vectors for document");
+                log.info("Deleted tenant-scoped vectors for document");
             } else {
-                log.warn("向量删除前无法确认知识库集合，拒绝继续删除文档: kbId={}, documentId={}",
-                        document.getKbId(), id);
+                log.warn("向量删除前无法确认 tenant 内知识库集合，拒绝继续删除文档: tenantId={}, kbId={}, documentId={}",
+                        tenantId, document.getKbId(), id);
                 throw VectorDependencyException.indexUnavailable("delete", null);
             }
         }
 
         if (document.getFilePath() != null && !document.getFilePath().isBlank()) {
-            IndexInputStore.DeleteResult deleteResult = indexInputStore.delete(document.getFilePath());
+            IndexInputStore.DeleteResult deleteResult = indexInputStore.delete(tenantId, document.getFilePath());
             if (deleteResult != IndexInputStore.DeleteResult.DELETED
                     && deleteResult != IndexInputStore.DeleteResult.ALREADY_MISSING) {
                 throw IndexInputStorageException.cleanupFailed();
             }
         }
 
-        // 删除分块记录
-        deleteChunksByDocumentId(id);
-
-        // 删除文档记录
-        return documentMapper.deleteById(id) > 0;
+        chunkMapper.deleteByTenantAndDocumentId(tenantId, id);
+        return documentMapper.deleteByTenantAndId(tenantId, id) > 0;
     }
 
     @Override
@@ -157,6 +218,15 @@ public class DocumentServiceImpl implements DocumentService {
         List<Document> documents = getByKnowledgeBaseId(kbId);
         for (Document document : documents) {
             delete(document.getId());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteByKnowledgeBaseId(long tenantId, Long kbId) {
+        List<Document> documents = getByKnowledgeBaseId(tenantId, kbId);
+        for (Document document : documents) {
+            delete(tenantId, document.getId());
         }
     }
 
@@ -177,6 +247,11 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public List<DocumentChunk> getChunksByDocumentId(long tenantId, Long documentId) {
+        return chunkMapper.selectByTenantAndDocumentId(tenantId, documentId);
+    }
+
+    @Override
     public List<String> getVectorIdsByDocumentId(Long documentId) {
         LambdaQueryWrapper<DocumentChunk> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DocumentChunk::getDocumentId, documentId)
@@ -193,6 +268,14 @@ public class DocumentServiceImpl implements DocumentService {
     public int countByKnowledgeBaseId(Long kbId) {
         LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Document::getKbId, kbId);
+        return Math.toIntExact(documentMapper.selectCount(wrapper));
+    }
+
+    @Override
+    public int countByKnowledgeBaseId(long tenantId, Long kbId) {
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Document::getTenantId, tenantId)
+                .eq(Document::getKbId, kbId);
         return Math.toIntExact(documentMapper.selectCount(wrapper));
     }
 

@@ -28,7 +28,22 @@ public record TaskStatus(
         String error,
         Instant createdAt,
         Instant updatedAt,
-        Long ownerId) {
+        Long ownerId,
+        Long tenantId) {
+
+    public TaskStatus(
+            String taskId,
+            String taskType,
+            TaskState state,
+            int progress,
+            String message,
+            String result,
+            String error,
+            Instant createdAt,
+            Instant updatedAt,
+            Long ownerId) {
+        this(taskId, taskType, state, progress, message, result, error, createdAt, updatedAt, ownerId, null);
+    }
     /**
      * 创建待执行状态
      */
@@ -41,7 +56,13 @@ public record TaskStatus(
      */
     public static TaskStatus pending(String taskId, String taskType, Long ownerId) {
         Instant now = Instant.now();
-        return new TaskStatus(taskId, taskType, TaskState.PENDING, 0, "任务已提交，等待执行", null, null, now, now, ownerId);
+        return new TaskStatus(taskId, taskType, TaskState.PENDING, 0, "任务已提交，等待执行", null, null, now, now, ownerId, null);
+    }
+
+    public static TaskStatus pending(long tenantId, String taskId, String taskType, Long ownerId) {
+        Instant now = Instant.now();
+        return new TaskStatus(taskId, taskType, TaskState.PENDING, 0, "任务已提交，等待执行", null, null,
+                now, now, ownerId, requireTenantId(tenantId));
     }
 
     /**
@@ -56,7 +77,14 @@ public record TaskStatus(
      */
     public static TaskStatus running(String taskId, String taskType, int progress, String message, Long ownerId) {
         Instant now = Instant.now();
-        return new TaskStatus(taskId, taskType, TaskState.RUNNING, progress, message, null, null, now, now, ownerId);
+        return new TaskStatus(taskId, taskType, TaskState.RUNNING, progress, message, null, null, now, now, ownerId, null);
+    }
+
+    public static TaskStatus running(
+            long tenantId, String taskId, String taskType, int progress, String message, Long ownerId) {
+        Instant now = Instant.now();
+        return new TaskStatus(taskId, taskType, TaskState.RUNNING, progress, message, null, null,
+                now, now, ownerId, requireTenantId(tenantId));
     }
 
     /**
@@ -71,7 +99,13 @@ public record TaskStatus(
      */
     public static TaskStatus completed(String taskId, String taskType, String result, Long ownerId) {
         Instant now = Instant.now();
-        return new TaskStatus(taskId, taskType, TaskState.COMPLETED, 100, "任务执行完成", result, null, now, now, ownerId);
+        return new TaskStatus(taskId, taskType, TaskState.COMPLETED, 100, "任务执行完成", result, null, now, now, ownerId, null);
+    }
+
+    public static TaskStatus completed(long tenantId, String taskId, String taskType, String result, Long ownerId) {
+        Instant now = Instant.now();
+        return new TaskStatus(taskId, taskType, TaskState.COMPLETED, 100, "任务执行完成", result, null,
+                now, now, ownerId, requireTenantId(tenantId));
     }
 
     /**
@@ -86,7 +120,13 @@ public record TaskStatus(
      */
     public static TaskStatus failed(String taskId, String taskType, String error, Long ownerId) {
         Instant now = Instant.now();
-        return new TaskStatus(taskId, taskType, TaskState.FAILED, 0, "任务执行失败", null, error, now, now, ownerId);
+        return new TaskStatus(taskId, taskType, TaskState.FAILED, 0, "任务执行失败", null, error, now, now, ownerId, null);
+    }
+
+    public static TaskStatus failed(long tenantId, String taskId, String taskType, String error, Long ownerId) {
+        Instant now = Instant.now();
+        return new TaskStatus(taskId, taskType, TaskState.FAILED, 0, "任务执行失败", null, error,
+                now, now, ownerId, requireTenantId(tenantId));
     }
 
     /**
@@ -101,7 +141,13 @@ public record TaskStatus(
      */
     public static TaskStatus cancelled(String taskId, String taskType, Long ownerId) {
         Instant now = Instant.now();
-        return new TaskStatus(taskId, taskType, TaskState.CANCELLED, 0, "任务已取消", null, null, now, now, ownerId);
+        return new TaskStatus(taskId, taskType, TaskState.CANCELLED, 0, "任务已取消", null, null, now, now, ownerId, null);
+    }
+
+    public static TaskStatus cancelled(long tenantId, String taskId, String taskType, Long ownerId) {
+        Instant now = Instant.now();
+        return new TaskStatus(taskId, taskType, TaskState.CANCELLED, 0, "任务已取消", null, null,
+                now, now, ownerId, requireTenantId(tenantId));
     }
 
     /**
@@ -109,7 +155,7 @@ public record TaskStatus(
      */
     public TaskStatus withProgress(int newProgress, String newMessage) {
         return new TaskStatus(taskId, taskType, TaskState.RUNNING, newProgress, newMessage, result, error, createdAt,
-                Instant.now(), ownerId);
+                Instant.now(), ownerId, tenantId);
     }
 
     /**
@@ -117,7 +163,7 @@ public record TaskStatus(
      */
     public TaskStatus withCompleted(String newResult) {
         return new TaskStatus(taskId, taskType, TaskState.COMPLETED, 100, "任务执行完成", newResult, null, createdAt,
-                Instant.now(), ownerId);
+                Instant.now(), ownerId, tenantId);
     }
 
     /**
@@ -125,7 +171,7 @@ public record TaskStatus(
      */
     public TaskStatus withFailed(String newError) {
         return new TaskStatus(taskId, taskType, TaskState.FAILED, progress, "任务执行失败", null, newError, createdAt,
-                Instant.now(), ownerId);
+                Instant.now(), ownerId, tenantId);
     }
 
     /**
@@ -133,5 +179,12 @@ public record TaskStatus(
      */
     public boolean isTerminal() {
         return state == TaskState.COMPLETED || state == TaskState.FAILED || state == TaskState.CANCELLED;
+    }
+
+    private static long requireTenantId(long tenantId) {
+        if (tenantId <= 0L) {
+            throw new IllegalArgumentException("tenantId must be positive");
+        }
+        return tenantId;
     }
 }

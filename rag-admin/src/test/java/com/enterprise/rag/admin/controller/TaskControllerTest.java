@@ -1,6 +1,7 @@
 package com.enterprise.rag.admin.controller;
 
 import com.enterprise.rag.admin.security.CurrentUserService;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskState;
 import com.enterprise.rag.common.async.TaskStatus;
@@ -38,7 +39,7 @@ class TaskControllerTest {
         userDetails = mock(UserDetails.class);
 
         taskController = new TaskController(asyncTaskManager, taskStatusService, currentUserService);
-        when(currentUserService.requireUserId(any())).thenReturn(1001L);
+        when(currentUserService.requireIdentity(any())).thenReturn(new RequestIdentity(1001L, 77L));
     }
 
     @Test
@@ -53,9 +54,10 @@ class TaskControllerTest {
                 null,
                 Instant.now(),
                 Instant.now(),
-                2002L);
+                2002L,
+                77L);
 
-        when(asyncTaskManager.getStatus("task-1")).thenReturn(Optional.of(status));
+        when(asyncTaskManager.getStatus(77L, "task-1")).thenReturn(Optional.of(status));
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> taskController.getTaskStatus("task-1", userDetails));
@@ -65,14 +67,53 @@ class TaskControllerTest {
 
     @Test
     void cancelTaskShouldSucceedWhenOwnerMatches() {
-        TaskStatus status = TaskStatus.pending("task-2", "DOCUMENT_INDEX", 1001L);
-        when(asyncTaskManager.getStatus("task-2")).thenReturn(Optional.of(status));
-        when(asyncTaskManager.cancel("task-2")).thenReturn(true);
+        TaskStatus status = TaskStatus.pending(77L, "task-2", "DOCUMENT_INDEX", 1001L);
+        when(asyncTaskManager.getStatus(77L, "task-2")).thenReturn(Optional.of(status));
+        when(asyncTaskManager.cancel(77L, "task-2")).thenReturn(true);
 
         var response = taskController.cancelTask("task-2", userDetails);
 
         assertEquals(true, response.getBody().getData().cancelled());
-        verify(asyncTaskManager).cancel("task-2");
+        verify(asyncTaskManager).cancel(77L, "task-2");
         verify(taskStatusService, never()).isCompleted(anyString());
+    }
+
+    @Test
+    void crossTenantTaskLookupUsesTenantScopedProjectionAndReturnsNotFound() {
+        when(asyncTaskManager.getStatus(77L, "shared-task")).thenReturn(Optional.empty());
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> taskController.getTaskStatus("shared-task", userDetails));
+
+        assertEquals("TASK_001", error.getErrorCode());
+        verify(asyncTaskManager).getStatus(77L, "shared-task");
+        verify(asyncTaskManager, never()).getStatus("shared-task");
+    }
+
+    @Test
+    void existsAndCompletedReuseTenantScopedStatus() {
+        TaskStatus status = TaskStatus.completed(77L, "task-3", "DOCUMENT_INDEX", null, 1001L);
+        when(asyncTaskManager.getStatus(77L, "task-3")).thenReturn(Optional.of(status));
+
+        assertEquals(true, taskController.checkTaskExists("task-3", userDetails).getBody().getData().exists());
+        var completed = taskController.checkTaskCompleted("task-3", userDetails).getBody().getData();
+
+        assertEquals(true, completed.completed());
+        assertEquals(true, completed.successful());
+        verify(asyncTaskManager, never()).getStatus("task-3");
+    }
+
+    @Test
+    void completedResultUsesSameTenantForStatusAndPayload() {
+        TaskStatus status = TaskStatus.completed(
+                77L, "task-4", "DOCUMENT_INDEX", "{\"ok\":true}", 1001L);
+        when(asyncTaskManager.getStatus(77L, "task-4")).thenReturn(Optional.of(status));
+        when(asyncTaskManager.getResult(77L, "task-4", Object.class)).thenReturn(Optional.of("done"));
+
+        var response = taskController.getTaskResult("task-4", userDetails);
+
+        assertEquals("task-4", response.getBody().getData().taskId());
+        verify(asyncTaskManager).getResult(77L, "task-4", Object.class);
+        verify(asyncTaskManager, never()).getResult("task-4", Object.class);
     }
 }

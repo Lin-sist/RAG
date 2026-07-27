@@ -101,28 +101,30 @@ class DocumentIndexingTelemetryTest {
         DocumentChunk chunk = new DocumentChunk("chunk-stable", "content", 0, 7, Map.of());
         ProcessResult result = ProcessResult.newDocument("doc-99", "hash-99", "content", List.of(chunk));
         when(parserFactory.isSupported("md")).thenReturn(true);
-        when(inputStore.put(any(InputStream.class)))
-                .thenReturn(new StoredIndexInput("objects/input.bin", 12L, "abc123"));
-        when(inputStore.openVerified("objects/input.bin", 12L, "abc123"))
+        when(inputStore.put(eq(77L), any(InputStream.class)))
+                .thenReturn(new StoredIndexInput("objects/v2/77/input.bin", 12L, "abc123"));
+        when(inputStore.openVerified(77L, "objects/v2/77/input.bin", 12L, "abc123"))
                 .thenReturn(new ByteArrayInputStream("durable-body".getBytes()));
-        when(inputStore.delete("objects/input.bin")).thenReturn(IndexInputStore.DeleteResult.DELETED);
+        when(inputStore.delete(77L, "objects/v2/77/input.bin"))
+                .thenReturn(IndexInputStore.DeleteResult.DELETED);
         when(documentService.create(any(Document.class))).thenReturn(created);
-        when(ledger.createAccepted(99L, 20L)).thenReturn("task-99");
-        when(asyncTaskManager.submit(eq("task-99"), eq("DOCUMENT_INDEX"), eq(20L),
+        when(ledger.createAccepted(77L, 99L, 20L)).thenReturn("task-99");
+        when(asyncTaskManager.submit(eq(77L), eq("task-99"), eq("DOCUMENT_INDEX"), eq(20L),
                 org.mockito.ArgumentMatchers.<AsyncTask<ProcessResult>>any()))
                 .thenReturn(new TaskHandle<>("task-99", CompletableFuture.completedFuture(result)));
         when(documentProcessor.process(any())).thenReturn(result);
-        when(documentService.getByKnowledgeBaseAndContentHash(10L, "hash-99"))
+        when(documentService.getByKnowledgeBaseAndContentHash(77L, 10L, "hash-99"))
                 .thenReturn(Optional.empty());
-        when(knowledgeBaseService.getById(10L)).thenReturn(Optional.of(kb));
+        when(knowledgeBaseService.getById(77L, 10L)).thenReturn(Optional.of(kb));
         when(embeddingService.embedBatch(anyList())).thenReturn(List.of(new float[] {0.1f, 0.2f}));
         doThrow(new IllegalStateException("raw-finalize-retry-message"))
                 .doNothing()
-                .when(finalizer).finalizeSql(eq("task-99"), eq(10L), eq(99L), eq("hash-99"), anyList());
+                .when(finalizer).finalizeSql(
+                        eq(77L), eq("task-99"), eq(10L), eq(99L), eq("hash-99"), anyList());
 
         Span submission = openTelemetry.getTracer("test").spanBuilder("upload.request").startSpan();
         try (Scope ignored = submission.makeCurrent()) {
-            service.submitIndexing(10L, 20L,
+            service.submitIndexing(77L, 10L, 20L,
                     new MockMultipartFile("file", "raw-sensitive-file.md", "text/markdown", "content".getBytes()),
                     "raw-sensitive-title");
         } finally {
@@ -130,7 +132,8 @@ class DocumentIndexingTelemetryTest {
         }
 
         ArgumentCaptor<AsyncTask<ProcessResult>> taskCaptor = ArgumentCaptor.forClass(AsyncTask.class);
-        verify(asyncTaskManager).submit(eq("task-99"), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
+        verify(asyncTaskManager).submit(
+                eq(77L), eq("task-99"), eq("DOCUMENT_INDEX"), eq(20L), taskCaptor.capture());
         taskCaptor.getValue().execute(progress -> { });
         assertFalse(Span.current().getSpanContext().isValid());
         assertNull(TraceContext.getTraceId());
@@ -180,13 +183,14 @@ class DocumentIndexingTelemetryTest {
                 mock(IndexTaskLedger.class), mock(IndexTaskSqlFinalizer.class),
                 new DocumentChunkingProperties(), new GenAiTelemetry(openTelemetry));
         IndexTaskRecord task = new IndexTaskRecord();
+        task.setTenantId(77L);
         task.setTaskId("task-resume");
         task.setDocumentId(404L);
         task.setExecutionPhase(IndexTaskPhase.ACCEPTED.name());
         task.setIndexContractVersion(com.enterprise.rag.admin.kb.task.DeterministicChunkIdentity.CONTRACT_VERSION);
         task.setChunkSize(500);
         task.setChunkOverlap(50);
-        when(documentService.getById(404L)).thenReturn(Optional.empty());
+        when(documentService.getById(77L, 404L)).thenReturn(Optional.empty());
 
         Span request = openTelemetry.getTracer("test").spanBuilder("request").startSpan();
         try (Scope ignored = request.makeCurrent()) {

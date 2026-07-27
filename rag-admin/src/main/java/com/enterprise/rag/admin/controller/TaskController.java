@@ -1,6 +1,7 @@
 package com.enterprise.rag.admin.controller;
 
 import com.enterprise.rag.admin.security.CurrentUserService;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.common.async.AsyncTaskManager;
 import com.enterprise.rag.common.async.TaskStatus;
 import com.enterprise.rag.common.async.TaskStatusResponse;
@@ -52,7 +53,8 @@ public class TaskController {
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("查询任务状态: taskId={}", taskId);
 
-        TaskStatus status = requireTaskOwner(taskId, userDetails);
+        RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+        TaskStatus status = requireTaskOwner(identity, taskId);
 
         TaskStatusResponse response = TaskStatusResponse.from(status);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -73,7 +75,8 @@ public class TaskController {
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("查询任务结果: taskId={}", taskId);
 
-        TaskStatus status = requireTaskOwner(taskId, userDetails);
+        RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+        TaskStatus status = requireTaskOwner(identity, taskId);
 
         if (!status.isTerminal()) {
             throw new BusinessException("TASK_002", "任务尚未完成: " + taskId);
@@ -82,7 +85,7 @@ public class TaskController {
         // 获取结果
         Object result = null;
         if (status.result() != null) {
-            result = asyncTaskManager.getResult(taskId, Object.class).orElse(null);
+            result = asyncTaskManager.getResult(identity.tenantId(), taskId, Object.class).orElse(null);
         }
 
         TaskStatusResponse response = TaskStatusResponse.from(status, result);
@@ -105,12 +108,13 @@ public class TaskController {
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.info("取消任务请求: taskId={}", taskId);
 
-        TaskStatus status = requireTaskOwner(taskId, userDetails);
+        RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+        TaskStatus status = requireTaskOwner(identity, taskId);
         if (status.isTerminal()) {
             throw new BusinessException("TASK_003", "任务已完成，无法取消: " + taskId);
         }
 
-        boolean cancelled = asyncTaskManager.cancel(taskId);
+        boolean cancelled = asyncTaskManager.cancel(identity.tenantId(), taskId);
         log.info("任务取消结果: taskId={}, cancelled={}", taskId, cancelled);
 
         return ResponseEntity.ok(ApiResponse.success(new CancelResponse(taskId, cancelled)));
@@ -128,7 +132,8 @@ public class TaskController {
             @Parameter(description = "任务 ID", required = true) @PathVariable String taskId,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("检查任务是否存在: taskId={}", taskId);
-        requireTaskOwner(taskId, userDetails);
+        RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+        requireTaskOwner(identity, taskId);
         return ResponseEntity.ok(ApiResponse.success(new ExistsResponse(taskId, true)));
     }
 
@@ -146,10 +151,11 @@ public class TaskController {
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("检查任务是否完成: taskId={}", taskId);
 
-        requireTaskOwner(taskId, userDetails);
+        RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+        TaskStatus status = requireTaskOwner(identity, taskId);
 
-        boolean completed = taskStatusService.isCompleted(taskId);
-        boolean successful = taskStatusService.isSuccessful(taskId);
+        boolean completed = status.isTerminal();
+        boolean successful = status.state() == com.enterprise.rag.common.async.TaskState.COMPLETED;
 
         return ResponseEntity.ok(ApiResponse.success(new CompletedResponse(taskId, completed, successful)));
     }
@@ -172,12 +178,14 @@ public class TaskController {
     public record CompletedResponse(String taskId, boolean completed, boolean successful) {
     }
 
-    private TaskStatus requireTaskOwner(String taskId, UserDetails userDetails) {
-        Long userId = currentUserService.requireUserId(userDetails);
-        TaskStatus status = asyncTaskManager.getStatus(taskId)
+    private TaskStatus requireTaskOwner(RequestIdentity identity, String taskId) {
+        TaskStatus status = asyncTaskManager.getStatus(identity.tenantId(), taskId)
                 .orElseThrow(() -> new BusinessException("TASK_001", "任务不存在: " + taskId));
 
-        if (status.ownerId() == null || !status.ownerId().equals(userId)) {
+        if (status.tenantId() == null || status.tenantId() != identity.tenantId()) {
+            throw new BusinessException("TASK_001", "任务不存在: " + taskId);
+        }
+        if (status.ownerId() == null || !status.ownerId().equals(identity.userId())) {
             throw new BusinessException("AUTH_004", "无权限访问该任务");
         }
         return status;

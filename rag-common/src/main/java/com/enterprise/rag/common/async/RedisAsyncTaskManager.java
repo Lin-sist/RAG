@@ -74,37 +74,50 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
     @Override
     public <T> TaskHandle<T> submit(AsyncTask<T> task) {
-        return submit(task.getTaskType(), task);
+        throw tenantIdentityRequired();
     }
 
     @Override
     public <T> TaskHandle<T> submit(String taskType, AsyncTask<T> task) {
-        return submit(taskType, null, task);
+        throw tenantIdentityRequired();
     }
 
     @Override
     public <T> TaskHandle<T> submit(String taskType, Long ownerId, AsyncTask<T> task) {
-        return submit(generateTaskId(), taskType, ownerId, task);
+        throw tenantIdentityRequired();
     }
 
     @Override
     public <T> TaskHandle<T> submit(String taskId, String taskType, Long ownerId, AsyncTask<T> task) {
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public <T> TaskHandle<T> submit(long tenantId, String taskType, Long ownerId, AsyncTask<T> task) {
+        return submit(tenantId, generateTaskId(), taskType, ownerId, task);
+    }
+
+    @Override
+    public <T> TaskHandle<T> submit(
+            long tenantId, String taskId, String taskType, Long ownerId, AsyncTask<T> task) {
+        requireTenantId(tenantId);
         if (taskId == null || taskId.isBlank()) {
             throw new IllegalArgumentException("taskId must not be blank");
         }
 
         // 1. 创建初始状态并持久化
-        TaskStatus initialStatus = TaskStatus.pending(taskId, taskType, ownerId);
-        saveStatus(taskId, initialStatus);
+        TaskStatus initialStatus = TaskStatus.pending(tenantId, taskId, taskType, ownerId);
+        saveStatus(tenantId, taskId, initialStatus);
 
         // 2. 异步执行任务
-        CompletableFuture<T> future = executeAsync(taskId, taskType, ownerId, task);
+        CompletableFuture<T> future = executeAsync(tenantId, taskId, taskType, ownerId, task);
 
         // 3. 缓存 Future 用于取消
-        taskFutures.put(taskId, future);
+        String futureKey = buildKey(tenantId, taskId);
+        taskFutures.put(futureKey, future);
 
         // 4. 任务完成后清理缓存
-        future.whenComplete((result, ex) -> taskFutures.remove(taskId));
+        future.whenComplete((result, ex) -> taskFutures.remove(futureKey));
 
         log.info("Submitted async task: taskId={}, taskType={}, ownerId={}", taskId, taskType, ownerId);
         return new TaskHandle<>(taskId, future);
@@ -112,18 +125,23 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
     @Override
     public <T> TaskHandle<T> submit(String taskType, Callable<T> callable) {
-        return submit(taskType, null, callable);
+        throw tenantIdentityRequired();
     }
 
     @Override
     public <T> TaskHandle<T> submit(String taskType, Long ownerId, Callable<T> callable) {
-        AsyncTask<T> task = progressCallback -> callable.call();
-        return submit(taskType, ownerId, task);
+        throw tenantIdentityRequired();
     }
 
     @Override
     public Optional<TaskStatus> getStatus(String taskId) {
-        String redisKey = buildKey(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public Optional<TaskStatus> getStatus(long tenantId, String taskId) {
+        requireTenantId(tenantId);
+        String redisKey = buildKey(tenantId, taskId);
         String json;
         try {
             json = stringRedisTemplate.opsForValue().get(redisKey);
@@ -135,14 +153,19 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
         }
 
         if (json == null) {
-            Optional<TaskStatus> durableStatus = durableTaskStatusStore.find(taskId);
-            durableStatus.ifPresent(status -> saveStatus(taskId, status));
+            Optional<TaskStatus> durableStatus = durableTaskStatusStore.find(tenantId, taskId);
+            durableStatus.ifPresent(status -> {
+                requireMatchingScope(tenantId, taskId, status);
+                saveStatus(tenantId, taskId, status);
+            });
             return durableStatus;
         }
 
         try {
             TaskStatusData data = objectMapper.readValue(json, TaskStatusData.class);
-            return Optional.of(data.toTaskStatus());
+            TaskStatus status = data.toTaskStatus();
+            requireMatchingScope(tenantId, taskId, status);
+            return Optional.of(status);
         } catch (Exception e) {
             log.error("Task status deserialize failed closed: dependency=redis, subsystem=task_status, "
                             + "operation=deserialize, failMode=closed, errorType={}",
@@ -153,7 +176,12 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
     @Override
     public <T> Optional<T> getResult(String taskId, Class<T> resultType) {
-        Optional<TaskStatus> statusOpt = getStatus(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public <T> Optional<T> getResult(long tenantId, String taskId, Class<T> resultType) {
+        Optional<TaskStatus> statusOpt = getStatus(tenantId, taskId);
 
         if (statusOpt.isEmpty()) {
             return Optional.empty();
@@ -190,7 +218,12 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
     @Override
     public void updateProgress(String taskId, int progress, String message) {
-        Optional<TaskStatus> statusOpt = getStatus(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public void updateProgress(long tenantId, String taskId, int progress, String message) {
+        Optional<TaskStatus> statusOpt = getStatus(tenantId, taskId);
 
         if (statusOpt.isEmpty()) {
             log.warn("Cannot update progress for non-existent task: {}", taskId);
@@ -204,18 +237,24 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
         }
 
         TaskStatus updatedStatus = currentStatus.withProgress(progress, message);
-        saveStatus(taskId, updatedStatus);
+        saveStatus(tenantId, taskId, updatedStatus);
 
         log.debug("Updated task progress: taskId={}, progress={}", taskId, progress);
     }
 
     @Override
     public boolean cancel(String taskId) {
-        CompletableFuture<?> future = taskFutures.get(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public boolean cancel(long tenantId, String taskId) {
+        String futureKey = buildKey(tenantId, taskId);
+        CompletableFuture<?> future = taskFutures.get(futureKey);
 
         if (future == null) {
             // 任务可能已完成或不存在
-            Optional<TaskStatus> statusOpt = getStatus(taskId);
+            Optional<TaskStatus> statusOpt = getStatus(tenantId, taskId);
             if (statusOpt.isEmpty()) {
                 return false;
             }
@@ -226,15 +265,17 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
             }
 
             // 更新状态为已取消
-            saveStatus(taskId, TaskStatus.cancelled(taskId, status.taskType(), status.ownerId()));
+            saveStatus(tenantId, taskId,
+                    TaskStatus.cancelled(tenantId, taskId, status.taskType(), status.ownerId()));
             return true;
         }
 
         boolean cancelled = future.cancel(true);
         if (cancelled) {
-            Optional<TaskStatus> statusOpt = getStatus(taskId);
+            Optional<TaskStatus> statusOpt = getStatus(tenantId, taskId);
             statusOpt.ifPresent(
-                    status -> saveStatus(taskId, TaskStatus.cancelled(taskId, status.taskType(), status.ownerId())));
+                    status -> saveStatus(tenantId, taskId,
+                            TaskStatus.cancelled(tenantId, taskId, status.taskType(), status.ownerId())));
         }
 
         return cancelled;
@@ -242,7 +283,12 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
     @Override
     public boolean exists(String taskId) {
-        String redisKey = buildKey(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public boolean exists(long tenantId, String taskId) {
+        String redisKey = buildKey(tenantId, taskId);
         try {
             Boolean exists = stringRedisTemplate.hasKey(redisKey);
             return Boolean.TRUE.equals(exists);
@@ -256,7 +302,12 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
 
     @Override
     public void remove(String taskId) {
-        String redisKey = buildKey(taskId);
+        throw tenantIdentityRequired();
+    }
+
+    @Override
+    public void remove(long tenantId, String taskId) {
+        String redisKey = buildKey(tenantId, taskId);
         try {
             stringRedisTemplate.delete(redisKey);
         } catch (Exception e) {
@@ -265,27 +316,30 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
                     e.getClass().getSimpleName());
             throw RedisDependencyException.unavailable("task_status", "remove", e);
         }
-        taskFutures.remove(taskId);
+        taskFutures.remove(redisKey);
         log.debug("Removed task: {}", taskId);
     }
 
     /**
      * 异步执行任务
      */
-    protected <T> CompletableFuture<T> executeAsync(String taskId, String taskType, Long ownerId, AsyncTask<T> task) {
+    protected <T> CompletableFuture<T> executeAsync(
+            long tenantId, String taskId, String taskType, Long ownerId, AsyncTask<T> task) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // 更新状态为运行中
-                saveStatus(taskId, TaskStatus.running(taskId, taskType, 0, "任务开始执行", ownerId));
+                saveStatus(tenantId, taskId,
+                        TaskStatus.running(tenantId, taskId, taskType, 0, "任务开始执行", ownerId));
 
                 // 执行任务，传入进度回调
                 T result = task.execute(progress -> {
-                    updateProgress(taskId, progress.progress(), progress.message());
+                    updateProgress(tenantId, taskId, progress.progress(), progress.message());
                 });
 
                 // 更新状态为完成
                 String resultJson = serializeResult(result);
-                saveStatus(taskId, TaskStatus.completed(taskId, taskType, resultJson, ownerId));
+                saveStatus(tenantId, taskId,
+                        TaskStatus.completed(tenantId, taskId, taskType, resultJson, ownerId));
 
                 log.info("Task completed successfully: taskId={}", taskId);
                 return result;
@@ -296,8 +350,8 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
                 log.error("Task execution failed with stable business result: taskId={}, errorCode={}, errorType={}",
                         taskId, e.getErrorCode(), e.getClass().getSimpleName());
                 try {
-                    saveStatus(taskId, TaskStatus.failed(
-                            taskId, taskType, e.getErrorCode() + ": " + e.getMessage(), ownerId));
+                    saveStatus(tenantId, taskId, TaskStatus.failed(
+                            tenantId, taskId, taskType, e.getErrorCode() + ": " + e.getMessage(), ownerId));
                 } catch (RedisDependencyException statusFailure) {
                     statusFailure.addSuppressed(e);
                     throw statusFailure;
@@ -308,7 +362,8 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
                 log.error("Task execution failed: taskId={}, errorType={}",
                         taskId, e.getClass().getSimpleName());
                 try {
-                    saveStatus(taskId, TaskStatus.failed(taskId, taskType, e.getMessage(), ownerId));
+                    saveStatus(tenantId, taskId,
+                            TaskStatus.failed(tenantId, taskId, taskType, e.getMessage(), ownerId));
                 } catch (RedisDependencyException statusFailure) {
                     statusFailure.addSuppressed(e);
                     throw statusFailure;
@@ -328,15 +383,16 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
     /**
      * 构建 Redis key
      */
-    private String buildKey(String taskId) {
-        return RedisKeyConstants.taskStatusKey(taskId);
+    private String buildKey(long tenantId, String taskId) {
+        return RedisKeyConstants.taskStatusV2Key(requireTenantId(tenantId), taskId);
     }
 
     /**
      * 保存任务状态到 Redis
      */
-    private void saveStatus(String taskId, TaskStatus status) {
-        String redisKey = buildKey(taskId);
+    private void saveStatus(long tenantId, String taskId, TaskStatus status) {
+        requireMatchingScope(tenantId, taskId, status);
+        String redisKey = buildKey(tenantId, taskId);
         try {
             TaskStatusData data = TaskStatusData.fromTaskStatus(status);
             String json = objectMapper.writeValueAsString(data);
@@ -376,6 +432,7 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
      * 任务状态数据（用于 JSON 序列化）
      */
     private record TaskStatusData(
+            Long tenantId,
             String taskId,
             String taskType,
             String state,
@@ -388,6 +445,7 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
             Long ownerId) {
         static TaskStatusData fromTaskStatus(TaskStatus status) {
             return new TaskStatusData(
+                    status.tenantId(),
                     status.taskId(),
                     status.taskType(),
                     status.state().name(),
@@ -411,7 +469,28 @@ public class RedisAsyncTaskManager implements AsyncTaskManager {
                     error,
                     Instant.ofEpochMilli(createdAt),
                     Instant.ofEpochMilli(updatedAt),
-                    ownerId);
+                    ownerId,
+                    tenantId);
         }
+    }
+
+    private static long requireTenantId(long tenantId) {
+        if (tenantId <= 0L) {
+            throw new IllegalArgumentException("tenantId must be positive");
+        }
+        return tenantId;
+    }
+
+    private static void requireMatchingScope(long tenantId, String taskId, TaskStatus status) {
+        if (status == null
+                || status.tenantId() == null
+                || status.tenantId() != tenantId
+                || !taskId.equals(status.taskId())) {
+            throw new IllegalStateException("Task projection scope mismatch");
+        }
+    }
+
+    private static IllegalStateException tenantIdentityRequired() {
+        return new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 }

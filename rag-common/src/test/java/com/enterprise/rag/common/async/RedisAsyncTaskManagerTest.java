@@ -29,16 +29,18 @@ class RedisAsyncTaskManagerTest {
         DurableTaskStatusStore durableStore = mock(DurableTaskStatusStore.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get(anyString())).thenReturn(null);
-        TaskStatus durable = TaskStatus.pending("task-durable", "DOCUMENT_INDEX", 42L);
-        when(durableStore.find("task-durable")).thenReturn(Optional.of(durable));
+        TaskStatus durable = TaskStatus.pending(77L, "task-durable", "DOCUMENT_INDEX", 42L);
+        when(durableStore.find(77L, "task-durable")).thenReturn(Optional.of(durable));
 
         RedisAsyncTaskManager manager = new RedisAsyncTaskManager(
                 redisTemplate, new ObjectMapper(), Runnable::run, durableStore);
 
-        TaskStatus restored = manager.getStatus("task-durable").orElseThrow();
+        TaskStatus restored = manager.getStatus(77L, "task-durable").orElseThrow();
 
+        assertEquals(77L, restored.tenantId());
         assertEquals(42L, restored.ownerId());
-        verify(durableStore).find("task-durable");
+        verify(valueOperations).get("task:status:v2:77:task-durable");
+        verify(durableStore).find(77L, "task-durable");
         verify(valueOperations).set(anyString(), anyString(), anyLong(), eq(TimeUnit.SECONDS));
     }
 
@@ -57,12 +59,34 @@ class RedisAsyncTaskManagerTest {
         };
         RedisAsyncTaskManager manager = new RedisAsyncTaskManager(redisTemplate, new ObjectMapper(), executor);
 
-        TaskHandle<String> handle = manager.submit("THREAD_POOL_TEST",
+        TaskHandle<String> handle = manager.submit(77L, "THREAD_POOL_TEST", 42L,
                 ignored -> Thread.currentThread().getName());
 
         String threadName = handle.future().get(5, TimeUnit.SECONDS);
 
         assertTrue(executorUsed.get());
         assertEquals("async-task-test-worker", threadName);
+    }
+
+    @Test
+    void tenantPayloadMismatchFailsClosed() {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("task:status:v2:77:task-1")).thenReturn(
+                "{\"tenantId\":88,\"taskId\":\"task-1\",\"taskType\":\"INDEX\","
+                        + "\"state\":\"RUNNING\",\"progress\":10,\"message\":\"running\","
+                        + "\"result\":null,\"error\":null,\"createdAt\":1,\"updatedAt\":1,"
+                        + "\"ownerId\":42}");
+        RedisAsyncTaskManager manager = new RedisAsyncTaskManager(
+                redisTemplate, new ObjectMapper(), Runnable::run);
+
+        com.enterprise.rag.common.exception.RedisDependencyException error =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        com.enterprise.rag.common.exception.RedisDependencyException.class,
+                        () -> manager.getStatus(77L, "task-1"));
+
+        assertEquals("deserialize", error.getOperation());
     }
 }

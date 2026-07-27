@@ -23,8 +23,20 @@ public class AuthorizationService {
     private final QAHistoryService qaHistoryService;
 
     public KnowledgeBaseDTO requireKnowledgeBaseReadAccess(Long kbId, Long userId) {
-        KnowledgeBaseDTO kb = getKnowledgeBaseOrThrow(kbId);
-        boolean canAccess = kbPermissionService.canAccess(kbId, userId, kb.getIsPublic(), kb.getOwnerId());
+        throw tenantIdentityRequired();
+    }
+
+    /**
+     * 在服务端认证 tenant 边界内校验知识库读取权限。
+     */
+    public KnowledgeBaseDTO requireKnowledgeBaseReadAccess(Long kbId, RequestIdentity identity) {
+        KnowledgeBaseDTO kb = knowledgeBaseService.getById(kbId, identity)
+                .orElseThrow(() -> new BusinessException(
+                        "KB_001", "知识库不存在: " + kbId, HttpStatus.NOT_FOUND));
+        boolean canAccess = Boolean.TRUE.equals(kb.getIsPublic())
+                || isOwner(kb, identity.userId())
+                || kbPermissionService.hasPermission(
+                        identity.tenantId(), kbId, identity.userId(), PermissionType.READ);
         if (!canAccess) {
             throw forbidden("无权访问该知识库");
         }
@@ -32,39 +44,49 @@ public class AuthorizationService {
     }
 
     public KnowledgeBaseDTO requireKnowledgeBaseWriteAccess(Long kbId, Long userId) {
-        KnowledgeBaseDTO kb = getKnowledgeBaseOrThrow(kbId);
-        if (isOwner(kb, userId)) {
+        throw tenantIdentityRequired();
+    }
+
+    public KnowledgeBaseDTO requireKnowledgeBaseAdminAccess(Long kbId, Long userId) {
+        throw tenantIdentityRequired();
+    }
+
+    public KnowledgeBaseDTO requireKnowledgeBaseWriteAccess(Long kbId, RequestIdentity identity) {
+        KnowledgeBaseDTO kb = knowledgeBaseService.getById(kbId, identity)
+                .orElseThrow(() -> new BusinessException(
+                        "KB_001", "知识库不存在: " + kbId, HttpStatus.NOT_FOUND));
+        if (isOwner(kb, identity.userId())) {
             return kb;
         }
-        if (!kbPermissionService.hasPermission(kbId, userId, PermissionType.WRITE)) {
+        if (!kbPermissionService.hasPermission(
+                identity.tenantId(), kbId, identity.userId(), PermissionType.WRITE)) {
             throw forbidden("无权修改该知识库");
         }
         return kb;
     }
 
-    public KnowledgeBaseDTO requireKnowledgeBaseAdminAccess(Long kbId, Long userId) {
-        KnowledgeBaseDTO kb = getKnowledgeBaseOrThrow(kbId);
-        if (isOwner(kb, userId)) {
+    public KnowledgeBaseDTO requireKnowledgeBaseAdminAccess(Long kbId, RequestIdentity identity) {
+        KnowledgeBaseDTO kb = knowledgeBaseService.getById(kbId, identity)
+                .orElseThrow(() -> new BusinessException(
+                        "KB_001", "知识库不存在: " + kbId, HttpStatus.NOT_FOUND));
+        if (isOwner(kb, identity.userId())) {
             return kb;
         }
-        if (!kbPermissionService.hasPermission(kbId, userId, PermissionType.ADMIN)) {
+        if (!kbPermissionService.hasPermission(
+                identity.tenantId(), kbId, identity.userId(), PermissionType.ADMIN)) {
             throw forbidden("无权管理该知识库");
         }
         return kb;
     }
 
     public QAHistoryDTO requireHistoryOwner(Long historyId, Long userId) {
-        QAHistoryDTO history = qaHistoryService.getById(historyId)
-                .orElseThrow(() -> new BusinessException("HISTORY_001", "历史记录不存在: " + historyId));
-        if (!userId.equals(history.getUserId())) {
-            throw forbidden("无权访问该历史记录");
-        }
-        return history;
+        throw tenantIdentityRequired();
     }
 
-    private KnowledgeBaseDTO getKnowledgeBaseOrThrow(Long kbId) {
-        return knowledgeBaseService.getById(kbId)
-                .orElseThrow(() -> new BusinessException("KB_001", "知识库不存在: " + kbId));
+    public QAHistoryDTO requireHistoryOwner(Long historyId, RequestIdentity identity) {
+        return qaHistoryService.getById(identity, historyId)
+                .orElseThrow(() -> new BusinessException(
+                        "HISTORY_001", "历史记录不存在: " + historyId, HttpStatus.NOT_FOUND));
     }
 
     private boolean isOwner(KnowledgeBaseDTO kb, Long userId) {
@@ -73,5 +95,9 @@ public class AuthorizationService {
 
     private BusinessException forbidden(String message) {
         return new BusinessException("AUTH_004", message, HttpStatus.FORBIDDEN);
+    }
+
+    private IllegalStateException tenantIdentityRequired() {
+        return new IllegalStateException("TENANT_IDENTITY_REQUIRED");
     }
 }

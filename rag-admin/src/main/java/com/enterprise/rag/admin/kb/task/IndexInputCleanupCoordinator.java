@@ -44,10 +44,12 @@ public class IndexInputCleanupCoordinator {
         }
         for (Document document : pendingDocuments) {
             try {
-                IndexInputStore.DeleteResult result = inputStore.delete(document.getFilePath());
+                IndexInputStore.DeleteResult result = inputStore.delete(
+                        document.getTenantId(), document.getFilePath());
                 if (result == IndexInputStore.DeleteResult.DELETED
                         || result == IndexInputStore.DeleteResult.ALREADY_MISSING) {
-                    documentService.updateInputState(document.getId(), IndexInputState.CLEANED.name());
+                    documentService.updateInputState(
+                            document.getTenantId(), document.getId(), IndexInputState.CLEANED.name());
                 }
             } catch (RuntimeException e) {
                 log.warn("索引输入清理重试失败: documentId={}, errorType={}",

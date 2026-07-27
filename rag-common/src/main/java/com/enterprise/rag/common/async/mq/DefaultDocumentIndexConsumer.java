@@ -33,13 +33,13 @@ public class DefaultDocumentIndexConsumer implements DocumentIndexConsumer {
         
         try {
             // 更新任务进度
-            asyncTaskManager.updateProgress(taskId, 10, "开始处理文档");
+            asyncTaskManager.updateProgress(message.tenantId(), taskId, 10, "开始处理文档");
             
             // 处理文档（子类可覆盖）
             processDocument(message);
             
             // 更新任务进度
-            asyncTaskManager.updateProgress(taskId, 100, "文档处理完成");
+            asyncTaskManager.updateProgress(message.tenantId(), taskId, 100, "文档处理完成");
             
             log.info("Document index message processed successfully: messageId={}", message.messageId());
             
@@ -59,7 +59,7 @@ public class DefaultDocumentIndexConsumer implements DocumentIndexConsumer {
         // 更新任务状态为失败
         String taskId = message.taskId();
         if (taskId != null) {
-            Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(taskId);
+            Optional<TaskStatus> statusOpt = asyncTaskManager.getStatus(message.tenantId(), taskId);
             if (statusOpt.isPresent() && statusOpt.get().state() != TaskState.FAILED) {
                 // 任务状态会在 AsyncTaskManager 中自动更新为失败
                 log.debug("Task status will be updated to FAILED by AsyncTaskManager");

@@ -20,8 +20,9 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     private final DocumentChunkingProperties chunkingProperties;
 
     @Override
-    public String createAccepted(Long documentId, Long ownerId) {
+    public String createAccepted(long tenantId, Long documentId, Long ownerId) {
         IndexTaskRecord record = new IndexTaskRecord();
+        record.setTenantId(requireTenantId(tenantId));
         record.setTaskId(UUID.randomUUID().toString());
         record.setTaskType(DOCUMENT_INDEX_TASK_TYPE);
         record.setStatus(IndexTaskStatus.ACCEPTED.name());
@@ -38,8 +39,9 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     }
 
     @Override
-    public void markAcceptanceFailed(String taskId, String failureCode) {
+    public void markAcceptanceFailed(long tenantId, String taskId, String failureCode) {
         int updated = mapper.update(null, Wrappers.<IndexTaskRecord>lambdaUpdate()
+                .eq(IndexTaskRecord::getTenantId, requireTenantId(tenantId))
                 .eq(IndexTaskRecord::getTaskId, taskId)
                 .eq(IndexTaskRecord::getStatus, IndexTaskStatus.ACCEPTED.name())
                 .set(IndexTaskRecord::getStatus, IndexTaskStatus.FAILED.name())
@@ -51,8 +53,9 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     }
 
     @Override
-    public void markSafePreVector(String taskId) {
+    public void markSafePreVector(long tenantId, String taskId) {
         int updated = mapper.update(null, Wrappers.<IndexTaskRecord>lambdaUpdate()
+                .eq(IndexTaskRecord::getTenantId, requireTenantId(tenantId))
                 .eq(IndexTaskRecord::getTaskId, taskId)
                 .in(IndexTaskRecord::getExecutionPhase,
                         IndexTaskPhase.ACCEPTED.name(), IndexTaskPhase.SAFE_PRE_VECTOR.name())
@@ -62,8 +65,9 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     }
 
     @Override
-    public void markVectorInFlight(String taskId, String contentHash, int chunkCount) {
+    public void markVectorInFlight(long tenantId, String taskId, String contentHash, int chunkCount) {
         int updated = mapper.update(null, Wrappers.<IndexTaskRecord>lambdaUpdate()
+                .eq(IndexTaskRecord::getTenantId, requireTenantId(tenantId))
                 .eq(IndexTaskRecord::getTaskId, taskId)
                 .in(IndexTaskRecord::getStatus,
                         IndexTaskStatus.ACCEPTED.name(), IndexTaskStatus.RUNNING.name())
@@ -78,8 +82,9 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     }
 
     @Override
-    public void markVectorConfirmed(String taskId) {
+    public void markVectorConfirmed(long tenantId, String taskId) {
         int updated = mapper.update(null, Wrappers.<IndexTaskRecord>lambdaUpdate()
+                .eq(IndexTaskRecord::getTenantId, requireTenantId(tenantId))
                 .eq(IndexTaskRecord::getTaskId, taskId)
                 .eq(IndexTaskRecord::getExecutionPhase, IndexTaskPhase.VECTOR_IN_FLIGHT.name())
                 .set(IndexTaskRecord::getExecutionPhase, IndexTaskPhase.VECTOR_CONFIRMED.name())
@@ -88,8 +93,9 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     }
 
     @Override
-    public void markFinalizing(String taskId) {
+    public void markFinalizing(long tenantId, String taskId) {
         int updated = mapper.update(null, Wrappers.<IndexTaskRecord>lambdaUpdate()
+                .eq(IndexTaskRecord::getTenantId, requireTenantId(tenantId))
                 .eq(IndexTaskRecord::getTaskId, taskId)
                 .in(IndexTaskRecord::getExecutionPhase,
                         IndexTaskPhase.VECTOR_CONFIRMED.name(), IndexTaskPhase.FINALIZING.name())
@@ -98,8 +104,9 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     }
 
     @Override
-    public void markCompleted(String taskId) {
+    public void markCompleted(long tenantId, String taskId) {
         int updated = mapper.update(null, Wrappers.<IndexTaskRecord>lambdaUpdate()
+                .eq(IndexTaskRecord::getTenantId, requireTenantId(tenantId))
                 .eq(IndexTaskRecord::getTaskId, taskId)
                 .eq(IndexTaskRecord::getExecutionPhase, IndexTaskPhase.FINALIZING.name())
                 .set(IndexTaskRecord::getStatus, IndexTaskStatus.COMPLETED.name())
@@ -111,52 +118,69 @@ public class MySqlIndexTaskLedger implements IndexTaskLedger {
     }
 
     @Override
-    public void markReconciliationRequired(String taskId, String failureCode) {
-        int updated = mapper.markReconciliationRequired(taskId, failureCode);
+    public void markReconciliationRequired(long tenantId, String taskId, String failureCode) {
+        int updated = mapper.markReconciliationRequired(requireTenantId(tenantId), taskId, failureCode);
         if (updated != 1) {
             throw new IllegalStateException("Index task was not quarantined: " + taskId);
         }
     }
 
     @Override
-    public boolean claim(String taskId, String workerId, int leaseSeconds, int maxAttempts) {
-        return mapper.claim(taskId, workerId, leaseSeconds, maxAttempts) == 1;
+    public boolean claim(long tenantId, String taskId, String workerId, int leaseSeconds, int maxAttempts) {
+        return mapper.claim(requireTenantId(tenantId), taskId, workerId, leaseSeconds, maxAttempts) == 1;
     }
 
     @Override
-    public Optional<IndexTaskRecord> find(String taskId) {
+    public Optional<IndexTaskRecord> find(long tenantId, String taskId) {
         return Optional.ofNullable(mapper.selectOne(Wrappers.<IndexTaskRecord>lambdaQuery()
+                .eq(IndexTaskRecord::getTenantId, requireTenantId(tenantId))
                 .eq(IndexTaskRecord::getTaskId, taskId)));
     }
 
     @Override
     public List<IndexTaskRecord> scanClaimable(int limit, int maxAttempts) {
-        return mapper.scanClaimable(limit, maxAttempts);
+        List<IndexTaskRecord> records = mapper.scanClaimable(limit, maxAttempts);
+        for (IndexTaskRecord record : records) {
+            if (record == null || record.getTenantId() == null || record.getTenantId() <= 0) {
+                throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+            }
+        }
+        return records;
     }
 
     @Override
-    public boolean release(String taskId, String workerId) {
-        return mapper.release(taskId, workerId) == 1;
+    public boolean release(long tenantId, String taskId, String workerId) {
+        return mapper.release(requireTenantId(tenantId), taskId, workerId) == 1;
     }
 
     @Override
-    public boolean heartbeat(String taskId, String workerId, int leaseSeconds) {
-        return mapper.heartbeat(taskId, workerId, leaseSeconds) == 1;
+    public boolean heartbeat(long tenantId, String taskId, String workerId, int leaseSeconds) {
+        return mapper.heartbeat(requireTenantId(tenantId), taskId, workerId, leaseSeconds) == 1;
     }
 
     @Override
-    public boolean markAttemptsExhausted(String taskId, String workerId, String failureCode) {
-        return mapper.markAttemptsExhausted(taskId, workerId, failureCode) == 1;
+    public boolean markAttemptsExhausted(long tenantId, String taskId, String workerId, String failureCode) {
+        return mapper.markAttemptsExhausted(
+                requireTenantId(tenantId), taskId, workerId, failureCode) == 1;
     }
 
     @Override
-    public boolean scheduleRetry(String taskId, String workerId, String failureCode, int backoffSeconds) {
-        return mapper.scheduleRetry(taskId, workerId, failureCode, backoffSeconds) == 1;
+    public boolean scheduleRetry(long tenantId, String taskId, String workerId,
+            String failureCode, int backoffSeconds) {
+        return mapper.scheduleRetry(
+                requireTenantId(tenantId), taskId, workerId, failureCode, backoffSeconds) == 1;
     }
 
     private void requireSingleUpdate(int updated, String message, String taskId) {
         if (updated != 1) {
             throw new IllegalStateException(message + taskId);
         }
+    }
+
+    private long requireTenantId(long tenantId) {
+        if (tenantId <= 0) {
+            throw new IllegalArgumentException("tenantId must be positive");
+        }
+        return tenantId;
     }
 }

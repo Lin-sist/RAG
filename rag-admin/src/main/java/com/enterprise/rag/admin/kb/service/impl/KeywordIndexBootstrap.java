@@ -48,13 +48,23 @@ public class KeywordIndexBootstrap {
     }
 
     private void rebuildCollection(KnowledgeBase knowledgeBase) {
+        if (knowledgeBase.getTenantId() == null || knowledgeBase.getTenantId() <= 0L) {
+            throw new IllegalStateException("Knowledge base tenant scope is missing");
+        }
+        long tenantId = knowledgeBase.getTenantId();
         List<KeywordDocument> keywordDocuments = new ArrayList<>();
-        List<Document> documents = documentService.getByKnowledgeBaseId(knowledgeBase.getId());
+        List<Document> documents = documentService.getByKnowledgeBaseId(tenantId, knowledgeBase.getId());
         for (Document document : documents) {
+            if (document.getTenantId() == null || document.getTenantId() != tenantId) {
+                throw new IllegalStateException("Document tenant scope mismatch during keyword bootstrap");
+            }
             if (!DocumentStatus.COMPLETED.name().equalsIgnoreCase(document.getStatus())) {
                 continue;
             }
-            for (DocumentChunk chunk : documentService.getChunksByDocumentId(document.getId())) {
+            for (DocumentChunk chunk : documentService.getChunksByDocumentId(tenantId, document.getId())) {
+                if (chunk.getTenantId() == null || chunk.getTenantId() != tenantId) {
+                    throw new IllegalStateException("Chunk tenant scope mismatch during keyword bootstrap");
+                }
                 if (chunk.getVectorId() == null || chunk.getVectorId().isBlank()) {
                     continue;
                 }
@@ -73,6 +83,7 @@ public class KeywordIndexBootstrap {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("documentId", document.getId());
         metadata.put("kbId", document.getKbId());
+        metadata.put("tenantId", knowledgeBase.getTenantId());
         metadata.put("chunkIndex", chunk.getChunkIndex());
         metadata.put("startIndex", chunk.getStartPos());
         metadata.put("endIndex", chunk.getEndPos());

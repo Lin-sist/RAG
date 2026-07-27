@@ -17,6 +17,7 @@ class IndexTaskStatusProjectionStoreTest {
     void durableProjectionPreservesOwnerButExposesOnlySanitizedFailureCode() {
         IndexTaskLedger ledger = mock(IndexTaskLedger.class);
         IndexTaskRecord record = new IndexTaskRecord();
+        record.setTenantId(77L);
         record.setTaskId("task-1");
         record.setTaskType("DOCUMENT_INDEX");
         record.setOwnerId(42L);
@@ -24,10 +25,11 @@ class IndexTaskStatusProjectionStoreTest {
         record.setProgress(70);
         record.setFailureCode("VECTOR_OPERATION_OUTCOME_UNKNOWN");
         record.setErrorMessage("raw-provider-marker");
-        when(ledger.find("task-1")).thenReturn(Optional.of(record));
+        when(ledger.find(77L, "task-1")).thenReturn(Optional.of(record));
 
-        TaskStatus status = new IndexTaskStatusProjectionStore(ledger).find("task-1").orElseThrow();
+        TaskStatus status = new IndexTaskStatusProjectionStore(ledger).find(77L, "task-1").orElseThrow();
 
+        assertEquals(77L, status.tenantId());
         assertEquals(TaskState.FAILED, status.state());
         assertEquals(42L, status.ownerId());
         assertEquals("VECTOR_OPERATION_OUTCOME_UNKNOWN", status.error());

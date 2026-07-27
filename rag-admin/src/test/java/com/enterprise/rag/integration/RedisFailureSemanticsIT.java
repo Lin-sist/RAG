@@ -87,6 +87,7 @@ class RedisFailureSemanticsIT {
     private static final String REDIS_IMAGE =
             "redis:7-alpine@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065";
     private static final String REDIS_PASSWORD = "c4c-" + UUID.randomUUID();
+    private static final long TENANT_ID = 101L;
     private static final int REDIS_HOST_PORT = findAvailablePort();
 
     @Container
@@ -138,7 +139,7 @@ class RedisFailureSemanticsIT {
         assertEquals(HttpStatus.OK, healthyLogin.getStatusCode());
         assertEquals(1, authService.loginCalls.get());
 
-        TaskHandle<String> task = taskManager.submit("C4C_SYNTHETIC", ignored -> "done");
+        TaskHandle<String> task = taskManager.submit(TENANT_ID, "C4C_SYNTHETIC", 77L, ignored -> "done");
         assertEquals("done", task.future().join());
 
         stopOnlyThisTestContainer();
@@ -173,25 +174,25 @@ class RedisFailureSemanticsIT {
     void restartThenProjectionMissRebuildsOwnerStatusFromDurableStore() {
         String taskId = "c5-durable-restart-" + UUID.randomUUID();
         durableTaskStatusStore.put(TaskStatus.running(
-                taskId, "DOCUMENT_INDEX", 65, "durable-running", 77L));
-        stringRedisTemplate.delete(RedisKeyConstants.taskStatusKey(taskId));
+                TENANT_ID, taskId, "DOCUMENT_INDEX", 65, "durable-running", 77L));
+        stringRedisTemplate.delete(RedisKeyConstants.taskStatusV2Key(TENANT_ID, taskId));
 
-        TaskStatus initialFallback = taskManager.getStatus(taskId).orElseThrow();
+        TaskStatus initialFallback = taskManager.getStatus(TENANT_ID, taskId).orElseThrow();
         assertEquals(77L, initialFallback.ownerId());
-        assertNotNull(stringRedisTemplate.opsForValue().get(RedisKeyConstants.taskStatusKey(taskId)));
+        assertNotNull(stringRedisTemplate.opsForValue().get(RedisKeyConstants.taskStatusV2Key(TENANT_ID, taskId)));
 
         stopOnlyThisTestContainer();
-        assertThrows(RedisDependencyException.class, () -> taskManager.getStatus(taskId));
+        assertThrows(RedisDependencyException.class, () -> taskManager.getStatus(TENANT_ID, taskId));
 
         startOnlyThisTestContainer();
         awaitRedisRecovery();
         awaitApplicationRedisRecovery();
-        stringRedisTemplate.delete(RedisKeyConstants.taskStatusKey(taskId));
+        stringRedisTemplate.delete(RedisKeyConstants.taskStatusV2Key(TENANT_ID, taskId));
 
-        TaskStatus rebuilt = taskManager.getStatus(taskId).orElseThrow();
+        TaskStatus rebuilt = taskManager.getStatus(TENANT_ID, taskId).orElseThrow();
         assertEquals(77L, rebuilt.ownerId());
         assertEquals(65, rebuilt.progress());
-        assertNotNull(stringRedisTemplate.opsForValue().get(RedisKeyConstants.taskStatusKey(taskId)));
+        assertNotNull(stringRedisTemplate.opsForValue().get(RedisKeyConstants.taskStatusV2Key(TENANT_ID, taskId)));
     }
 
     private ResponseEntity<JsonNode> login() {
@@ -417,12 +418,12 @@ class RedisFailureSemanticsIT {
         private final Map<String, TaskStatus> statuses = new ConcurrentHashMap<>();
 
         void put(TaskStatus status) {
-            statuses.put(status.taskId(), status);
+            statuses.put(status.tenantId() + ":" + status.taskId(), status);
         }
 
         @Override
-        public Optional<TaskStatus> find(String taskId) {
-            return Optional.ofNullable(statuses.get(taskId));
+        public Optional<TaskStatus> find(long tenantId, String taskId) {
+            return Optional.ofNullable(statuses.get(tenantId + ":" + taskId));
         }
     }
 
@@ -455,7 +456,7 @@ class RedisFailureSemanticsIT {
 
         @GetMapping("/tasks/{taskId}")
         Object taskStatus(@PathVariable String taskId) {
-            return taskManager.getStatus(taskId).orElse(null);
+            return taskManager.getStatus(TENANT_ID, taskId).orElse(null);
         }
     }
 }

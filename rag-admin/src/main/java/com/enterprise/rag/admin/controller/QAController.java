@@ -7,6 +7,7 @@ import com.enterprise.rag.admin.qa.dto.SaveQAHistoryRequest;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
 import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
+import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.model.ApiResponse;
 import com.enterprise.rag.common.ratelimit.RateLimit;
@@ -103,11 +104,12 @@ public class QAController {
             @Valid @RequestBody AskRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = currentUserService.requireUserId(userDetails);
+        RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+        Long userId = identity.userId();
         String traceId = TraceContext.getTraceId();
         log.info("问答请求: traceId={}, kbId={}, userId={}", traceId, request.kbId(), userId);
 
-        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
+        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), identity);
 
         long startTime = System.currentTimeMillis();
 
@@ -123,10 +125,10 @@ public class QAController {
 
         // 执行问答
         QAResponse response = ragService.ask(qaRequest);
-        response = enrichResponseSources(request.kbId(), response);
+        response = enrichResponseSources(identity.tenantId(), request.kbId(), response);
 
         // RAG-04: 问答入口计入知识库查询次数
-        knowledgeBaseService.incrementQueryCount(request.kbId());
+        knowledgeBaseService.incrementQueryCount(identity.tenantId(), request.kbId());
 
         long latencyMs = System.currentTimeMillis() - startTime;
         log.info("问答完成: traceId={}, kbId={}, userId={}, latencyMs={}, hasResult={}",
@@ -135,7 +137,7 @@ public class QAController {
         // 只保存完整成功答案；generation failure 仍计数，但不伪装成正常历史。
         if (response.isSuccess()) {
             try {
-                qaHistoryService.save(SaveQAHistoryRequest.builder()
+                qaHistoryService.save(identity, SaveQAHistoryRequest.builder()
                         .userId(userId)
                         .kbId(request.kbId())
                         .question(request.question())
@@ -167,11 +169,12 @@ public class QAController {
             @Valid @RequestBody AskRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = currentUserService.requireUserId(userDetails);
+        RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+        Long userId = identity.userId();
         String traceId = TraceContext.getTraceId();
         log.info("流式问答请求: traceId={}, kbId={}, userId={}", traceId, request.kbId(), userId);
 
-        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
+        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), identity);
         long startTime = System.currentTimeMillis();
 
         // 构建流式 QA 请求
@@ -184,7 +187,7 @@ public class QAController {
                 request.enableCache() != null ? request.enableCache() : true);
 
         // RAG-04: 流式问答入口同样计入查询次数
-        knowledgeBaseService.incrementQueryCount(request.kbId());
+        knowledgeBaseService.incrementQueryCount(identity.tenantId(), request.kbId());
 
         // 使用 SseEmitter 而不是 Flux<String>
         // 原因：Flux<String> + text/event-stream 会触发 Tomcat 异步分发，
@@ -237,7 +240,7 @@ public class QAController {
                         },
                         () -> {
                             long latencyMs = System.currentTimeMillis() - startTime;
-                            saveStreamHistory(userId, request.kbId(), request.question(), answerBuffer.toString(),
+                            saveStreamHistory(identity, request.kbId(), request.question(), answerBuffer.toString(),
                                     startTime);
                             logStreamDiagnostics("stream_delivery_complete", traceId, request.kbId(), userId,
                                     diagnostics, answerBuffer.length(), latencyMs);
@@ -282,8 +285,9 @@ public class QAController {
             @Valid @RequestBody RetrievalDebugRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = currentUserService.requireUserId(userDetails);
-        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), userId);
+        RequestIdentity identity = currentUserService.requireIdentity(userDetails);
+        Long userId = identity.userId();
+        var kb = authorizationService.requireKnowledgeBaseReadAccess(request.kbId(), identity);
 
         int topK = normalizeTopK(request.topK());
         float minScore = normalizeMinScore(request.minScore());
@@ -370,7 +374,8 @@ public class QAController {
                     ctx.source(),
                     extractStringMetadata(metadata, "id"),
                     source);
-            String documentTitle = resolveDocumentTitle(request.kbId(), documentId, documentTitleCache);
+            String documentTitle = resolveDocumentTitle(
+                    identity.tenantId(), request.kbId(), documentId, documentTitleCache);
             if ((documentTitle == null || documentTitle.isBlank()) && documentId == null) {
                 documentTitle = firstNonBlank(
                         extractStringMetadata(metadata, "documentTitle"),
@@ -476,10 +481,11 @@ public class QAController {
                 diagnostics.slowGapCount());
     }
 
-    private void saveStreamHistory(Long userId, Long kbId, String question, String answer, long startTime) {
+    private void saveStreamHistory(RequestIdentity identity, Long kbId, String question, String answer,
+            long startTime) {
         try {
-            qaHistoryService.save(SaveQAHistoryRequest.builder()
-                    .userId(userId)
+            qaHistoryService.save(identity, SaveQAHistoryRequest.builder()
+                    .userId(identity.userId())
                     .kbId(kbId)
                     .question(question)
                     .answer(answer)
@@ -859,7 +865,7 @@ public class QAController {
                 + (message == null || message.isBlank() ? "" : " - " + truncate(message, 180));
     }
 
-    private String resolveDocumentTitle(Long kbId, Long documentId,
+    private String resolveDocumentTitle(long tenantId, Long kbId, Long documentId,
             Map<Long, String> documentTitleCache) {
         if (documentId != null) {
             String cachedTitle = documentTitleCache.get(documentId);
@@ -868,7 +874,7 @@ public class QAController {
             }
 
             try {
-                documentService.getById(documentId)
+                documentService.getById(tenantId, documentId)
                         .filter(document -> document.getKbId() != null && document.getKbId().equals(kbId))
                         .map(Document::getTitle)
                         .filter(title -> title != null && !title.isBlank())
@@ -887,14 +893,16 @@ public class QAController {
         return null;
     }
 
-    private QAResponse enrichResponseSources(Long kbId, QAResponse response) {
+    private QAResponse enrichResponseSources(long tenantId, Long kbId, QAResponse response) {
         if (response == null) {
             return null;
         }
 
         Map<Long, String> documentTitleCache = new HashMap<>();
-        List<RetrievedContext> contexts = enrichContextSources(kbId, response.contexts(), documentTitleCache);
-        List<Citation> citations = enrichCitationSources(kbId, response.citations(), contexts, documentTitleCache);
+        List<RetrievedContext> contexts = enrichContextSources(
+                tenantId, kbId, response.contexts(), documentTitleCache);
+        List<Citation> citations = enrichCitationSources(
+                tenantId, kbId, response.citations(), contexts, documentTitleCache);
         return new QAResponse(
                 response.question(),
                 response.answer(),
@@ -903,7 +911,7 @@ public class QAController {
                 response.metadata());
     }
 
-    private List<RetrievedContext> enrichContextSources(Long kbId,
+    private List<RetrievedContext> enrichContextSources(long tenantId, Long kbId,
             List<RetrievedContext> contexts,
             Map<Long, String> documentTitleCache) {
         if (contexts == null || contexts.isEmpty()) {
@@ -924,7 +932,7 @@ public class QAController {
             String documentTitle = firstNonBlank(
                     extractStringMetadata(metadata, "documentTitle"),
                     extractStringMetadata(metadata, "title"),
-                    resolveDocumentTitle(kbId, documentId, documentTitleCache));
+                    resolveDocumentTitle(tenantId, kbId, documentId, documentTitleCache));
             String sourceFileName = firstNonBlank(
                     extractStringMetadata(metadata, "sourceFileName"),
                     extractStringMetadata(metadata, "originalFilename"),
@@ -952,7 +960,7 @@ public class QAController {
         return enriched;
     }
 
-    private List<Citation> enrichCitationSources(Long kbId,
+    private List<Citation> enrichCitationSources(long tenantId, Long kbId,
             List<Citation> citations,
             List<RetrievedContext> contexts,
             Map<Long, String> documentTitleCache) {
@@ -980,7 +988,8 @@ public class QAController {
             String contextDocumentTitle = firstNonBlank(
                     extractStringMetadata(metadata, "documentTitle"),
                     extractStringMetadata(metadata, "title"));
-            String resolvedTitle = resolveDocumentTitle(kbId, citation.documentId(), documentTitleCache);
+            String resolvedTitle = resolveDocumentTitle(
+                    tenantId, kbId, citation.documentId(), documentTitleCache);
             String documentTitle = firstNonBlank(citation.documentTitle(), contextDocumentTitle, resolvedTitle);
             String sourceFileName = firstNonBlank(citation.sourceFileName(), contextSourceFileName, documentTitle);
 

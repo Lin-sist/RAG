@@ -391,6 +391,13 @@ class KnowledgeBasePropertyTest {
         }
 
         @Override
+        public Optional<KnowledgeBaseDTO> getById(Long id, RequestIdentity identity) {
+            return Optional.ofNullable(storage.get(id))
+                    .filter(kb -> identity.tenantId() == kb.getTenantId())
+                    .map(this::toDTO);
+        }
+
+        @Override
         public List<KnowledgeBaseDTO> getByOwnerId(Long userId) {
             return storage.values().stream()
                     .filter(kb -> kb.getOwnerId().equals(userId))
@@ -596,6 +603,14 @@ class KnowledgeBasePropertyTest {
         @Override
         public int countByKnowledgeBaseId(Long kbId) {
             return (int) docStorage.values().stream()
+                    .filter(d -> d.getKbId().equals(kbId))
+                    .count();
+        }
+
+        @Override
+        public int countByKnowledgeBaseId(long tenantId, Long kbId) {
+            return (int) docStorage.values().stream()
+                    .filter(d -> Long.valueOf(tenantId).equals(d.getTenantId()))
                     .filter(d -> d.getKbId().equals(kbId))
                     .count();
         }
