@@ -1587,3 +1587,16 @@
 ## 2026-07-27｜C13b 验收归档提交补录
 
 - Commit：`243860a`（`chore(openspec): 验收并归档C13b数据面约束`）。本条只补录上一归档提交的真实 hash；本纯日志补录提交不递归记录自身 hash。
+
+## 2026-07-27｜C14 tenant isolation adversarial evaluation readiness 及规划启动
+
+- 用户决策与提交责任：用户要求检查项目状况，若允许则直接开始 C14 规划。提交责任按默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动 HEAD=`d5e07b2`，分支 `main`，工作区与暂存区均干净，`.ai/ACTIVE_TASK.md=IDLE`；C13b archive files=4、tasks unchecked=0、未归档 active change=0，delta body 与 `rag-system` baseline exact suffix。C13b 的 6 requirements / 18 scenarios 已验收归档，长期 project/architecture/roadmap/optimization 均把 C14 定义为下一独立 Type C 门禁，因此结论为 `GO`。
+- 能力分类：`confirmed` 为 C13a/C13b accepted contract、MySQL/Redis/Milvus Testcontainers、双 tenant fixtures、deterministic embedding、sync/SSE/task recovery 与 Python 标准库治理入口；`partial` 为现有跨 tenant tests 分散且无统一 adversarial release/report/timing evidence；`planned` 为 versioned corpus、dedicated Failsafe harness、functional/content/error/timing 四通道与受限 claim gate；`out_of_scope` 为 tenant management、真实 shadow migration、Qdrant/Elasticsearch tenant support、通用 prompt/LLM 安全、生产渗透测试、C15/C16；`unknown` 为真实生产拓扑、数据规模、网关 timing、组织攻击模型与合规要求。
+- 规划产物：创建 `openspec/changes/tenant-isolation-adversarial-evaluation/`，包含 proposal、design、tasks、`evaluation` delta 与 `rag-system` delta；design 记录 16 条真实取舍。更新 `.ai/ACTIVE_TASK.md` 为 `ACTIVE / C14 规划待审`。
+- 关键边界：规划采用独立 `tenant-isolation-adversarial-v1`、test-only 双 tenant、deterministic embedding/generation stub、HTTP/SSE + infrastructure/recovery 组合 driver、响应与后置状态双重 invariant、预注册本机 coarse timing profile。C14 PASS 只支持 Milvus 配置和固定 synthetic attack matrix 下的隔离 evidence，不自动开放第二业务 tenant/tenant management/C15/C16，也不构成生产级多租户、全 adapter、真实迁移或所有 side-channel 证明。
+- 验证：五个必需 artifact 均存在；design 的 16 条决策均具备“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”三行；`evaluation` delta 为 5 requirements / 15 scenarios，`rag-system` delta 为 2 requirements / 6 scenarios；未归档 active change=1 且 ACTIVE_TASK 唯一指向 C14。Markdown relative links=`OK`；accepted baseline、protected paths、Java、Python、POM、frontend 改动均为 0；`git diff --check` 通过。
+- 跳过项及原因：本轮只做规划，未修改 Java/Python runner、POM、migration、frontend 或 runtime config，因此 Maven、Python、frontend build、Docker/Testcontainers 与 C14 evaluation 均 `SKIPPED`；用户批准规划前不得实现。
+- 外调与范围安全：真实 Milvus maintenance、embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、Java、migration、POM、前端或历史报告。
+- 剩余风险与下一闸门：用户需审阅并批准 v1 case matrix、16 条 decisions、双 spec delta、timing profile 与 gap 最小修复边界；批准前不进入实现。C14 完整 PASS 前仍不得宣称租户隔离成立或开放第二业务 tenant、tenant management、C15/C16。
+- Commit：`pending`；建议 `docs(openspec): 启动C14租户隔离对抗评测规划`。

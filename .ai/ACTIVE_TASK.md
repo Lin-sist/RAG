@@ -2,24 +2,36 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
-当前无活动 change。开始新的 Type C 工作前，必须先创建新的 OpenSpec change 并更新本文件。
+## Active Change
 
-## Previous Completed
+- Change：`tenant-isolation-adversarial-evaluation`
+- 阶段：C14 规划待审
+- 位置：`openspec/changes/tenant-isolation-adversarial-evaluation/`
+- 类型：Type C（新增版本化隔离/恶意样本评测能力与租户能力声明门禁）
+- 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 
-- Change：`tenant-data-plane-enforcement`
-- 位置：`openspec/changes/archive/2026-07-27-tenant-data-plane-enforcement/`
-- 结果：完成 SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 tenant-aware shadow collection/readiness 维护路径。
-- 验收：用户已验收 C13b data-plane enforcement evidence；6 requirements / 18 scenarios 已原文接受进 `rag-system` baseline。真实 Milvus shadow copy/mapping/readiness switch 未执行，C13b 不证明租户隔离成立。
+## Scope
 
-## Execution Entry
+1. 建立版本化 tenant isolation adversarial release、schema、validator、runner/report status 和 no-overwrite evidence。
+2. 规划隔离 MySQL/Redis/Milvus + test-only 双 tenant fixture，覆盖 ID guessing、selector/reserved filter、public/permission、cache/task/recovery、vector/keyword、sync/SSE/history/feedback、error 与 coarse timing disclosure。
+3. 使用 deterministic test stub，真实 embedding/rerank/generation/judge/provider calls=0；不执行真实 Milvus shadow maintenance。
+4. C14 PASS 只允许声明 Milvus 支持配置和固定 synthetic attack matrix 下 evidence 通过，不自动开放第二业务 tenant、tenant management、C15/C16，也不构成生产级多租户或渗透测试结论。
 
-1. 当前无活动任务，不从已归档 change 继续实现。
-2. 下一项重大变更 C14 必须先建立 proposal、design、tasks 和 spec delta，并明确提交责任。
-3. C14 必须覆盖跨 tenant 隔离与恶意样本评测；C14 通过前不开放第二业务 tenant、tenant management、C15 MCP 或 C16 Router，也不宣称租户隔离成立。
-4. 任何真实 Milvus collection 创建、vector 复制、mapping/readiness 切换、重试或清理仍需单独披露并取得授权。
+## Current Gate
+
+1. proposal、design 的 16 条决策、tasks、`evaluation` 与 `rag-system` spec delta 已形成规划草案，等待用户审阅批准。
+2. 当前授权只覆盖规划文件；批准前不得编写 Java/Python 实现、启动 C14 容器评测或修复生产代码。
+3. 任何真实 Milvus collection 创建、复制、mapping/readiness 切换、重试或清理仍需另行披露并授权。
+4. 若实现发现需要新 API/DTO/schema/权限语义、依赖升级或新增 adapter 支持，必须暂停并回到 OpenSpec 事前闸门。
+
+## Readiness Basis
+
+- 启动 HEAD：`d5e07b2`；`main` 工作区、暂存区均干净。
+- C13b archive files=4、unchecked tasks=0、未归档 active change=0，delta body 是 `rag-system` baseline exact suffix。
+- C13b 已验收归档但真实 Milvus maintenance 仍 `SKIPPED`；全仓 Maven 的既有 OTel collector 时序波动仍是独立债务。
 
 ## Emergency Rule
 
-如果本文件指向的 change 不存在、已归档或与用户当前请求冲突，停止写操作并先修正活动任务指针。
+如果本文件指向的 change 不存在、已归档、未获批准却进入实现，或与用户当前请求冲突，停止写操作并先修正活动任务指针。
