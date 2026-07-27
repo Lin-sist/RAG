@@ -1445,3 +1445,87 @@
 - 跳过项：OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；规划阶段没有实现改动，因此 Maven、Python、frontend build、Docker/Testcontainers、live database/backend/vector adapter/maintenance/provider 均 `SKIPPED`。
 - 外调与下一闸门：真实 vector maintenance、embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。等待用户审阅并批准 proposal、15 条 decisions、6/18 delta 与 tasks 后，才能从 V11 migration RED 开始实现；任何真实 legacy vector audit/backfill 仍需单独授权。
 - Commit：`pending`；提交责任为用户手动提交。建议 `docs(openspec): 启动C13b租户数据面隔离规划`。
+
+## 2026-07-26｜C13b 规划提交补录
+
+- Commit：`17093d2`（`docs(openspec): 启动C13b租户数据面隔离规划`）。本条只补录上一规划提交的真实 hash，不记录本次 C13b 实现改动。
+
+## 2026-07-26｜C13b 规划批准并进入 data-plane enforcement TDD
+
+- 用户批准：proposal 的 V11 child tenant backfill、显式 `RequestIdentity`、tenant-local public/permission、跨 tenant not-found、Milvus-first、unsupported adapter fail startup、legacy vector maintenance/readiness、Redis v2 冷启动及 C14 后置边界；design 的 15 条决策和 `rag-system` delta 的 6 requirements / 18 scenarios 通过事前门禁。
+- 实现授权：开始按 `tasks.md` 实现 SQL/API/permission、task/cache/history、RAG/keyword/Milvus tenant enforcement，并执行聚焦与全量本地验证；不新增或升级依赖。提交责任继续为 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- TDD 方式：遵循 `tdd` skill，以 migration→SQL/API/permission→task/cache→RAG/vector→maintenance/readiness 的纵向 tracer bullet 逐项 RED→GREEN；测试通过公共接口验证行为，不先横向写完全部测试，不在 RED 状态顺手重构。
+- 外调边界：本次授权不包含真实 legacy vector audit/backfill，不调用真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider。Testcontainers 中的合成 MySQL/Redis/Milvus integration 允许执行，且必须记录模型调用为 0。
+- 完成边界：C13b 完成时只可报告 data-plane enforcement evidence；C14 通过前不开放第二业务 tenant、tenant CRUD/switch、C15 MCP 或 C16 Router，也不宣称生产租户隔离成立。
+- Commit：`pending`。
+
+## 2026-07-26｜C13b V11 tenant data-plane migration（TDD）
+
+- 范围：新增 `V11__tenant_data_plane_enforcement.sql`，为 `document`、`document_chunk`、`kb_permission`、`qa_history`、`qa_feedback`、`async_task` 增加非空 `tenant_id`；补六类 entity 映射与 REST 隐藏；修正 `KnownSeedMigrationMySqlTest`、`C5RecoveryMySqlTest` 中原本没有可信 user/KB/owner 父事实的历史 fixture。未修改 V1-V10、未清表、未新增依赖。
+- 迁移门禁：MySQL DDL 非整份事务化，因此 V11 在任何永久 DDL 前用 temporary table + 命名 CHECK 校验 root tenant、KB owner、document uploader、chunk parent、permission/history/feedback user/parent 与 task owner/document；回填后再做 non-null postflight。ownerless legacy task、missing root、跨 tenant uploader/permission 均在永久列创建前失败；不回填 `legacy-default` 猜归属。
+- RED 证据：首次 happy fixture 因目标表无 `tenant_id` 报 `Unknown column 'tenant_id'`；收紧反例后，旧实现会在失败前留下已提交的 V11 列（expected 0, actual 1）；六类 entity 测试首次因缺少 `get/setTenantId` 在 testCompile 失败；历史 V6 document fixture 首次由 `chk_c13b_document_parent` 正确拒绝。
+- GREEN：`mvn -q -pl rag-admin -am '-Dtest=TenantDataPlaneMigrationMySqlTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`，MySQL `8.0.36`、Flyway `9.22.3`，Tests `8` / Failures `0` / Errors `0` / Skipped `0`，覆盖 tenant A/B、逻辑删除、nullable-KB history、owner-only task、字段保持、fresh V1→V11、repeat migrate、validate 与 index `SEQ_IN_INDEX`。
+- 兼容验证：`KnownSeedMigrationMySqlTest#v6DocumentRowsRemainCompatibleAfterDurableInputMigration` Tests `1/0/0/0`；`C5RecoveryMySqlTest#v7LegacyLedgerAndDuplicateChunksRemainCompatible` Tests `1/0/0/0`；`TenantDataPlaneEntityTest,DocumentSerializationTest` Tests `2/0/0/0`。均使用合成 Testcontainers 数据。
+- 跳过与风险：尚未运行完整 migration/auth/admin/full Maven；V11 使用 `CREATE TEMPORARY TABLE`，部署 migration account 需对应权限；preflight 可挡已知数据冲突，但索引/ALTER 的容量、锁或环境失败仍需上线前备份与恢复预案。应用新写入的一致性由后续 SQL/task service 切片继续收口。
+- 外调：真实 provider、embedding、rerank、ask/generation/judge/LLM、vector maintenance 调用均为 `0`；真实 legacy vector audit/backfill `SKIPPED`（未获单独授权）。
+- Commit：`pending`；提交责任为用户手动提交。建议 `feat(租户): 增加V11数据面租户迁移门禁`。
+
+## 2026-07-26｜C13b Milvus legacy schema 实现期阻断发现
+
+- 已确认事实：根 `pom.xml` 固定 `milvus-sdk-java 2.3.4`；当前 `MilvusVectorStore` 把 `metadata` 建为 `VarChar`，既有 collection 没有独立 `tenant_id` / `kb_id` 标量字段；当前仓库没有 KB vector readiness 的 SQL 字段/表。
+- 影响：已批准决策 8 的“既有 collection 原位补 marker”不能由当前已证明的 schema/API 能力直接实现；把 marker 继续塞进 VarChar 或只给 search 拼过滤不能覆盖 get/getByIds/delete/count/drop，不得作为完成证据。
+- 处理：在 `design.md` 新增待用户确认的决策 16，并在 tasks 增加实现期事前闸门。确认前 legacy collection 保持非 READY，maintenance/runtime fail closed；migration、SQL/API、task/cache、reserved filter 与新 collection scope 等独立切片继续推进。
+- 选择待定：tenant-aware shadow collection + 复制既有 vector/content + SQL mapping/readiness 切换；或另立依赖升级与 schema-evolution contract。Agent 未替用户选择，未新增/升级依赖。
+- 外调：真实 Milvus audit/backfill、provider、embedding、rerank、LLM 调用均为 `0`；真实 maintenance 为 `SKIPPED`。
+- Commit：`pending`。
+
+## 2026-07-26｜C13b 实现暂停检查点
+
+- 暂停决定：用户明确要求暂停并收尾，明日再继续开发。所有并行 Agent 已停止，当前没有运行中的测试或后台命令；`.ai/ACTIVE_TASK.md` 保持 `ACTIVE`，阶段改为“暂停检查点”，没有把部分实现误置为 `IDLE` 或 C13b 完成。
+- 已完成且已有聚焦 GREEN：V11 migration 与六类 entity tenant 根（证据见上一条 migration 日志）；KB detail 的 controller→`RequestIdentity`→tenant-scoped KB/permission/document count tracer（相关 27 tests / 0 failures / 0 errors / 0 skipped）；Redis v2 key contract、auth session v2（auth 17 tests 通过）与 idempotency v2（10 个聚焦测试通过，`rag-common` 全量和 `rag-auth -am` 全量退出码 0）；reserved tenant/KB/collection filter、immutable `TenantVectorScope` 与 Qdrant/Elasticsearch enforcement-mode startup guard 的聚焦测试通过。
+- 本次收尾完成：QA history 的 ask/stream/history controller 统一取得 `RequestIdentity`，save/get/page/delete 持久化或查询 `tenant_id + authenticated user_id`，跨 tenant/非 owner 以 scoped lookup 隐藏；旧 `QAHistoryServiceImpl` 裸入口 fail closed。`QAHistoryTenantEnforcementTest,QAControllerTest,AuthorizationServiceTest` 共 25 tests / 0 failures / 0 errors / 0 skipped；此前独立 `QAHistoryTenantEnforcementTest` 为 3/0/0/0。
+- task ledger 当前进度：create/find/claim/release/heartbeat/phase/retry/reconciliation/completion 已显式传播 tenantId，mapper 条件包含 `tenant_id`，system-wide `scanClaimable` 对缺失 tenant 的记录 fail closed；document indexing 与 reconciliation coordinator 已传播 durable tenant。`mvn -q -pl rag-admin -am -DskipTests test` 在暂停前和收尾后均退出码 0，证明生产与测试源码可编译；新增 ledger 行为测试与 C5 真 SQL transition 的最终 GREEN 运行被暂停指令中止，不能宣称已通过。`completeFinalization/isCompleted`、`IndexTaskSqlFinalizer`、task projection 仍是明确 gap。
+- 留给明日的有效起点：`KnowledgeBaseListTenantEnforcementTest` 已写入但生产 list 链仍是 `requireUserId -> getAccessibleByUserId(userId)`，且尚未执行到行为断言；明日应先运行它取得干净 RED，再实现 tenant-scoped owner/public/permission/final list 和 document count。随后先补跑 ledger 聚焦测试，不跨过失败继续扩展。
+- 实现期新决策闸门：Milvus SDK 2.3.4 的既有 VarChar metadata schema 尚无已证明的原位标量字段演进路径；design 决策 16 仍待用户确认 shadow collection + SQL mapping/readiness，或另立依赖升级/schema-evolution contract。确认前 legacy vector/readiness 必须 fail closed；真实 vector audit/backfill 仍未获授权。
+- 暂停前验证：`mvn -q -pl rag-admin -am -DskipTests test` 退出码 0；上述 QA history/controller/authorization 25 tests 通过；`git diff --check` 退出码 0；worktree 共有 74 个 modified/untracked entries，受保护路径 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 命中 0。分支仍为 `main...origin/main [ahead 7]`。
+- 跳过项：因用户要求暂停，未运行 ledger 最终行为测试、KB list RED、完整 SQL/API/permission、完整 Redis/cache、Milvus contract/Testcontainers、`mvn -q test`、Python 全量、前端 build、SensitiveLogs/credential/ThreadLocal/裸 mapper 全套收口门禁。真实 Redis 不可用时既有 property tests 按原规则跳过；前端无改动。所有跳过项均不得视为通过。
+- 外调与范围安全：真实 Milvus/Qdrant/Elasticsearch maintenance、embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0；未修改受保护本地配置、accepted baseline、V1-V10 或依赖，未暂存、提交、push、创建 PR、部署或发布。
+- 剩余风险：当前是可编译的中途检查点，不是完整回归检查点；KB list、update/delete/statistics、document、permission write、feedback、QA/embedding/task cache、task projection/finalizer/recovery/input、RAG/keyword/Milvus contract 和 legacy readiness 均未收口。C14 通过前仍不得开放第二业务 tenant、MCP/Router 或宣称租户隔离成立。
+- Commit：`pending`；提交责任为用户手动提交。本次暂停不建议把 74 个条目压成单一“C13b 完成”提交；明日聚焦 GREEN 后再按 migration、SQL/API、task/cache、RAG/vector 分组给出中文提交建议。
+
+## 2026-07-27｜C13b SQL/API/permission 与 task/recovery/input/projection 续作
+
+- 恢复与范围：从 2026-07-26 暂停检查点恢复，提交责任保持 `用户手动提交`；未暂存、未提交、未 push、未创建 PR、未部署。先补跑 ledger 检查点，再按 TDD 完成 KB/document list/update/delete/statistics/upload、permission、history/feedback、SQL finalizer、恢复 scope、持久化输入与 task projection 小切片。
+- SQL/API/permission：controller 用户路径统一传播 `RequestIdentity`；KB owner/public/permission、document lookup/list/delete/count、permission target user、history/feedback save/read/list/delete/duplicate 均增加 tenant predicate 与 mapper-returned mismatch 防御。QA query count 使用 `kb:query:count:v2:{tenantId}:{kbId}`，source/citation title enrich 使用相同 tenant identity；跨 tenant 资源以 scoped lookup 隐藏。
+- Task/recovery/finalize：ledger create/find/claim/heartbeat/phase/retry/finalize 全部携带 tenantId；recovery 从 durable record 构造 execution scope并核对 task/document/KB/owner；`IndexTaskSqlFinalizer` 同事务锁定 tenant-scoped task/document，chunk insert 与 KB document count 更新均带 tenant predicate。
+- Durable input：`IndexInputStore` 新增 tenant-aware put/open/delete，文件键固定为 `objects/v2/{tenantId}/{uuid}.bin`；旧无 tenant 入口和旧 `objects/{uuid}` key fail closed，不双读。跨 tenant open/delete、路径穿越、符号链接、完整性校验与补偿清理均有测试；cleanup coordinator 从 document durable tenant 执行。
+- Task projection/message：`TaskStatus`、Redis payload、durable fallback 与 `DocumentIndexMessage` 增加 tenantId；Redis key 使用 `task:status:v2:{tenantId}:{taskId}`，payload tenant/task mismatch fail closed，内存 future map 同样按 v2 key 分桶。TaskController 的 status/result/cancel/exists/completed 全部从 `RequestIdentity` 使用 tenant-scoped manager，旧 manager/status-service 入口 fail closed。
+- Keyword SQL bootstrap：system-wide KB 启动扫描后，每个 KB 必须有合法 tenant；document/chunk 通过 tenant-scoped service 加载并再次核对 tenant，内部 metadata 写入 tenantId。当前只证明 SQL bootstrap scope；`KeywordIndex` 内存 map 仍以 collection name 分桶，属于后续 RAG/keyword contract gap。
+- 聚焦验证：task/recovery/input/projection 组合命令共 68 tests / 0 failures / 0 errors / 0 skipped；其中 ledger 8、reconciliation 6、SQL finalizer 2、input store 12、indexing 16、task controller 3（随后扩展为 5）、task Redis/key/failure 等均 GREEN。QA controller、KnowledgeBase service、keyword bootstrap 与 telemetry 聚焦回归均退出码 0。ThreadLocal/SecurityContext 扫描在 task/recovery/input main source 无命中；旧 task key main-source 使用只剩 deprecated 常量声明，无运行时调用。
+- 全仓验证：两次 `mvn -q test` 均在 `rag-admin` 报 207 tests / 1 failure / 0 errors / 21 skipped，唯一失败为既有 `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` 的不可用 OTLP collector 时序断言；该用例单独复跑退出码 0。因完整命令仍非零，不记录为全仓通过。`C5RecoveryMySqlTest` 在本环境 Docker 不可用时 5/5 skipped，不能作为真实 MySQL 恢复通过证据。
+- 静态与范围：`git diff --check` 退出码 0；当前 worktree 115 个 modified/untracked entries，均为 C13b 累积实现/测试/治理文件，受保护 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 命中 0。V1-V10、accepted baseline、依赖与前端未修改；CRLF 提示和用户级 git ignore permission warning 不影响 diff check 结果。
+- 跳过与外调：Python 全量、frontend build、真实 Redis/Testcontainers Milvus contract、legacy vector maintenance/readiness 与真实 provider 调用尚未执行。真实 Milvus/Qdrant/Elasticsearch maintenance、embedding/rerank/debug retrieval/ask/generation/judge/LLM 调用、业务数据出站、费用与限流事件均为 0。
+- 剩余风险：QA/embedding cache v2、RAG immutable scope 贯通、KeywordIndex tenant map、Milvus 新 collection adapter contract 与 get/delete/count/drop 仍未完成；部分 legacy service 裸入口仍存在但用户 controller 主路径已 scoped，不能勾选全量裸 mapper 门禁。Design 决策 16 未获确认，legacy collection 必须保持非 READY；C13b/C14 均未完成，不能开放第二业务 tenant、MCP/Router 或宣称租户隔离成立。
+- Commit：`pending`；提交责任为用户手动提交。建议按阶段拆分：`feat(租户): 收紧SQL权限与问答数据路径`、`feat(任务): 增加租户化恢复输入与状态投影`。
+
+## 2026-07-27｜C13b V11 migration 提交补录
+
+- Commit：`f0bde8a`（`feat(租户): 增加V11数据面租户迁移门禁`）。本条只补录上一执行提交的真实 hash，不记录后续 C13b 实现改动。
+
+## 2026-07-27｜C13b Redis identity 与 query scope 提交补录
+
+- Commit：`59944fe`（`feat(租户): 建立Redis身份与查询范围基础`）。本条只补录上一执行提交的真实 hash，不记录后续 C13b 实现改动。
+
+## 2026-07-27｜C13b SQL/API 与异步数据面提交补录
+
+- Commit：`255c72f`（`feat(租户): 收紧SQL权限与异步任务数据面`）。本条只补录上一执行提交的真实 hash，不记录后续 C13b 实现改动。
+
+## 2026-07-27｜C13b 分段提交与 Docker 恢复验证检查点
+
+- 用户授权与提交范围：用户明确授权 Agent 将当前 C13b 阶段实现分段提交。已创建 `f0bde8a`（V11 migration/entity）、`59944fe`（Redis identity/query scope 基础）、`255c72f`（SQL/API/permission 与 task/recovery/input 数据面）三段实现提交；未 push、未创建 PR、未部署。
+- Docker/MySQL 证据：Docker Desktop `28.4.0` 可用；执行 `mvn -q -pl rag-admin -am '-Dtest=TenantDataPlaneMigrationMySqlTest,C5RecoveryMySqlTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`，退出码 0。MySQL `8.0.36` 下 migration 为 8 tests / 0 failures / 0 errors / 0 skipped，C5 recovery 为 5/0/0/0；此前 Docker 不可用导致的 5 个 recovery skips 已消除。
+- 编译与静态门禁：`mvn -q -pl rag-admin -am -DskipTests test` 在标准本机 Maven 缓存环境退出码 0；首次 sandbox 隔离环境因无法访问本机 Maven 缓存/远端而失败，不属于代码失败。SensitiveLogs 扫描 323 source files / PASS；`git diff --check` 通过；受保护路径、V1-V10、accepted baseline、依赖与前端改动均为 0。
+- 已知未通过项：此前两次全仓 `mvn -q test` 都只有既有 `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` 的 collector 时序断言失败，rag-admin 207 tests / 1 failure / 0 errors / 21 skipped；该测试独立复跑通过，因此仍不把全仓门禁记为 GREEN。
+- 跳过与外调：本轮未运行 Python 全量（无 evaluation/Python 改动），前端 build 因无前端改动记为 `SKIPPED`；Milvus tenant adapter contract、legacy readiness/maintenance、QA/embedding cache v2 与完整 RAG/keyword scope 尚未实现。真实 vector maintenance、embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。
+- 剩余风险与决策：design 决策 16 仍需用户在 shadow collection + SQL mapping/readiness 切换与另立依赖升级/schema-evolution contract 之间确认；确认前 legacy collection/runtime/maintenance 保持非 READY/fail closed。Qdrant/Elasticsearch 继续只具备 enforcement-mode startup guard，C14 前不开放第二业务 tenant、MCP/Router，也不宣称租户隔离成立。
+- Commit：`pending`；本条与 ACTIVE_TASK/tasks 检查点建议独立提交 `docs(openspec): 记录C13b阶段实现检查点`。

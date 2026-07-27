@@ -112,6 +112,12 @@ Milvus 是 C13b 的最小已支持 adapter。目标 contract：
 
 真实 Milvus backfill 会读写外部依赖并可能涉及业务内容，执行前必须披露记录量、adapter、数据路径、超时/重试和风险并取得用户授权。本轮规划不执行。
 
+### 5.4 实现期 Legacy Schema 闸门
+
+实现审计确认当前 `pom.xml` 固定 `milvus-sdk-java 2.3.4`，而既有 `MilvusVectorStore` 将 `metadata` 建为 `VarChar`，collection 中没有可用于所有操作的独立 `tenant_id` / `kb_id` 标量字段。当前依赖暴露的 collection alter 能力不能证明可给既有 schema 原位增加这两个字段，因此决策 8 的“原位补 marker”不能按已批准文字直接落地。
+
+在下方决策 16 获用户确认前，legacy collection 保持非 READY，runtime 与 maintenance 均 fail closed；不得把 JSON 字符串拼接、仅 search 过滤或 mock 结果当作替代。migration、SQL/API、task/cache、reserved filter 与新 collection scope 等不依赖该选择的切片可继续实现。
+
 ## 6. Keyword Index And Query Fallback
 
 - `KeywordIndex` 使用与 vector 相同的 tenant vector scope；in-memory map key 至少包含 tenantId + KB id，不能只使用裸 collectionName。
@@ -267,3 +273,8 @@ C13b 验收后仍只可描述为 server-side data-plane enforcement 已实现并
 - **面临的选择**：C13a identity 就绪；C13b 实现与集成测试通过；C13b 加 C14 隔离/恶意样本评测通过。
 - **选了哪个 + 为什么**：选择 C13b+C14 都通过后才宣称成立；C13b 完成时只报告 data-plane enforcement evidence。
 - **放弃的代价**：前两种都会把代码存在或可控 fixture 当成对漏路与恶意输入的完整证明，造成过度承诺。
+
+### 决策 16：既有 Milvus 2.3 collection 无法原位增加标量字段时怎样迁移（待用户确认）
+- **面临的选择**：建立 tenant-aware shadow collection、复制现有 vector/content 并在全量审计后切换 SQL mapping；另立依赖升级闸门并先用真实 contract 证明新版可安全演进既有 schema；继续把 marker 写进当前 `VarChar metadata` 并只在 search 拼表达式。
+- **选了哪个 + 为什么**：待用户在实现期事前闸门确认；当前不猜测方案，legacy collection 保持非 READY，因为前两项分别改变迁移拓扑或依赖基线，第三项不能覆盖 get/delete/count/drop 的隔离契约。
+- **放弃的代价**：shadow copy 需要额外 collection 容量、切换与回滚设计；依赖升级扩大兼容验证范围且不保证旧 schema 可原地改变；VarChar workaround 会留下未过滤操作与伪完成证据。
