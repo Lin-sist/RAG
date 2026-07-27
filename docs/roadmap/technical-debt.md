@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-26
+> 状态日期：2026-07-27
 > 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
 
 ## P0：进入下一轮功能迭代前
@@ -75,7 +75,7 @@
 ## P2：基线稳定后
 
 - 组织/租户模型：C13a 已于 2026-07-26 验收归档，完成唯一 legacy tenant、user/knowledge-base 非空归属、服务端 JWT tenant identity 与 immutable request context；该阶段不提供 tenant CRUD/switch 或第二业务 tenant。
-- 强制 tenant filter：C13b active change 已实现 SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus contract 与 shadow readiness；未验证的 Qdrant/Elasticsearch 在 enforcement mode 下 fail startup。剩余闸门是用户验收/归档、另行授权的真实 Milvus shadow migration，以及 C14 隔离与恶意样本评测；C14 前不得宣称租户隔离成立，也不开放 C15/C16。
+- 强制 tenant filter：C13b 已于 2026-07-27 验收归档，SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus contract 与 shadow readiness 的 6 requirements / 18 scenarios 已接受进 baseline；未验证的 Qdrant/Elasticsearch 在 enforcement mode 下 fail startup。剩余债务是另行授权的真实 Milvus shadow migration，以及 C14 隔离与恶意样本评测；C14 前不得宣称租户隔离成立，也不开放第二业务 tenant、C15/C16。
 - 独立观测债务：`GenAiTracingConfigurationTest` 的不可用 collector 时序断言在全仓并发执行时仍可波动、独立复跑通过；该问题不扩入 C13b，必要时另立维护 change。
 - 前端统一设计 token、空态/错态/处理中态和可访问性。
 - 生产数据评测集扩充与反馈闭环。

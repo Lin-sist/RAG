@@ -1,6 +1,6 @@
 # RAG 项目当前架构
 
-> 状态日期：2026-07-26
+> 状态日期：2026-07-27
 > 本文只描述当前代码中已确认的结构与能力。阶段指标以 `docs/optimization/` 和 `docs/eval/reports/` 中的当前文件为准。
 
 ## 1. 项目定位
@@ -70,7 +70,7 @@
 - C9b 已验收归档：`rag-judge-v1` 固定 prompt/parser/`0.70` 双分数 threshold/model config identity；24 条独立静态 calibration v1 按 faithful×relevant 四象限各 6 条；normal eval 输出独立 objective/judge/global status 与 comparison safety。4 requirements / 12 scenarios 已接受进 `evaluation` baseline；live judge calibration 按 `SKIPPED` 收口，不能形成真实 agreement 或生产质量结论。
 - C11 已验收归档：默认关闭、fail-open 的 OTel 1.31 tracing core 为 durable ingest 与 ask 建立分离 trace，固定实际执行阶段 topology，并以稳定 task/document/chunk lineage 关联两条链路；W3C/custom context、MDC bridge、同步/流式终态和隐私白名单均由进程内 exporter/fake tests 锁定。4 requirements / 12 scenarios 已接受进 `rag-system` baseline。
 - C12 已验收归档：tracing/metrics/export 三个开关独立且默认关闭；OTLP gRPC exporter 使用有界 queue/batch/timeout 并保持业务 fail-open。低基数 metrics 独立于 trace sampling；本机 Collector→Tempo/Prometheus→Grafana reference stack 固定关键 trace 全保留、普通成功 trace 10% tail sampling、72h/7d retention、localhost 端口与认证边界。4 requirements / 12 scenarios 已接受进 `rag-system` baseline，synthetic evidence 不代表生产容量或 SLA。
-- C13a 已验收归档：V10 建立唯一 legacy tenant，并为 user/knowledge-base 回填非空 tenant identity；认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity` 使用服务端数据库事实，旧无 tenant claim token 被拒绝。4 requirements / 12 scenarios 已接受进 `rag-system` baseline，但 SQL/vector/cache/task/history 强制隔离仍未实现。
+- C13a 已验收归档：V10 建立唯一 legacy tenant，并为 user/knowledge-base 回填非空 tenant identity；认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity` 使用服务端数据库事实，旧无 tenant claim token 被拒绝。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；后续 C13b data-plane enforcement 也已验收归档，但 C14 前仍不构成租户隔离结论。
 - NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
@@ -84,7 +84,7 @@
 - C8b 只扩充并复核 question/annotation；C9a/C9b/C10 离线能力均已验收归档。C10 当前只有 DRAFT retrieval profile，reference calls 与具体阈值未授权，因此 active quality gate、live judge calibration 与真实 generation evidence 仍未完成。
 - 标题感知、长代码块和长段落专项仍待验证。
 - C12 已形成默认关闭的 OTLP export、低基数 metrics 与本机 reference backend 闭环，但它不是生产观测平台；生产 HA、容量、合规 retention、租户权限、跨主机传输、外部通知与 SLA 仍未知或 out of scope。
-- C13b active change 已实现 SQL/API/permission、task/cache/history、RAG/keyword、Milvus tenant adapter contract 与默认关闭的 shadow collection/readiness 路径；Qdrant/Elasticsearch 在 enforcement mode 下 fail startup。真实 Milvus 迁移/切换仍 `SKIPPED`，change 尚待用户验收；C14 隔离评测通过前不能宣称租户隔离成立。
+- C13b 已验收归档：SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus tenant adapter contract 与默认关闭的 shadow collection/readiness 路径已形成指定测试证据，6 requirements / 18 scenarios 已接受进 `rag-system` baseline；Qdrant/Elasticsearch 在 enforcement mode 下 fail startup。真实 Milvus 迁移/切换仍 `SKIPPED`，C14 隔离评测通过前不能宣称租户隔离成立。
 
 ## 6. 文档真相源
 

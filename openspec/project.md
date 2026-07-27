@@ -30,7 +30,7 @@
 - C11 已验收归档：基于 Spring Boot 3.2.1 BOM 管理的 OTel 1.31 API/SDK 建立默认关闭、fail-open 的进程内 GenAI tracing core；ingest/ask 使用分离 trace，以稳定 `ingestTaskId/documentId/chunkId` lineage 关联，覆盖同步/流式终态、W3C/custom context、MDC bridge 与隐私白名单。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；runtime 不含 network exporter，真实 provider/exporter 调用与数据出站为 0。
 - C12 已验收归档：在 C11 contract 上增加相互独立且默认关闭的 tracing/metrics/export 开关、OTLP gRPC fail-open export 与低基数 operation/stage/provider/fallback/token metrics；本机 reference stack 固定 Collector/Tempo/Prometheus/Grafana 版本，实行关键 trace 全保留、普通成功 trace 10% tail sampling、metrics 不采样、72h/7d retention、localhost 端口边界与 Grafana 认证。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；synthetic 闭环不包含真实业务 provider 或 SaaS 调用。
 - C13a 已验收归档：V10 创建唯一 `legacy-default` tenant，并为所有既有 user/knowledge-base 原地回填非空 tenant identity；数据库认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity(userId, tenantId)` 只使用服务端身份事实，旧无 tenant claim token fail closed。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；该结果只证明 tenant model/context readiness，不证明跨租户隔离。
-- C13b active change 已实现 SQL/API/permission、task/cache/history、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 shadow collection/readiness 维护路径；本地 Milvus 2.3.4 合成 contract 与聚焦测试通过。真实 Milvus 迁移/切换未授权并 `SKIPPED`，全仓 Maven 仍因既有 OTel collector 时序断言保持非 GREEN，因此本条不是验收或 baseline 接受记录。
+- C13b 已验收归档：SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 tenant-aware shadow collection/readiness 维护路径已形成指定测试证据。6 requirements / 18 scenarios 已接受进 `rag-system` baseline；真实 Milvus 迁移/切换未授权并 `SKIPPED`，全仓 Maven 仍因既有 OTel collector 时序断言保持非 GREEN。
 
 ## 当前边界
 
@@ -39,7 +39,7 @@
 - LLM judge 默认关闭；C9b 已接受的是离线校准工具、静态 corpus 与状态语义，尚无 live provider evidence，不能声称 judge 已真实校准或逐 claim faithfulness 已成立。
 - C10 已接受的是离线门禁 contract/evaluator 与 DRAFT profile，不包含正式 v2 reference evidence、具体阈值或 ACTIVE profile；后续激活仍须单独披露并授权 reference calls。
 - C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项仍未完成。C12 已完成默认关闭的单机 reference observability 闭环，但生产 HA、容量、合规 retention、租户观测权限、跨主机传输、通知与 SLA 仍未完成。
-- 当前先等待 C13b 用户验收、baseline 接受与归档；随后必须完成 C14 隔离及恶意样本评测。C14 通过前不开放第二业务 tenant、C15 MCP 或 C16 Router，也不宣称租户隔离成立。
+- 下一阶段必须通过独立 Type C change 完成 C14 隔离及恶意样本评测。C14 通过前不开放第二业务 tenant、tenant management、C15 MCP 或 C16 Router，也不宣称租户隔离成立。
 
 ## 长期规格
 

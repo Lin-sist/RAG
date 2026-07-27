@@ -89,7 +89,7 @@
 - [x] 运行 SensitiveLogs、protected paths、credential、ThreadLocal、裸 tenant-bypass mapper/vector/cache key、Markdown links 与 `git diff --check` 门禁。
 - [x] 将每个 requirement/scenario 对应到测试或真实 evidence；`RETRIEVAL_ONLY/PARTIAL/mock` 不得替代隔离结论。
 - [x] 更新 tasks、`.ai/AGENT_LOG.md`、`openspec/project.md` 与相关 architecture/roadmap/optimization 文档；保持 C14/C15/C16 边界。
-- [ ] 用户验收后才把 delta 原文接受进 baseline、归档 change 并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
+- [x] 用户验收后才把 delta 原文接受进 baseline、归档 change 并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
 - [x] C13b 收口措辞只写“data-plane enforcement 已实现并通过指定测试”；C14 前不宣称租户隔离成立，不开放第二业务 tenant/MCP/Router。
 
 ### 实现证据映射（2026-07-27）

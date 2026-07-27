@@ -1572,3 +1572,14 @@
 ## 2026-07-27｜C13b 实现与验证收口提交补录
 
 - Commit：`2f18827`（`docs(openspec): 收口C13b实现与验证证据`）。本条只补录上一治理提交的真实 hash；本补录提交不递归记录自身 hash。
+
+## 2026-07-27｜C13b 验收与归档
+
+- 用户验收与提交责任：用户明确确认 C13b 验收通过并要求归档；沿用已授权的 `Agent 提交`，只提交计划内归档与长期事实源文件，不 push、不创建 PR、不部署。
+- 规格收口：`tenant-data-plane-enforcement` delta body 已按行原文接受为 `openspec/specs/rag-system/spec.md` 的 exact suffix，共 6 requirements / 18 scenarios；proposal、design、tasks 与 delta 已移入 `openspec/changes/archive/2026-07-27-tenant-data-plane-enforcement/`，archive files=4、tasks unchecked=0、未归档 active change=0，`.ai/ACTIVE_TASK.md=IDLE`。
+- 长期事实源：同步 `openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md` 与 `docs/optimization/README.md`，记录 C13b data-plane enforcement 已验收归档及指定测试边界；真实 Milvus shadow copy/mapping/readiness switch 继续 `SKIPPED`，Qdrant/Elasticsearch 继续在 enforcement mode 下 fail startup。
+- 本轮验证：baseline exact line suffix=`true`；6 requirements / 18 scenarios；archive files=4；tasks unchecked=0；未归档 active change=0；`.ai/ACTIVE_TASK.md=IDLE`。Python 全量 `159 tests / OK`；SensitiveLogs 扫描 326 source files / PASS；11 个现存 changed Markdown 的本地相对链接 missing=0；protected paths=0、unexpected paths=0、Java/migration/frontend changes=0；当前事实源的 C13b 待验收残留=0；`git diff --check` 通过。OpenSpec CLI 不在 PATH，未声称 CLI validation 通过。
+- 复用与跳过：本轮只做规格、文档、任务状态与 change 位置归档，未修改 Java/POM/前端/runtime config/migration，因此不重跑 Maven、frontend build、Docker/Testcontainers 或 C3。实现收口已记录 Milvus 2.3.4 合成 contract 2/0/0/0 与聚焦 suites 通过；此前全仓 `mvn -q test` 仍因唯一既有 OTel collector 时序断言保持非 GREEN，该用例独立复跑通过，本轮不改写该事实。
+- 外调与范围安全：没有连接、盘点或写入真实 Milvus，没有创建 collection、复制 vector、切换 mapping/readiness、重试或清理；真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`，未 push、未创建 PR、未部署。
+- 剩余风险与下一阶段：真实 Milvus collection/record 数、容量、超时/重试、shadow 额外空间和回滚窗口仍未知，任何真实写入或切换必须另行授权；OTel collector 时序波动保留为独立维护债务。下一项重大变更必须另立 C14 隔离与恶意样本评测 change；C14 通过前不得宣称租户隔离成立，也不得开放第二业务 tenant、tenant management、C15 MCP 或 C16 Router。
+- Commit：`pending`；建议 `chore(openspec): 验收并归档C13b数据面约束`。

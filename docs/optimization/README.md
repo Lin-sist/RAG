@@ -1,6 +1,6 @@
 # RAG 优化文档索引
 
-> 状态日期：2026-07-26
+> 状态日期：2026-07-27
 
 本目录只保留三类内容：当前 v3 证据、已关闭的 v4 阶段证据、历史演进证据。阶段编号只在所属版本目录内解释。
 
@@ -77,13 +77,13 @@
 - archived change：`../../openspec/changes/archive/2026-07-26-tenant-model-context-and-migration/`。
 - V10 创建唯一 `legacy-default` tenant，并按 nullable→全量回填→NOT NULL/index 顺序为既有 user 与 knowledge-base 建立持久化 tenant identity，保留主键、owner/public、逻辑删除状态与 `kb_permission` 关系。
 - 数据库认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity(userId, tenantId)` 统一使用服务端 tenant 事实；旧无 tenant claim token fail closed，客户端 header/query/body/metadata 不能选择或覆盖 tenant。
-- 4 requirements / 12 scenarios 已接受进长期 `rag-system` baseline；C13a 仍是单一 legacy tenant 暗铺设，不证明跨租户隔离。下一阶段 C13b 必须覆盖 SQL/vector/cache/task/history，C14 评测通过前不开放 C15/C16。
+- 4 requirements / 12 scenarios 已接受进长期 `rag-system` baseline；C13a 仍只证明 tenant model/context readiness。后续 C13b data-plane enforcement 已验收归档，但 C14 评测通过前仍不开放第二业务 tenant、C15/C16，也不宣称租户隔离成立。
 
-### C13b：Tenant Data-Plane Enforcement（待验收）
+### C13b：Tenant Data-Plane Enforcement（已验收归档）
 
-- active change：`../../openspec/changes/tenant-data-plane-enforcement/`；尚未接受进 baseline 或归档。
+- archived change：`../../openspec/changes/archive/2026-07-27-tenant-data-plane-enforcement/`。
 - 已实现 SQL/API/permission、task/cache/history、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 shadow collection/readiness 维护路径；本地 Milvus 2.3.4 仅使用合成数据验证，真实模型调用为 0。
-- 真实 Milvus shadow copy/mapping switch 未获授权并 `SKIPPED`；全仓 Maven 唯一命中既有 OTel collector 时序波动且独立复跑通过，因此不记录为全仓 GREEN。C14 前不宣称租户隔离成立，不开放第二业务 tenant、C15 或 C16。
+- 6 requirements / 18 scenarios 已接受进长期 `rag-system` baseline。真实 Milvus shadow copy/mapping switch 未获授权并 `SKIPPED`；全仓 Maven 唯一命中既有 OTel collector 时序波动且独立复跑通过，因此不记录为全仓 GREEN。C14 前不宣称租户隔离成立，不开放第二业务 tenant、tenant management、C15 或 C16。
 
 ## 历史材料
 
