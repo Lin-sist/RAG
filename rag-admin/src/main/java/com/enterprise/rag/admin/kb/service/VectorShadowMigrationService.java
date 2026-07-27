@@ -57,25 +57,25 @@ public class VectorShadowMigrationService {
                 .filter(Objects::nonNull)
                 .filter(value -> !value.isBlank())
                 .toList();
+        Map<String, DocumentChunk> expected = new LinkedHashMap<>();
+        long duplicateExpected = 0;
+        for (DocumentChunk chunk : chunks) {
+            if (chunk.getVectorId() == null || chunk.getVectorId().isBlank()) {
+                continue;
+            }
+            if (expected.putIfAbsent(chunk.getVectorId(), chunk) != null) {
+                duplicateExpected++;
+            }
+        }
 
         if (knowledgeBaseMapper.beginVectorShadowCopy(
-                tenantId, kbId, sourceCollection, shadowCollection, ids.size()) != 1) {
+                tenantId, kbId, sourceCollection, shadowCollection, expected.size()) != 1) {
             throw new IllegalStateException("VECTOR_READINESS_STATE_CONFLICT");
         }
 
         long observed = 0;
         long migrated = 0;
         try {
-            Map<String, DocumentChunk> expected = new LinkedHashMap<>();
-            long duplicateExpected = 0;
-            for (DocumentChunk chunk : chunks) {
-                if (chunk.getVectorId() == null || chunk.getVectorId().isBlank()) {
-                    continue;
-                }
-                if (expected.putIfAbsent(chunk.getVectorId(), chunk) != null) {
-                    duplicateExpected++;
-                }
-            }
             List<VectorDocument> source = ids.isEmpty()
                     ? List.of()
                     : sourceReader.readByIds(sourceCollection, ids);

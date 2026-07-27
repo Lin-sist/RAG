@@ -117,6 +117,61 @@ class VectorShadowMigrationServiceTest {
         verify(vectorStore, never()).upsert(any(TenantVectorScope.class), anyList());
     }
 
+    @Test
+    void duplicateSqlVectorIdentityShouldFailAuditWithUniqueExpectedCount() {
+        properties.setEnabled(true);
+        DocumentChunk duplicate = chunk();
+        duplicate.setDocumentId(21L);
+        when(chunkMapper.selectByTenantAndKnowledgeBaseId(77L, 10L))
+                .thenReturn(List.of(chunk(), duplicate));
+        when(kbMapper.beginVectorShadowCopy(77L, 10L, "legacy_vectors",
+                "tenant_77_kb_10_shadow_v1", 1L)).thenReturn(1);
+        when(sourceReader.readByIds("legacy_vectors", List.of("vector-1", "vector-1")))
+                .thenReturn(List.of(new VectorDocument(
+                        "vector-1", new float[] {0.1f, 0.2f}, "content",
+                        Map.of("kbId", 10L, "documentId", 20L))));
+
+        VectorShadowMigrationService.MigrationReport report = service.migrate(77L, 10L);
+
+        assertEquals("AUDIT_FAILED", report.status());
+        assertEquals(1L, report.expected());
+        assertEquals(1L, report.mismatch());
+        verify(vectorStore, never()).createCollection(any(TenantVectorScope.class), anyInt());
+    }
+
+    @Test
+    void partialShadowReadBackShouldKeepOriginalMappingNonReady() {
+        properties.setEnabled(true);
+        DocumentChunk first = chunk();
+        DocumentChunk second = chunk();
+        second.setVectorId("vector-2");
+        second.setDocumentId(21L);
+        second.setContent("content-2");
+        VectorDocument firstVector = new VectorDocument(
+                "vector-1", new float[] {0.1f, 0.2f}, "content",
+                Map.of("kbId", 10L, "documentId", 20L));
+        VectorDocument secondVector = new VectorDocument(
+                "vector-2", new float[] {0.2f, 0.1f}, "content-2",
+                Map.of("kbId", 10L, "documentId", 21L));
+        TenantVectorScope shadow = new TenantVectorScope(77L, 10L, "tenant_77_kb_10_shadow_v1");
+        when(chunkMapper.selectByTenantAndKnowledgeBaseId(77L, 10L)).thenReturn(List.of(first, second));
+        when(kbMapper.beginVectorShadowCopy(77L, 10L, "legacy_vectors", shadow.collectionName(), 2L))
+                .thenReturn(1);
+        when(sourceReader.readByIds("legacy_vectors", List.of("vector-1", "vector-2")))
+                .thenReturn(List.of(firstVector, secondVector));
+        when(sourceReader.readDimension("legacy_vectors")).thenReturn(2);
+        when(vectorStore.count(shadow)).thenReturn(1L);
+        when(vectorStore.getByIds(shadow, List.of("vector-1", "vector-2")))
+                .thenReturn(List.of(firstVector));
+
+        VectorShadowMigrationService.MigrationReport report = service.migrate(77L, 10L);
+
+        assertEquals("AUDIT_FAILED", report.status());
+        assertEquals(1L, report.missing());
+        verify(kbMapper, never()).completeVectorShadowSwitch(
+                77L, 10L, "legacy_vectors", shadow.collectionName(), 1L, 2L);
+    }
+
     private DocumentChunk chunk() {
         DocumentChunk chunk = new DocumentChunk();
         chunk.setTenantId(77L);
