@@ -29,6 +29,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class IdempotencyAspect {
 
     private final IdempotencyHandler idempotencyHandler;
+    private final IdempotencyScopeResolver idempotencyScopeResolver;
 
     /**
      * 环绕通知：处理幂等性逻辑
@@ -58,8 +59,9 @@ public class IdempotencyAspect {
             return joinPoint.proceed();
         }
 
-        // 构建完整的幂等性 Key
-        String fullKey = buildFullKey(idempotent, joinPoint, idempotencyKey);
+        IdempotencyScope scope = idempotencyScopeResolver.resolve(request)
+                .orElseThrow(IdempotencyException::identityRequired);
+        String endpoint = resolveEndpoint(idempotent, joinPoint);
 
         // 获取返回类型
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
@@ -68,7 +70,9 @@ public class IdempotencyAspect {
         // 执行幂等性处理
         @SuppressWarnings("unchecked")
         IdempotencyResult<Object> result = idempotencyHandler.execute(
-                fullKey,
+                scope,
+                endpoint,
+                idempotencyKey,
                 () -> {
                     try {
                         return joinPoint.proceed();
@@ -103,25 +107,13 @@ public class IdempotencyAspect {
      * 格式: {prefix}:{idempotencyKey}
      * 如果未指定前缀，使用方法签名作为前缀
      */
-    private String buildFullKey(Idempotent idempotent, ProceedingJoinPoint joinPoint, String idempotencyKey) {
+    private String resolveEndpoint(Idempotent idempotent, ProceedingJoinPoint joinPoint) {
         String prefix = idempotent.keyPrefix();
-        if (prefix.isEmpty()) {
+        if (prefix.isBlank()) {
             // 使用方法签名作为前缀
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             prefix = signature.getDeclaringTypeName() + "." + signature.getName();
         }
-        HttpServletRequest request = getCurrentRequest();
-        String principal = extractPrincipal(request);
-        return prefix + ":" + principal + ":" + idempotencyKey;
-    }
-
-    private String extractPrincipal(HttpServletRequest request) {
-        if (request == null) {
-            return "anonymous";
-        }
-        if (request.getUserPrincipal() != null && request.getUserPrincipal().getName() != null) {
-            return request.getUserPrincipal().getName();
-        }
-        return "anonymous";
+        return prefix;
     }
 }

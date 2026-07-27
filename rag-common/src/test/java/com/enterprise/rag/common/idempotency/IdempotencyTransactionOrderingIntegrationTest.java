@@ -19,6 +19,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.function.Supplier;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,8 +62,15 @@ class IdempotencyTransactionOrderingIntegrationTest {
         }
 
         @Bean
-        IdempotencyAspect idempotencyAspect(RecordingIdempotencyHandler handler) {
-            return new IdempotencyAspect(handler);
+        IdempotencyScopeResolver idempotencyScopeResolver() {
+            return request -> Optional.of(new IdempotencyScope(1L, 1L));
+        }
+
+        @Bean
+        IdempotencyAspect idempotencyAspect(
+                RecordingIdempotencyHandler handler,
+                IdempotencyScopeResolver scopeResolver) {
+            return new IdempotencyAspect(handler, scopeResolver);
         }
 
         @Bean
@@ -113,10 +121,45 @@ class IdempotencyTransactionOrderingIntegrationTest {
 
         @Override
         public <T> IdempotencyResult<T> execute(
+                IdempotencyScope scope,
+                String endpoint,
+                String requestKey,
+                Supplier<T> operation,
+                Class<T> resultType,
+                long ttlSeconds) {
+            T result = operation.get();
+            transactionActiveInsideOperation = true;
+            transactionActiveAfterOperation = TransactionSynchronizationManager.isActualTransactionActive();
+            return IdempotencyResult.newRequest(result);
+        }
+
+        @Override
+        public boolean exists(IdempotencyScope scope, String endpoint, String requestKey) {
+            return false;
+        }
+
+        @Override
+        public <T> IdempotencyResult<T> getStoredResult(
+                IdempotencyScope scope,
+                String endpoint,
+                String requestKey,
+                Class<T> resultType) {
+            return null;
+        }
+
+        @Override
+        public void remove(IdempotencyScope scope, String endpoint, String requestKey) {
+            // no-op
+        }
+
+        @Deprecated(since = "C13b", forRemoval = false)
+        @Override
+        public <T> IdempotencyResult<T> execute(
                 String idempotencyKey, Supplier<T> operation, Class<T> resultType) {
             return execute(idempotencyKey, operation, resultType, 60);
         }
 
+        @Deprecated(since = "C13b", forRemoval = false)
         @Override
         public <T> IdempotencyResult<T> execute(
                 String idempotencyKey,
@@ -129,16 +172,19 @@ class IdempotencyTransactionOrderingIntegrationTest {
             return IdempotencyResult.newRequest(result);
         }
 
+        @Deprecated(since = "C13b", forRemoval = false)
         @Override
         public boolean exists(String idempotencyKey) {
             return false;
         }
 
+        @Deprecated(since = "C13b", forRemoval = false)
         @Override
         public <T> IdempotencyResult<T> getStoredResult(String idempotencyKey, Class<T> resultType) {
             return null;
         }
 
+        @Deprecated(since = "C13b", forRemoval = false)
         @Override
         public void remove(String idempotencyKey) {
             // no-op

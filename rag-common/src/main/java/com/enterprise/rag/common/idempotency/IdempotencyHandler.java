@@ -1,5 +1,7 @@
 package com.enterprise.rag.common.idempotency;
 
+import com.enterprise.rag.common.constant.RedisKeyConstants;
+
 import java.util.function.Supplier;
 
 /**
@@ -9,6 +11,40 @@ import java.util.function.Supplier;
  * 使用 Redis 存储幂等性 Key 和处理结果。
  */
 public interface IdempotencyHandler {
+
+    /**
+     * 使用已认证业务范围执行幂等操作。
+     */
+    default <T> IdempotencyResult<T> execute(
+            IdempotencyScope scope,
+            String endpoint,
+            String requestKey,
+            Supplier<T> operation,
+            Class<T> resultType) {
+        return execute(scope, endpoint, requestKey, operation, resultType,
+                RedisKeyConstants.IDEMPOTENCY_TTL);
+    }
+
+    /**
+     * 使用已认证业务范围和自定义 TTL 执行幂等操作。
+     */
+    <T> IdempotencyResult<T> execute(
+            IdempotencyScope scope,
+            String endpoint,
+            String requestKey,
+            Supplier<T> operation,
+            Class<T> resultType,
+            long ttlSeconds);
+
+    boolean exists(IdempotencyScope scope, String endpoint, String requestKey);
+
+    <T> IdempotencyResult<T> getStoredResult(
+            IdempotencyScope scope,
+            String endpoint,
+            String requestKey,
+            Class<T> resultType);
+
+    void remove(IdempotencyScope scope, String endpoint, String requestKey);
 
     /**
      * 执行幂等性操作
@@ -22,6 +58,7 @@ public interface IdempotencyHandler {
      * @param <T>            结果类型
      * @return 幂等性处理结果
      */
+    @Deprecated(since = "C13b", forRemoval = false)
     <T> IdempotencyResult<T> execute(String idempotencyKey, Supplier<T> operation, Class<T> resultType);
 
     /**
@@ -34,6 +71,7 @@ public interface IdempotencyHandler {
      * @param <T>            结果类型
      * @return 幂等性处理结果
      */
+    @Deprecated(since = "C13b", forRemoval = false)
     <T> IdempotencyResult<T> execute(String idempotencyKey, Supplier<T> operation, Class<T> resultType, long ttlSeconds);
 
     /**
@@ -42,6 +80,7 @@ public interface IdempotencyHandler {
      * @param idempotencyKey 幂等性 Key
      * @return 是否存在
      */
+    @Deprecated(since = "C13b", forRemoval = false)
     boolean exists(String idempotencyKey);
 
     /**
@@ -52,6 +91,7 @@ public interface IdempotencyHandler {
      * @param <T>            结果类型
      * @return 存储的结果，如果不存在返回 null
      */
+    @Deprecated(since = "C13b", forRemoval = false)
     <T> IdempotencyResult<T> getStoredResult(String idempotencyKey, Class<T> resultType);
 
     /**
@@ -59,5 +99,6 @@ public interface IdempotencyHandler {
      *
      * @param idempotencyKey 幂等性 Key
      */
+    @Deprecated(since = "C13b", forRemoval = false)
     void remove(String idempotencyKey);
 }

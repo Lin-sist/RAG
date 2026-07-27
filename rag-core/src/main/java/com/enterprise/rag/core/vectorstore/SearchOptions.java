@@ -1,5 +1,7 @@
 package com.enterprise.rag.core.vectorstore;
 
+import com.enterprise.rag.core.rag.model.ReservedScopeFilterValidator;
+
 import java.util.Map;
 
 /**
@@ -15,6 +17,10 @@ public record SearchOptions(
         float minScore,
         Map<String, Object> filter
 ) {
+    public SearchOptions {
+        filter = ReservedScopeFilterValidator.validateAndCopy(filter);
+    }
+
     /**
      * 默认搜索选项：返回10条结果，无最小分数限制，无过滤
      */

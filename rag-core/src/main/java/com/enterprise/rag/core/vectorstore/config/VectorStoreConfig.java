@@ -71,6 +71,7 @@ public class VectorStoreConfig {
     @Bean
     @ConditionalOnProperty(name = "rag.vectorstore.type", havingValue = "qdrant")
     public QdrantClient qdrantClient(VectorStoreProperties properties) {
+        requireSupportedTenantAdapter("qdrant", properties.isTenantEnforcementEnabled());
         VectorStoreProperties.QdrantProperties qdrantProps = properties.getQdrant();
         
         log.info("Connecting to Qdrant at {}:{}", qdrantProps.getHost(), qdrantProps.getGrpcPort());
@@ -103,6 +104,7 @@ public class VectorStoreConfig {
     @Bean
     @ConditionalOnProperty(name = "rag.vectorstore.type", havingValue = "elasticsearch")
     public ElasticsearchClient elasticsearchClient(VectorStoreProperties properties) {
+        requireSupportedTenantAdapter("elasticsearch", properties.isTenantEnforcementEnabled());
         VectorStoreProperties.ElasticsearchProperties esProps = properties.getElasticsearch();
         
         log.info("Connecting to Elasticsearch at {}://{}:{}", 
@@ -134,5 +136,11 @@ public class VectorStoreConfig {
     @ConditionalOnProperty(name = "rag.vectorstore.type", havingValue = "elasticsearch")
     public VectorStore elasticsearchVectorStore(ElasticsearchClient esClient, VectorStoreProperties properties) {
         return new ElasticsearchVectorStore(esClient, properties.getElasticsearch());
+    }
+
+    void requireSupportedTenantAdapter(String adapter, boolean tenantEnforcementEnabled) {
+        if (tenantEnforcementEnabled && !"milvus".equalsIgnoreCase(adapter)) {
+            throw new TenantVectorAdapterConfigurationException(adapter);
+        }
     }
 }

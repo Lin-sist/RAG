@@ -34,34 +34,84 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
     private static final long PROCESSING_TTL_SECONDS = 60;
 
     @Override
+    public <T> IdempotencyResult<T> execute(
+            IdempotencyScope scope,
+            String endpoint,
+            String requestKey,
+            Supplier<T> operation,
+            Class<T> resultType,
+            long ttlSeconds) {
+        String redisKey = buildScopedKey(scope, endpoint, requestKey);
+        return executeInternal(scope, redisKey, requestKey, operation, resultType, ttlSeconds);
+    }
+
+    @Override
+    public boolean exists(IdempotencyScope scope, String endpoint, String requestKey) {
+        String redisKey = buildScopedKey(scope, endpoint, requestKey);
+        return readStoredData(redisKey, scope) != null;
+    }
+
+    @Override
+    public <T> IdempotencyResult<T> getStoredResult(
+            IdempotencyScope scope,
+            String endpoint,
+            String requestKey,
+            Class<T> resultType) {
+        String redisKey = buildScopedKey(scope, endpoint, requestKey);
+        return getStoredResultInternal(redisKey, resultType, scope);
+    }
+
+    @Override
+    public void remove(IdempotencyScope scope, String endpoint, String requestKey) {
+        String redisKey = buildScopedKey(scope, endpoint, requestKey);
+        if (readStoredData(redisKey, scope) != null) {
+            stringRedisTemplate.delete(redisKey);
+            log.debug("Removed scoped idempotency key");
+        }
+    }
+
+    @Deprecated(since = "C13b", forRemoval = false)
+    @Override
     public <T> IdempotencyResult<T> execute(String idempotencyKey, Supplier<T> operation, Class<T> resultType) {
         return execute(idempotencyKey, operation, resultType, RedisKeyConstants.IDEMPOTENCY_TTL);
     }
 
+    @Deprecated(since = "C13b", forRemoval = false)
     @Override
     public <T> IdempotencyResult<T> execute(String idempotencyKey, Supplier<T> operation, 
                                             Class<T> resultType, long ttlSeconds) {
         String redisKey = buildKey(idempotencyKey);
+        return executeInternal(null, redisKey, idempotencyKey, operation, resultType, ttlSeconds);
+    }
 
+    private <T> IdempotencyResult<T> executeInternal(
+            IdempotencyScope scope,
+            String redisKey,
+            String requestKey,
+            Supplier<T> operation,
+            Class<T> resultType,
+            long ttlSeconds) {
         // 1. 尝试获取已存储的结果
-        IdempotencyResult<T> existingResult = getStoredResultInternal(redisKey, resultType);
+        IdempotencyResult<T> existingResult = getStoredResultInternal(redisKey, resultType, scope);
         if (existingResult != null) {
             log.debug("Idempotency key exists, returning cached result");
             return existingResult;
         }
 
         // 2. 尝试设置 PROCESSING 状态（原子操作）
-        IdempotencyData processingData = IdempotencyData.processing();
+        IdempotencyData processingData = scope == null
+                ? IdempotencyData.processing()
+                : IdempotencyData.processing(scope);
         boolean acquired = trySetProcessing(redisKey, processingData);
 
         if (!acquired) {
             // 可能是并发请求，再次检查是否已完成
-            existingResult = getStoredResultInternal(redisKey, resultType);
+            existingResult = getStoredResultInternal(redisKey, resultType, scope);
             if (existingResult != null) {
                 return existingResult;
             }
             // 仍在处理中
-            throw IdempotencyException.processing(idempotencyKey);
+            throw IdempotencyException.processing(requestKey);
         }
 
         // 3. 执行操作
@@ -70,16 +120,17 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
             result = operation.get();
         } catch (Exception e) {
             // 操作失败，存储失败状态
-            storeFailedResult(redisKey, e.getMessage(), ttlSeconds);
+            storeFailedResult(redisKey, scope, e.getMessage(), ttlSeconds);
             throw e;
         }
 
         // 4. 存储成功结果
-        storeCompletedResult(redisKey, result, resultType, ttlSeconds);
+        storeCompletedResult(redisKey, scope, result, resultType, ttlSeconds);
 
         return IdempotencyResult.newRequest(result);
     }
 
+    @Deprecated(since = "C13b", forRemoval = false)
     @Override
     public boolean exists(String idempotencyKey) {
         String redisKey = buildKey(idempotencyKey);
@@ -87,12 +138,14 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
         return Boolean.TRUE.equals(exists);
     }
 
+    @Deprecated(since = "C13b", forRemoval = false)
     @Override
     public <T> IdempotencyResult<T> getStoredResult(String idempotencyKey, Class<T> resultType) {
         String redisKey = buildKey(idempotencyKey);
-        return getStoredResultInternal(redisKey, resultType);
+        return getStoredResultInternal(redisKey, resultType, null);
     }
 
+    @Deprecated(since = "C13b", forRemoval = false)
     @Override
     public void remove(String idempotencyKey) {
         String redisKey = buildKey(idempotencyKey);
@@ -105,6 +158,14 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
      */
     private String buildKey(String idempotencyKey) {
         return RedisKeyConstants.idempotencyKey(idempotencyKey);
+    }
+
+    private String buildScopedKey(IdempotencyScope scope, String endpoint, String requestKey) {
+        if (scope == null) {
+            throw IdempotencyException.identityRequired();
+        }
+        return RedisKeyConstants.idempotencyV2Key(
+                scope.tenantId(), scope.userId(), endpoint, requestKey);
     }
 
     /**
@@ -127,10 +188,17 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
     /**
      * 存储成功结果
      */
-    private <T> void storeCompletedResult(String redisKey, T result, Class<T> resultType, long ttlSeconds) {
+    private <T> void storeCompletedResult(
+            String redisKey,
+            IdempotencyScope scope,
+            T result,
+            Class<T> resultType,
+            long ttlSeconds) {
         try {
             String resultJson = objectMapper.writeValueAsString(result);
-            IdempotencyData data = IdempotencyData.completed(resultJson, resultType.getName());
+            IdempotencyData data = scope == null
+                    ? IdempotencyData.completed(resultJson, resultType.getName())
+                    : IdempotencyData.completed(scope, resultJson, resultType.getName());
             String json = objectMapper.writeValueAsString(data);
             stringRedisTemplate.opsForValue().set(redisKey, json, ttlSeconds, TimeUnit.SECONDS);
             log.debug("Stored completed idempotency result");
@@ -146,9 +214,15 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
     /**
      * 存储失败结果
      */
-    private void storeFailedResult(String redisKey, String errorMessage, long ttlSeconds) {
+    private void storeFailedResult(
+            String redisKey,
+            IdempotencyScope scope,
+            String errorMessage,
+            long ttlSeconds) {
         try {
-            IdempotencyData data = IdempotencyData.failed(errorMessage);
+            IdempotencyData data = scope == null
+                    ? IdempotencyData.failed(errorMessage)
+                    : IdempotencyData.failed(scope, errorMessage);
             String json = objectMapper.writeValueAsString(data);
             stringRedisTemplate.opsForValue().set(redisKey, json, ttlSeconds, TimeUnit.SECONDS);
             log.debug("Stored failed idempotency result");
@@ -163,7 +237,40 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
     /**
      * 获取已存储的结果（内部方法）
      */
-    private <T> IdempotencyResult<T> getStoredResultInternal(String redisKey, Class<T> resultType) {
+    private <T> IdempotencyResult<T> getStoredResultInternal(
+            String redisKey,
+            Class<T> resultType,
+            IdempotencyScope expectedScope) {
+        IdempotencyData data = readStoredData(redisKey, expectedScope);
+        if (data == null) {
+            return null;
+        }
+
+        switch (data.getStatus()) {
+            case PROCESSING:
+                // 仍在处理中
+                return null;
+            case COMPLETED:
+                try {
+                    T result = objectMapper.readValue(data.getResultJson(), resultType);
+                    return IdempotencyResult.duplicate(result, data.getProcessedAt());
+                } catch (Exception e) {
+                    throw deserializeFailure(e);
+                }
+            case FAILED:
+                // 之前失败了，允许重试；身份校验已在删除前完成。
+                try {
+                    stringRedisTemplate.delete(redisKey);
+                    return null;
+                } catch (Exception e) {
+                    throw RedisDependencyException.unavailable("idempotency", "delete_failed_state", e);
+                }
+            default:
+                return null;
+        }
+    }
+
+    private IdempotencyData readStoredData(String redisKey, IdempotencyScope expectedScope) {
         String json;
         try {
             json = stringRedisTemplate.opsForValue().get(redisKey);
@@ -179,26 +286,30 @@ public class RedisIdempotencyHandler implements IdempotencyHandler {
 
         try {
             IdempotencyData data = objectMapper.readValue(json, IdempotencyData.class);
-
-            switch (data.getStatus()) {
-                case PROCESSING:
-                    // 仍在处理中
-                    return null;
-                case COMPLETED:
-                    T result = objectMapper.readValue(data.getResultJson(), resultType);
-                    return IdempotencyResult.duplicate(result, data.getProcessedAt());
-                case FAILED:
-                    // 之前失败了，允许重试
-                    stringRedisTemplate.delete(redisKey);
-                    return null;
-                default:
-                    return null;
-            }
+            validateScope(data, expectedScope);
+            return data;
+        } catch (IdempotencyException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Failed to read idempotency state: dependency=redis, subsystem=idempotency, "
-                            + "operation=deserialize, failMode=closed, errorType={}",
-                    e.getClass().getSimpleName());
-            throw RedisDependencyException.unavailable("idempotency", "deserialize", e);
+            throw deserializeFailure(e);
         }
+    }
+
+    private void validateScope(IdempotencyData data, IdempotencyScope expectedScope) {
+        if (expectedScope == null) {
+            return;
+        }
+        if (!Long.valueOf(expectedScope.tenantId()).equals(data.getTenantId())
+                || !Long.valueOf(expectedScope.userId()).equals(data.getUserId())) {
+            log.warn("Idempotency payload scope mismatch, failing closed");
+            throw IdempotencyException.scopeMismatch();
+        }
+    }
+
+    private RedisDependencyException deserializeFailure(Exception cause) {
+        log.error("Failed to read idempotency state: dependency=redis, subsystem=idempotency, "
+                        + "operation=deserialize, failMode=closed, errorType={}",
+                cause.getClass().getSimpleName());
+        return RedisDependencyException.unavailable("idempotency", "deserialize", cause);
     }
 }

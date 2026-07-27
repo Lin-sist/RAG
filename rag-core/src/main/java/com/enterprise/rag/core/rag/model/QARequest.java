@@ -21,6 +21,11 @@ public record QARequest(
         Map<String, Object> filter,
         boolean enableCache,
         boolean stream) {
+
+    public QARequest {
+        filter = ReservedScopeFilterValidator.validateAndCopy(filter);
+    }
+
     /**
      * 默认检索数量
      */

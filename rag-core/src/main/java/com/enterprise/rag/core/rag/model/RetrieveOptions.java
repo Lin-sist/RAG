@@ -18,6 +18,11 @@ public record RetrieveOptions(
         float minScore,
         Map<String, Object> filter,
         boolean enableRerank) {
+
+    public RetrieveOptions {
+        filter = ReservedScopeFilterValidator.validateAndCopy(filter);
+    }
+
     /**
      * 默认检索选项
      */

@@ -14,6 +14,12 @@ public class VectorStoreProperties {
     private String type = "milvus";
 
     /**
+     * 启用服务端 tenant data-plane enforcement。默认开启；未通过完整契约的
+     * adapter 必须在创建 client 之前拒绝启动。
+     */
+    private boolean tenantEnforcementEnabled = true;
+
+    /**
      * Milvus 配置
      */
     private MilvusProperties milvus = new MilvusProperties();
@@ -34,6 +40,14 @@ public class VectorStoreProperties {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public boolean isTenantEnforcementEnabled() {
+        return tenantEnforcementEnabled;
+    }
+
+    public void setTenantEnforcementEnabled(boolean tenantEnforcementEnabled) {
+        this.tenantEnforcementEnabled = tenantEnforcementEnabled;
     }
 
     public MilvusProperties getMilvus() {

@@ -7,13 +7,12 @@ import org.aspectj.lang.Signature;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
-import java.security.Principal;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,7 +23,8 @@ import static org.mockito.Mockito.*;
 class IdempotencyAspectTest {
 
     private final IdempotencyHandler idempotencyHandler = mock(IdempotencyHandler.class);
-    private final IdempotencyAspect aspect = new IdempotencyAspect(idempotencyHandler);
+    private final IdempotencyScopeResolver scopeResolver = mock(IdempotencyScopeResolver.class);
+    private final IdempotencyAspect aspect = new IdempotencyAspect(idempotencyHandler, scopeResolver);
 
     @AfterEach
     void cleanup() {
@@ -32,26 +32,56 @@ class IdempotencyAspectTest {
     }
 
     @Test
-    void shouldIncludePrincipalInIdempotencyKey() throws Throwable {
+    void shouldPassAuthenticatedScopeEndpointAndRequestKeyToHandler() throws Throwable {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Idempotency-Key", "idem-123");
-        request.setUserPrincipal((Principal) () -> "user-a");
         bindRequest(request);
+        IdempotencyScope scope = new IdempotencyScope(11L, 21L);
+        when(scopeResolver.resolve(request)).thenReturn(Optional.of(scope));
 
         Method method = DummyService.class.getDeclaredMethod("create");
         Idempotent idempotent = method.getAnnotation(Idempotent.class);
 
         ProceedingJoinPoint joinPoint = mockJoinPoint(method, "OK");
-        when(idempotencyHandler.execute(any(), any(), eq(String.class), eq(idempotent.ttlSeconds())))
+        when(idempotencyHandler.execute(
+                eq(scope),
+                eq("demo:create"),
+                eq("idem-123"),
+                any(),
+                eq(String.class),
+                eq(idempotent.ttlSeconds())))
                 .thenReturn(IdempotencyResult.newRequest("OK"));
 
         Object result = aspect.handleIdempotency(joinPoint, idempotent);
 
         assertThat(result).isEqualTo("OK");
 
-        ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-        verify(idempotencyHandler).execute(keyCaptor.capture(), any(), eq(String.class), eq(idempotent.ttlSeconds()));
-        assertThat(keyCaptor.getValue()).isEqualTo("demo:create:user-a:idem-123");
+        verify(idempotencyHandler).execute(
+                eq(scope),
+                eq("demo:create"),
+                eq("idem-123"),
+                any(),
+                eq(String.class),
+                eq(idempotent.ttlSeconds()));
+    }
+
+    @Test
+    void shouldFailClosedWhenIdempotencyKeyHasNoAuthenticatedScope() throws Throwable {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Idempotency-Key", "idem-123");
+        bindRequest(request);
+        when(scopeResolver.resolve(request)).thenReturn(Optional.empty());
+
+        Method method = DummyService.class.getDeclaredMethod("create");
+        Idempotent idempotent = method.getAnnotation(Idempotent.class);
+        ProceedingJoinPoint joinPoint = mockJoinPoint(method, "SHOULD_NOT_RUN");
+
+        IdempotencyException exception = assertThrows(IdempotencyException.class,
+                () -> aspect.handleIdempotency(joinPoint, idempotent));
+
+        assertThat(exception.getErrorCode()).isEqualTo(IdempotencyException.ERROR_CODE_IDENTITY_REQUIRED);
+        verify(joinPoint, never()).proceed();
+        verifyNoInteractions(idempotencyHandler);
     }
 
     @Test
@@ -64,7 +94,7 @@ class IdempotencyAspectTest {
         ProceedingJoinPoint joinPoint = mockJoinPoint(method, "OK");
 
         assertThrows(BusinessException.class, () -> aspect.handleIdempotency(joinPoint, idempotent));
-        verify(idempotencyHandler, never()).execute(any(), any(), any(), anyLong());
+        verifyNoInteractions(idempotencyHandler, scopeResolver);
     }
 
     @Test
@@ -79,7 +109,7 @@ class IdempotencyAspectTest {
         Object result = aspect.handleIdempotency(joinPoint, idempotent);
 
         assertThat(result).isEqualTo("DIRECT");
-        verify(idempotencyHandler, never()).execute(any(), any(), any(), anyLong());
+        verifyNoInteractions(idempotencyHandler, scopeResolver);
     }
 
     private void bindRequest(HttpServletRequest request) {

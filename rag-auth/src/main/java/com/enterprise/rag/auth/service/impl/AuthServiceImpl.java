@@ -20,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,7 +57,7 @@ public class AuthServiceImpl implements AuthService {
             String refreshToken = jwtTokenProvider.generateRefreshToken(userPrincipal);
 
             // 保存用户会话到 Redis
-            saveUserSession(userPrincipal.getId(), accessToken, refreshToken);
+            saveUserSession(userPrincipal, accessToken, refreshToken);
 
             log.info("用户登录成功");
 
@@ -80,23 +81,30 @@ public class AuthServiceImpl implements AuthService {
         // 将 Token 加入黑名单；失败时不得报告登出成功
         tokenBlacklistService.addToBlacklist(accessToken);
 
-        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
-        if (userId != null) {
-            String sessionKey = RedisKeyConstants.userSessionKey(userId);
-            try {
+        UserPrincipal userPrincipal = jwtTokenProvider.getUserPrincipalFromToken(accessToken);
+        requireValidIdentity(userPrincipal, AuthException.invalidToken());
+        String sessionKey = sessionKey(userPrincipal);
+        try {
+            Boolean sessionExists = redisUtil.hasKey(sessionKey);
+            if (Boolean.TRUE.equals(sessionExists)) {
+                Object storedTenantId = redisUtil.hGet(sessionKey, "tenantId");
+                Object storedUserId = redisUtil.hGet(sessionKey, "userId");
+                if (!matchesSessionIdentity(userPrincipal, storedTenantId, storedUserId)) {
+                    throw AuthException.invalidToken();
+                }
                 Object refreshTokenInSession = redisUtil.hGet(sessionKey, "refreshToken");
                 if (refreshTokenInSession instanceof String refreshToken && !refreshToken.isBlank()) {
                     tokenBlacklistService.addToBlacklist(refreshToken);
                 }
                 redisUtil.delete(sessionKey);
-            } catch (RedisDependencyException e) {
-                throw e;
-            } catch (Exception e) {
-                log.error("Logout session revoke failed closed: dependency=redis, subsystem=auth_session, "
-                                + "operation=revoke, failMode=closed, errorType={}",
-                        e.getClass().getSimpleName());
-                throw RedisDependencyException.unavailable("auth_session", "revoke", e);
             }
+        } catch (AuthException | RedisDependencyException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Logout session revoke failed closed: dependency=redis, subsystem=auth_session, "
+                            + "operation=revoke, failMode=closed, errorType={}",
+                    e.getClass().getSimpleName());
+            throw RedisDependencyException.unavailable("auth_session", "revoke", e);
         }
 
         log.info("用户登出成功");
@@ -122,13 +130,18 @@ public class AuthServiceImpl implements AuthService {
 
         // 获取用户信息
         UserPrincipal userPrincipal = jwtTokenProvider.getUserPrincipalFromToken(refreshToken);
+        requireValidIdentity(userPrincipal, AuthException.invalidRefreshToken());
 
         // 校验 refresh token 对应会话必须存在且 token 一致
-        validateRefreshSession(userPrincipal.getId(), refreshToken);
+        validateRefreshSession(userPrincipal, refreshToken);
 
         // 重新加载用户信息（确保用户状态最新）
         UserPrincipal freshUserPrincipal = (UserPrincipal) userDetailsService.loadUserByUsername(
                 userPrincipal.getUsername());
+
+        if (!sameIdentity(userPrincipal, freshUserPrincipal)) {
+            throw AuthException.invalidRefreshToken();
+        }
 
         if (!freshUserPrincipal.isEnabled()) {
             throw AuthException.userDisabled();
@@ -142,7 +155,7 @@ public class AuthServiceImpl implements AuthService {
         tokenBlacklistService.addToBlacklist(refreshToken);
 
         // 更新用户会话
-        saveUserSession(freshUserPrincipal.getId(), newAccessToken, newRefreshToken);
+        saveUserSession(freshUserPrincipal, newAccessToken, newRefreshToken);
 
         log.info("用户 Token 刷新成功");
 
@@ -173,10 +186,12 @@ public class AuthServiceImpl implements AuthService {
     /**
      * 保存用户会话到 Redis
      */
-    private void saveUserSession(Long userId, String accessToken, String refreshToken) {
-        String sessionKey = RedisKeyConstants.userSessionKey(userId);
+    private void saveUserSession(UserPrincipal userPrincipal, String accessToken, String refreshToken) {
+        String sessionKey = sessionKey(userPrincipal);
 
         Map<String, Object> sessionData = new HashMap<>();
+        sessionData.put("tenantId", userPrincipal.getTenantId());
+        sessionData.put("userId", userPrincipal.getId());
         sessionData.put("accessToken", accessToken);
         sessionData.put("refreshToken", refreshToken);
         sessionData.put("loginTime", Instant.now().toString());
@@ -201,15 +216,23 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private void validateRefreshSession(Long userId, String refreshToken) {
-        String sessionKey = RedisKeyConstants.userSessionKey(userId);
+    private void validateRefreshSession(UserPrincipal userPrincipal, String refreshToken) {
+        String sessionKey = sessionKey(userPrincipal);
         Boolean sessionExists;
+        Object storedTenantId;
+        Object storedUserId;
         Object storedRefreshToken;
         try {
             sessionExists = redisUtil.hasKey(sessionKey);
-            storedRefreshToken = Boolean.TRUE.equals(sessionExists)
-                    ? redisUtil.hGet(sessionKey, "refreshToken")
-                    : null;
+            if (Boolean.TRUE.equals(sessionExists)) {
+                storedTenantId = redisUtil.hGet(sessionKey, "tenantId");
+                storedUserId = redisUtil.hGet(sessionKey, "userId");
+                storedRefreshToken = redisUtil.hGet(sessionKey, "refreshToken");
+            } else {
+                storedTenantId = null;
+                storedUserId = null;
+                storedRefreshToken = null;
+            }
         } catch (Exception e) {
             log.error("Auth session read failed closed: dependency=redis, subsystem=auth_session, "
                             + "operation=read, failMode=closed, errorType={}",
@@ -221,9 +244,61 @@ public class AuthServiceImpl implements AuthService {
             throw AuthException.invalidRefreshToken();
         }
 
+        if (!matchesSessionIdentity(userPrincipal, storedTenantId, storedUserId)) {
+            throw AuthException.invalidRefreshToken();
+        }
+
         if (!(storedRefreshToken instanceof String tokenInSession)
                 || !Objects.equals(tokenInSession, refreshToken)) {
             throw AuthException.invalidRefreshToken();
+        }
+    }
+
+    private String sessionKey(UserPrincipal userPrincipal) {
+        if (!hasValidIdentity(userPrincipal)) {
+            throw new IllegalArgumentException("User principal must contain a valid tenant and user identity");
+        }
+        return RedisKeyConstants.userSessionV2Key(
+                userPrincipal.getTenantId(), userPrincipal.getId());
+    }
+
+    private void requireValidIdentity(UserPrincipal userPrincipal, AuthException failure) {
+        if (!hasValidIdentity(userPrincipal)) {
+            throw failure;
+        }
+    }
+
+    private boolean hasValidIdentity(UserPrincipal userPrincipal) {
+        return userPrincipal != null
+                && userPrincipal.getTenantId() != null
+                && userPrincipal.getTenantId() > 0
+                && userPrincipal.getId() != null
+                && userPrincipal.getId() > 0;
+    }
+
+    private boolean sameIdentity(UserPrincipal expected, UserPrincipal actual) {
+        return hasValidIdentity(expected)
+                && hasValidIdentity(actual)
+                && Objects.equals(expected.getTenantId(), actual.getTenantId())
+                && Objects.equals(expected.getId(), actual.getId());
+    }
+
+    private boolean matchesSessionIdentity(
+            UserPrincipal expected,
+            Object storedTenantId,
+            Object storedUserId) {
+        return matchesId(storedTenantId, expected.getTenantId())
+                && matchesId(storedUserId, expected.getId());
+    }
+
+    private boolean matchesId(Object storedValue, Long expectedValue) {
+        if (!(storedValue instanceof Number number) || expectedValue == null) {
+            return false;
+        }
+        try {
+            return new BigDecimal(number.toString()).longValueExact() == expectedValue;
+        } catch (ArithmeticException | NumberFormatException e) {
+            return false;
         }
     }
 

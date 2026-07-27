@@ -17,6 +17,16 @@ import java.time.Instant;
 public class IdempotencyData {
 
     /**
+     * 记录所属租户；v1 兼容记录中可为空。
+     */
+    private Long tenantId;
+
+    /**
+     * 记录所属用户；v1 兼容记录中可为空。
+     */
+    private Long userId;
+
+    /**
      * 处理状态
      */
     private IdempotencyStatus status;
@@ -64,6 +74,10 @@ public class IdempotencyData {
         return data;
     }
 
+    public static IdempotencyData processing(IdempotencyScope scope) {
+        return applyScope(processing(), scope);
+    }
+
     /**
      * 创建已完成状态的数据
      */
@@ -76,6 +90,13 @@ public class IdempotencyData {
         return data;
     }
 
+    public static IdempotencyData completed(
+            IdempotencyScope scope,
+            String resultJson,
+            String resultType) {
+        return applyScope(completed(resultJson, resultType), scope);
+    }
+
     /**
      * 创建失败状态的数据
      */
@@ -84,6 +105,16 @@ public class IdempotencyData {
         data.setStatus(IdempotencyStatus.FAILED);
         data.setResultJson(errorMessage);
         data.setProcessedAt(Instant.now());
+        return data;
+    }
+
+    public static IdempotencyData failed(IdempotencyScope scope, String errorMessage) {
+        return applyScope(failed(errorMessage), scope);
+    }
+
+    private static IdempotencyData applyScope(IdempotencyData data, IdempotencyScope scope) {
+        data.setTenantId(scope.tenantId());
+        data.setUserId(scope.userId());
         return data;
     }
 }
