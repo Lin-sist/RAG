@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "tenant-isolation-case-v1",
+  "allowedFields": [
+    "id",
+    "category",
+    "driver",
+    "actor",
+    "target",
+    "mutation",
+    "controlCaseId",
+    "expected",
+    "required"
+  ],
+  "categories": [
+    "identity_override",
+    "id_guessing",
+    "public_permission",
+    "reserved_filter",
+    "cache_idempotency",
+    "task_recovery",
+    "vector_keyword",
+    "rag_sync",
+    "rag_stream",
+    "history_feedback",
+    "error_disclosure",
+    "timing_disclosure"
+  ],
+  "drivers": ["http", "sse", "cache", "task_recovery", "vector", "keyword", "timing"],
+  "actors": [
+    "tenant-a-owner",
+    "tenant-a-reader",
+    "tenant-a-user",
+    "anonymous",
+    "invalid-token",
+    "system-recovery"
+  ],
+  "expectedFields": [
+    "httpStatus",
+    "errorCode",
+    "forbiddenCanaryClasses",
+    "stateInvariants"
+  ],
+  "identityBoundary": "synthetic-only-no-credentials-or-runtime-paths"
+}

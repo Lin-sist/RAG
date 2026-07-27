@@ -451,7 +451,7 @@ class RedisFailureSemanticsIT {
 
         @GetMapping("/optional-embedding")
         float[] optionalEmbedding() {
-            return embeddingService.embed("c4c synthetic content");
+            return embeddingService.embed(TENANT_ID, "c4c synthetic content");
         }
 
         @GetMapping("/tasks/{taskId}")

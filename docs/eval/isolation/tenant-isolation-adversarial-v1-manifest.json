@@ -1,0 +1,65 @@
+{
+  "manifestSchemaVersion": "tenant-isolation-manifest-v1",
+  "releaseVersion": "tenant-isolation-adversarial-v1",
+  "caseSchemaVersion": "tenant-isolation-case-v1",
+  "driverVersion": "tenant-isolation-driver-v1",
+  "fixtureVersion": "tenant-isolation-fixture-v1",
+  "profileVersion": "tenant-isolation-profile-v1",
+  "artifacts": {
+    "schema": {
+      "path": "docs/eval/schema/tenant-isolation-case-v1.json",
+      "bytes": 918,
+      "sha256": "647ab295e815933d6156ebaafac5e801ab54dfbfef3c4b49099e670049230d28"
+    },
+    "cases": {
+      "path": "docs/eval/isolation/tenant-isolation-adversarial-v1-cases.jsonl",
+      "bytes": 9621,
+      "sha256": "d408a03fa08d344bb1f02ecf882a740ceaa306ebf6a2ba0385e14e9461b75f67"
+    }
+  },
+  "caseCount": 26,
+  "orderedCaseIdsSha256": "bf63d214fc72faa295ad01c1ca207879b282298c495a603174df426c8992de38",
+  "distribution": {
+    "category": {
+      "cache_idempotency": 2,
+      "error_disclosure": 2,
+      "history_feedback": 2,
+      "id_guessing": 4,
+      "identity_override": 2,
+      "public_permission": 2,
+      "rag_stream": 2,
+      "rag_sync": 2,
+      "reserved_filter": 2,
+      "task_recovery": 2,
+      "timing_disclosure": 2,
+      "vector_keyword": 2
+    },
+    "driver": {
+      "cache": 2,
+      "http": 15,
+      "keyword": 2,
+      "sse": 2,
+      "task_recovery": 2,
+      "timing": 2,
+      "vector": 1
+    },
+    "required": {
+      "true": 26,
+      "false": 0
+    }
+  },
+  "timingProfile": {
+    "warmupPairs": 10,
+    "measuredPairs": 40,
+    "interleavingSeed": 14001,
+    "medianAbsoluteFloorMs": 10.0,
+    "p95AbsoluteFloorMs": 25.0,
+    "relativeTolerance": 0.5
+  },
+  "statusExitCodes": {
+    "PASS": 0,
+    "INVALID": 2,
+    "FAIL": 3,
+    "NOT_EVALUABLE": 4
+  }
+}

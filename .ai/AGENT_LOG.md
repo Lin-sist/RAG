@@ -1600,3 +1600,41 @@
 - 外调与范围安全：真实 Milvus maintenance、embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0。未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline、Java、migration、POM、前端或历史报告。
 - 剩余风险与下一闸门：用户需审阅并批准 v1 case matrix、16 条 decisions、双 spec delta、timing profile 与 gap 最小修复边界；批准前不进入实现。C14 完整 PASS 前仍不得宣称租户隔离成立或开放第二业务 tenant、tenant management、C15/C16。
 - Commit：`pending`；建议 `docs(openspec): 启动C14租户隔离对抗评测规划`。
+
+## 2026-07-27｜C14 规划提交补录
+
+- Commit：`bb9d0a4`（`docs(openspec): 启动C14租户隔离对抗评测规划`）。本条只补录上一规划提交的真实 hash，不记录后续 C14 实现改动。
+
+## 2026-07-27｜C14 实现授权与 TDD 启动
+
+- 用户授权与提交责任：用户明确验收 C14 规划并要求开始实现；proposal、16 条 design decisions、tasks 与双 spec delta 的事前闸门通过。提交责任继续为 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 启动状态：HEAD=`bb9d0a4`，分支 `main...origin/main [ahead 1]`，工作区与暂存区干净；active change 唯一指向 `tenant-isolation-adversarial-evaluation`。
+- 实现方法：使用 `tdd` skill，按 public behavior 的纵向 RED→GREEN 小切片推进；先完成 versioned adversarial release contract，再进入隔离 harness 和攻击矩阵，不先横向铺完全部测试。
+- 授权边界：只允许合成 Testcontainers 与 deterministic test stub；真实 embedding/rerank/ask/generation/judge/LLM/provider 调用和真实 Milvus maintenance 继续禁止，业务数据出站为 0。
+- Commit：`pending`。
+
+## 2026-07-27｜C14 release contract、evaluator 与首个容器对抗切片
+
+- 范围与修改：新增 `tenant-isolation-case-v1` schema、26 条固定 JSONL attack cases、manifest、标准库 validator/`--plan-only`、四通道 evaluator/no-overwrite report；新增 `c14-isolation-eval` Failsafe profile、deterministic generation stub、真实双 tenant HTTP/Testcontainers 对抗 IT 与 profile contract test。修正既有 `RedisFailureSemanticsIT` 的 test-only probe，使其使用 C13b 已要求的 `embed(TENANT_ID, text)`，未修改生产语义。
+- TDD 证据：contract 从 module missing、artifact drift、duplicate/unknown driver、schema drift、unsafe path、missing control、quota/count/order drift 等 RED 逐项转 GREEN，最终 13 tests / OK；evaluator 从 module missing、missing/duplicate/unexpected、case ERROR/required SKIP、channel incomplete、timing incomplete、identity drift 与 overwrite 等 RED 转 GREEN，最终 11 tests / OK。`--plan-only` 验证 release=`tenant-isolation-adversarial-v1`、caseCount=26、12 categories、providerCallCount=0、businessDataOutbound=false、executionStarted=false。
+- 容器 RED/GREEN：首次 C14 IT 因 etcd/MinIO 等待端口未声明而在业务执行前失败，补充 test-only exposed ports 后同命令通过。完整 `mvn -q -pl rag-admin -am -Pc14-isolation-eval '-Dtest=NoSuchC14UnitTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dfailsafe.failIfNoSpecifiedTests=false' verify` 最终退出码 0，5 tests / 0 failures / 0 errors / 0 skipped；包括 C14 双 tenant 1、Milvus tenant-scope 2、Redis failure/recovery 2。Docker Desktop 28.4.0，MySQL 8.0.36、固定 digest Redis、etcd 3.5.5、MinIO 固定 release、Milvus 2.3.4 均为本轮自有合成容器。
+- 当前对抗证据：HTTP 切片验证 header/query/body/cookie/metadata tenant selector 不覆盖服务端 identity；tenant B public KB 对 A 的 list/detail/statistics/document-list 不可见；foreign/nonexistent 的 status/error/schema fingerprint 一致且不含 B canary/tenant/user identity；A 对 B update/delete 后 SQL tenant/name/description/public/deleted/version 不变；10 warmup + 40 fixed-seed interleaved pairs 的 median/P95 coarse timing gate 通过。测试内 deterministic embedding/generation invocation 均为 0。
+- 相邻基础设施证据：既有 Redis IT 首次独立复跑因无 scope probe 得到 500，修正 test-only 调用后 2/0/0/0；既有 Milvus IT 独立复跑 2/0/0/0，覆盖同物理 collection tenant-scope search/get/getByIds/delete/count/drop、marker mismatch、foreign destructive rejection、真实容器 stop/start 与 keyword-only fallback。
+- 全量门禁：`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 176 tests / OK；随后新增 evaluator/contract cases 的聚焦结果分别为 11/0/0 与 13/0/0。`mvn -q test` 退出码 1，rag-admin 217 tests / 1 failure / 0 errors / 2 skipped，唯一失败仍为既有 `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` collector 时序断言；该用例本轮独立复跑退出码 0，因此不把全仓门禁记为 GREEN，也不在 C14 修改观测实现。SensitiveLogs 扫描 328 source files / PASS，新增 artifact 未发现凭据、用户绝对路径或私钥模式，`git diff --check` 通过。
+- 跳过与剩余实现：前端无改动，正式 build `SKIPPED`。当前尚未形成 26/26 case-level 正式 evidence，task/history/feedback、reserved filter、cache/idempotency、sync/SSE、durable input 与统一 driver→details/report 映射仍待实现；因此 C14 继续 `ACTIVE`，不接受 delta、不归档、不宣称 C14 PASS。
+- 外调与范围安全：真实 embedding/rerank/debug retrieval/ask/generation/judge/LLM/provider 调用、业务数据出站、费用和限流事件均为 0；真实 Milvus maintenance、collection copy、mapping/readiness switch、重试与清理均 `SKIPPED`。未修改 migration、API/DTO、生产 schema/权限语义、依赖、前端、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或 accepted baseline；未暂存、未提交、未 push、未创建 PR、未部署。
+- Commit：`pending`；提交责任保持用户手动提交。当前切片建议 `test(隔离): 建立C14对抗评测契约与容器门禁`。
+
+## 2026-07-27｜C14 evaluator 边界补测
+
+- 在上述检查点后继续补齐 evaluator 的 unexpected case、case ERROR、required SKIP、error channel incomplete 与 evidence identity drift，以及 release case count/order drift 测试；最终 contract 聚焦 13 tests / OK、evaluator 聚焦 11 tests / OK。
+- 再次运行 Python 全量为 183 tests / OK；`git diff --check` 继续通过。没有新增外调、真实 maintenance、暂存、提交、push、PR 或部署。
+- Commit：`pending`。
+
+## 2026-07-27｜C14 实现检查点提交授权与归档审计
+
+- 用户授权：用户明确确认当前交付验收通过，并授权 Agent 提交相关 commit、检查归档条件；本授权不包含 push、PR、部署、真实 provider 调用或真实 Milvus maintenance。
+- 提交范围：只包含当前工作区内 C14 release/schema/validator/evaluator、Python tests、C14 Maven profile/Testcontainers tests、Redis test-only tenant scope 修正及对应 ACTIVE_TASK/tasks/append-only AGENT_LOG；未发现用户无关改动。
+- 归档审计：`tasks.md` 仍有 26 个 unchecked items；尚未形成 26/26 case-level 正式 evidence，task/history/feedback、reserved filter、cache/idempotency、sync/SSE、durable input 与 requirement→case/test/evidence 映射未闭环；全仓 Maven 仍因既有 OTel collector 时序波动保持非 GREEN。因此归档结论为 `NO-GO`，不得接受双 delta、移动 change 或把 ACTIVE_TASK 置为 IDLE。
+- 状态决策：本轮只提交可验证实现检查点；change 继续 `ACTIVE / C14 实现中`。后续完成剩余 attack matrix 和正式 evidence 后，再重新执行归档审计。
+- Commit：`pending`。
