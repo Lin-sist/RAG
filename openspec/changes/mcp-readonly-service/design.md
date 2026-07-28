@@ -61,6 +61,7 @@ MCP Host
 | `McpOriginAndExposureFilter` | `/mcp` 专用 Origin、local-only、request-size 守卫 |
 | `McpRequestIdentityResolver` | 从当前 authenticated principal 构造 `RequestIdentity`，不读取 tool args |
 | `McpResourceUri` | 严格解析/格式化 custom URI，拒绝 query/fragment/path trick |
+| `McpResourceListTransport` | 只在官方 stateless transport 的公开 handler 边界替换 `resources/list`，按当次 context 动态授权；其他 lifecycle/method 全部委托 SDK |
 | `McpKnowledgeResourceService` | resources list/read/templates、KB/document/chunk 权限与字段白名单 |
 | `McpReadOnlyToolService` | 四个 tools 的输入归一、权限、只读编排和稳定 result/error |
 | `McpCitationReader` | 按 tenant + KB + document + chunk identity 读取并校验 citation |
@@ -150,6 +151,8 @@ rag://knowledge-bases/{kbId}
 ```
 
 结果按 `kbId` 稳定升序、默认每页 50、最大 100。cursor 是 opaque base64url 编码的 lastSeenKbId/version，不含 tenant/user 或资源名称；每次使用 cursor 都重新执行当前 identity 的 accessible query，跨用户复用 cursor 不产生越权结果。
+
+官方 SDK 2.0.0 的高层 `resources(...)` API 实测使用进程级静态 registry，不能表达随当次 `McpTransportContext` 变化的授权列表。C15 因此只在 SDK 公开的 `McpStatelessServerTransport#setMcpHandler` / `McpStatelessServerHandler` 边界装饰 `resources/list`：transport、JSON 解析/序列化、initialize、templates、read、tools 与 notification 继续委托官方 SDK；不得通过全局 `addResource/removeResource` 在请求间模拟用户列表。
 
 ### 7.2 Resource templates
 
@@ -417,3 +420,8 @@ foreign resource 与不存在资源统一 `MCP_RESOURCE_NOT_FOUND`。error TextC
 - **面临的选择**：只跑 unit/MockMvc、只用一个手工 client、固定 conformance suite + 独立 client + 双 tenant side-effect evidence。
 - **选了哪个 + 为什么**：选择第三项，因为“标准 MCP”必须同时证明 wire interop、身份隔离和真实只读副作用。
 - **放弃的代价**：unit tests 不能证明协议；单一 client smoke 可能只验证该客户端的宽松兼容行为。
+
+### 决策 19：SDK 静态 Resource registry 如何承载逐请求授权列表
+- **面临的选择**：按请求全局增删 SDK Resource registry、只在 SDK 公开 stateless handler 边界装饰 `resources/list`、停止 C15 或升级/更换未批准的 SDK 版本。
+- **选了哪个 + 为什么**：选择窄装饰 `resources/list`，因为 SDK 2.0.0 高层 registry 实测是进程级静态状态，而公开 transport/handler 接口能够保留官方 transport、schema、lifecycle 与其余 method，同时让每次调用使用当次 `McpTransportContext` 重新授权。
+- **放弃的代价**：全局增删在并发用户间会竞态并泄露资源；停止会在已有安全公共扩展点时无端阻塞；升级/换版会破坏已固定和已验证的 compatibility 基线。

@@ -96,7 +96,7 @@ C13a/C13b 已把服务端 tenant identity 与数据面 enforcement 接通，C14 
 
 ## Acceptance Evidence
 
-- proposal、design 的 18 条决策、tasks 与 `rag-system` spec delta 先经用户批准。
+- proposal、design 的全部决策（当前 19 条，含 SDK 实测后补充的逐请求 Resource list 取舍）、tasks 与 `rag-system` spec delta 先经用户批准。
 - compatibility spike 固定 SDK/spec/conformance 版本，记录 dependency tree、Java/Spring/Jackson/Reactor/Servlet identity；不升级 Spring 基线且 compile/tests 通过。
 - disabled/enabled transport tests 证明默认无 `/mcp`、启用后 initialize/version negotiation、Resources/Tools capability 与 GET 405/sessionless 边界正确。
 - security tests 覆盖 missing/expired token、Origin、malformed URI/schema、unknown tool、client tenant/filter/provider injection、foreign/nonexistent fingerprint 与日志/响应脱敏。

@@ -5,7 +5,9 @@ import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransp
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class McpServerConfigurationTest {
 
@@ -19,5 +21,16 @@ class McpServerConfigurationTest {
             assertFalse(context.getBeansOfType(HttpServletStatelessServerTransport.class).size() > 0);
             assertFalse(context.getBeansOfType(McpStatelessSyncServer.class).size() > 0);
         });
+    }
+
+    @Test
+    void resourcePageSizeDefaultsToFiftyAndCannotExceedOneHundred() {
+        McpProperties properties = new McpProperties();
+
+        assertEquals(50, properties.getResourcePageSize());
+        properties.setResourcePageSize(100);
+        assertEquals(100, properties.getResourcePageSize());
+        assertThrows(IllegalArgumentException.class,
+                () -> properties.setResourcePageSize(101));
     }
 }

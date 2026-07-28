@@ -110,6 +110,7 @@ rag:
     local-only: ${RAG_MCP_LOCAL_ONLY:true}
     allowed-origins: ${RAG_MCP_ALLOWED_ORIGINS:}
     max-request-bytes: ${RAG_MCP_MAX_REQUEST_BYTES:131072}
+    resource-page-size: ${RAG_MCP_RESOURCE_PAGE_SIZE:50}
   observability:
     tracing:
       enabled: ${RAG_OBSERVABILITY_TRACING_ENABLED:false}

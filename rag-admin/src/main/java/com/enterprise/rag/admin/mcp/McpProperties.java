@@ -9,6 +9,8 @@ public class McpProperties {
 
     static final int DEFAULT_MAX_REQUEST_BYTES = 131_072;
     static final int MAX_CONFIGURABLE_REQUEST_BYTES = 1_048_576;
+    static final int DEFAULT_RESOURCE_PAGE_SIZE = 50;
+    static final int MAX_RESOURCE_PAGE_SIZE = 100;
 
     private boolean enabled;
 
@@ -17,6 +19,8 @@ public class McpProperties {
     private List<String> allowedOrigins = List.of();
 
     private int maxRequestBytes = DEFAULT_MAX_REQUEST_BYTES;
+
+    private int resourcePageSize = DEFAULT_RESOURCE_PAGE_SIZE;
 
     public boolean isEnabled() {
         return enabled;
@@ -53,5 +57,18 @@ public class McpProperties {
                             + MAX_CONFIGURABLE_REQUEST_BYTES);
         }
         this.maxRequestBytes = maxRequestBytes;
+    }
+
+    public int getResourcePageSize() {
+        return resourcePageSize;
+    }
+
+    public void setResourcePageSize(int resourcePageSize) {
+        if (resourcePageSize <= 0 || resourcePageSize > MAX_RESOURCE_PAGE_SIZE) {
+            throw new IllegalArgumentException(
+                    "MCP resource page size must be between 1 and "
+                            + MAX_RESOURCE_PAGE_SIZE);
+        }
+        this.resourcePageSize = resourcePageSize;
     }
 }

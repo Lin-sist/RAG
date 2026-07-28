@@ -8,6 +8,7 @@
 - [x] 用户明确授权加入/下载固定版本官方 MCP Java SDK 与固定 conformance 工具；该授权不包含 Spring 基线升级、真实 provider 调用、push、PR 或部署。
 - [x] 明确提交责任；当前保持 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 - [x] 实现开始前复查 `git status --short --branch`：HEAD=`c864e1c`，工作区与暂存区干净，规划提交 hash 已补录。
+- [ ] 用户复核 implementation-discovered 决策 19：SDK 2.0.0 高层 Resource registry 为进程级静态状态，C15 只在官方 stateless handler 公共边界窄装饰 `resources/list`；复核前不进入 Resource read。
 
 ## 1. SDK Compatibility And Protocol Foundation
 
@@ -33,8 +34,8 @@
 
 - [ ] RED：URI query/fragment/userinfo/port、percent-encoded slash、`..`、非法/负 ID、extra segment、foreign ID 与 document/KB mismatch 均 fail closed。（URI grammar/ID/路径技巧矩阵已完成；foreign ID 与 document/KB mismatch 待 Resource service 查询授权切片。）
 - [x] 实现 `McpResourceUri` 的三种 exact canonical template 与 round-trip tests：KB、document、chunk；KB/document 为正 long，chunkIndex 为非负 int，解析错误固定脱敏且不回显原 URI。
-- [ ] 实现 authenticated `resources/list`：只列当前 identity 可访问 KB，kbId 稳定排序、50 默认/100 最大、opaque cursor，每页重新授权。
-- [ ] 实现固定 `resources/templates/list`；不声明 subscriptions/listChanged，不提供 document version template。
+- [x] 实现 authenticated `resources/list`：只列当前 identity 可访问 KB，kbId 稳定排序、50 默认/100 最大、opaque cursor，每页重新授权；同一 cursor 跨 tenant 测试证明只返回当次身份结果。
+- [x] 实现固定 `resources/templates/list`；恰好三条 canonical template，不声明 subscriptions/listChanged，不提供 document version template。
 - [ ] 实现 KB Resource JSON whitelist，排除 tenantId、ownerId、vectorCollection、storage/vector/internal fields。
 - [ ] 实现 document Resource JSON whitelist，并用 tenantId + documentId + kbId 双重一致性检查。
 - [ ] 实现 chunk Resource text read，严格按 tenant/document/chunkIndex 查询，UTF-8 bytes 上限与 `truncated` evidence 可验证。

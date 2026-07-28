@@ -1,5 +1,6 @@
 package com.enterprise.rag.admin.mcp;
 
+import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.auth.config.SecurityConfig;
 import com.enterprise.rag.auth.filter.JwtAuthenticationFilter;
@@ -204,6 +205,11 @@ class McpAuthenticationMvcTest {
             return username -> {
                 throw new UsernameNotFoundException("Synthetic test user does not exist");
             };
+        }
+
+        @Bean
+        KnowledgeBaseService knowledgeBaseService() {
+            return mock(KnowledgeBaseService.class);
         }
     }
 }

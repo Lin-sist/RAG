@@ -1,6 +1,7 @@
 package com.enterprise.rag.admin.mcp;
 
 import com.enterprise.rag.admin.security.CurrentUserService;
+import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.McpJsonMapper;
@@ -41,6 +42,14 @@ public class McpServerConfiguration {
     }
 
     @Bean
+    McpKnowledgeResourceService mcpKnowledgeResourceService(
+            KnowledgeBaseService knowledgeBaseService,
+            McpProperties properties) {
+        return new McpKnowledgeResourceService(
+                knowledgeBaseService, properties.getResourcePageSize());
+    }
+
+    @Bean
     HttpServletStatelessServerTransport mcpServletTransport(
             McpJsonMapper mcpJsonMapper,
             McpRequestIdentityResolver identityResolver) {
@@ -53,9 +62,19 @@ public class McpServerConfiguration {
                 .build();
     }
 
+    @Bean
+    McpResourceListTransport mcpResourceListTransport(
+            HttpServletStatelessServerTransport transport,
+            McpKnowledgeResourceService resourceService,
+            McpRequestIdentityResolver identityResolver,
+            McpJsonMapper mcpJsonMapper) {
+        return new McpResourceListTransport(
+                transport, resourceService, identityResolver, mcpJsonMapper);
+    }
+
     @Bean(destroyMethod = "closeGracefully")
     McpStatelessSyncServer mcpStatelessServer(
-            HttpServletStatelessServerTransport transport,
+            McpResourceListTransport transport,
             McpJsonMapper mcpJsonMapper) {
         McpSchema.ServerCapabilities capabilities = McpSchema.ServerCapabilities.builder()
                 .resources(false, false)
@@ -66,6 +85,7 @@ public class McpServerConfiguration {
                 .serverInfo(SERVER_NAME, SERVER_VERSION)
                 .capabilities(capabilities)
                 .jsonMapper(mcpJsonMapper)
+                .resourceTemplates(McpResourceTemplates.specifications())
                 .build();
     }
 
