@@ -104,6 +104,12 @@ proxy:
 
 # RAG Configuration
 rag:
+  # C15 read-only MCP adapter. Disabled and loopback-only by default.
+  mcp:
+    enabled: ${RAG_MCP_ENABLED:false}
+    local-only: ${RAG_MCP_LOCAL_ONLY:true}
+    allowed-origins: ${RAG_MCP_ALLOWED_ORIGINS:}
+    max-request-bytes: ${RAG_MCP_MAX_REQUEST_BYTES:131072}
   observability:
     tracing:
       enabled: ${RAG_OBSERVABILITY_TRACING_ENABLED:false}

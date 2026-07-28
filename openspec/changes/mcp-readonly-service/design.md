@@ -103,6 +103,7 @@ hard-stop 后应保持 change 规划材料，向用户报告 compatibility evide
 | `rag.mcp.cache-enabled` | `false` | MCP ask 默认不读写 QA cache；显式开启后仍只允许 tenant-scoped TTL cache |
 | `rag.mcp.local-only` | `true` | 非 loopback request 在 transport 前拒绝 |
 | `rag.mcp.allowed-origins` | 空 | `Origin` 缺失可用于非浏览器客户端；存在时必须 exact-match，禁止 `*` |
+| `rag.mcp.max-request-bytes` | `131072` | transport 解析前的 body 上限，配置硬上限 `1048576`，不得依赖 `Content-Length` |
 | `rag.mcp.resource-page-size` | `50` | 最大 `100`，超出拒绝或归一到上限 |
 | `rag.mcp.max-query-chars` | `2000` | query/question 输入字符上限 |
 | `rag.mcp.max-chunk-bytes` | `65536` | 单 Resource/chunk 最大 UTF-8 bytes |

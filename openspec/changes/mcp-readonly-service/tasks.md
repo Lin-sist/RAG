@@ -2,32 +2,32 @@
 
 ## 0. 事前闸门（实现前必须完成）
 
-- [ ] 用户审阅并批准 proposal 的范围、非目标、部署型 JWT 限制与 C15 完成口径。
-- [ ] 用户确认 design 的 18 条决策，重点确认 sessionless Streamable HTTP、official SDK compatibility hard-stop、default-off/local-only、JWT 非 OAuth profile、deterministic compare-sources 与技术写入边界。
-- [ ] 用户审阅并批准 `rag-system` spec delta 的 7 requirements / 26 scenarios。
-- [ ] 用户明确是否授权加入/下载固定版本官方 MCP Java SDK 与固定 conformance 工具；该授权不包含 Spring 基线升级、真实 provider 调用、push、PR 或部署。
-- [ ] 明确提交责任；当前默认 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
-- [ ] 实现开始前复查 `git status --short --branch`，保护用户改动并补录上一规划提交 hash（若用户已提交）。
+- [x] 用户审阅并批准 proposal 的范围、非目标、部署型 JWT 限制与 C15 完成口径。
+- [x] 用户确认 design 的 18 条决策，重点确认 sessionless Streamable HTTP、official SDK compatibility hard-stop、default-off/local-only、JWT 非 OAuth profile、deterministic compare-sources 与技术写入边界。
+- [x] 用户审阅并批准 `rag-system` spec delta 的 7 requirements / 26 scenarios。
+- [x] 用户明确授权加入/下载固定版本官方 MCP Java SDK 与固定 conformance 工具；该授权不包含 Spring 基线升级、真实 provider 调用、push、PR 或部署。
+- [x] 明确提交责任；当前保持 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- [x] 实现开始前复查 `git status --short --branch`：HEAD=`c864e1c`，工作区与暂存区干净，规划提交 hash 已补录。
 
 ## 1. SDK Compatibility And Protocol Foundation
 
-- [ ] RED：最小 transport tests 证明 disabled state、initialize/version negotiation、capability declaration、GET 405 与 sessionless header 边界尚未满足。
-- [ ] 固定 MCP Java SDK、Jackson 2 binding、目标 spec 与 conformance suite 版本；记录来源、hash/version 与 license，不使用 floating/latest。
-- [ ] 运行 dependency tree/convergence 审计，记录 Java/Spring Framework/Reactor/Jackson/Servlet/SLF4J/OTel 实际解析版本及冲突。
-- [ ] 只在 `rag-admin` 引入官方 core/Servlet + Jackson 2 binding；不引入 Spring AI starter，不升级 Spring Boot/Spring Framework/Jackson/Reactor。
-- [ ] 实现 `McpProperties` 与 conditional configuration；`rag.mcp.enabled=false` 时不注册 `/mcp` transport。
-- [ ] 实现 sessionless Streamable HTTP `/mcp`：POST JSON、GET 405、不返回 `MCP-Session-Id`、不声明 SSE/session/notification/subscription/prompts/tasks。
-- [ ] 运行 reactor compile、transport focused tests 与现有 auth/controller smoke；若需要框架升级、出现 linkage/serialization conflict 或不能对齐目标 spec，停止实现并报告 `mcp-runtime-foundation` 前置需求。
-- [ ] 将 compatibility evidence、跳过项与 hard-stop 结论追加到 `.ai/AGENT_LOG.md`。
+- [x] RED：`McpProtocolMvcTest` 首次 testCompile 仅因 `McpServerConfiguration` 不存在而失败，锁定 initialize/version/server identity/sessionless transport public behavior。
+- [x] 固定官方 MCP Java SDK/core/Jackson 2 binding=`2.0.0`、目标 spec=`2025-11-25`、conformance suite=`0.1.15`；官方 release commit=`f56d038`、license=`MIT`，本地 artifact SHA-256 已记录到 AGENT_LOG。
+- [x] 运行 dependency tree/convergence 审计：Boot 实际解析 Spring `6.1.2`、Reactor `3.6.1`、Jackson `2.15.3`、Tomcat `10.1.17`/Servlet `6.0`、SLF4J `2.0.9`；SDK transport 与 schema runtime 通过。全树 Enforcer 仍只命中既有 Milvus/Qdrant/PDF/Flexmark 冲突，未冒充全仓 convergence GREEN。
+- [x] 只在 `rag-admin` 引入官方 core/Servlet + Jackson 2 binding；未引入 Spring AI starter，未升级 Spring Boot/Spring Framework/Jackson/Reactor。
+- [x] 实现 `McpProperties` 与 conditional configuration；`rag.mcp.enabled=false` 时不注册 `/mcp` transport。
+- [x] 实现 sessionless Streamable HTTP `/mcp`：POST JSON、GET 405、不返回 `MCP-Session-Id`，initialize 只声明 Resources/Tools。
+- [x] reactor compile、transport focused tests 与现有 JWT/RequestIdentity/QA controller smoke 通过；当前无需 `mcp-runtime-foundation` 前置 change。
+- [x] compatibility evidence、跳过项与 hard-stop 结论已追加到 `.ai/AGENT_LOG.md`。
 
 ## 2. Authentication, Origin And Request Identity
 
-- [ ] RED：missing/expired token、cookie/query token、invalid Origin、non-loopback request 和 principal 缺 tenant identity 均在业务 handler 前失败。
-- [ ] 新增 `/mcp` 专用 Origin/local-only/request-size filter；`Origin` 存在时 exact-match allowlist，禁止 `*`，不把通用 CORS 当作通过证据。
-- [ ] 让现有 JWT filter 保护 initialize、resources/templates/list、resources/list/read、tools/list/call；所有请求都重新认证，不使用 session identity。
-- [ ] 实现唯一 `McpRequestIdentityResolver`，只从 `UserPrincipal` 构造 `RequestIdentity`，不读取 tool args、URI、cursor、header/query/body tenant selector。
+- [x] 建立 missing/expired token、cookie/query token、invalid Origin、non-loopback request 和 principal 缺 tenant identity 的前置失败测试；新增 Origin/local-only/identity/context 边界均先 RED，既有 JWT header-only 行为以回归测试锁定。
+- [x] 新增 `/mcp` 专用 Origin/local-only/request-size filter；`Origin` exact-match、`*` fail startup，不信任 forwarded header；无 `Content-Length` 的超限 body、非 JSON 与不完整 Accept 均在 transport 解析前稳定拒绝。
+- [x] 让现有 JWT filter 保护 initialize、resources/templates/list、resources/list/read、tools/list/call；missing token 组合测试证明所有方法逐请求重新认证，sessionless transport 不保存 identity。
+- [x] 实现唯一 `McpRequestIdentityResolver` 并接入 SDK transport context，只从当次 authenticated `UserPrincipal` 构造 `RequestIdentity`；handler 只读取 server context key，不接受其他 tenant/user map。
 - [ ] 对 unauthorized/forbidden/not-found 建立稳定且脱敏的 HTTP/JSON-RPC/tool error 边界；access/refresh token、tenant/user facts 不进入响应或日志。
-- [ ] 明确 README/usage evidence：首版需要手工 Bearer header 配置，不提供 MCP OAuth metadata/discovery/audience/scopes，不宣称 authorization profile 兼容。
+- [x] README 与 `docs/architecture/mcp-readonly-service.md` 明确手工 Bearer header、default-off/local-only、query/Cookie token 禁止，以及不提供 MCP OAuth metadata/discovery/audience/scopes、不宣称 authorization profile 兼容。
 
 ## 3. Read-Only Resources
 

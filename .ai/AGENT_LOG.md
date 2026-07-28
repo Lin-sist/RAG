@@ -1720,3 +1720,38 @@
 - 范围与 Git：最终工作区只有 `.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md` 与 `openspec/changes/mcp-readonly-service/**` 变更；protected/implementation path matches=0，`git diff --check`=`PASS`。分支保持 `main...origin/main [ahead 7]`，未暂存、未提交、未 push。
 - 工具边界：OpenSpec CLI=`ABSENT`，因此只记录文件级结构/链接/规格校验，不宣称 CLI validation 通过。Java/Python/POM/runtime/frontend 均无改动，Maven、Python、Docker/Testcontainers、frontend build、MCP conformance/client smoke 与任何 provider 调用继续 `SKIPPED`。
 - Commit：`pending`；提交责任保持 `用户手动提交`，建议 `docs(openspec): 启动C15只读MCP服务规划`。
+
+## 2026-07-28｜C15 规划提交补录
+
+- Commit：`c864e1c`（`docs(openspec): 启动C15只读MCP服务规划`）。本条只补录上一规划提交的真实 hash，不记录后续实现改动。
+
+## 2026-07-28｜C15 实现授权与 SDK compatibility tracer bullet 启动
+
+- 用户授权与提交责任：用户明确要求“启动C15规划实现”，据此通过 proposal、18 条 design decisions、tasks 与 7 requirements / 26 scenarios delta 的事前闸门，并授权规划内固定版本官方 MCP Java SDK / conformance 工具的加入与下载。提交责任继续为 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 启动状态：HEAD=`c864e1c`，分支 `main...origin/main [ahead 8]`，工作区与暂存区干净；active change 唯一为 `mcp-readonly-service`。
+- TDD 顺序：先以一个 public transport behavior test 建立 RED，再完成 SDK 2.0.0 dependency/compile/transport 最小 GREEN；不横向预写 Resources/Tools。若实际解析需要升级 Spring Boot/Spring Framework/Jackson/Reactor、手写协议或退回未批准 spec，则按 design hard-stop。
+- 外调与安全：新增依赖只允许从公开 Maven 仓库解析；真实 embedding/rerank/search/ask/generation/judge/LLM/provider 调用、业务数据出站、真实 Milvus maintenance 仍未授权且保持 0 / `SKIPPED`。
+- Commit：`pending`。
+
+## 2026-07-28｜C15 SDK 2.0.0 compatibility 与最小 transport GREEN
+
+- TDD RED→GREEN：新增 `McpProtocolMvcTest`，首次执行在 testCompile 仅因 `McpServerConfiguration` 不存在失败；随后只加入官方 SDK 与最小 conditional Servlet adapter，使真实随机端口 HTTP initialize 协商 `2025-11-25`、serverInfo=`enterprise-rag-readonly/c15-v1`、Resources/Tools capability、GET=405、无 `MCP-Session-Id` 全部通过。新增 default-off context test 与 Jackson 2 JSON Schema 2020-12 valid/invalid runtime test。
+- 依赖与来源：固定 `io.modelcontextprotocol.sdk:mcp-bom/mcp-core/mcp-json-jackson2=2.0.0`，官方 release commit=`f56d038`、license=`MIT`；conformance suite 固定为官方仓库当前使用的 `@modelcontextprotocol/conformance=0.1.15`，尚未执行。下载来源为本机 Maven settings 指向的公开 alimaven mirror；本地 SHA-256：core=`56C1F99CC5E9932FCEBB57D4D82F89D0B641F90275FC19D0B132F6CE7D1EAB2C`，jackson2=`A7BDF467FB59B1675A3E4191B49EB0700869C82CCF2AD85EF70D962AE59E8C9C`，BOM POM=`35CC06E4560435ED0E98A1DB041F148E499E417C2F506AEA7ED95DCD3B766B9E`。
+- 实际基线：dependency tree 显示 Boot 3.2.1 继续管理 Spring Framework `6.1.2`、Reactor `3.6.1`（SDK 上游声明 3.7.0）、Jackson `2.15.3`（上游声明 annotations 2.20 / databind 2.20.1）、SLF4J `2.0.9`；runtime 使用 Tomcat `10.1.17` / Servlet `6.0`。`mvn -q -pl rag-admin -am -DskipTests compile` 通过，initialize 与 schema validator 均未出现 linkage/serialization error，因此本切片 compatibility gate=`PASS`，无需升级框架或另立 foundation change。
+- 验证：C15 组合聚焦测试 `McpServerConfigurationTest,McpProtocolMvcTest,McpSdkCompatibilityTest` 退出码 0；加入 `JwtAuthenticationFilterFailureTest,CurrentUserServiceTest,QAControllerTest` 的相邻回归命令也退出码 0。Maven Enforcer `dependencyConvergence` 退出码 1，但输出只命中既有 Milvus/Qdrant protobuf/guava/gRPC、PDFBox/Flexmark、annotations/collections 冲突，未出现 MCP artifact；如实记录为全树既有非 GREEN，不在 C15 顺手修复。
+- 代码范围：新增 `McpProperties`、`McpServerConfiguration` 和 3 个 focused tests；只修改 root/rag-admin POM、ACTIVE_TASK/tasks/append-only log。尚未实现 JWT/Origin/identity、Resources、Tools、side-effect、Testcontainers 或 conformance；`/mcp` 仍默认关闭。
+- 外调与安全：只下载公开 Maven artifact/读取官方 SDK 文档；真实 provider/model calls=0、business data outbound=false、真实 Milvus maintenance=`SKIPPED`。未修改 Spring/Jackson/Reactor/Servlet 版本、migration、前端、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或 accepted baseline。
+- 剩余风险：SDK 以较新 Jackson/Reactor/Servlet 编译而由 Boot 管理到旧版本，当前 initialize + JSON Schema 路径已通过但尚未覆盖完整 Resources/Tools/conformance；后续每个纵向切片仍必须以 runtime HTTP test 继续证明兼容，任一 LinkageError/NoSuchMethodError 立即 hard-stop。
+- Commit：`pending`；当前兼容切片建议 `feat(mcp): 建立C15协议兼容与默认关闭基础`。
+
+## 2026-07-28｜C15 authentication / Origin / request identity 安全 checkpoint
+
+- 范围与实现：在 SDK transport 前增加 `/mcp` 专用 `McpOriginAndExposureFilter`，固定 exact Origin allowlist、`*` fail startup、默认 local-only 且只信任 literal loopback peer；body 在 JSON-RPC 解析前按默认 `131072` bytes（配置硬上限 `1048576`）有界缓存，因此缺失 `Content-Length` 也不能绕过。POST 只接受显式 `application/json`，并要求 `Accept` 同时显式包含 JSON 与 SSE；固定返回脱敏的 403/413/415/406 类别。
+- 身份边界：新增唯一 `McpRequestIdentityResolver`，每个 transport request 只从 Spring Security `Authentication -> UserPrincipal` 调用现有 `CurrentUserService.requireIdentity`；SDK `McpTransportContext` 只写入 server-resolved immutable `RequestIdentity`。handler context 缺该专用 key 时以 `AUTH_001` fail closed，query/header/body 中的 tenant/user selector 均不参与身份解析。
+- JWT 与 usage：真实 Spring Security filter chain 证明 initialize、resources/templates/list、resources/list/read、tools/list/call 在无 token 时均先返回 `401/AUTH_001`；expired token、Cookie/query token 也不进入协议处理且响应不回显 token。`application.yml` 保持 `rag.mcp.enabled=false`、`local-only=true`；README 与 `docs/architecture/mcp-readonly-service.md` 明确手工 Bearer header、部署型 JWT 非 MCP OAuth Profile、无 metadata/discovery/audience/scopes 以及禁止直接远程暴露。
+- TDD 证据：identity resolver 首先因类不存在 testCompile RED；无 Content-Length request-size 首先因 property 不存在 RED；Content-Type/Accept 首先以错误 200 放行 RED；transport-context handler identity 首先因方法不存在 RED；`application/*` 又先暴露兼容匹配误放行 RED。均只补最小生产实现后转 GREEN；Origin、local-only 与 endpoint filter registration 的行为 RED/GREEN 保留在对应 focused tests。
+- 聚焦验证：`McpServerConfigurationTest,McpProtocolMvcTest,McpSdkCompatibilityTest,McpOriginAndExposureFilterTest,McpAuthenticationMvcTest,McpRequestIdentityResolverTest` 当前 Surefire 汇总为 23 tests / 0 failures / 0 errors / 0 skipped；加入 `JwtAuthenticationFilterFailureTest,CurrentUserServiceTest,QAControllerTest` 的组合命令退出码 0。真实随机端口 initialize 继续协商 `2025-11-25`、无 session id，request body wrapper 未破坏 SDK transport。
+- 全仓验证：`mvn -q test` 退出码 1；`rag-admin` 为 239 tests / 1 failure / 0 errors / 21 skipped，唯一失败仍是既有 `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` collector 时序用例。该用例独立复跑退出码 0，因此如实保持全仓非 GREEN，不把观测债务扩入 C15。最终静态门禁将在本条后复核；Commons Logging discovery warning 仍来自既有依赖路径，未作为 MCP 回归处理。
+- 跳过项与范围安全：Resources/Tools、resource-not-found / tool error mapping、side-effect、双 tenant、conformance、独立 client、Python、前端 build 与 Docker/Testcontainers 尚未进入本切片。真实 embedding/rerank/search/ask/generation/judge/LLM/provider calls=0，business data outbound=false，真实 Milvus maintenance=`SKIPPED`。未修改 accepted baseline、migration、DTO、前端、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`，未暂存、未提交、未 push、未创建 PR、未部署。
+- 剩余风险：Section 2 当前 5/6；稳定 not-found、JSON-RPC 与 tool execution error 必须随 Resources/Tools 落地后闭环。SDK 在较旧 Boot-managed Jackson/Reactor 上尚未经过完整 Resource/Tool/conformance 路径；下一切片从 `McpResourceUri` 恶意输入 RED 开始，出现 linkage/serialization drift 仍立即 hard-stop。
+- Commit：`pending`；提交责任为用户手动提交，建议 `feat(mcp): 建立C15协议与认证安全基础`。

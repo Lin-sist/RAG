@@ -41,10 +41,20 @@
         <elasticsearch.version>8.11.3</elasticsearch.version>
         <jqwik.version>1.8.2</jqwik.version>
         <testcontainers.version>1.19.3</testcontainers.version>
+        <mcp-sdk.version>2.0.0</mcp-sdk.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- C15: official MCP Java SDK modules stay version-aligned. -->
+            <dependency>
+                <groupId>io.modelcontextprotocol.sdk</groupId>
+                <artifactId>mcp-bom</artifactId>
+                <version>${mcp-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- Internal modules -->
             <dependency>
                 <groupId>com.enterprise</groupId>
