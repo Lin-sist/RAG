@@ -1693,3 +1693,30 @@
 - 外调与范围安全：真实 embedding/rerank/ask/generation/judge/LLM/provider 调用、业务数据出站、费用与限流事件均为 0；未连接或写入真实 Milvus，没有 collection copy、mapping/readiness switch、重试或清理。未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`，未修改代码、依赖、migration、DTO 或前端。
 - 剩余风险：C14 只证明 Milvus 支持配置和固定 synthetic attack matrix；真实 shadow migration、生产拓扑/容量/合规/网关 timing、Qdrant/Elasticsearch 等价 evidence、生产第二业务 tenant/tenant management、C15/C16 仍需独立 Type C change 与授权。
 - Commit：`pending`；建议 `chore(openspec): 验收并归档C14租户隔离评测`。
+
+## 2026-07-28｜C14 验收归档提交补录
+
+- Commit：`cab9939`（`chore(openspec): 验收并归档C14租户隔离评测`）。本条只补录上一归档提交的真实 hash，不记录 C15 规划。
+
+## 2026-07-28｜C15 只读 MCP 服务 readiness 与规划启动
+
+- 用户目标与提交责任：用户要求检查项目状态，若允许则直接进入 C15 规划。提交责任按默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动 HEAD=`cab9939`，分支 `main...origin/main [ahead 7]`，工作区与暂存区均干净，`.ai/ACTIVE_TASK.md=IDLE`；C14 archive files=5、tasks unchecked=0、未归档 active change=0，正式 evidence 为 26/26 且 functional/content/error/timing 四通道均 `PASS`。长期 project/architecture/roadmap 均将 C15 定义为 C14 之后的独立 Type C change，因此结论为 `GO`。
+- 能力分类：`confirmed` 为 C13/C14 已接受的服务端 JWT identity、tenant-scoped SQL/Redis/Milvus 数据面、RAG retrieval/generation/citation 与固定 C14 隔离证据；`partial` 为现有 `RAGService.ask` 可复用但 REST controller 还会写 query count/history、现有 rate limiter 不能直接区分单一 `/mcp` endpoint 下的 tool；`planned` 为认证的只读 MCP Resources/Tools、独立只读 facade、bounded result/error/conformance 证据；`out_of_scope` 为 C16 Router、写工具、文档历史版本、完整 MCP OAuth authorization server、stateful session/stdio/旧 SSE transport、框架升级与生产远程暴露；`unknown` 为官方 Java SDK 与当前 Boot 3.2.1/Jackson/Reactor/Servlet 组合的实测兼容性及真实客户端互操作差异。
+- 规划产物：创建 `openspec/changes/mcp-readonly-service/`，包含 proposal、design、tasks 与 `rag-system` spec delta；design 记录 18 条真实取舍，delta 为 7 requirements / 26 scenarios。更新 `.ai/ACTIVE_TASK.md` 为 `ACTIVE / C15 规划待审`。
+- 关键决策：目标协议固定 MCP `2025-11-25` 的 sessionless Streamable HTTP，单端点 `/mcp`、default-off、local-only；优先做官方 Java SDK core/Servlet + Jackson 2 兼容 spike，若与当前基线不兼容则 hard-stop 并另立 runtime foundation change，不在 C15 偷渡框架升级。首版沿用每请求现有 JWT/`RequestIdentity` 的部署型认证并明确不宣称完整 MCP OAuth profile；tenant 不接受 client selector。
+- 只读与外调边界：Resources 只暴露 tenant-filtered KB/document/chunk；Tools 固定 `rag.search`、`rag.ask`、`rag.get-citation`、`rag.compare-sources`。`rag.ask` 通过 read-only facade 复用 RAG 能力，不写 QA history/query count；`rag.compare-sources` 只做确定性并排来源，不调用 LLM。search/ask 受独立 default-off 外调开关约束，cache/metrics/rate-limit 只允许 bounded 非权威技术写入。
+- 规划验证：四个必需 artifact 均存在；design 的 18 条决策均具备“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”三行；delta 为 7 requirements / 26 scenarios，GIVEN/WHEN/THEN/AND 格式已扫描；ACTIVE_TASK 唯一指向 C15。OpenSpec CLI 不在 PATH，未声称 CLI validation 通过；最终 Markdown 链接、受保护路径、unexpected paths 与 `git diff --check` 结果在本条后续静态门禁中复核。
+- 跳过项及原因：本轮只做 Type C 事前规划，未修改 Java/POM/config/migration/frontend，因此 Maven、Python、frontend build、Docker/Testcontainers、MCP conformance/client smoke 与 provider-capable Tool 均 `SKIPPED`；用户批准规划和兼容 spike 门禁前不得进入实现。
+- 外部调研与安全：只读取 MCP、官方 Java SDK 与 Spring AI 的公开官方文档；没有向外发送业务数据。真实 embedding/rerank/search/ask/generation/judge/LLM/provider 调用、费用和限流事件均为 0；真实 Milvus maintenance 继续 `SKIPPED`。
+- 范围安全：未修改 accepted baseline、Java、Python、POM、migration、frontend、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或历史报告；未暂存、未提交、未 push、未创建 PR、未部署。
+- 剩余风险与下一闸门：用户需审阅并批准 18 条 decisions、7 requirements / 26 scenarios、现有 JWT 非 OAuth-conformant 的明确边界、local-only/default-off 暴露策略、deterministic compare 与 SDK hard-stop 策略。批准后先只做依赖解析/编译级兼容 spike；通过后才允许进入 MCP adapter 的 TDD 实现。
+- Commit：`pending`；建议 `docs(openspec): 启动C15只读MCP服务规划`。
+
+## 2026-07-28｜C15 规划最终静态门禁
+
+- 结构与规格：active change=1 且唯一为 `mcp-readonly-service`；artifact files=4，tasks unchecked=69（均为待事前闸门批准后的实现/验收项）；delta=7 requirements / 26 scenarios，和 accepted `rag-system` baseline 的重复 requirement title=0；GIVEN/WHEN/THEN/AND malformed=0。
+- 决策与文档：design decisions=18，三行字段分别为 18/18/18；changed planning Markdown=4、missing relative links=0、trailing whitespace=0、敏感凭据模式=0、用户绝对路径=0、TODO/TBD/FIXME/待确认占位=0。
+- 范围与 Git：最终工作区只有 `.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md` 与 `openspec/changes/mcp-readonly-service/**` 变更；protected/implementation path matches=0，`git diff --check`=`PASS`。分支保持 `main...origin/main [ahead 7]`，未暂存、未提交、未 push。
+- 工具边界：OpenSpec CLI=`ABSENT`，因此只记录文件级结构/链接/规格校验，不宣称 CLI validation 通过。Java/Python/POM/runtime/frontend 均无改动，Maven、Python、Docker/Testcontainers、frontend build、MCP conformance/client smoke 与任何 provider 调用继续 `SKIPPED`。
+- Commit：`pending`；提交责任保持 `用户手动提交`，建议 `docs(openspec): 启动C15只读MCP服务规划`。
