@@ -161,7 +161,7 @@ rag://knowledge-bases/{kbId}/documents/{documentId}
 rag://knowledge-bases/{kbId}/documents/{documentId}/chunks/{chunkIndex}
 ```
 
-URI parser 只接受小写 scheme/authority、十进制正数 kbId/documentId、非负 chunkIndex；拒绝 query、fragment、userinfo、port、空 segment、前导 `+/-`、percent-encoded slash、`..` 和多余路径。
+URI parser 只接受小写 scheme/authority、无前导零的 canonical 十进制正数 kbId/documentId，以及 `0` 或无前导零正整数形式的 chunkIndex；拒绝 query、fragment、userinfo、port、空 segment、前导 `+/-`、percent-encoded slash、`..` 和多余路径。
 
 ### 7.3 Resource content
 

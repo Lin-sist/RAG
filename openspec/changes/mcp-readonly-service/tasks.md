@@ -31,8 +31,8 @@
 
 ## 3. Read-Only Resources
 
-- [ ] RED：URI query/fragment/userinfo/port、percent-encoded slash、`..`、非法/负 ID、extra segment、foreign ID 与 document/KB mismatch 均 fail closed。
-- [ ] 实现 `McpResourceUri` 的三种 exact template 与 round-trip tests：KB、document、chunk。
+- [ ] RED：URI query/fragment/userinfo/port、percent-encoded slash、`..`、非法/负 ID、extra segment、foreign ID 与 document/KB mismatch 均 fail closed。（URI grammar/ID/路径技巧矩阵已完成；foreign ID 与 document/KB mismatch 待 Resource service 查询授权切片。）
+- [x] 实现 `McpResourceUri` 的三种 exact canonical template 与 round-trip tests：KB、document、chunk；KB/document 为正 long，chunkIndex 为非负 int，解析错误固定脱敏且不回显原 URI。
 - [ ] 实现 authenticated `resources/list`：只列当前 identity 可访问 KB，kbId 稳定排序、50 默认/100 最大、opaque cursor，每页重新授权。
 - [ ] 实现固定 `resources/templates/list`；不声明 subscriptions/listChanged，不提供 document version template。
 - [ ] 实现 KB Resource JSON whitelist，排除 tenantId、ownerId、vectorCollection、storage/vector/internal fields。

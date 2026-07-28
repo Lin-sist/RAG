@@ -1755,3 +1755,19 @@
 - 跳过项与范围安全：Resources/Tools、resource-not-found / tool error mapping、side-effect、双 tenant、conformance、独立 client、Python、前端 build 与 Docker/Testcontainers 尚未进入本切片。真实 embedding/rerank/search/ask/generation/judge/LLM/provider calls=0，business data outbound=false，真实 Milvus maintenance=`SKIPPED`。未修改 accepted baseline、migration、DTO、前端、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`，未暂存、未提交、未 push、未创建 PR、未部署。
 - 剩余风险：Section 2 当前 5/6；稳定 not-found、JSON-RPC 与 tool execution error 必须随 Resources/Tools 落地后闭环。SDK 在较旧 Boot-managed Jackson/Reactor 上尚未经过完整 Resource/Tool/conformance 路径；下一切片从 `McpResourceUri` 恶意输入 RED 开始，出现 linkage/serialization drift 仍立即 hard-stop。
 - Commit：`pending`；提交责任为用户手动提交，建议 `feat(mcp): 建立C15协议与认证安全基础`。
+
+## 2026-07-28｜C15 协议与认证安全基础提交补录
+
+- Commit：`e17adca`（`feat(mcp): 建立C15协议与认证安全基础`）。本条只补录上一实现 checkpoint 的真实 hash；用户已确认该 checkpoint 验收通过，C15 active change 继续进入 Read-Only Resources 切片，不代表 C15 整体验收或归档。
+
+## 2026-07-28｜C15 Read-Only Resources URI parser checkpoint
+
+- 范围与修改：新增 `McpResourceUri` 与 `McpResourceUriTest`，只实现 KB、document、chunk 三种 Resource URI 的纯解析/格式化值对象；同步 active design/spec delta/tasks 与 `.ai/ACTIVE_TASK.md`。未接数据库、权限或 SDK Resource handler，不横向进入 Tools。
+- 公共契约：`McpResourceUri.parse(String)` 只接受小写 `rag://knowledge-bases/...` 的三种 exact grammar；kbId/documentId 为无前导零的 canonical 正 long，chunkIndex 为 `0` 或无前导零正 int。解析结果分别为强类型 immutable record，并由 `uri()` 产生 canonical 字符串；构造与解析均 fail closed。
+- TDD 证据：KB、document、chunk 各自以一个 public round-trip test 启动，前三轮 RED 分别只因 `McpResourceUri`、`Document`、`Chunk` 不存在而 testCompile 失败，随后只补当前类型的最小 GREEN。再加入 28 组 invalid matrix，覆盖 null/empty、query、fragment、userinfo、port、percent/double-encoded slash、`..`、空/额外 segment、正负号、零/前导零/非法/溢出 ID、大小写变体、version path 与前置空格；有限 grammar 已使该矩阵直接保持 GREEN。
+- 脱敏边界：所有无效输入统一抛 `InvalidResourceUriException("Invalid MCP resource URI")`，不把 raw URI、ID、query、tenant selector 或内部解析异常写入消息。foreign ID 与 document/KB mismatch 不能由纯 parser 判断，继续留给下一 Resource service 查询/授权切片，相关 task 未提前勾选。
+- 验证：`McpResourceUriTest` 为 31 tests / 0 failures / 0 errors / 0 skipped；C15 全部 MCP focused reports 汇总为 54/0/0/0，真实随机端口 transport/JWT/Origin/request identity 回归继续通过；`git diff --check` 通过。
+- 跳过项：本切片未改持久化、service、controller、provider、Python、前端或 infrastructure，因此不重跑全仓 Maven、Python、frontend build、Docker/Testcontainers、conformance 或独立 client；上一 checkpoint 已记录全仓唯一既有 OTel 时序失败及独立复跑通过。本轮真实 embedding/rerank/search/ask/generation/judge/LLM/provider calls=0，business data outbound=false，真实 Milvus maintenance=`SKIPPED`。
+- 范围安全：未修改 accepted baseline、migration、DTO、现有 REST/RAG/provider 语义、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、未提交、未 push、未创建 PR、未部署。
+- 剩余风险与下一步：URI parser 只证明语法与 canonical identity；尚未证明 accessible KB pagination、cursor 重授权、templates/list、KB/document/chunk whitelist、foreign/nonexistent fingerprint 或 timing。下一 tracer bullet 应进入 authenticated `resources/templates/list` 与 `resources/list`，再实现 read/authorization。
+- Commit：`pending`；提交责任为用户手动提交，建议 `feat(mcp): 实现C15资源URI严格解析`。

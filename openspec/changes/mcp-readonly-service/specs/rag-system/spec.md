@@ -73,7 +73,7 @@ C15 首版复用现有 access JWT 只构成部署型认证；系统 MUST NOT 宣
 
 server SHALL 暴露 authenticated、tenant/user permission-filtered 的知识库 Resources。`resources/list` SHALL 只列当前 identity 可访问的 KB，并以稳定顺序、默认 50/最大 100 的分页返回；每页与每次 cursor 使用 MUST 重新执行当前身份的授权，不得缓存或信任先前 user/tenant scope。
 
-首版 SHALL 只支持以下 custom URI：`rag://knowledge-bases/{kbId}`、`rag://knowledge-bases/{kbId}/documents/{documentId}`、`rag://knowledge-bases/{kbId}/documents/{documentId}/chunks/{chunkIndex}`。URI MUST 严格验证 scheme/authority/path/ID，并拒绝 query、fragment、userinfo、port、空或额外 segment、percent-encoded slash、`..`、负数和非法数字。
+首版 SHALL 只支持以下 custom URI：`rag://knowledge-bases/{kbId}`、`rag://knowledge-bases/{kbId}/documents/{documentId}`、`rag://knowledge-bases/{kbId}/documents/{documentId}/chunks/{chunkIndex}`。URI MUST 严格验证 scheme/authority/path/ID，ID 使用无前导零的 canonical 十进制表示（chunkIndex 可为 `0`），并拒绝 query、fragment、userinfo、port、空或额外 segment、percent-encoded slash、`..`、负数和非法数字。
 
 KB/document JSON 与 chunk text SHALL 使用字段白名单和 UTF-8 byte 上限。Resource MUST NOT 暴露 tenantId、owner/uploader ID、vector collection、storage key/path、input/content hash、deleted/version、raw metadata、Redis/Milvus/SQL facts、token 或 credential。当前乐观锁 version MUST NOT 被包装为 document-version Resource。
 
