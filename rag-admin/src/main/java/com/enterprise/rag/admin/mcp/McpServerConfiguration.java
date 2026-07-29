@@ -1,7 +1,8 @@
 package com.enterprise.rag.admin.mcp;
 
-import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
+import com.enterprise.rag.admin.security.AuthorizationService;
+import com.enterprise.rag.admin.security.CurrentUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.McpJsonMapper;
@@ -44,9 +45,14 @@ public class McpServerConfiguration {
     @Bean
     McpKnowledgeResourceService mcpKnowledgeResourceService(
             KnowledgeBaseService knowledgeBaseService,
+            AuthorizationService authorizationService,
+            ObjectMapper objectMapper,
             McpProperties properties) {
         return new McpKnowledgeResourceService(
-                knowledgeBaseService, properties.getResourcePageSize());
+                knowledgeBaseService,
+                authorizationService,
+                objectMapper,
+                properties.getResourcePageSize());
     }
 
     @Bean
@@ -75,7 +81,9 @@ public class McpServerConfiguration {
     @Bean(destroyMethod = "closeGracefully")
     McpStatelessSyncServer mcpStatelessServer(
             McpResourceListTransport transport,
-            McpJsonMapper mcpJsonMapper) {
+            McpJsonMapper mcpJsonMapper,
+            McpKnowledgeResourceService resourceService,
+            McpRequestIdentityResolver identityResolver) {
         McpSchema.ServerCapabilities capabilities = McpSchema.ServerCapabilities.builder()
                 .resources(false, false)
                 .tools(false)
@@ -85,7 +93,8 @@ public class McpServerConfiguration {
                 .serverInfo(SERVER_NAME, SERVER_VERSION)
                 .capabilities(capabilities)
                 .jsonMapper(mcpJsonMapper)
-                .resourceTemplates(McpResourceTemplates.specifications())
+                .resourceTemplates(McpResourceTemplates.specifications(
+                        resourceService, identityResolver))
                 .build();
     }
 

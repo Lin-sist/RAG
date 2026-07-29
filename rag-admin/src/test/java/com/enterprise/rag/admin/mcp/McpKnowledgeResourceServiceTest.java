@@ -11,25 +11,34 @@ import com.enterprise.rag.admin.kb.service.KBPermissionService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.kb.service.impl.KBPermissionServiceImpl;
 import com.enterprise.rag.admin.kb.service.impl.KnowledgeBaseServiceImpl;
+import com.enterprise.rag.admin.qa.service.QAHistoryService;
+import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.core.embedding.EmbeddingService;
 import com.enterprise.rag.core.vectorstore.VectorStore;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.LongStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class McpKnowledgeResourceServiceTest {
@@ -75,7 +84,10 @@ class McpKnowledgeResourceServiceTest {
                 .thenReturn(0);
 
         McpKnowledgeResourceService service = new McpKnowledgeResourceService(
-                knowledgeBaseService, 50);
+                knowledgeBaseService,
+                mock(AuthorizationService.class),
+                new ObjectMapper(),
+                50);
 
         McpSchema.ListResourcesResult result = service.list(
                 new RequestIdentity(USER_ID, TENANT_A), null);
@@ -122,7 +134,10 @@ class McpKnowledgeResourceServiceTest {
         when(documentService.countByKnowledgeBaseId(eq(TENANT_A), any(Long.class)))
                 .thenReturn(0);
         McpKnowledgeResourceService service = new McpKnowledgeResourceService(
-                knowledgeBaseService, 50);
+                knowledgeBaseService,
+                mock(AuthorizationService.class),
+                new ObjectMapper(),
+                50);
         RequestIdentity identity = new RequestIdentity(USER_ID, TENANT_A);
 
         McpSchema.ListResourcesResult firstPage = service.list(identity, null);
@@ -141,6 +156,69 @@ class McpKnowledgeResourceServiceTest {
         assertEquals(List.of("rag://knowledge-bases/51"),
                 secondPage.resources().stream().map(McpSchema.Resource::uri).toList());
         assertNull(secondPage.nextCursor());
+    }
+
+    @Test
+    void readUsesTenantScopedAuthorizationAndNeverTouchesVectorProviders() throws Exception {
+        KnowledgeBaseMapper knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
+        KBPermissionMapper permissionMapper = mock(KBPermissionMapper.class);
+        DocumentService documentService = mock(DocumentService.class);
+        VectorStore vectorStore = mock(VectorStore.class);
+        EmbeddingService embeddingService = mock(EmbeddingService.class);
+        KBPermissionService permissionService = new KBPermissionServiceImpl(permissionMapper);
+        KnowledgeBaseService knowledgeBaseService = new KnowledgeBaseServiceImpl(
+                knowledgeBaseMapper,
+                documentService,
+                permissionService,
+                vectorStore,
+                embeddingService,
+                mock(StringRedisTemplate.class));
+        AuthorizationService authorizationService = new AuthorizationService(
+                knowledgeBaseService,
+                permissionService,
+                mock(QAHistoryService.class));
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        McpKnowledgeResourceService service = new McpKnowledgeResourceService(
+                knowledgeBaseService, authorizationService, objectMapper, 50);
+        KnowledgeBase localOwned = knowledgeBase(
+                42L, TENANT_A, USER_ID, false, "authorized");
+        localOwned.setVectorCollection("private-vector-canary");
+        localOwned.setCreatedAt(LocalDateTime.of(2026, 7, 28, 9, 15));
+        localOwned.setUpdatedAt(LocalDateTime.of(2026, 7, 29, 10, 30));
+        when(knowledgeBaseMapper.selectByTenantAndId(TENANT_A, 42L))
+                .thenReturn(localOwned);
+        when(documentService.countByKnowledgeBaseId(TENANT_A, 42L)).thenReturn(3);
+
+        McpSchema.ReadResourceResult result = service.read(
+                new RequestIdentity(USER_ID, TENANT_A),
+                "rag://knowledge-bases/42");
+
+        McpSchema.TextResourceContents contents = assertInstanceOf(
+                McpSchema.TextResourceContents.class, result.contents().get(0));
+        assertEquals("rag://knowledge-bases/42", contents.uri());
+        assertEquals("application/json", contents.mimeType());
+        JsonNode json = objectMapper.readTree(contents.text());
+        assertEquals(Set.of(
+                        "id",
+                        "name",
+                        "description",
+                        "documentCount",
+                        "isPublic",
+                        "createdAt",
+                        "updatedAt"),
+                fieldNames(json));
+        assertEquals(3, json.path("documentCount").asInt());
+        assertFalse(contents.text().contains("private-vector-canary"));
+        assertFalse(contents.text().contains("ownerId"));
+        verify(knowledgeBaseMapper).selectByTenantAndId(TENANT_A, 42L);
+        verify(documentService).countByKnowledgeBaseId(TENANT_A, 42L);
+        verifyNoInteractions(vectorStore, embeddingService);
+    }
+
+    private Set<String> fieldNames(JsonNode object) {
+        Set<String> names = new java.util.HashSet<>();
+        object.fieldNames().forEachRemaining(names::add);
+        return names;
     }
 
     private KnowledgeBase knowledgeBase(

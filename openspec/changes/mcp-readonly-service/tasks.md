@@ -8,7 +8,8 @@
 - [x] 用户明确授权加入/下载固定版本官方 MCP Java SDK 与固定 conformance 工具；该授权不包含 Spring 基线升级、真实 provider 调用、push、PR 或部署。
 - [x] 明确提交责任；当前保持 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
 - [x] 实现开始前复查 `git status --short --branch`：HEAD=`c864e1c`，工作区与暂存区干净，规划提交 hash 已补录。
-- [ ] 用户复核 implementation-discovered 决策 19：SDK 2.0.0 高层 Resource registry 为进程级静态状态，C15 只在官方 stateless handler 公共边界窄装饰 `resources/list`；复核前不进入 Resource read。
+- [x] 用户复核 implementation-discovered 决策 19：SDK 2.0.0 高层 Resource registry 为进程级静态状态，C15 只在官方 stateless handler 公共边界窄装饰 `resources/list`；用户于 2026-07-29 验收 discovery checkpoint 并要求进入下一阶段实现。
+- [ ] 用户复核 implementation-discovered 决策 20：SDK 2.0.0 会忽略 `resources/read` extra 参数，C15 在同一公开 handler 边界只做 `uri` / `_meta` exact allowlist，合法 read 继续委托 SDK；复核前不进入 document Resource read。
 
 ## 1. SDK Compatibility And Protocol Foundation
 
@@ -27,19 +28,19 @@
 - [x] 新增 `/mcp` 专用 Origin/local-only/request-size filter；`Origin` exact-match、`*` fail startup，不信任 forwarded header；无 `Content-Length` 的超限 body、非 JSON 与不完整 Accept 均在 transport 解析前稳定拒绝。
 - [x] 让现有 JWT filter 保护 initialize、resources/templates/list、resources/list/read、tools/list/call；missing token 组合测试证明所有方法逐请求重新认证，sessionless transport 不保存 identity。
 - [x] 实现唯一 `McpRequestIdentityResolver` 并接入 SDK transport context，只从当次 authenticated `UserPrincipal` 构造 `RequestIdentity`；handler 只读取 server context key，不接受其他 tenant/user map。
-- [ ] 对 unauthorized/forbidden/not-found 建立稳定且脱敏的 HTTP/JSON-RPC/tool error 边界；access/refresh token、tenant/user facts 不进入响应或日志。
+- [ ] 对 unauthorized/forbidden/not-found 建立稳定且脱敏的 HTTP/JSON-RPC/tool error 边界；access/refresh token、tenant/user facts 不进入响应或日志。（HTTP/JWT 与 KB Resource read 已完成；Tool execution error 待 Tools 切片。）
 - [x] README 与 `docs/architecture/mcp-readonly-service.md` 明确手工 Bearer header、default-off/local-only、query/Cookie token 禁止，以及不提供 MCP OAuth metadata/discovery/audience/scopes、不宣称 authorization profile 兼容。
 
 ## 3. Read-Only Resources
 
-- [ ] RED：URI query/fragment/userinfo/port、percent-encoded slash、`..`、非法/负 ID、extra segment、foreign ID 与 document/KB mismatch 均 fail closed。（URI grammar/ID/路径技巧矩阵已完成；foreign ID 与 document/KB mismatch 待 Resource service 查询授权切片。）
+- [ ] RED：URI query/fragment/userinfo/port、percent-encoded slash、`..`、非法/负 ID、extra segment、foreign ID 与 document/KB mismatch 均 fail closed。（URI grammar/ID/路径技巧与 KB foreign ID wire control 已完成；document/KB mismatch 待 document Resource 切片。）
 - [x] 实现 `McpResourceUri` 的三种 exact canonical template 与 round-trip tests：KB、document、chunk；KB/document 为正 long，chunkIndex 为非负 int，解析错误固定脱敏且不回显原 URI。
 - [x] 实现 authenticated `resources/list`：只列当前 identity 可访问 KB，kbId 稳定排序、50 默认/100 最大、opaque cursor，每页重新授权；同一 cursor 跨 tenant 测试证明只返回当次身份结果。
 - [x] 实现固定 `resources/templates/list`；恰好三条 canonical template，不声明 subscriptions/listChanged，不提供 document version template。
-- [ ] 实现 KB Resource JSON whitelist，排除 tenantId、ownerId、vectorCollection、storage/vector/internal fields。
+- [x] 实现 KB Resource JSON whitelist；每次 read 从 transport context 取身份并复用现有 KB read authorization，只返回 id/name/description/documentCount/isPublic/createdAt/updatedAt，排除 tenantId、ownerId、vectorCollection、storage/vector/internal fields，provider calls=0。
 - [ ] 实现 document Resource JSON whitelist，并用 tenantId + documentId + kbId 双重一致性检查。
 - [ ] 实现 chunk Resource text read，严格按 tenant/document/chunkIndex 查询，UTF-8 bytes 上限与 `truncated` evidence 可验证。
-- [ ] 对 foreign/nonexistent 使用 matched controls，证明 error fingerprint 与可观察 timing 不泄露另一个 tenant 的资源事实。
+- [ ] 对 foreign/nonexistent 使用 matched controls，证明 error fingerprint 与可观察 timing 不泄露另一个 tenant 的资源事实。（KB wire fingerprint 已统一为 `MCP_RESOURCE_NOT_FOUND`；document/chunk 与 timing evidence 待后续切片。）
 - [ ] 运行 Resources focused tests，并把 requirement/scenario→test mapping 追加到 C15 traceability artifact。
 
 ## 4. Fixed Tool Schemas And Result Mapping

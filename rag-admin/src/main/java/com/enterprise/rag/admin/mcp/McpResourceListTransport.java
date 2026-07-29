@@ -11,13 +11,16 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Keeps the official stateless transport and lifecycle while replacing only the SDK's
- * process-global static resources/list registry with a request-scoped authorized handler.
+ * Keeps the official stateless transport and lifecycle while replacing the SDK's
+ * process-global static resources/list registry and enforcing the repository's strict
+ * resources/read parameter shape before delegating valid reads back to the SDK.
  */
 final class McpResourceListTransport implements McpStatelessServerTransport {
 
     private static final String RESOURCES_LIST_METHOD = "resources/list";
+    private static final String RESOURCES_READ_METHOD = "resources/read";
     private static final Set<String> PAGINATED_PARAMETER_NAMES = Set.of("cursor", "_meta");
+    private static final Set<String> READ_PARAMETER_NAMES = Set.of("uri", "_meta");
 
     private final McpStatelessServerTransport delegate;
     private final McpKnowledgeResourceService resourceService;
@@ -68,6 +71,10 @@ final class McpResourceListTransport implements McpStatelessServerTransport {
                 io.modelcontextprotocol.common.McpTransportContext context,
                 McpSchema.JSONRPCRequest request) {
             if (!RESOURCES_LIST_METHOD.equals(request.method())) {
+                if (RESOURCES_READ_METHOD.equals(request.method())
+                        && !validReadParameters(request.params())) {
+                    return Mono.just(invalidArgument(request.id()));
+                }
                 return delegateHandler.handleRequest(context, request);
             }
             return Mono.fromSupplier(() -> handleResourcesList(context, request))
@@ -111,6 +118,14 @@ final class McpResourceListTransport implements McpStatelessServerTransport {
                 throw new IllegalArgumentException("Invalid MCP resources/list parameters");
             }
             return jsonMapper.convertValue(rawParameters, McpSchema.PaginatedRequest.class);
+        }
+
+        private boolean validReadParameters(Object rawParameters) {
+            if (!(rawParameters instanceof Map<?, ?> parameterMap)
+                    || !READ_PARAMETER_NAMES.containsAll(parameterMap.keySet())) {
+                return false;
+            }
+            return parameterMap.get("uri") instanceof String;
         }
 
         private McpSchema.JSONRPCResponse invalidArgument(Object requestId) {

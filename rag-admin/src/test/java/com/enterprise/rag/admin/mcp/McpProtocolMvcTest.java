@@ -1,7 +1,10 @@
 package com.enterprise.rag.admin.mcp;
 
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
+import com.enterprise.rag.admin.kb.service.KBPermissionService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
+import com.enterprise.rag.admin.qa.service.QAHistoryService;
+import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.auth.model.UserPrincipal;
@@ -30,9 +33,12 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.security.Principal;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -81,6 +87,15 @@ class McpProtocolMvcTest {
               "id": 3,
               "method": "resources/list",
               "params": {}
+            }
+            """;
+
+    private static final String READ_KNOWLEDGE_BASE_RESOURCE_REQUEST = """
+            {
+              "jsonrpc": "2.0",
+              "id": 7,
+              "method": "resources/read",
+              "params": {"uri": "rag://knowledge-bases/1"}
             }
             """;
 
@@ -250,6 +265,169 @@ class McpProtocolMvcTest {
         assertFalse(response.body().contains(marker));
     }
 
+    @Test
+    void resourcesReadReturnsOnlyTheAuthorizedKnowledgeBaseJsonWhitelist() throws Exception {
+        HttpResponse<String> response = postJson(
+                READ_KNOWLEDGE_BASE_RESOURCE_REQUEST, "tenant-a");
+
+        assertEquals(200, response.statusCode());
+        JsonNode body = objectMapper.readTree(response.body());
+        assertEquals(7, body.path("id").asInt());
+        assertTrue(body.path("error").isMissingNode(), response.body());
+        JsonNode resource = body.path("result").path("contents").get(0);
+        assertEquals("rag://knowledge-bases/1", resource.path("uri").asText());
+        assertEquals("application/json", resource.path("mimeType").asText());
+
+        JsonNode content = objectMapper.readTree(resource.path("text").asText());
+        Set<String> fieldNames = new HashSet<>();
+        content.fieldNames().forEachRemaining(fieldNames::add);
+        assertEquals(Set.of(
+                "id",
+                "name",
+                "description",
+                "documentCount",
+                "isPublic",
+                "createdAt",
+                "updatedAt"), fieldNames);
+        assertEquals(1L, content.path("id").asLong());
+        assertEquals("tenant-a-one", content.path("name").asText());
+        assertEquals("tenant-a-one description", content.path("description").asText());
+        assertEquals(2, content.path("documentCount").asInt());
+        assertFalse(content.path("isPublic").asBoolean());
+        assertEquals("2026-07-28T09:15:00", content.path("createdAt").asText());
+        assertEquals("2026-07-29T10:30:00", content.path("updatedAt").asText());
+        assertFalse(response.body().contains("ownerId"));
+        assertFalse(response.body().contains("vectorCollection"));
+        assertFalse(response.body().contains("tenantId"));
+    }
+
+    @Test
+    void resourcesReadMakesForeignAndNonexistentKnowledgeBasesIndistinguishable() throws Exception {
+        HttpResponse<String> foreign = postJson(
+                readKnowledgeBaseRequest(8, 1L), "tenant-b");
+        HttpResponse<String> nonexistent = postJson(
+                readKnowledgeBaseRequest(8, 99L), "tenant-a");
+
+        assertEquals(200, foreign.statusCode());
+        assertEquals(200, nonexistent.statusCode());
+        JsonNode foreignError = objectMapper.readTree(foreign.body()).path("error");
+        JsonNode nonexistentError = objectMapper.readTree(nonexistent.body()).path("error");
+        assertEquals(nonexistentError, foreignError);
+        assertEquals(-32603, foreignError.path("code").asInt());
+        assertEquals("MCP_RESOURCE_NOT_FOUND", foreignError.path("message").asText());
+        assertFalse(foreign.body().contains("tenant-a-one"));
+        assertFalse(foreign.body().contains("知识库"));
+        assertFalse(nonexistent.body().contains("知识库"));
+    }
+
+    @Test
+    void resourcesReadReturnsAStableForbiddenErrorForSameTenantPrivateKnowledgeBase()
+            throws Exception {
+        HttpResponse<String> response = postJson(
+                readKnowledgeBaseRequest(9, 9L), "tenant-a");
+
+        assertEquals(200, response.statusCode());
+        JsonNode error = objectMapper.readTree(response.body()).path("error");
+        assertEquals(-32603, error.path("code").asInt());
+        assertEquals("MCP_FORBIDDEN", error.path("message").asText());
+        assertFalse(response.body().contains("无权"));
+        assertFalse(response.body().contains("ownerId"));
+    }
+
+    @Test
+    void resourcesReadRejectsClientSuppliedTenantSelectors() throws Exception {
+        String request = """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 10,
+                  "method": "resources/read",
+                  "params": {
+                    "uri": "rag://knowledge-bases/1",
+                    "tenantId": 2
+                  }
+                }
+                """;
+
+        HttpResponse<String> response = postJson(request, "tenant-a");
+
+        assertEquals(200, response.statusCode());
+        JsonNode body = objectMapper.readTree(response.body());
+        assertEquals(-32602, body.path("error").path("code").asInt());
+        assertEquals("MCP_INVALID_ARGUMENT", body.path("error").path("message").asText());
+        assertTrue(body.path("result").isMissingNode());
+        assertFalse(response.body().contains("tenantId"));
+    }
+
+    @Test
+    void resourcesReadSanitizesUnexpectedDependencyFailures() throws Exception {
+        String canary = "sql-resource-read-canary";
+
+        HttpResponse<String> response = postJson(
+                readKnowledgeBaseRequest(11, 77L), "tenant-a");
+
+        assertEquals(200, response.statusCode());
+        JsonNode error = objectMapper.readTree(response.body()).path("error");
+        assertEquals(-32603, error.path("code").asInt());
+        assertEquals("MCP_INTERNAL_ERROR", error.path("message").asText());
+        assertFalse(response.body().contains(canary));
+    }
+
+    @Test
+    void resourcesReadRejectsANonCanonicalUriWithoutEchoingIt() throws Exception {
+        String marker = "query-resource-canary";
+        String request = """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 12,
+                  "method": "resources/read",
+                  "params": {
+                    "uri": "rag://knowledge-bases/1?marker=%s"
+                  }
+                }
+                """.formatted(marker);
+
+        HttpResponse<String> response = postJson(request, "tenant-a");
+
+        assertEquals(200, response.statusCode());
+        JsonNode error = objectMapper.readTree(response.body()).path("error");
+        assertEquals(-32603, error.path("code").asInt());
+        assertEquals("MCP_RESOURCE_NOT_FOUND", error.path("message").asText());
+        assertFalse(response.body().contains(marker));
+    }
+
+    @Test
+    void resourcesReadKeepsDocumentAndChunkTemplatesFailClosedInThisSlice()
+            throws Exception {
+        String documentRequest = readResourceRequest(
+                13, "rag://knowledge-bases/1/documents/2");
+        String chunkRequest = readResourceRequest(
+                14, "rag://knowledge-bases/1/documents/2/chunks/0");
+
+        JsonNode documentError = objectMapper.readTree(
+                postJson(documentRequest, "tenant-a").body()).path("error");
+        JsonNode chunkError = objectMapper.readTree(
+                postJson(chunkRequest, "tenant-a").body()).path("error");
+
+        assertEquals("MCP_RESOURCE_NOT_FOUND", documentError.path("message").asText());
+        assertEquals("MCP_RESOURCE_NOT_FOUND", chunkError.path("message").asText());
+    }
+
+    private String readResourceRequest(int requestId, String uri) {
+        return """
+                {
+                  "jsonrpc": "2.0",
+                  "id": %d,
+                  "method": "resources/read",
+                  "params": {"uri": "%s"}
+                }
+                """.formatted(requestId, uri);
+    }
+
+    private String readKnowledgeBaseRequest(int requestId, long knowledgeBaseId) {
+        return readResourceRequest(
+                requestId, "rag://knowledge-bases/" + knowledgeBaseId);
+    }
+
     private HttpResponse<String> postJson(String requestBody) throws Exception {
         return postJson(requestBody, null);
     }
@@ -325,7 +503,31 @@ class McpProtocolMvcTest {
                                 knowledgeBase(3L, "tenant-a-three"),
                                 knowledgeBase(5L, "tenant-a-next-canary"));
                     });
+            org.mockito.Mockito.when(service.getById(
+                            org.mockito.ArgumentMatchers.anyLong(),
+                            org.mockito.ArgumentMatchers.any(RequestIdentity.class)))
+                    .thenAnswer(invocation -> {
+                        long id = invocation.getArgument(0, Long.class);
+                        RequestIdentity identity = invocation.getArgument(1, RequestIdentity.class);
+                        if (identity.tenantId() == 1L && id == 77L) {
+                            throw new IllegalStateException("sql-resource-read-canary");
+                        }
+                        if (identity.tenantId() != 1L || (id != 1L && id != 9L)) {
+                            return Optional.empty();
+                        }
+                        return Optional.of(id == 1L
+                                ? knowledgeBase(1L, "tenant-a-one")
+                                : knowledgeBase(9L, "tenant-a-private"));
+                    });
             return service;
+        }
+
+        @Bean
+        AuthorizationService syntheticAuthorizationService(KnowledgeBaseService knowledgeBaseService) {
+            return new AuthorizationService(
+                    knowledgeBaseService,
+                    org.mockito.Mockito.mock(KBPermissionService.class),
+                    org.mockito.Mockito.mock(QAHistoryService.class));
         }
 
         private KnowledgeBaseDTO knowledgeBase(long id, String name) {
@@ -333,8 +535,12 @@ class McpProtocolMvcTest {
                     .id(id)
                     .name(name)
                     .description(name + " description")
-                    .documentCount(0)
+                    .ownerId(id == 1L ? 1L : 9000L + id)
+                    .vectorCollection("vector-canary-" + id)
+                    .documentCount(id == 1L ? 2 : 0)
                     .isPublic(false)
+                    .createdAt(LocalDateTime.of(2026, 7, 28, 9, 15))
+                    .updatedAt(LocalDateTime.of(2026, 7, 29, 10, 30))
                     .build();
         }
     }

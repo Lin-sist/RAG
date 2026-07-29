@@ -11,26 +11,34 @@ final class McpResourceTemplates {
     private McpResourceTemplates() {
     }
 
-    static List<McpStatelessServerFeatures.SyncResourceTemplateSpecification> specifications() {
+    static List<McpStatelessServerFeatures.SyncResourceTemplateSpecification> specifications(
+            McpKnowledgeResourceService resourceService,
+            McpRequestIdentityResolver identityResolver) {
         return List.of(
                 specification(
                         "rag://knowledge-bases/{kbId}",
                         "knowledge-base",
                         "Knowledge base",
                         "Authorized knowledge-base metadata",
-                        "application/json"),
+                        "application/json",
+                        resourceService,
+                        identityResolver),
                 specification(
                         "rag://knowledge-bases/{kbId}/documents/{documentId}",
                         "knowledge-base-document",
                         "Knowledge-base document",
                         "Authorized document metadata within a knowledge base",
-                        "application/json"),
+                        "application/json",
+                        resourceService,
+                        identityResolver),
                 specification(
                         "rag://knowledge-bases/{kbId}/documents/{documentId}/chunks/{chunkIndex}",
                         "knowledge-base-document-chunk",
                         "Knowledge-base document chunk",
                         "Authorized bounded document chunk text",
-                        "text/plain; charset=utf-8"));
+                        "text/plain; charset=utf-8",
+                        resourceService,
+                        identityResolver));
     }
 
     private static McpStatelessServerFeatures.SyncResourceTemplateSpecification specification(
@@ -38,7 +46,9 @@ final class McpResourceTemplates {
             String name,
             String title,
             String description,
-            String mimeType) {
+            String mimeType,
+            McpKnowledgeResourceService resourceService,
+            McpRequestIdentityResolver identityResolver) {
         McpSchema.ResourceTemplate template = McpSchema.ResourceTemplate.builder(uriTemplate, name)
                 .title(title)
                 .description(description)
@@ -46,8 +56,7 @@ final class McpResourceTemplates {
                 .build();
         return new McpStatelessServerFeatures.SyncResourceTemplateSpecification(
                 template,
-                (context, request) -> {
-                    throw new IllegalArgumentException("MCP_RESOURCE_NOT_FOUND");
-                });
+                (context, request) -> resourceService.read(
+                        identityResolver.requireContextIdentity(context), request.uri()));
     }
 }

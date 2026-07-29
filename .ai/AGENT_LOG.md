@@ -1788,3 +1788,21 @@
 - 外调与范围安全：真实 embedding/rerank/search/ask/generation/judge/LLM/provider calls=0，business data outbound=false，费用/限流事件=0，真实 Milvus maintenance=`SKIPPED`。未修改 accepted baseline、migration、POM/依赖、现有 REST/RAG/provider 语义、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未暂存、未提交、未 push、未创建 PR、未部署。
 - 剩余风险与下一步：当前分页结果有 wire 与现有 tenant service 聚焦证据，但尚无 MySQL 双 tenant integration、matched foreign/nonexistent timing、完整 result-byte limit 或 conformance evidence；`KnowledgeBaseService.getAccessibleByIdentity` 仍先读取当前身份全部可访问 KB 再由 MCP 层切页，不构成生产容量证明。用户复核决策 19 并手动提交后，下一 tracer bullet 才进入 KB Resource JSON whitelist/read authorization，不横向进入 document/chunk read 或 Tools。
 - Commit：`pending`；提交责任为用户手动提交，建议 `feat(mcp): 实现C15资源发现与分页授权`。
+
+## 2026-07-29｜C15 authenticated Resource discovery 提交补录
+
+- Commit：`a701446`（`feat(mcp): 实现C15资源发现与分页授权`）。本条只补录上一实现 checkpoint 的真实 hash；用户已确认验收并批准 design 决策 19，C15 active change 继续进入 KB Resource read 切片，不代表 document/chunk Resource、Tools、互操作证据或 C15 整体验收完成。
+
+## 2026-07-29｜C15 KB Resource read checkpoint
+
+- 用户授权与提交责任：用户在验收 Resource discovery checkpoint 后明确要求进入下一阶段实现，据此确认 design 决策 19 并只推进 KB Resource read；提交责任保持 `用户手动提交`，Agent 未暂存、未提交、未 push、未创建 PR、未部署。
+- 范围与实现：`McpKnowledgeResourceService.read` 每次从当次 transport context 取得 immutable `RequestIdentity`，调用现有 `AuthorizationService.requireKnowledgeBaseReadAccess` 做 tenant-scoped lookup 与 owner/public/READ authorization；KB JSON 只含 `id/name/description/documentCount/isPublic/createdAt/updatedAt`，排除 tenantId、ownerId、vectorCollection、storage/vector/internal fields。document/chunk template 在本切片继续 `MCP_RESOURCE_NOT_FOUND`，未横向进入其读取实现或 Tools。
+- 错误与输入边界：foreign tenant KB 与 matched nonexistent KB 的 JSON-RPC fingerprint 均为 `-32603/MCP_RESOURCE_NOT_FOUND`；同 tenant 私有且无权限为 `MCP_FORBIDDEN`；未分类下游异常为 `MCP_INTERNAL_ERROR`，不回显原异常。SDK 2.0.0 实测会静默忽略 `resources/read` extra 参数，因此同一公开 stateless handler decorator 只在 SDK dispatch 前执行 `uri` / `_meta` exact allowlist，合法 read 仍完整委托 SDK；该取舍记录为待用户复核的 design 决策 20。
+- TDD RED→GREEN：成功读取用例先得到 placeholder `MCP_RESOURCE_NOT_FOUND`（8 tests / 1 failure）；foreign/nonexistent 与 forbidden 用例先分别回显 `知识库不存在: id` / `无权访问该知识库`（10 / 2）；extra `tenantId` 先被 SDK 静默接受（11 / 1）；dependency canary 先被原样回显（12 / 1）。每轮只补对应 whitelist、error mapper、raw-param validator 或异常脱敏后转 GREEN；non-canonical URI 与 document/chunk fail-closed wire controls 也已锁定。
+- 聚焦验证：`McpServerConfigurationTest,McpProtocolMvcTest,McpSdkCompatibilityTest,McpOriginAndExposureFilterTest,McpAuthenticationMvcTest,McpRequestIdentityResolverTest,McpResourceUriTest,McpKnowledgeResourceServiceTest,KnowledgeBaseListTenantEnforcementTest,AuthorizationServiceTest` 汇总 79 tests / 0 failures / 0 errors / 0 skipped。service test 使用真实 `KnowledgeBaseServiceImpl` 与 `AuthorizationService`、mock DB/provider boundary，验证查询固定携带当前 tenant、七字段 exact whitelist、document count tenant scope，以及 VectorStore/EmbeddingService interactions=0。
+- 全仓门禁：`mvn -q test` 退出码 1；`rag-admin` 为 286 tests / 1 failure / 0 errors / 21 skipped，唯一失败仍是既有 `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` collector 时序断言；该用例独立复跑退出码 0，因此如实保持全仓非 GREEN，不把观测债务扩入 C15。
+- 静态门禁：SensitiveLogs 扫描 337 source files / PASS；changed files=12、protected paths=0、changed Markdown=5、missing relative links=0、`git diff --check`=PASS；design 为 20/20/20/20 决策三行结构。
+- 跳过项及原因：本切片未改 Python/evaluation、frontend、migration、POM/依赖或 infrastructure，因此 Python tests、含 `vue-tsc` 的 frontend build、Docker/Testcontainers、official conformance 和独立 client 继续 `SKIPPED`。真实 embedding/rerank/search/ask/generation/judge/LLM/provider calls=0，business data outbound=false，费用/限流事件=0，真实 Milvus maintenance=`SKIPPED`。
+- 范围安全：未修改 accepted baseline、migration、POM、现有 REST/RAG/provider 语义、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`；未覆盖或混入用户无关改动。
+- 剩余风险与下一步：当前只有 KB wire matched fingerprint，尚无 document/chunk Resource、matched timing、MySQL 双 tenant integration、总 result byte limit、conformance 或独立 client evidence；决策 20 需用户复核。复核并手动提交后，下一 tracer bullet 进入 document Resource JSON whitelist 与 tenantId + documentId + kbId 一致性检查，不进入 chunk 或 Tools。
+- Commit：`pending`；建议 `feat(mcp): 实现C15知识库资源读取授权`。

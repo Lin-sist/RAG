@@ -1,6 +1,7 @@
 package com.enterprise.rag.admin.mcp;
 
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
+import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.auth.config.SecurityConfig;
 import com.enterprise.rag.auth.filter.JwtAuthenticationFilter;
@@ -210,6 +211,11 @@ class McpAuthenticationMvcTest {
         @Bean
         KnowledgeBaseService knowledgeBaseService() {
             return mock(KnowledgeBaseService.class);
+        }
+
+        @Bean
+        AuthorizationService authorizationService() {
+            return mock(AuthorizationService.class);
         }
     }
 }

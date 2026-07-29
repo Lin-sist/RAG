@@ -1,7 +1,7 @@
 # C15 只读 MCP 服务：开发期使用边界
 
-> 状态日期：2026-07-28  
-> 当前状态：实现中。本文只说明已落地的 transport、认证、暴露边界和 Resource discovery，不代表 C15 已通过 Resource read、Tools、双租户、只读副作用、官方 conformance 或独立 client 验收。
+> 状态日期：2026-07-29
+> 当前状态：实现中。本文只说明已落地的 transport、认证、暴露边界、Resource discovery 和 KB Resource read，不代表 C15 已通过 document/chunk read、Tools、双租户、只读副作用、官方 conformance 或独立 client 验收。
 
 ## 当前入口与默认值
 
@@ -45,13 +45,15 @@ $env:RAG_MCP_RESOURCE_PAGE_SIZE="50"
 
 这只是项目部署内的 JWT 认证，不实现 MCP Authorization Profile。当前不提供 OAuth 2.1 Protected Resource Metadata、authorization server discovery、resource audience/indicator 或 scopes，也不应描述为 OAuth-compliant、完整 MCP authorization 或 production authorization。
 
-## 当前 Resource discovery
+## 当前 Resource discovery 与 KB read
 
 - `resources/templates/list` 固定返回 KB、document、chunk 三条 canonical template；不提供 document version template，也不声明 subscription/listChanged。
 - `resources/list` 只返回当次 `RequestIdentity` 可访问的 KB 级 Resource，按 `kbId` 升序；默认 50、最大 100。
 - next cursor 是无 padding 的 opaque base64url version/lastSeenKbId，不包含 tenantId、userId 或资源名称。cursor 每次使用都重新查询当次身份；把 A 的 cursor 交给 B 只会得到 B 当前可访问且位于 cursor 之后的结果。
-- 资源 URI 仍只接受已冻结的 canonical grammar。KB/document/chunk content 的 `resources/read` 尚未进入本 checkpoint；当前模板存在不代表这些内容已可验收读取。
-- SDK 2.0.0 的高层 Resource registry 是进程级静态列表；动态 KB list 只在官方 stateless handler 公共边界窄装饰 `resources/list`，其余协议 lifecycle 和 method 继续由 SDK 处理，禁止按请求全局增删 registry。
+- KB `resources/read` 每次从当次 transport context 取得 `RequestIdentity`，复用现有 `AuthorizationService.requireKnowledgeBaseReadAccess`；只返回 `id`、`name`、`description`、`documentCount`、`isPublic`、`createdAt`、`updatedAt` 七个 JSON 字段，不解析 vector scope，也不调用 embedding/rerank/generation/provider。
+- foreign tenant KB 与本 tenant 不存在 KB 使用相同 `MCP_RESOURCE_NOT_FOUND`；同 tenant 存在但无读权限使用 `MCP_FORBIDDEN`。下游意外异常只返回 `MCP_INTERNAL_ERROR`，不回显原异常或资源事实。
+- document/chunk `resources/read` 在本 checkpoint 继续 fail-closed；固定模板存在不代表这些内容已可验收读取。
+- SDK 2.0.0 的高层 Resource registry 是进程级静态列表；动态 KB list 在官方 stateless handler 公共边界窄装饰 `resources/list`。SDK 还会静默忽略 `resources/read` extra 参数，因此同一 decorator 先执行 `uri` / `_meta` exact allowlist，再把合法 read 完整委托 SDK；禁止按请求全局增删 registry。
 
 ## 当前错误边界
 
@@ -64,5 +66,9 @@ $env:RAG_MCP_RESOURCE_PAGE_SIZE="50"
 | POST `Content-Type` 不是显式 `application/json` | HTTP `415`，`MCP_UNSUPPORTED_MEDIA_TYPE` |
 | POST `Accept` 未同时显式包含 JSON 与 SSE | HTTP `406`，`MCP_NOT_ACCEPTABLE` |
 | `resources/list` cursor 非 canonical 或包含 tenant/limit 等额外字段 | JSON-RPC `-32602`，`MCP_INVALID_ARGUMENT` |
+| `resources/read` 包含 `tenantId` 等 extra 参数 | JSON-RPC `-32602`，`MCP_INVALID_ARGUMENT` |
+| KB 属于 foreign tenant 或在本 tenant 不存在 | JSON-RPC `-32603`，`MCP_RESOURCE_NOT_FOUND` |
+| KB 在同 tenant 存在但当前用户无读权限 | JSON-RPC `-32603`，`MCP_FORBIDDEN` |
+| KB read 遇到未分类下游异常 | JSON-RPC `-32603`，`MCP_INTERNAL_ERROR` |
 
-上述响应使用固定、脱敏类别，不回显 token、tenant/user identity 或下游异常。Resource not-found、Tool execution error 和 provider failure 的最终 MCP 映射仍属于后续实现切片。
+上述响应使用固定、脱敏类别，不回显 token、tenant/user identity、raw Resource URI 或下游异常。document/chunk Resource 与 Tool execution/provider failure 的最终 MCP 映射仍属于后续实现切片。

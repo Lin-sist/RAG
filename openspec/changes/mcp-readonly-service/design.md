@@ -61,7 +61,7 @@ MCP Host
 | `McpOriginAndExposureFilter` | `/mcp` 专用 Origin、local-only、request-size 守卫 |
 | `McpRequestIdentityResolver` | 从当前 authenticated principal 构造 `RequestIdentity`，不读取 tool args |
 | `McpResourceUri` | 严格解析/格式化 custom URI，拒绝 query/fragment/path trick |
-| `McpResourceListTransport` | 只在官方 stateless transport 的公开 handler 边界替换 `resources/list`，按当次 context 动态授权；其他 lifecycle/method 全部委托 SDK |
+| `McpResourceListTransport` | 在官方 stateless transport 的公开 handler 边界替换 `resources/list`，并在合法 `resources/read` 委托 SDK 前拒绝 extra 参数；其他 lifecycle/method 全部委托 SDK |
 | `McpKnowledgeResourceService` | resources list/read/templates、KB/document/chunk 权限与字段白名单 |
 | `McpReadOnlyToolService` | 四个 tools 的输入归一、权限、只读编排和稳定 result/error |
 | `McpCitationReader` | 按 tenant + KB + document + chunk identity 读取并校验 citation |
@@ -152,7 +152,7 @@ rag://knowledge-bases/{kbId}
 
 结果按 `kbId` 稳定升序、默认每页 50、最大 100。cursor 是 opaque base64url 编码的 lastSeenKbId/version，不含 tenant/user 或资源名称；每次使用 cursor 都重新执行当前 identity 的 accessible query，跨用户复用 cursor 不产生越权结果。
 
-官方 SDK 2.0.0 的高层 `resources(...)` API 实测使用进程级静态 registry，不能表达随当次 `McpTransportContext` 变化的授权列表。C15 因此只在 SDK 公开的 `McpStatelessServerTransport#setMcpHandler` / `McpStatelessServerHandler` 边界装饰 `resources/list`：transport、JSON 解析/序列化、initialize、templates、read、tools 与 notification 继续委托官方 SDK；不得通过全局 `addResource/removeResource` 在请求间模拟用户列表。
+官方 SDK 2.0.0 的高层 `resources(...)` API 实测使用进程级静态 registry，不能表达随当次 `McpTransportContext` 变化的授权列表。C15 因此在 SDK 公开的 `McpStatelessServerTransport#setMcpHandler` / `McpStatelessServerHandler` 边界装饰 `resources/list`；同时只对 `resources/read` 原始参数做 `uri` / `_meta` exact allowlist，再把合法请求完整委托 SDK。transport、JSON 解析/序列化、initialize、templates、实际 read dispatch、tools 与 notification 继续由官方 SDK 负责；不得通过全局 `addResource/removeResource` 在请求间模拟用户列表。
 
 ### 7.2 Resource templates
 
@@ -425,3 +425,8 @@ foreign resource 与不存在资源统一 `MCP_RESOURCE_NOT_FOUND`。error TextC
 - **面临的选择**：按请求全局增删 SDK Resource registry、只在 SDK 公开 stateless handler 边界装饰 `resources/list`、停止 C15 或升级/更换未批准的 SDK 版本。
 - **选了哪个 + 为什么**：选择窄装饰 `resources/list`，因为 SDK 2.0.0 高层 registry 实测是进程级静态状态，而公开 transport/handler 接口能够保留官方 transport、schema、lifecycle 与其余 method，同时让每次调用使用当次 `McpTransportContext` 重新授权。
 - **放弃的代价**：全局增删在并发用户间会竞态并泄露资源；停止会在已有安全公共扩展点时无端阻塞；升级/换版会破坏已固定和已验证的 compatibility 基线。
+
+### 决策 20：SDK 静默忽略 `resources/read` 未知参数时在哪里落实 strict input
+- **面临的选择**：接受 SDK 忽略 extra 参数、全局开启 ObjectMapper unknown-property fail、在现有 stateless handler decorator 中只校验 `resources/read` 原始参数后委托 SDK。
+- **选了哪个 + 为什么**：选择第三项，只允许 `uri` 与 `_meta`，因为它在身份/业务 handler 前拒绝 `tenantId` 等 selector，同时保留 SDK 的合法 read template dispatch、结果序列化与 lifecycle。
+- **放弃的代价**：接受忽略会违反已批准的 server-derived identity 与 `additionalProperties=false` 边界；全局收紧 ObjectMapper 会影响 initialize、Tools 和其他 SDK record，产生超出本切片的兼容风险。
