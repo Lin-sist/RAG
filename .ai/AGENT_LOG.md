@@ -1859,3 +1859,29 @@
 - 文档与安全：changed paths=19、unexpected paths=0、existing changed Markdown=15、missing relative links=0、trailing whitespace=0；SensitiveLogs 扫描 346 source files / PASS；新增及归档文件的 private-key、AKIA、Bearer value 与用户目录绝对路径模式命中均为 0；C15 stale active/pending/dirty 状态命中=0。
 - Git 与清理：`git diff --check`=`PASS`（只有 `iteration-blueprint.md` 的既有行尾转换 warning，没有 whitespace error）；staged files=0，分支保持 `main...origin/main [ahead 13]`。Testcontainers label 残留容器=0；Docker Desktop 仍运行。
 - Commit：`pending`；提交责任保持 `用户手动提交`，建议 `docs(openspec): 接受契约并归档C15只读MCP服务`。
+
+## 2026-07-30｜C15 归档提交补录
+
+- Commit：`3b2f06e`（`docs(openspec): 接受契约并归档C15只读MCP服务`）。本条只补录上一归档提交的真实 hash，不记录 C16 规划。
+
+## 2026-07-30｜C16 Bounded Query Router Readiness 与规划启动
+
+- 用户目标与提交责任：用户要求查看项目状况，若允许则直接进入 C16 规划。提交责任按默认保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- Readiness：启动 HEAD=`3b2f06e`，分支 `main...origin/main [ahead 14]`，工作区与暂存区均干净，`.ai/ACTIVE_TASK.md=IDLE`；未归档 active change=0，C15 archive 存在且 tasks unchecked=0。C14 正式 26/26 required cases 与 functional/content/error/timing/global `PASS` 已解除 C16 前置隔离门禁；路线图把 C16 定义为 C15/MCP 不捆绑的独立 Type C change，因此结论为 `GO`。
+- 能力分类：`confirmed` 为 query normalization/query variants、hybrid/BM25/RRF、rerank/provider attribution、context token budget、sync/SSE/MCP read-only ask、C14 tenant gate 与 v2 eval types；`partial` 为已有阶段级 timeout/diagnostics 但没有统一 route plan/跨阶段 budget，no-answer 分散在 empty retrieval 与生成文本判断，sync/SSE/eval attribution 不一致；`planned` 为 `fact-intent-v1`、唯一 `fact-v1`、usage ledger、`evidence-no-answer-v1`、cache/telemetry compatibility 与 versioned router eval；`out_of_scope` 为 multi-hop/global/high-risk、Agent loop、LLM classifier、生产默认切换、live provider evidence、API/SSE/MCP schema/数据库/前端变更；`unknown` 为真实 fact coverage、生产 deadline/token ceiling、客户端 route metadata 需求和真实 provider latency/cost。
+- 规划产物：创建 `openspec/changes/bounded-query-router/`，包含 proposal、design、tasks，以及 `rag-system` / `evaluation` 双 spec delta；design 记录 18 条真实取舍。更新 `.ai/ACTIVE_TASK.md` 为 `ACTIVE / C16 规划待审`，accepted baseline 未修改。
+- 关键边界：Router 默认关闭；enabled 模式 classifier 为纯本地确定性 allowlist，只有 `fact-v1`，ambiguous/multi-hop/global/high-risk 返回 `UNSUPPORTED` 且 provider calls=0，不偷跑 legacy。fact strategy 只允许一次 retrieval orchestration，不沿用 explanation second pass；budget ledger 约束 query variants、rerank/generation、token 与 stage 间 deadline。
+- No-answer 与评测：`evidence-no-answer-v1` 在 retrieval 后判断 evidence，insufficient evidence generation calls=0，dependency error 不映射 no-answer，model refusal/citation不足保留独立 reason。新增独立 router status 与 classification/strategy/budget/quality/no-answer/error 通道，不替代既有 Report status 或修改既有指标公式。
+- 外调与范围安全：本轮只读取仓库事实并写 OpenSpec/治理文档；真实 embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false、费用/限流事件=0、真实 Milvus maintenance=`SKIPPED`。未修改 Java、Python、POM、runtime config、migration、frontend、accepted baseline、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或历史报告。
+- 跳过项及原因：本轮是 Type C 事前规划，Maven、Python、frontend build、Docker/Testcontainers、deterministic integration 与 live provider evaluation 均 `SKIPPED`；规划获批前不得进入实现。OpenSpec CLI 可用性与最终结构/链接/敏感信息/`git diff --check` 在后续静态门禁复核。
+- 剩余风险与下一闸门：用户需审阅并批准 18 条 decisions、双 delta、enabled 非 fact unsupported、fact success 最低 citation evidence、deadline 非强制抢占 I/O、SSE wire 不变与 deterministic evidence 完成口径。批准后应从 default-off config + classifier/registry 的纯 unit/property RED 开始，不横向进入高级策略。
+- Commit：`pending`；建议 `docs(openspec): 启动C16有界查询路由规划`。
+
+## 2026-07-30｜C16 规划最终静态门禁
+
+- OpenSpec 结构：未归档 active change=1 且唯一为 `bounded-query-router`；change artifacts=5。`rag-system` delta=5 requirements / 17 scenarios，`evaluation` delta=4 requirements / 12 scenarios；每个 scenario 的 GIVEN/WHEN/THEN 数量 exact match，malformed=0，与 accepted baseline 重复 requirement title=0。
+- 决策与任务：design decisions=18，三行字段“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”均为 18/18/18；tasks unchecked=70，全部属于用户事前批准、实现、验证和验收后 closeout，未提前勾选。C15 archive tasks unchecked=0。
+- 文档与安全：本轮 changed/new Markdown=7，missing relative links=0、trailing whitespace=0、TODO/TBD/FIXME/待确认占位=0；private-key、AKIA、Bearer value 与用户目录绝对路径模式命中=0。OpenSpec CLI=`ABSENT`，因此只记录文件级结构/格式检查，不宣称 CLI validation 通过。
+- 范围与 Git：最终变更只包含 `.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md` 与 `openspec/changes/bounded-query-router/**`；implementation/protected/accepted baseline paths=0，staged files=0，`git diff --check`=`PASS`。分支保持 `main...origin/main [ahead 14]`，未暂存、未提交、未 push。
+- 跳过项：Java/Python/POM/runtime/frontend 均无改动，Maven、Python、Docker/Testcontainers、frontend build、deterministic integration 与任何 provider 调用继续 `SKIPPED`；规划获批前不进入实现。
+- Commit：`pending`；提交责任保持 `用户手动提交`，建议 `docs(openspec): 启动C16有界查询路由规划`。
