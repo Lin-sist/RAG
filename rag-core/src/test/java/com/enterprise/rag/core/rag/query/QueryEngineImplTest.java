@@ -78,6 +78,20 @@ class QueryEngineImplTest {
     }
 
     @Test
+    void shouldRespectServerOwnedQueryVariantCeiling() {
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class)))
+                .thenReturn(List.of());
+
+        RetrievalResult result = queryEngine.retrieveWithDiagnostics(
+                "什么是JWT？",
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), false, 1));
+
+        assertEquals(1, result.diagnostics().get("queryVariantCount"));
+        verify(embeddingService, times(1)).embed(11L, "什么是JWT");
+        verify(vectorStore, times(1)).search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class));
+    }
+
+    @Test
     void shouldRewriteConversationalJwtQueryAndMergeResults() {
         when(embeddingService.embed(anyLong(), anyString())).thenAnswer(invocation -> {
             String query = invocation.getArgument(1, String.class).toLowerCase();

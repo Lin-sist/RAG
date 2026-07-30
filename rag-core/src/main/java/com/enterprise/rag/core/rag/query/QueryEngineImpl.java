@@ -127,7 +127,9 @@ public class QueryEngineImpl implements QueryEngine {
                 options.filter());
 
         // 2. 对口语化/缩写问题生成少量检索变体，并合并多路召回结果
-        List<QueryVariant> queryVariants = buildQueryVariants(query);
+        List<QueryVariant> queryVariants = buildQueryVariants(query).stream()
+                .limit(options.maxQueryVariants())
+                .toList();
         List<RetrievedContext> vectorContexts;
         VectorDependencyException vectorFailure = null;
         try {
@@ -207,6 +209,7 @@ public class QueryEngineImpl implements QueryEngine {
         if (vectorFailure != null) {
             diagnostics.putAll(RetrievalResult.keywordOnly(finalContexts).diagnostics());
         }
+        diagnostics.put("queryVariantCount", queryVariants.size());
         diagnostics.putAll(rerankDiagnostics);
         return new RetrievalResult(finalContexts, diagnostics);
     }

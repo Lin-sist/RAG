@@ -7,7 +7,7 @@
 ## Active Change
 
 - Change：`bounded-query-router`
-- 阶段：C16 规划待审
+- 阶段：C16 第一实现切片完成，继续推进 evaluation 与完整集成证据
 - 位置：`openspec/changes/bounded-query-router/`
 - 类型：Type C（新增用户可见 Router 策略、跨阶段预算、no-answer policy 与评测契约）
 - 提交责任：`用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
@@ -22,10 +22,12 @@
 
 ## Current Gate
 
-1. proposal、design 的 18 条决策、tasks 与 `rag-system` / `evaluation` 双 spec delta 已形成规划草案，等待用户审阅批准。
-2. 当前授权只覆盖规划文件；批准前不得修改 Java/Python/runtime config、运行 Docker/Testcontainers、启用 Router 或执行 provider-capable evaluation。
-3. 用户需重点确认 default-off、enabled 仅 `fact-v1`、unsupported 不走 legacy、deterministic classifier、deadline 真实保证、统一 no-answer 与 deterministic 主证据。
-4. 任何真实 embedding/rerank/ask/generation/judge/LLM/provider 调用仍需单独披露调用量、模型、数据出站、费用/限流并取得授权。
+1. 用户已于 2026-07-30 批准统一规划、18 条设计决策与双 spec delta，并要求开始 C16 实现。
+2. 当前按 vertical TDD 推进，先做 default-off Router/classifier/registry，再接 budgeted fact、no-answer、SSE/MCP 与 evaluation；一次只推进一个可验证切片。
+3. 提交责任保持 `用户手动提交`；Agent 不暂存、不提交。accepted baseline、归档与 `IDLE` 仍需用户最终验收。
+4. 真实 embedding/rerank/ask/generation/judge/LLM/provider 调用未授权；实现与主证据必须保持 zero-call/zero-egress。
+5. 已完成 default-off Router、确定性 fact/unsupported/invalid 分类、server-owned query variant ceiling、单 retrieval orchestration、usage ledger、validated-citation no-answer、版本化 cache identity、sync metadata、SSE unsupported/no-answer terminal facts 与低基数 telemetry。
+6. `rag-core` 完整测试及 C15 MCP schema/guard/default-off/profile 相邻回归已通过；下一闸门是候选/context/token usage、SSE generation 完成/取消终态、versioned router evaluation 与 deterministic integration evidence。
 
 ## Readiness Basis
 

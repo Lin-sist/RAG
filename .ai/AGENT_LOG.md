@@ -1885,3 +1885,21 @@
 - 范围与 Git：最终变更只包含 `.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md` 与 `openspec/changes/bounded-query-router/**`；implementation/protected/accepted baseline paths=0，staged files=0，`git diff --check`=`PASS`。分支保持 `main...origin/main [ahead 14]`，未暂存、未提交、未 push。
 - 跳过项：Java/Python/POM/runtime/frontend 均无改动，Maven、Python、Docker/Testcontainers、frontend build、deterministic integration 与任何 provider 调用继续 `SKIPPED`；规划获批前不进入实现。
 - Commit：`pending`；提交责任保持 `用户手动提交`，建议 `docs(openspec): 启动C16有界查询路由规划`。
+
+## 2026-07-30｜C16 规划提交补录与统一实现授权
+
+- 规划提交补录：Commit=`4d5fef5`（`docs(openspec): 启动C16有界查询路由规划`）。本条只补录上一规划提交的真实 hash，不回改历史记录。
+- 用户授权与闸门：用户要求“统一规划，开始C16实现”，据此确认 proposal、design 18 条决策、`rag-system` 5 requirements / 17 scenarios 与 `evaluation` 4 requirements / 12 scenarios，授权在该 active change 内按 TDD 实现。该授权不包含新增/升级依赖、真实 provider/model 调用、baseline acceptance/archive、Git 提交、push、PR 或部署。
+- 启动状态：HEAD=`4d5fef5`，分支 `main...origin/main`，工作区与暂存区干净，唯一 active change=`bounded-query-router`。提交责任保持 `用户手动提交`。
+- 实现顺序：先完成 default-off Router/classifier/closed-world registry 的公共接口 tracer，再实现 budgeted fact retrieval、`evidence-no-answer-v1`、cache/telemetry、sync/SSE/MCP 与 versioned evaluation；每个行为保持 RED→GREEN，不先铺满横向测试。
+- 外调与范围：实现主证据保持真实 embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false；不修改公开 request DTO、SSE wire、MCP schema、database migration、frontend、`.env.local`、`application-dev.yml`、`.agents/` 或 `docs/学习文档/`。
+- Commit：`pending`。
+
+## 2026-07-30｜C16 第一实现切片：Bounded Fact Router 主链路
+
+- 范围与修改：新增 default-off `BoundedQueryRouter`、`RouterProperties`、`fact-intent-v1` 确定性分类器、route/budget/final-state 值对象与 `QueryBudgetLedger`；为 `QueryEngineImpl` 增加 server-owned query variant ceiling/实际 count diagnostics；将 Router 接入同步 ask、SSE unsupported/no-evidence、cache identity 与 GenAI telemetry。配置只新增 `rag.router.*` 且默认 `false`，未修改 request DTO、SSE wire、MCP Tool schema、数据库或前端。
+- TDD 事实：逐项观察到构造器缺失、分类理由错误、变体超额、legacy/router 缓存复用、预算 metadata 缺失、SSE terminal state 缺失、telemetry 属性缺失与未验证 citation 被误判 ANSWER 等 RED；最小实现后对应聚焦测试转 GREEN。fact 路径只执行一次 retrieval orchestration，insufficient evidence 不调用 generation，dependency error 保持 ERROR，无 CitationValidator `validCitations>0` 的回答稳定为 `NO_ANSWER/UNVALIDATED_EVIDENCE`。
+- 验证：`mvn -q -pl rag-core -am test` 退出码 0；随后 C15 MCP schema、request validator、execution guard、server config、result mapper、external-tools default-off 与 profile contract 相邻命令退出码 0。最近 55 份 Surefire reports 汇总 246 tests / 0 failures / 0 errors / 0 skipped。`git diff --check` 无 whitespace error，仅有既有 CRLF/LF warning。
+- 外调与安全：全部验证使用 mock/property/deterministic fixtures；真实 embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false、费用事件=0。没有新增依赖，未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline 或历史报告；未暂存、未提交、未 push、未创建 PR、未部署。
+- 跳过与剩余风险：versioned router eval/validator/evaluator、candidate/context/token usage、SSE generation 完成/取消后的 citation/final-state、完整 MCP authoritative before/after 与全仓 `mvn -q test` 尚未执行；live router ask/eval 未授权并保持 `SKIPPED`。当前只是第一实现切片，不构成 C16 完成、baseline acceptance、生产默认或真实 provider 质量/SLA 证明。
+- Commit：`pending`；提交责任保持 `用户手动提交`，建议 `feat(rag): 实现C16有界事实路由第一切片`。

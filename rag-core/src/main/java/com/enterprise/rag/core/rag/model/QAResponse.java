@@ -57,6 +57,29 @@ public record QAResponse(
         );
     }
 
+    public static QAResponse unsupported(
+            String question,
+            String classifierVersion,
+            String policyVersion,
+            String finalState,
+            String reason) {
+        return new QAResponse(
+                question,
+                "当前有界路由仅支持事实型问题，请改为单一事实查询。",
+                List.of(),
+                List.of(),
+                Map.of(
+                        "status", "unsupported",
+                        "routeClassifierVersion", classifierVersion,
+                        "routePolicyVersion", policyVersion,
+                        "routeIntent", finalState,
+                        "routeFinalState", finalState,
+                        "routeReason", reason,
+                        "noAnswerReason", "NONE",
+                        "routeBudgetOutcome", "NOT_STARTED",
+                        "routeProviderCallCount", 0));
+    }
+
     /**
      * 创建错误响应
      */

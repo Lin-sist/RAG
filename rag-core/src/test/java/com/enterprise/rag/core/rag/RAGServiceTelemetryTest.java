@@ -10,6 +10,9 @@ import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.query.RetrievalResult;
 import com.enterprise.rag.core.rag.service.RAGServiceImpl;
+import com.enterprise.rag.core.rag.router.BoundedQueryRouter;
+import com.enterprise.rag.core.rag.router.DeterministicFactIntentClassifier;
+import com.enterprise.rag.core.rag.router.RouterProperties;
 import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
@@ -110,6 +113,35 @@ class RAGServiceTelemetryTest {
         assertFalse(exported.contains("raw-sensitive-answer"));
         assertFalse(exported.contains("raw-sensitive-source"));
         assertFalse(exported.contains("raw-sensitive-collection"));
+    }
+
+    @Test
+    void unsupportedRouteExportsOnlyLowCardinalityRouterFacts() {
+        QueryEngine queryEngine = mock(QueryEngine.class);
+        AnswerGenerator answerGenerator = mock(AnswerGenerator.class);
+        RedisUtil redis = mock(RedisUtil.class);
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl service = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redis,
+                new ObjectMapper(),
+                new GenAiTelemetry(openTelemetry),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+
+        service.ask(QARequest.of("比较 JWT 与 OAuth", scope("kb")));
+
+        var ask = exporter.getFinishedSpanItems().stream()
+                .filter(span -> GenAiTelemetry.SpanNames.ASK.equals(span.getName()))
+                .findFirst().orElseThrow();
+        assertEquals("fact-intent-v1", ask.getAttributes().get(GenAiTelemetry.Attributes.ROUTER_CLASSIFIER));
+        assertEquals("none", ask.getAttributes().get(GenAiTelemetry.Attributes.QUERY_STRATEGY));
+        assertEquals("MULTI_HOP_CUE", ask.getAttributes().get(GenAiTelemetry.Attributes.ROUTE_REASON));
+        assertEquals("evidence-no-answer-v1", ask.getAttributes().get(GenAiTelemetry.Attributes.ROUTER_POLICY));
+        assertEquals("UNSUPPORTED", ask.getAttributes().get(GenAiTelemetry.Attributes.QUERY_FINAL_STATE));
+        assertFalse(exporter.getFinishedSpanItems().toString().contains("比较 JWT 与 OAuth"));
+        verify(queryEngine, never()).retrieveWithDiagnostics(any(), any());
     }
 
     @Test

@@ -8,6 +8,9 @@ import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
 import com.enterprise.rag.core.rag.query.QueryEngine;
+import com.enterprise.rag.core.rag.router.BoundedQueryRouter;
+import com.enterprise.rag.core.rag.router.DeterministicFactIntentClassifier;
+import com.enterprise.rag.core.rag.router.RouterProperties;
 import com.enterprise.rag.core.rag.service.RAGService;
 import com.enterprise.rag.core.rag.service.RAGServiceImpl;
 import com.enterprise.rag.core.vectorstore.TenantVectorScope;
@@ -91,6 +94,35 @@ class RAGServiceCacheKeyTest {
         assertTrue(responseA.isSuccess());
         assertTrue(responseB.isSuccess());
         verify(queryEngine, times(2)).retrieve(anyString(), any(RetrieveOptions.class));
+    }
+
+    @Test
+    void shouldNotShareCacheBetweenLegacyAndVersionedFactRoute() {
+        doAnswer(invocation -> {
+            String query = invocation.getArgument(0, String.class);
+            RetrieveOptions options = invocation.getArgument(1, RetrieveOptions.class);
+            return new com.enterprise.rag.core.rag.query.RetrievalResult(
+                    queryEngine.retrieve(query, options),
+                    Map.of("queryVariantCount", 1, "rerankModelCallCount", 0));
+        })
+                .when(queryEngine).retrieveWithDiagnostics(anyString(), any(RetrieveOptions.class));
+        TenantVectorScope scope = new TenantVectorScope(11L, 31L, "kb_java");
+        QARequest request = new QARequest("什么是线程池", scope, 5, Map.of(), true, false);
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGService routedService = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redisUtil,
+                new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+
+        ragService.ask(request);
+        routedService.ask(request);
+        routedService.ask(request);
+
+        verify(queryEngine, times(2)).retrieve(anyString(), any(RetrieveOptions.class));
+        assertEquals(2, cache.size());
     }
 
     @Test

@@ -17,6 +17,16 @@ public interface RAGService {
     final class StreamTerminalSignal {
         private final java.util.concurrent.atomic.AtomicBoolean timeout =
                 new java.util.concurrent.atomic.AtomicBoolean();
+        private final java.util.concurrent.atomic.AtomicReference<String> classifierVersion =
+                new java.util.concurrent.atomic.AtomicReference<>("legacy");
+        private final java.util.concurrent.atomic.AtomicReference<String> policyVersion =
+                new java.util.concurrent.atomic.AtomicReference<>("legacy");
+        private final java.util.concurrent.atomic.AtomicReference<String> effectiveStrategy =
+                new java.util.concurrent.atomic.AtomicReference<>("legacy");
+        private final java.util.concurrent.atomic.AtomicReference<String> routeReason =
+                new java.util.concurrent.atomic.AtomicReference<>("LEGACY");
+        private final java.util.concurrent.atomic.AtomicReference<String> finalState =
+                new java.util.concurrent.atomic.AtomicReference<>("UNKNOWN");
 
         public void markTimeout() {
             timeout.set(true);
@@ -24,6 +34,34 @@ public interface RAGService {
 
         public boolean isTimeout() {
             return timeout.get();
+        }
+
+        public void recordRoute(String classifier, String policy, String strategy, String reason, String state) {
+            classifierVersion.set(classifier);
+            policyVersion.set(policy);
+            effectiveStrategy.set(strategy);
+            routeReason.set(reason);
+            finalState.set(state);
+        }
+
+        public String classifierVersion() {
+            return classifierVersion.get();
+        }
+
+        public String policyVersion() {
+            return policyVersion.get();
+        }
+
+        public String effectiveStrategy() {
+            return effectiveStrategy.get();
+        }
+
+        public String routeReason() {
+            return routeReason.get();
+        }
+
+        public String finalState() {
+            return finalState.get();
         }
     }
 

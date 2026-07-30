@@ -13,19 +13,29 @@ import java.util.Map;
  * @param minScore       最小相关性分数阈值
  * @param filter         元数据过滤条件
  * @param enableRerank   是否启用重排序
+ * @param maxQueryVariants 服务端允许执行的最大查询变体数
  */
 public record RetrieveOptions(
         TenantVectorScope scope,
         int topK,
         float minScore,
         Map<String, Object> filter,
-        boolean enableRerank) {
+        boolean enableRerank,
+        int maxQueryVariants) {
 
     public RetrieveOptions {
         if (scope == null) {
             throw new IllegalArgumentException("Tenant vector scope is required");
         }
+        if (maxQueryVariants < 1) {
+            throw new IllegalArgumentException("maxQueryVariants must be at least 1");
+        }
         filter = ReservedScopeFilterValidator.validateAndCopy(filter);
+    }
+
+    public RetrieveOptions(TenantVectorScope scope, int topK, float minScore,
+            Map<String, Object> filter, boolean enableRerank) {
+        this(scope, topK, minScore, filter, enableRerank, Integer.MAX_VALUE);
     }
 
     public String collectionName() {

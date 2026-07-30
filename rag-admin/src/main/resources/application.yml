@@ -104,6 +104,19 @@ proxy:
 
 # RAG Configuration
 rag:
+  # C16 bounded query router. Default-off preserves the legacy ask path.
+  router:
+    enabled: ${RAG_ROUTER_ENABLED:false}
+    classifier-version: fact-intent-v1
+    policy-version: evidence-no-answer-v1
+    fact:
+      max-query-variants: 8
+      max-retrieval-passes: 1
+      max-rerank-calls: 1
+      max-generation-calls: 1
+      max-context-tokens: 1200
+      max-output-tokens: 2048
+      deadline-millis: 120000
   # C15 read-only MCP adapter. Disabled and loopback-only by default.
   mcp:
     enabled: ${RAG_MCP_ENABLED:false}

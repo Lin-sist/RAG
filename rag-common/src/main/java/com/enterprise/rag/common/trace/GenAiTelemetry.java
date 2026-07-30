@@ -689,6 +689,13 @@ public final class GenAiTelemetry {
         public static final AttributeKey<Boolean> CACHE_ENABLED = AttributeKey.booleanKey("rag.cache.enabled");
         public static final AttributeKey<Boolean> CACHE_HIT = AttributeKey.booleanKey("rag.cache.hit");
         public static final AttributeKey<String> RETRIEVAL_ROUTE = AttributeKey.stringKey("rag.retrieval.route");
+        public static final AttributeKey<String> ROUTER_CLASSIFIER = AttributeKey.stringKey("rag.router.classifier");
+        public static final AttributeKey<String> QUERY_STRATEGY = AttributeKey.stringKey("rag.query.strategy");
+        public static final AttributeKey<String> ROUTE_REASON = AttributeKey.stringKey("rag.route.reason");
+        public static final AttributeKey<String> ROUTER_POLICY = AttributeKey.stringKey("rag.router.policy");
+        public static final AttributeKey<String> QUERY_FINAL_STATE = AttributeKey.stringKey("rag.query.final_state");
+        public static final AttributeKey<String> NO_ANSWER_REASON = AttributeKey.stringKey("rag.no_answer.reason");
+        public static final AttributeKey<String> BUDGET_OUTCOME = AttributeKey.stringKey("rag.budget.outcome");
         public static final AttributeKey<Long> CANDIDATE_COUNT = AttributeKey.longKey("rag.candidate.count");
         public static final AttributeKey<Long> SELECTED_COUNT = AttributeKey.longKey("rag.selected.count");
         public static final AttributeKey<Long> TOP_K = AttributeKey.longKey("rag.top_k");
@@ -711,7 +718,10 @@ public final class GenAiTelemetry {
                 OPERATION, STAGE, OUTCOME, ERROR_TYPE, ERROR_CATEGORY, ERROR_CODE,
                 TASK_ID, DOCUMENT_ID, RESUME, LINEAGE_TASK_ID, LINEAGE_DOCUMENT_ID,
                 LINEAGE_CHUNK_ID, LINEAGE_RANK, LINEAGE_SCORE, LINEAGE_STATUS,
-                CACHE_ENABLED, CACHE_HIT, RETRIEVAL_ROUTE, CANDIDATE_COUNT, SELECTED_COUNT,
+                CACHE_ENABLED, CACHE_HIT, RETRIEVAL_ROUTE,
+                ROUTER_CLASSIFIER, QUERY_STRATEGY, ROUTE_REASON, ROUTER_POLICY,
+                QUERY_FINAL_STATE, NO_ANSWER_REASON, BUDGET_OUTCOME,
+                CANDIDATE_COUNT, SELECTED_COUNT,
                 TOP_K, PROVIDER_REQUESTED, PROVIDER_EFFECTIVE, MODEL, PROTOCOL,
                 FALLBACK_COUNT, FALLBACK_REASON, ATTEMPT_COUNT, RETRY_COUNT,
                 INGEST_PHASE, INGEST_CHUNK_COUNT, TOKEN_INPUT, TOKEN_OUTPUT,

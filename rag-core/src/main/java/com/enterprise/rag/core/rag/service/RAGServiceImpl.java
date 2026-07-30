@@ -8,6 +8,16 @@ import com.enterprise.rag.core.rag.generator.LLMException;
 import com.enterprise.rag.core.rag.model.*;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.query.RetrievalResult;
+import com.enterprise.rag.core.rag.router.BoundedQueryRouter;
+import com.enterprise.rag.core.rag.router.DeterministicFactIntentClassifier;
+import com.enterprise.rag.core.rag.router.QueryIntent;
+import com.enterprise.rag.core.rag.router.QueryRoutePlan;
+import com.enterprise.rag.core.rag.router.RouterProperties;
+import com.enterprise.rag.core.rag.router.EvidenceDecision;
+import com.enterprise.rag.core.rag.router.EvidenceNoAnswerPolicy;
+import com.enterprise.rag.core.rag.router.QueryFinalState;
+import com.enterprise.rag.core.rag.router.QueryBudgetLedger;
+import com.enterprise.rag.core.rag.router.QueryBudgetUsage;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -50,18 +60,30 @@ public class RAGServiceImpl implements RAGService {
     private final RedisUtil redisUtil;
     private final ObjectMapper objectMapper;
     private final GenAiTelemetry telemetry;
+    private final BoundedQueryRouter queryRouter;
+    private final EvidenceNoAnswerPolicy evidenceNoAnswerPolicy = new EvidenceNoAnswerPolicy();
 
     @Autowired
     public RAGServiceImpl(QueryEngine queryEngine,
             AnswerGenerator answerGenerator,
             RedisUtil redisUtil,
             ObjectMapper objectMapper,
-            GenAiTelemetry telemetry) {
+            GenAiTelemetry telemetry,
+            BoundedQueryRouter queryRouter) {
         this.queryEngine = queryEngine;
         this.answerGenerator = answerGenerator;
         this.redisUtil = redisUtil;
         this.objectMapper = objectMapper;
         this.telemetry = telemetry == null ? GenAiTelemetry.noop() : telemetry;
+        this.queryRouter = queryRouter == null ? defaultDisabledRouter() : queryRouter;
+    }
+
+    public RAGServiceImpl(QueryEngine queryEngine,
+            AnswerGenerator answerGenerator,
+            RedisUtil redisUtil,
+            ObjectMapper objectMapper,
+            GenAiTelemetry telemetry) {
+        this(queryEngine, answerGenerator, redisUtil, objectMapper, telemetry, defaultDisabledRouter());
     }
 
     public RAGServiceImpl(QueryEngine queryEngine,
@@ -69,6 +91,18 @@ public class RAGServiceImpl implements RAGService {
             RedisUtil redisUtil,
             ObjectMapper objectMapper) {
         this(queryEngine, answerGenerator, redisUtil, objectMapper, GenAiTelemetry.noop());
+    }
+
+    public RAGServiceImpl(QueryEngine queryEngine,
+            AnswerGenerator answerGenerator,
+            RedisUtil redisUtil,
+            ObjectMapper objectMapper,
+            BoundedQueryRouter queryRouter) {
+        this(queryEngine, answerGenerator, redisUtil, objectMapper, GenAiTelemetry.noop(), queryRouter);
+    }
+
+    private static BoundedQueryRouter defaultDisabledRouter() {
+        return new BoundedQueryRouter(new RouterProperties(), new DeterministicFactIntentClassifier());
     }
 
     @Override
@@ -95,14 +129,30 @@ public class RAGServiceImpl implements RAGService {
             return QAResponse.error(question, "知识库名称不能为空");
         }
 
+        java.util.Optional<QueryRoutePlan> routePlan = queryRouter.plan(question);
+        if (routePlan.isPresent() && routePlan.get().intent() != QueryIntent.FACT) {
+            QueryRoutePlan plan = routePlan.get();
+            recordRouteTelemetry(askSpan, plan, plan.intent().name(), "NONE", "NOT_STARTED");
+            askSpan.outcome(plan.intent().name());
+            return QAResponse.unsupported(
+                    question,
+                    plan.classifierVersion(),
+                    plan.policyVersion(),
+                    plan.intent().name(),
+                    plan.reason().name());
+        }
+        java.util.Optional<QueryBudgetLedger> budgetLedger = routePlan
+                .map(plan -> new QueryBudgetLedger(plan.budget()));
+
         log.info("Processing QA request for collection: {}", collectionName);
 
         try {
             // 1. 检查缓存
             String modelName = answerGenerator.getModelName();
+            String cacheIdentity = cacheIdentity(modelName, routePlan);
             if (request.enableCache()) {
                 QAResponse cachedResponse = traceStage(GenAiTelemetry.SpanNames.CACHE_LOOKUP,
-                        () -> getFromCache(question, request.scope(), request.topK(), request.filter(), modelName));
+                        () -> getFromCache(question, request.scope(), request.topK(), request.filter(), cacheIdentity));
                 if (cachedResponse != null) {
                     log.debug("QA cache hit for collection: {}", collectionName);
                     askSpan.outcome("CACHE_HIT");
@@ -116,13 +166,16 @@ public class RAGServiceImpl implements RAGService {
                     request.topK(),
                     request.minScore(),
                     request.filter(),
-                    true);
+                    routePlan.map(plan -> plan.budget().maxRerankCalls() > 0).orElse(true),
+                    routePlan.map(plan -> plan.budget().maxQueryVariants()).orElse(Integer.MAX_VALUE));
+            budgetLedger.ifPresent(QueryBudgetLedger::beginRetrieval);
             RetrievalResult retrievalResult = traceRetrieval(request.topK(), () -> {
                 RetrievalResult initial = retrieveWithDiagnostics(question, retrieveOptions);
-                return initial.contexts().isEmpty()
+                return routePlan.isEmpty() && initial.contexts().isEmpty()
                         ? retryExplanatoryRetrieval(question, request, collectionName, initial)
                         : initial;
             });
+            budgetLedger.ifPresent(ledger -> recordBudgetDiagnostics(ledger, retrievalResult.diagnostics()));
             List<RetrievedContext> contexts = retrievalResult.contexts();
             log.debug("Retrieved {} contexts for question", contexts.size());
             log.debug("Top retrieval scores: {}", topScoresForLog(contexts, 5));
@@ -130,12 +183,27 @@ public class RAGServiceImpl implements RAGService {
             if (contexts.isEmpty()) {
                 log.info("No relevant contexts found for collection: {}", collectionName);
                 askSpan.outcome("NO_RESULT");
-                return QAResponse.noResult(question);
+                QAResponse noResult = QAResponse.noResult(question);
+                routePlan.ifPresent(plan -> recordRouteTelemetry(
+                        askSpan,
+                        plan,
+                        "NO_ANSWER",
+                        "INSUFFICIENT_EVIDENCE",
+                        budgetLedger.orElseThrow().snapshot().outcome().name()));
+                return routePlan
+                        .map(plan -> withRouteMetadata(
+                                noResult,
+                                plan,
+                                "NO_ANSWER",
+                                "INSUFFICIENT_EVIDENCE",
+                                budgetLedger.orElseThrow().snapshot()))
+                        .orElse(noResult);
             }
 
             // 4. 生成答案
             recordLineage(askSpan, contexts, request.topK());
             List<RetrievedContext> selectedContexts = contexts;
+            budgetLedger.ifPresent(QueryBudgetLedger::beginGeneration);
             GeneratedAnswer generatedAnswer = traceStage(GenAiTelemetry.SpanNames.GENERATION,
                     () -> answerGenerator.generate(question, selectedContexts));
 
@@ -162,9 +230,28 @@ public class RAGServiceImpl implements RAGService {
                     contexts,
                     metadata);
 
+            if (routePlan.isPresent()) {
+                EvidenceDecision decision = evidenceNoAnswerPolicy.afterGeneration(generatedAnswer);
+                if (decision.finalState() == QueryFinalState.NO_ANSWER) {
+                    response = QAResponse.noResult(question);
+                }
+                response = withRouteMetadata(
+                        response,
+                        routePlan.get(),
+                        decision.finalState().name(),
+                        decision.noAnswerReason().name(),
+                        budgetLedger.orElseThrow().snapshot());
+                recordRouteTelemetry(
+                        askSpan,
+                        routePlan.get(),
+                        decision.finalState().name(),
+                        decision.noAnswerReason().name(),
+                        budgetLedger.orElseThrow().snapshot().outcome().name());
+            }
+
             // 6. 缓存结果
             if (request.enableCache() && !retrievalResult.degraded()) {
-                saveToCache(question, request.scope(), request.topK(), request.filter(), modelName, response);
+                saveToCache(question, request.scope(), request.topK(), request.filter(), cacheIdentity, response);
             }
 
             log.info("Successfully generated answer for collection: {}", collectionName);
@@ -174,8 +261,79 @@ public class RAGServiceImpl implements RAGService {
         } catch (Exception e) {
             log.error("Failed to process QA request: errorType={}", e.getClass().getSimpleName());
             askSpan.safeError(e, classifyClientError(e), "ASK_FAILED").outcome("ERROR");
-            return QAResponse.error(question, toClientErrorMessage(e), errorMetadata(e));
+            QAResponse error = QAResponse.error(question, toClientErrorMessage(e), errorMetadata(e));
+            routePlan.ifPresent(plan -> recordRouteTelemetry(
+                    askSpan,
+                    plan,
+                    "ERROR",
+                    "NONE",
+                    budgetLedger.orElseThrow().snapshot().outcome().name()));
+            return routePlan
+                    .map(plan -> withRouteMetadata(
+                            error,
+                            plan,
+                            "ERROR",
+                            "NONE",
+                            budgetLedger.orElseThrow().snapshot()))
+                    .orElse(error);
         }
+    }
+
+    private QAResponse withRouteMetadata(
+            QAResponse response,
+            QueryRoutePlan plan,
+            String finalState,
+            String noAnswerReason,
+            QueryBudgetUsage usage) {
+        Map<String, Object> metadata = new LinkedHashMap<>(response.metadata());
+        metadata.put("routeClassifierVersion", plan.classifierVersion());
+        metadata.put("routePolicyVersion", plan.policyVersion());
+        metadata.put("routeIntent", plan.intent().name());
+        metadata.put("routeReason", plan.reason().name());
+        metadata.put("routeEffectiveStrategy",
+                plan.effectiveStrategy() == null ? "none" : plan.effectiveStrategy().id());
+        metadata.put("routeFinalState", finalState);
+        metadata.put("noAnswerReason", noAnswerReason == null ? "NONE" : noAnswerReason);
+        metadata.put("routeQueryVariants", usage.queryVariants());
+        metadata.put("routeRetrievalPasses", usage.retrievalPasses());
+        metadata.put("routeRerankCalls", usage.rerankCalls());
+        metadata.put("routeGenerationCalls", usage.generationCalls());
+        metadata.put("routeElapsedMillis", usage.elapsedMillis());
+        metadata.put("routeBudgetOutcome", usage.outcome().name());
+        return new QAResponse(
+                response.question(),
+                response.answer(),
+                response.citations(),
+                response.contexts(),
+                Map.copyOf(metadata));
+    }
+
+    private void recordBudgetDiagnostics(QueryBudgetLedger ledger, Map<String, Object> diagnostics) {
+        ledger.recordQueryVariants(requiredDiagnosticCount(diagnostics, "queryVariantCount"));
+        ledger.recordRerankCalls(requiredDiagnosticCount(diagnostics, "rerankModelCallCount"));
+    }
+
+    private void recordRouteTelemetry(GenAiTelemetry.SpanScope span,
+            QueryRoutePlan plan,
+            String finalState,
+            String noAnswerReason,
+            String budgetOutcome) {
+        span.stringFact(GenAiTelemetry.Attributes.ROUTER_CLASSIFIER, plan.classifierVersion())
+                .stringFact(GenAiTelemetry.Attributes.QUERY_STRATEGY,
+                        plan.effectiveStrategy() == null ? "none" : plan.effectiveStrategy().id())
+                .stringFact(GenAiTelemetry.Attributes.ROUTE_REASON, plan.reason().name())
+                .stringFact(GenAiTelemetry.Attributes.ROUTER_POLICY, plan.policyVersion())
+                .stringFact(GenAiTelemetry.Attributes.QUERY_FINAL_STATE, finalState)
+                .stringFact(GenAiTelemetry.Attributes.NO_ANSWER_REASON, noAnswerReason)
+                .stringFact(GenAiTelemetry.Attributes.BUDGET_OUTCOME, budgetOutcome);
+    }
+
+    private int requiredDiagnosticCount(Map<String, Object> diagnostics, String key) {
+        Object value = diagnostics.get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        throw new IllegalStateException("Missing bounded execution diagnostic: " + key);
     }
 
     private <T> T traceStage(String spanName, java.util.function.Supplier<T> action) {
@@ -271,6 +429,21 @@ public class RAGServiceImpl implements RAGService {
                 Map.of(GenAiTelemetry.Attributes.OPERATION, "ask_stream"),
                 null);
 
+        java.util.Optional<QueryRoutePlan> routePlan = queryRouter.plan(question);
+        if (routePlan.isPresent() && routePlan.get().intent() != QueryIntent.FACT) {
+            QueryRoutePlan plan = routePlan.get();
+            recordStreamRoute(terminalSignal, plan, plan.intent().name());
+            askSpan.detach();
+            return finishStream(
+                    Flux.just("当前有界路由仅支持事实型问题，请改为单一事实查询。"),
+                    askSpan,
+                    null,
+                    plan.intent().name(),
+                    terminalSignal);
+        }
+        java.util.Optional<QueryBudgetLedger> budgetLedger = routePlan
+                .map(plan -> new QueryBudgetLedger(plan.budget()));
+
         log.info("Processing streaming QA request for collection: {}", collectionName);
 
         try {
@@ -282,13 +455,16 @@ public class RAGServiceImpl implements RAGService {
                     request.topK(),
                     request.minScore(),
                     request.filter(),
-                    true);
+                    routePlan.map(plan -> plan.budget().maxRerankCalls() > 0).orElse(true),
+                    routePlan.map(plan -> plan.budget().maxQueryVariants()).orElse(Integer.MAX_VALUE));
+            budgetLedger.ifPresent(QueryBudgetLedger::beginRetrieval);
             RetrievalResult retrievalResult = traceRetrieval(request.topK(), () -> {
                 RetrievalResult initial = retrieveWithDiagnostics(question, retrieveOptions);
-                return initial.contexts().isEmpty()
+                return routePlan.isEmpty() && initial.contexts().isEmpty()
                         ? retryExplanatoryRetrieval(question, request, collectionName, initial)
                         : initial;
             });
+            budgetLedger.ifPresent(ledger -> recordBudgetDiagnostics(ledger, retrievalResult.diagnostics()));
             List<RetrievedContext> contexts = retrievalResult.contexts();
             long retrievalLatencyMs = System.currentTimeMillis() - retrievalStartTime;
 
@@ -304,6 +480,7 @@ public class RAGServiceImpl implements RAGService {
             if (contexts.isEmpty()) {
                 log.info("stream_retrieval_no_context collection={}, retrievalLatencyMs={}",
                         collectionName, retrievalLatencyMs);
+                routePlan.ifPresent(plan -> recordStreamRoute(terminalSignal, plan, "NO_ANSWER"));
                 askSpan.detach();
                 return finishStream(
                         Flux.just("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。"),
@@ -312,6 +489,7 @@ public class RAGServiceImpl implements RAGService {
 
             // 流式生成答案
             recordLineage(askSpan, contexts, request.topK());
+            budgetLedger.ifPresent(QueryBudgetLedger::beginGeneration);
             GenAiTelemetry.SpanScope generation = telemetry.startSpan(
                     GenAiTelemetry.SpanNames.GENERATION, Map.of());
             Flux<String> stream;
@@ -362,6 +540,20 @@ public class RAGServiceImpl implements RAGService {
                     }
                     askSpan.finish(outcome);
                 });
+    }
+
+    private void recordStreamRoute(RAGService.StreamTerminalSignal terminalSignal,
+            QueryRoutePlan plan,
+            String finalState) {
+        if (terminalSignal == null) {
+            return;
+        }
+        terminalSignal.recordRoute(
+                plan.classifierVersion(),
+                plan.policyVersion(),
+                plan.effectiveStrategy() == null ? "none" : plan.effectiveStrategy().id(),
+                plan.reason().name(),
+                finalState);
     }
 
     private boolean isTimeoutFailure(Throwable failure) {
@@ -780,6 +972,28 @@ public class RAGServiceImpl implements RAGService {
         String filterHash = hashString(canonicalizeFilter(filter));
         String optionHash = hashString(topK + "|" + modelName + "|" + filterHash);
         return qaCachePrefix(scope) + queryHash + ":" + optionHash;
+    }
+
+    private String cacheIdentity(String modelName, java.util.Optional<QueryRoutePlan> routePlan) {
+        return routePlan
+                .map(plan -> modelName
+                        + "|router=" + plan.classifierVersion()
+                        + "|policy=" + plan.policyVersion()
+                        + "|strategy=" + plan.effectiveStrategy().id()
+                        + "|budget=" + budgetIdentity(plan))
+                .orElse(modelName + "|router=disabled");
+    }
+
+    private String budgetIdentity(QueryRoutePlan plan) {
+        var budget = plan.budget();
+        return hashString(
+                budget.maxQueryVariants() + "|"
+                        + budget.maxRetrievalPasses() + "|"
+                        + budget.maxRerankCalls() + "|"
+                        + budget.maxGenerationCalls() + "|"
+                        + budget.maxContextTokens() + "|"
+                        + budget.maxOutputTokens() + "|"
+                        + budget.deadlineMillis());
     }
 
     private String qaCachePrefix(com.enterprise.rag.core.vectorstore.TenantVectorScope scope) {
