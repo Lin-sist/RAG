@@ -1,8 +1,8 @@
-# C15 只读 MCP 服务：开发期使用与证据边界
+# C15 只读 MCP 服务：使用与证据边界
 
 > 状态日期：2026-07-30
 >
-> 当前状态：实现和 synthetic evidence 已闭环，等待用户最终验收、手动提交后的 clean-HEAD 复跑与 OpenSpec 归档。它仍默认关闭，不代表远程生产部署、MCP OAuth Authorization Profile 或真实 provider 可用性已经验收。
+> 当前状态：已于 2026-07-30 验收归档；7 requirements / 26 scenarios 已接受进 `rag-system` baseline。服务仍默认关闭，不代表远程生产部署、MCP OAuth Authorization Profile 或真实 provider 可用性已经验收。
 
 ## 当前入口与默认值
 
@@ -130,4 +130,4 @@ mvn -q -pl rag-admin -am -P c15-mcp-readonly "-Dtest=C15McpProfileContractTest" 
 - `McpIndependentClientMvcTest`：官方 Java SDK 独立 client 覆盖 initialize、分页 Resources、三 template、三类 read、四 Tool 与 unknown write Tool。
 - `C15McpConformanceIT`：固定 `@modelcontextprotocol/conformance@0.1.15`，在 Node `22.17.0` 上运行适用于 C15 capability 的 `server-initialize`、`ping`、`tools-list`、`resources-list`、`dns-rebinding-protection`。套件其余场景要求专用 echo/add/long-running/Prompt/Task fixture，与 C15 固定只读 registry 冲突，明确为不适用，不能描述为整套全部场景通过。
 
-详细 requirement/scenario 映射见 [`../eval/mcp/c15-mcp-readonly-traceability.md`](../eval/mcp/c15-mcp-readonly-traceability.md)。当前证据生成于 dirty implementation tree；用户手动提交后须在新 HEAD 复跑，最终验收前不得归档或声称 production-ready。
+详细 requirement/scenario 映射见 [`../eval/mcp/c15-mcp-readonly-traceability.md`](../eval/mcp/c15-mcp-readonly-traceability.md)。正式归档证据生成于 clean HEAD `45959672ec64ec72c05bcbe17fe52204555f1098`，`workingTreeDirty=false`；该结论只适用于固定 SDK/spec/schema 与本机 synthetic profile，不能声称 production-ready。

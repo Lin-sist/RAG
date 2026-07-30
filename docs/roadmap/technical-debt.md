@@ -80,7 +80,7 @@
 - 前端统一设计 token、空态/错态/处理中态和可访问性。
 - 生产数据评测集扩充与反馈闭环。
 - 有界 Query Router：按 fact、multi-hop、global、no-answer 选择策略。
-- MCP 只读知识资源和搜索/问答工具：C15 实现期 synthetic evidence 已闭环，默认关闭；待用户手动提交后的 clean-HEAD 复跑、最终验收和 OpenSpec 归档。后续独立债务包括 MCP OAuth Authorization Profile、远程 TLS/proxy trust、生产 rollout、真实 provider smoke 与更广 adapter/topology evidence。
+- MCP 只读知识资源和搜索/问答工具：C15 已验收归档且继续默认关闭；clean-HEAD synthetic evidence 覆盖固定 Resources/Tools、tenant、只读副作用与适用互操作场景。剩余独立债务包括 MCP OAuth Authorization Profile、远程 TLS/proxy trust、生产 rollout、真实 provider smoke 与更广 adapter/topology evidence。
 - Agentic RAG 仅在前述能力有评测门禁后进入。
 
 ## 不应重复立项

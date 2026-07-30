@@ -132,7 +132,7 @@ chmod +x start_backend.sh
 
 Swagger：`http://localhost:8080/swagger-ui.html`
 
-C15 只读 MCP adapter 已完成实现期 synthetic evidence，当前等待用户最终验收、手动提交后的 clean-HEAD 复跑与 OpenSpec 归档。它仍默认关闭，不能作为生产级 MCP/OAuth 服务使用；开发期配置、能力边界与复现入口见 [`docs/architecture/mcp-readonly-service.md`](docs/architecture/mcp-readonly-service.md)，7 requirements / 26 scenarios 映射见 [`docs/eval/mcp/c15-mcp-readonly-traceability.md`](docs/eval/mcp/c15-mcp-readonly-traceability.md)。
+C15 只读 MCP adapter 已验收归档，7 requirements / 26 scenarios 已接受进 `rag-system` baseline；clean-HEAD synthetic profile 证明固定 Resources/Tools、tenant 与只读副作用边界通过。它仍默认关闭，不能作为生产级 MCP/OAuth 服务使用；配置、能力边界与复现入口见 [`docs/architecture/mcp-readonly-service.md`](docs/architecture/mcp-readonly-service.md)，验收映射见 [`docs/eval/mcp/c15-mcp-readonly-traceability.md`](docs/eval/mcp/c15-mcp-readonly-traceability.md)。
 
 ### 6.3 启动前端
 

@@ -181,7 +181,7 @@
 - 目标：补隔离与恶意文档评测样本与断言，作为**开放任何外部接口（C15/C16）前的门禁**。
 
 ### C15. mcp-readonly-service
-- **当前状态（2026-07-30）**：active change 已完成三类只读 Resources、四个固定只读 Tools、双 tenant synthetic integration、独立官方 Java SDK client 与适用 conformance generic scenarios；仍待用户手动提交后的 clean-HEAD 复跑、最终验收和归档，不能标为 production MCP/OAuth。
+- **当前状态（2026-07-30）**：已验收归档；三类只读 Resources、四个固定只读 Tools、双 tenant clean-HEAD synthetic integration、独立官方 Java SDK client 与适用 conformance generic scenarios 均通过，7 requirements / 26 scenarios 已接受进 baseline；仍不能标为 production MCP/OAuth。
 - 现状校正：当前已有 REST + Swagger，**并非"只能通过前端访问"**；准确缺口是"无标准 MCP 接口"。
 - 目标：把知识库暴露为 MCP 只读 Resources 与 Tools（search/ask/get-citation/compare-sources），含认证与 tenant 传播。
 - **只读语义冻结**：当前 `ask` 确实会增查询计数、写 QA history、可能写 cache（`QAController`、`RAGServiceImpl`）。首版只读语义冻结为——**禁止修改 KB/文档/索引/用户/租户，且不写 QA history 与查询计数；仅允许受租户隔离、TTL 与隐私规则约束的 cache / metrics / audit 等非权威技术写入**。为此须提供无 history/count 的只读问答路径。

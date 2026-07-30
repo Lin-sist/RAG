@@ -1836,3 +1836,26 @@
 - 范围与 Git：protected paths=0，frontend/migration/accepted baseline changes=0，staged files=0；canonical Tool schema 旧 hash 命中=0，新 hash 在 4 个实现/测试/文档证据点一致。dependency convergence 仍只命中已记录的既有非 MCP 债务；未扩修。
 - 最终文件写入后复核：`git diff --check`=`PASS`（只有既有文件的行尾转换 warning，没有 whitespace error）；Markdown relative links missing=0；tasks unchecked=2；Git status 为 26 个 tracked modified + 21 个 untracked、staged=0。本 change 只保留“用户最终验收/接受 delta/归档/置 IDLE”及归档后能力声明边界两项，不提前勾选用户闸门。
 - Commit：`pending`；提交责任保持 `用户手动提交`，建议 `feat(mcp): 完成C15只读服务与互操作证据闭环`。
+
+## 2026-07-30｜C15 剩余实现提交补录
+
+- Commit：`4595967`（`feat(mcp): 完成C15只读服务与互操作证据闭环`）。本条只补录上一轮剩余 Resources、固定只读 Tools、运行保护与互操作证据实现提交的真实 hash；不记录本轮 baseline acceptance/archive 改动。
+
+## 2026-07-30｜C15 最终验收、Baseline Acceptance 与 OpenSpec 归档
+
+- 用户授权与范围：用户明确要求归档 C15，据此视为最终验收，只执行 `mcp-readonly-service` 的 clean-HEAD 复跑、delta acceptance、长期文档同步、archive 与 `ACTIVE_TASK=IDLE`；提交责任保持 `用户手动提交`，未暂存、未提交、未 push、未创建 PR、未部署。
+- clean-HEAD 证据：实现提交为 `45959672ec64ec72c05bcbe17fe52204555f1098`。固定 `c15-mcp-readonly` 命令最终退出码 0，Failsafe 为 2 tests / 0 failures / 0 errors / 0 skipped；`C15McpConformanceIT` 用时 27.52s，`C15McpReadOnlyIT` 用时 46.05s。driver evidence 为 `workingTreeDirty=false`、SDK `2.0.0`、spec `2025-11-25`、conformance `0.1.15`、Tool schema SHA-256=`44ce4cc851551057bbabfbdf3735b964de300ff691b2e73a612856e9fa64213f`。
+- 状态与隔离：authoritative before/after SHA-256 均为 `8261a84b7344e813a7dec0dca80e34e1642d4a96b869444066d93b5fe2a5a419`，`authoritativeStateUnchanged=true`；deterministic embedding/generation invocations=5/2，real provider/model calls=0、business data outbound=false、QA cache=false、真实 Milvus maintenance=`SKIPPED`。timing seed=15001、warm-up=5、measured pairs=20、request errors=0，仅作为本机粗粒度 synthetic evidence。
+- 环境诊断：首次沙箱内 Maven 解析因网络权限失败；沙箱外首次因本机 PATH 中带错误引号的 Tomcat 条目使 Testcontainers path probe 失败；过滤仅本次子进程的非法条目后发现 Docker daemon 未运行。隐藏启动 Docker Desktop 并确认 Server `28.4.0` 后，完整 profile 通过。以上均为环境前置失败，不计入最终 C15 测试结果；Testcontainers 容器由 Ryuk 回收，Docker Desktop 仍运行。
+- Baseline 与归档：`rag-system` delta 的 7 requirements / 26 scenarios 已 literal exact-copy 到 `openspec/specs/rag-system/spec.md`，归档前 exact suffix=`true`。tasks unchecked=0；change 已移动到 `openspec/changes/archive/2026-07-30-mcp-readonly-service/`，archive files=4；`.ai/ACTIVE_TASK.md` 已置为 `IDLE`。
+- 文档同步：更新 README、`openspec/project.md`、MCP architecture/overview、technical debt、iteration blueprint、optimization index 与 C15 traceability，统一改为“已验收归档”，并保留 default-off/local-only、非 OAuth profile、非生产部署与无真实 provider evidence 的边界。
+- 跳过项与既有风险：本轮未重跑全仓 Maven/Python/前端，因为实现内容已提交且归档轮只改治理文档；实现轮全仓 Maven 仍因既有 OTel collector 时序断言保持非 GREEN，Python 190 tests / OK，前端无改动。OpenSpec CLI=`ABSENT`，不宣称 CLI validation；live MCP provider smoke 未授权并继续 `SKIPPED`。
+- 范围安全：未修改业务代码、配置、migration、前端、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或历史报告。未开放 MCP 默认开关，也未扩大为 OAuth、远程生产、真实 tenant rollout、Qdrant/Elasticsearch、C16 Router 或 Agentic RAG。
+- Commit：`pending`；建议 `docs(openspec): 接受契约并归档C15只读MCP服务`。
+
+## 2026-07-30｜C15 归档最终静态门禁补录
+
+- OpenSpec 文件级验证：baseline exact suffix=`true`；archive files=4、tasks unchecked=0、delta=7 requirements / 26 scenarios、active change dirs=0、`ACTIVE_TASK=IDLE`。OpenSpec CLI=`ABSENT`，未宣称 CLI validation。
+- 文档与安全：changed paths=19、unexpected paths=0、existing changed Markdown=15、missing relative links=0、trailing whitespace=0；SensitiveLogs 扫描 346 source files / PASS；新增及归档文件的 private-key、AKIA、Bearer value 与用户目录绝对路径模式命中均为 0；C15 stale active/pending/dirty 状态命中=0。
+- Git 与清理：`git diff --check`=`PASS`（只有 `iteration-blueprint.md` 的既有行尾转换 warning，没有 whitespace error）；staged files=0，分支保持 `main...origin/main [ahead 13]`。Testcontainers label 残留容器=0；Docker Desktop 仍运行。
+- Commit：`pending`；提交责任保持 `用户手动提交`，建议 `docs(openspec): 接受契约并归档C15只读MCP服务`。

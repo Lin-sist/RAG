@@ -4,8 +4,8 @@
 
 - 变更：`mcp-readonly-service`
 - delta：7 requirements / 26 scenarios
-- 实现期结论：`PASS`。固定 SDK/spec/schema 下的 focused tests、独立官方 Java SDK client、双 tenant synthetic integration 与适用的官方 conformance generic scenarios 均已通过。
-- 归档状态：`PENDING`。当前 driver evidence 来自 HEAD `e812e3e3a73f78f13edc715862d810b008890183` 的 dirty working tree；用户手动提交后须在新 HEAD 复跑并最终验收，之后才能接受 delta、归档 change 和把 `ACTIVE_TASK` 置为 `IDLE`。
+- 验收结论：`PASS`。固定 SDK/spec/schema 下的 focused tests、独立官方 Java SDK client、双 tenant synthetic integration 与适用的官方 conformance generic scenarios 均已通过。
+- 归档状态：`ARCHIVED`。用户于 2026-07-30 明确要求归档；driver evidence 已在 clean HEAD `45959672ec64ec72c05bcbe17fe52204555f1098` 重跑，7 requirements / 26 scenarios 已接受进 baseline，change 归档到 `openspec/changes/archive/2026-07-30-mcp-readonly-service/`，`ACTIVE_TASK=IDLE`。
 - 能力边界：只证明默认关闭、本机开发边界内的只读 MCP Resources/Tools；不证明 MCP OAuth Authorization Profile、远程生产部署、真实 provider、Qdrant/Elasticsearch、生产第二业务 tenant 或 Agentic RAG。
 
 ## 2. 固定证据身份
@@ -21,16 +21,17 @@
 | Failsafe profile | `c15-mcp-readonly` |
 | 容器 | MySQL `8.0.36`、Redis `7-alpine` 固定 digest、etcd `3.5.5`、MinIO `RELEASE.2023-03-20T20-16-18Z`、Milvus `2.3.4` |
 
-最新实现期组合 profile：2 tests、0 failures、0 errors、0 skipped。`C15McpConformanceIT` 用时 20.92s，`C15McpReadOnlyIT` 用时 48.00s。
+最新归档组合 profile：2 tests、0 failures、0 errors、0 skipped。`C15McpConformanceIT` 用时 27.52s，`C15McpReadOnlyIT` 用时 46.05s。
 
 最终 MCP + 相邻 RAG 聚焦集：22 reports / 132 tests / 0 failures / 0 errors / 0 skipped，包含独立 Java SDK client、全部 `Mcp*Test`、Document tenant guard、RAG service/cache/query engine 与 profile contract。
 
-driver evidence 记录：
+clean-HEAD driver evidence 记录：
 
-- authoritative before/after SHA-256 均为 `4c5643ecad9793eeb797a560c6aa93d15420a35262f1634bf33c19549e434878`，`authoritativeStateUnchanged=true`；
+- `gitHead=45959672ec64ec72c05bcbe17fe52204555f1098`、`workingTreeDirty=false`；
+- authoritative before/after SHA-256 均为 `8261a84b7344e813a7dec0dca80e34e1642d4a96b869444066d93b5fe2a5a419`，`authoritativeStateUnchanged=true`；
 - deterministic embedding/generation invocations=`5/2`；
 - real provider/model calls=`0`，business data outbound=`false`，QA cache=`false`；
-- foreign/control timing 使用 seed `15001`、5 组 warm-up、20 组交错样本、request errors=`0`；本轮 median=`9.3684/10.0548ms`，P95=`10.9112/11.6916ms`；
+- foreign/control timing 使用 seed `15001`、5 组 warm-up、20 组交错样本、request errors=`0`；本轮 median=`6.3815/6.4198ms`，P95=`7.6243/7.511ms`；
 - real Milvus maintenance=`SKIPPED`。
 
 这些数值是本次本机 synthetic run 的事实，不是生产性能或绝对 timing side-channel 证明。
@@ -75,7 +76,7 @@ driver evidence 记录：
 | 23 | Limits / Origin 与 Local-Only 防护 | PASS | `McpOriginAndExposureFilterTest`、`McpProtocolMvcTest.invalidOriginIsRejectedBeforeProtocolHandling`、conformance `dns-rebinding-protection` |
 | 24 | Limits / Rate、Timeout 与 Result Bounds | PASS | `McpServerConfigurationTest`、`McpToolRequestValidatorTest`、`McpToolExecutionGuardTest`、`McpResultMapperTest` |
 | 25 | Limits / Protocol 与 Tool Error 分层脱敏 | PASS | `McpProtocolMvcTest` raw protocol errors、Tool error/no-result/dependency paths、foreign matched controls与 opaque assertions |
-| 26 | Limits / 固定 Conformance 与 Client Evidence | PASS（适用范围） | `C15McpConformanceIT`、`McpIndependentClientMvcTest`、`C15McpReadOnlyIT`、本文件映射；归档仍等待 clean-HEAD 复跑与用户验收 |
+| 26 | Limits / 固定 Conformance 与 Client Evidence | PASS（适用范围） | `C15McpConformanceIT`、`McpIndependentClientMvcTest`、`C15McpReadOnlyIT`、本文件映射；clean-HEAD 归档门禁已通过 |
 
 ## 5. Conformance 适用范围
 
@@ -104,4 +105,4 @@ build-only 产物：
 - `rag-admin/target/failsafe-reports/TEST-com.enterprise.rag.integration.C15McpReadOnlyIT.xml`
 - `rag-admin/target/failsafe-reports/TEST-com.enterprise.rag.admin.mcp.C15McpConformanceIT.xml`
 
-这些 `target/` 文件不提交。手动提交实现后应在 clean working tree 重跑，核对 `gitHead`、`workingTreeDirty=false`、两项 authoritative SHA-256 相等、tests/failures/errors/skips 和五个 conformance exit code，再申请最终验收。
+这些 `target/` 文件不提交。归档前已在 clean working tree 重跑，并核对 `gitHead`、`workingTreeDirty=false`、两项 authoritative SHA-256 相等、tests/failures/errors/skips 和五个 conformance exit code；正式结论仍以本文件记录的固定身份与边界为准。

@@ -95,5 +95,5 @@
 - [x] 运行 SensitiveLogs、credentials、absolute path、raw content/metadata、protected paths、dependency convergence、Markdown links 与 `git diff --check`；除已记录的既有依赖收敛债务外通过。
 - [x] 更新 tasks、`.ai/AGENT_LOG.md`、`openspec/project.md`、architecture/roadmap/optimization 与 C15 usage/traceability 文档。
 - [x] 收口结论只声明“在固定 SDK/spec/client 与 synthetic Milvus profile 下，只读 MCP Resources/Tools 互操作及 tenant/side-effect evidence 通过”。
-- [ ] 用户最终验收后才把 delta 原文接受进 `rag-system` baseline、归档 change 并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
-- [ ] 归档后仍不宣称 MCP OAuth profile、远程生产部署、Qdrant/Elasticsearch、真实 provider、第二业务 tenant、Router 或 Agentic RAG 已完成。
+- [x] 用户于 2026-07-30 明确要求归档；delta 已 exact-copy 接受进 `rag-system` baseline，change 已归档并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
+- [x] 归档后仍不宣称 MCP OAuth profile、远程生产部署、Qdrant/Elasticsearch、真实 provider、第二业务 tenant、Router 或 Agentic RAG 已完成。
