@@ -2,6 +2,16 @@
 
 这个目录用于建立可复现的 RAG baseline evaluation。目标不是马上优化算法，而是先固定一组测试文档、问题、期望来源和指标，让后续每次调整 chunk、query rewrite、rerank、hybrid search 或 prompt 时都能做前后对比。
 
+## C16 bounded Router 独立评测
+
+`router/bounded-query-router-eval-v1-manifest.json` 是 C16 active change 的独立 Router release。它复用并固定 `rag-eval-dev-v2` identity，但只通过 20 条 ID-only sidecar 声明 expected intent/required status，不修改或复制 question、answer、context。先运行：
+
+```bash
+python -B scripts/router_eval_contract.py --plan-only
+```
+
+该 validator 只读本地 artifact，在 backend、credential 或 provider 前 fail fast。`evaluate_bounded_query_router.py` 独立聚合 classification、strategy execution、budget、retrieval、generation/citation、no-answer、errors 七通道，并使用 `PASS/INVALID/FAIL/NOT_EVALUABLE = 0/2/3/4`；正式输出必须带 `--no-overwrite`。C16 live eval 未授权时保持 `SKIPPED`，deterministic 结果不得解释为真实 provider 质量或生产 SLA。
+
 ## 1. 当前可直接用于评测的字段
 
 ### `docs/eval/rag_eval_set.jsonl`

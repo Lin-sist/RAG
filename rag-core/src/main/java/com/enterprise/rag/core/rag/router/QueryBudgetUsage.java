@@ -5,6 +5,10 @@ public record QueryBudgetUsage(
         int retrievalPasses,
         int rerankCalls,
         int generationCalls,
+        int candidateCount,
+        int contextCount,
+        int estimatedContextTokens,
+        int estimatedOutputTokens,
         long elapsedMillis,
         BudgetOutcome outcome) {
 }

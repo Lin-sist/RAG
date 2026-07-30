@@ -4,7 +4,7 @@
 
 - 企业知识库 RAG 问答工程原型。
 - 当前主链路：认证 → 知识库 → 文档异步索引 → 混合检索 → LLM 生成 → 引用校验 → 历史与反馈。
-- 当前目标：先完成可信质量工程、生产化基础和个人掌握闭环；C15 只读 MCP 已验收归档，C16 Router 与 Agentic RAG 仍未开始。
+- 当前目标：先完成可信质量工程、生产化基础和个人掌握闭环；C15 只读 MCP 已验收归档，C16 default-off bounded Router 已完成实现并处于最终验收前，Agentic RAG 未开始。
 
 ## 当前代码事实
 
@@ -33,6 +33,7 @@
 - C13b 已验收归档：SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 tenant-aware shadow collection/readiness 维护路径已形成指定测试证据。6 requirements / 18 scenarios 已接受进 `rag-system` baseline；真实 Milvus 迁移/切换未授权并 `SKIPPED`，全仓 Maven 仍因既有 OTel collector 时序断言保持非 GREEN。
 - C14 已验收归档：固定 `tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上完成 26/26 required cases，functional/content/error/timing 四通道与 global report 均为 `PASS`。`evaluation` 5 requirements / 15 scenarios 与 `rag-system` 2 requirements / 6 scenarios 已接受进 baseline；provider calls=0、真实 Milvus maintenance=`SKIPPED`。
 - C15 已验收归档：完成 default-off/local-only/sessionless `/mcp`、三种 tenant-scoped Resources、四个固定只读 Tools、严格输入/输出与运行上限。Git HEAD `45959672` 的 clean-HEAD profile、独立 Java SDK client、适用官方 conformance generic scenarios 与双 tenant synthetic side-effect integration 均通过；7 requirements / 26 scenarios 已接受进 `rag-system` baseline，不能描述为 production MCP/OAuth 或真实 provider 已验证。
+- C16 active change 已实现 default-off `fact-intent-v1`、closed-world `fact-v1`、`evidence-no-answer-v1`、跨 stage budget/usage、sync/SSE/MCP attribution，以及独立 `bounded-query-router-eval-v1` validator/evaluator。当前只形成 deterministic 零外调证据；尚未获用户最终验收，delta 未接受进 baseline，change 未归档。
 
 ## 当前边界
 
@@ -43,6 +44,7 @@
 - C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项仍未完成。C12 已完成默认关闭的单机 reference observability 闭环，但生产 HA、容量、合规 retention、租户观测权限、跨主机传输、通知与 SLA 仍未完成。
 - C14 已验收归档，但结果只支持 Milvus 配置和固定 synthetic attack matrix；不构成生产级多租户、全 adapter、真实迁移或所有 timing side-channel 证明，也不自动开放生产第二业务 tenant、tenant management、C15 MCP 或 C16 Router。
 - C15 已归档但继续默认关闭，证据仍只来自本机 synthetic fixture；远程暴露、TLS/proxy trust、MCP OAuth Authorization Profile、真实 provider/model smoke、Qdrant/Elasticsearch、生产第二业务 tenant 和 C16 Router 均不在已证范围。
+- C16 生产默认仍关闭；当前实现只支持单轮事实型 `fact-v1`，非 fact/ambiguous/invalid fail closed。真实 provider 质量、multi-hop/global/high-risk strategy、生产 SLA、默认开启与 Agentic RAG 均未验证或不在本 change 范围。
 
 ## 长期规格
 

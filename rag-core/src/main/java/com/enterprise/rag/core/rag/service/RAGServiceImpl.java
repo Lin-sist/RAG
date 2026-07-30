@@ -14,7 +14,9 @@ import com.enterprise.rag.core.rag.router.QueryIntent;
 import com.enterprise.rag.core.rag.router.QueryRoutePlan;
 import com.enterprise.rag.core.rag.router.RouterProperties;
 import com.enterprise.rag.core.rag.router.EvidenceDecision;
-import com.enterprise.rag.core.rag.router.EvidenceNoAnswerPolicy;
+import com.enterprise.rag.core.rag.router.EvidenceAdmission;
+import com.enterprise.rag.core.rag.router.FactQueryStrategyExecutor;
+import com.enterprise.rag.core.rag.router.NoAnswerReason;
 import com.enterprise.rag.core.rag.router.QueryFinalState;
 import com.enterprise.rag.core.rag.router.QueryBudgetLedger;
 import com.enterprise.rag.core.rag.router.QueryBudgetUsage;
@@ -61,7 +63,7 @@ public class RAGServiceImpl implements RAGService {
     private final ObjectMapper objectMapper;
     private final GenAiTelemetry telemetry;
     private final BoundedQueryRouter queryRouter;
-    private final EvidenceNoAnswerPolicy evidenceNoAnswerPolicy = new EvidenceNoAnswerPolicy();
+    private final FactQueryStrategyExecutor factQueryStrategyExecutor;
 
     @Autowired
     public RAGServiceImpl(QueryEngine queryEngine,
@@ -76,6 +78,7 @@ public class RAGServiceImpl implements RAGService {
         this.objectMapper = objectMapper;
         this.telemetry = telemetry == null ? GenAiTelemetry.noop() : telemetry;
         this.queryRouter = queryRouter == null ? defaultDisabledRouter() : queryRouter;
+        this.factQueryStrategyExecutor = new FactQueryStrategyExecutor(answerGenerator);
     }
 
     public RAGServiceImpl(QueryEngine queryEngine,
@@ -142,7 +145,7 @@ public class RAGServiceImpl implements RAGService {
                     plan.reason().name());
         }
         java.util.Optional<QueryBudgetLedger> budgetLedger = routePlan
-                .map(plan -> new QueryBudgetLedger(plan.budget()));
+                .map(factQueryStrategyExecutor::openBudget);
 
         log.info("Processing QA request for collection: {}", collectionName);
 
@@ -175,12 +178,22 @@ public class RAGServiceImpl implements RAGService {
                         ? retryExplanatoryRetrieval(question, request, collectionName, initial)
                         : initial;
             });
-            budgetLedger.ifPresent(ledger -> recordBudgetDiagnostics(ledger, retrievalResult.diagnostics()));
+            budgetLedger.ifPresent(ledger -> recordBudgetDiagnostics(
+                    ledger,
+                    retrievalResult.diagnostics(),
+                    retrievalResult.contexts().size()));
             List<RetrievedContext> contexts = retrievalResult.contexts();
             log.debug("Retrieved {} contexts for question", contexts.size());
             log.debug("Top retrieval scores: {}", topScoresForLog(contexts, 5));
 
-            if (contexts.isEmpty()) {
+            EvidenceAdmission evidenceAdmission = routePlan
+                    .map(plan -> factQueryStrategyExecutor.beforeGeneration(contexts))
+                    .orElse(null);
+            if (contexts.isEmpty()
+                    || (evidenceAdmission != null && !evidenceAdmission.generationAllowed())) {
+                String noAnswerReason = evidenceAdmission == null
+                        ? NoAnswerReason.INSUFFICIENT_EVIDENCE.name()
+                        : evidenceAdmission.noAnswerReason().name();
                 log.info("No relevant contexts found for collection: {}", collectionName);
                 askSpan.outcome("NO_RESULT");
                 QAResponse noResult = QAResponse.noResult(question);
@@ -188,14 +201,14 @@ public class RAGServiceImpl implements RAGService {
                         askSpan,
                         plan,
                         "NO_ANSWER",
-                        "INSUFFICIENT_EVIDENCE",
+                        noAnswerReason,
                         budgetLedger.orElseThrow().snapshot().outcome().name()));
                 return routePlan
                         .map(plan -> withRouteMetadata(
                                 noResult,
                                 plan,
                                 "NO_ANSWER",
-                                "INSUFFICIENT_EVIDENCE",
+                                noAnswerReason,
                                 budgetLedger.orElseThrow().snapshot()))
                         .orElse(noResult);
             }
@@ -205,7 +218,8 @@ public class RAGServiceImpl implements RAGService {
             List<RetrievedContext> selectedContexts = contexts;
             budgetLedger.ifPresent(QueryBudgetLedger::beginGeneration);
             GeneratedAnswer generatedAnswer = traceStage(GenAiTelemetry.SpanNames.GENERATION,
-                    () -> answerGenerator.generate(question, selectedContexts));
+                    () -> generateAnswer(question, selectedContexts, routePlan));
+            budgetLedger.ifPresent(ledger -> recordGenerationDiagnostics(ledger, generatedAnswer.metadata()));
 
             // 5. 构建响应
             Map<String, Object> metadata = new HashMap<>(generatedAnswer.metadata());
@@ -231,7 +245,7 @@ public class RAGServiceImpl implements RAGService {
                     metadata);
 
             if (routePlan.isPresent()) {
-                EvidenceDecision decision = evidenceNoAnswerPolicy.afterGeneration(generatedAnswer);
+                EvidenceDecision decision = factQueryStrategyExecutor.afterGeneration(generatedAnswer);
                 if (decision.finalState() == QueryFinalState.NO_ANSWER) {
                     response = QAResponse.noResult(question);
                 }
@@ -298,6 +312,10 @@ public class RAGServiceImpl implements RAGService {
         metadata.put("routeRetrievalPasses", usage.retrievalPasses());
         metadata.put("routeRerankCalls", usage.rerankCalls());
         metadata.put("routeGenerationCalls", usage.generationCalls());
+        metadata.put("routeCandidateCount", usage.candidateCount());
+        metadata.put("routeContextCount", usage.contextCount());
+        metadata.put("routeEstimatedContextTokens", usage.estimatedContextTokens());
+        metadata.put("routeEstimatedOutputTokens", usage.estimatedOutputTokens());
         metadata.put("routeElapsedMillis", usage.elapsedMillis());
         metadata.put("routeBudgetOutcome", usage.outcome().name());
         return new QAResponse(
@@ -308,9 +326,20 @@ public class RAGServiceImpl implements RAGService {
                 Map.copyOf(metadata));
     }
 
-    private void recordBudgetDiagnostics(QueryBudgetLedger ledger, Map<String, Object> diagnostics) {
+    private void recordBudgetDiagnostics(QueryBudgetLedger ledger,
+            Map<String, Object> diagnostics,
+            int contextCount) {
         ledger.recordQueryVariants(requiredDiagnosticCount(diagnostics, "queryVariantCount"));
         ledger.recordRerankCalls(requiredDiagnosticCount(diagnostics, "rerankModelCallCount"));
+        ledger.recordRetrievalFacts(
+                requiredDiagnosticCount(diagnostics, "rerankCandidateCount"),
+                contextCount);
+    }
+
+    private void recordGenerationDiagnostics(QueryBudgetLedger ledger, Map<String, Object> diagnostics) {
+        ledger.recordGenerationFacts(
+                requiredDiagnosticCount(diagnostics, "estimatedContextTokens"),
+                requiredDiagnosticCount(diagnostics, "estimatedOutputTokens"));
     }
 
     private void recordRouteTelemetry(GenAiTelemetry.SpanScope span,
@@ -442,7 +471,7 @@ public class RAGServiceImpl implements RAGService {
                     terminalSignal);
         }
         java.util.Optional<QueryBudgetLedger> budgetLedger = routePlan
-                .map(plan -> new QueryBudgetLedger(plan.budget()));
+                .map(factQueryStrategyExecutor::openBudget);
 
         log.info("Processing streaming QA request for collection: {}", collectionName);
 
@@ -464,7 +493,10 @@ public class RAGServiceImpl implements RAGService {
                         ? retryExplanatoryRetrieval(question, request, collectionName, initial)
                         : initial;
             });
-            budgetLedger.ifPresent(ledger -> recordBudgetDiagnostics(ledger, retrievalResult.diagnostics()));
+            budgetLedger.ifPresent(ledger -> recordBudgetDiagnostics(
+                    ledger,
+                    retrievalResult.diagnostics(),
+                    retrievalResult.contexts().size()));
             List<RetrievedContext> contexts = retrievalResult.contexts();
             long retrievalLatencyMs = System.currentTimeMillis() - retrievalStartTime;
 
@@ -477,10 +509,22 @@ public class RAGServiceImpl implements RAGService {
                 log.warn("stream_retrieval_degraded dependency=milvus, retrievalMode=keyword_only, failMode=open");
             }
 
-            if (contexts.isEmpty()) {
+            EvidenceAdmission evidenceAdmission = routePlan
+                    .map(plan -> factQueryStrategyExecutor.beforeGeneration(contexts))
+                    .orElse(null);
+            if (contexts.isEmpty()
+                    || (evidenceAdmission != null && !evidenceAdmission.generationAllowed())) {
+                String noAnswerReason = evidenceAdmission == null
+                        ? NoAnswerReason.INSUFFICIENT_EVIDENCE.name()
+                        : evidenceAdmission.noAnswerReason().name();
                 log.info("stream_retrieval_no_context collection={}, retrievalLatencyMs={}",
                         collectionName, retrievalLatencyMs);
-                routePlan.ifPresent(plan -> recordStreamRoute(terminalSignal, plan, "NO_ANSWER"));
+                routePlan.ifPresent(plan -> recordStreamRoute(
+                        terminalSignal,
+                        plan,
+                        "NO_ANSWER",
+                        noAnswerReason));
+                budgetLedger.ifPresent(ledger -> recordStreamBudget(terminalSignal, ledger));
                 askSpan.detach();
                 return finishStream(
                         Flux.just("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。"),
@@ -494,13 +538,23 @@ public class RAGServiceImpl implements RAGService {
                     GenAiTelemetry.SpanNames.GENERATION, Map.of());
             Flux<String> stream;
             try {
-                stream = answerGenerator.generateStream(question, contexts);
+                stream = generateAnswerStream(question, contexts, routePlan);
             } catch (RuntimeException failure) {
                 generation.safeError(failure, "ask", "GENERATION_FAILED").finish("ERROR");
                 throw failure;
             }
             generation.detach();
             askSpan.detach();
+            if (routePlan.isPresent()) {
+                stream = finalizeBoundedFactStream(
+                        stream,
+                        question,
+                        contexts,
+                        routePlan.get(),
+                        budgetLedger.orElseThrow(),
+                        terminalSignal,
+                        askSpan);
+            }
             return finishStream(stream, askSpan, generation, "SUCCESS", terminalSignal);
 
         } catch (Exception e) {
@@ -538,6 +592,9 @@ public class RAGServiceImpl implements RAGService {
                     if (generationSpan != null) {
                         generationSpan.finish(outcome);
                     }
+                    if (terminalSignal != null) {
+                        terminalSignal.recordTransportOutcome(outcome);
+                    }
                     askSpan.finish(outcome);
                 });
     }
@@ -545,6 +602,13 @@ public class RAGServiceImpl implements RAGService {
     private void recordStreamRoute(RAGService.StreamTerminalSignal terminalSignal,
             QueryRoutePlan plan,
             String finalState) {
+        recordStreamRoute(terminalSignal, plan, finalState, NoAnswerReason.NONE.name());
+    }
+
+    private void recordStreamRoute(RAGService.StreamTerminalSignal terminalSignal,
+            QueryRoutePlan plan,
+            String finalState,
+            String noAnswerReason) {
         if (terminalSignal == null) {
             return;
         }
@@ -553,7 +617,77 @@ public class RAGServiceImpl implements RAGService {
                 plan.policyVersion(),
                 plan.effectiveStrategy() == null ? "none" : plan.effectiveStrategy().id(),
                 plan.reason().name(),
-                finalState);
+                finalState,
+                noAnswerReason);
+    }
+
+    private Flux<String> finalizeBoundedFactStream(Flux<String> source,
+            String question,
+            List<RetrievedContext> contexts,
+            QueryRoutePlan plan,
+            QueryBudgetLedger ledger,
+            RAGService.StreamTerminalSignal terminalSignal,
+            GenAiTelemetry.SpanScope askSpan) {
+        return source.collectList().flatMapMany(chunks -> {
+            String answerText = String.join("", chunks);
+            GeneratedAnswer finalized = factQueryStrategyExecutor.finalizeStream(
+                    question, answerText, contexts, plan);
+            recordGenerationDiagnostics(ledger, finalized.metadata());
+            EvidenceDecision decision = factQueryStrategyExecutor.afterGeneration(finalized);
+            recordStreamRoute(
+                    terminalSignal,
+                    plan,
+                    decision.finalState().name(),
+                    decision.noAnswerReason().name());
+            recordStreamBudget(terminalSignal, ledger);
+            recordRouteTelemetry(
+                    askSpan,
+                    plan,
+                    decision.finalState().name(),
+                    decision.noAnswerReason().name(),
+                    ledger.snapshot().outcome().name());
+            if (decision.finalState() == QueryFinalState.ANSWER) {
+                return Flux.fromIterable(chunks);
+            }
+            return Flux.just(QAResponse.noResult(question).answer());
+        }).doOnError(failure -> {
+            recordStreamRoute(terminalSignal, plan, "ERROR");
+            recordStreamBudget(terminalSignal, ledger);
+            recordRouteTelemetry(
+                    askSpan,
+                    plan,
+                    "ERROR",
+                    "NONE",
+                    ledger.snapshot().outcome().name());
+        }).doFinally(signal -> {
+            if (signal == reactor.core.publisher.SignalType.CANCEL) {
+                recordStreamRoute(terminalSignal, plan, "ERROR");
+                recordStreamBudget(terminalSignal, ledger);
+            }
+        });
+    }
+
+    private void recordStreamBudget(RAGService.StreamTerminalSignal terminalSignal,
+            QueryBudgetLedger ledger) {
+        if (terminalSignal != null) {
+            terminalSignal.recordBudgetUsage(ledger.snapshot());
+        }
+    }
+
+    private GeneratedAnswer generateAnswer(String question,
+            List<RetrievedContext> contexts,
+            java.util.Optional<QueryRoutePlan> routePlan) {
+        return routePlan
+                .map(plan -> factQueryStrategyExecutor.generate(question, contexts, plan))
+                .orElseGet(() -> answerGenerator.generate(question, contexts));
+    }
+
+    private Flux<String> generateAnswerStream(String question,
+            List<RetrievedContext> contexts,
+            java.util.Optional<QueryRoutePlan> routePlan) {
+        return routePlan
+                .map(plan -> factQueryStrategyExecutor.generateStream(question, contexts, plan))
+                .orElseGet(() -> answerGenerator.generateStream(question, contexts));
     }
 
     private boolean isTimeoutFailure(Throwable failure) {

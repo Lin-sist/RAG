@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "bounded-query-router-budget-v1",
+  "profileId": "fact-v1-default-budget",
+  "maxQueryVariants": 8,
+  "maxRetrievalPasses": 1,
+  "maxRerankCalls": 1,
+  "maxGenerationCalls": 1,
+  "maxContextTokens": 1200,
+  "maxOutputTokens": 2048,
+  "deadlineMillis": 120000
+}

@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag.service;
 
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
+import com.enterprise.rag.core.rag.router.QueryBudgetUsage;
 import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import reactor.core.publisher.Flux;
 
@@ -27,6 +28,12 @@ public interface RAGService {
                 new java.util.concurrent.atomic.AtomicReference<>("LEGACY");
         private final java.util.concurrent.atomic.AtomicReference<String> finalState =
                 new java.util.concurrent.atomic.AtomicReference<>("UNKNOWN");
+        private final java.util.concurrent.atomic.AtomicReference<String> noAnswerReason =
+                new java.util.concurrent.atomic.AtomicReference<>("NONE");
+        private final java.util.concurrent.atomic.AtomicReference<String> transportOutcome =
+                new java.util.concurrent.atomic.AtomicReference<>("UNKNOWN");
+        private final java.util.concurrent.atomic.AtomicReference<QueryBudgetUsage> budgetUsage =
+                new java.util.concurrent.atomic.AtomicReference<>();
 
         public void markTimeout() {
             timeout.set(true);
@@ -37,11 +44,17 @@ public interface RAGService {
         }
 
         public void recordRoute(String classifier, String policy, String strategy, String reason, String state) {
+            recordRoute(classifier, policy, strategy, reason, state, "NONE");
+        }
+
+        public void recordRoute(String classifier, String policy, String strategy, String reason,
+                String state, String noAnswer) {
             classifierVersion.set(classifier);
             policyVersion.set(policy);
             effectiveStrategy.set(strategy);
             routeReason.set(reason);
             finalState.set(state);
+            noAnswerReason.set(noAnswer);
         }
 
         public String classifierVersion() {
@@ -62,6 +75,26 @@ public interface RAGService {
 
         public String finalState() {
             return finalState.get();
+        }
+
+        public String noAnswerReason() {
+            return noAnswerReason.get();
+        }
+
+        public void recordTransportOutcome(String outcome) {
+            transportOutcome.set(outcome);
+        }
+
+        public String transportOutcome() {
+            return transportOutcome.get();
+        }
+
+        public void recordBudgetUsage(QueryBudgetUsage usage) {
+            budgetUsage.set(usage);
+        }
+
+        public QueryBudgetUsage budgetUsage() {
+            return budgetUsage.get();
         }
     }
 

@@ -245,7 +245,7 @@ public class PromptBuilder {
         return selected;
     }
 
-    private int estimateTokens(String text) {
+    public int estimateTokens(String text) {
         if (text == null || text.isBlank()) {
             return 0;
         }

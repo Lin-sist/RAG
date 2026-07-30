@@ -1,0 +1,67 @@
+{
+  "manifestSchemaVersion": "bounded-query-router-eval-manifest-v1",
+  "releaseVersion": "bounded-query-router-eval-v1",
+  "expectationSchemaVersion": "bounded-query-router-expectation-v1",
+  "evaluatorVersion": "bounded-query-router-evaluator-v1",
+  "classifierVersion": "fact-intent-v1",
+  "strategyVersion": "fact-v1",
+  "policyVersion": "evidence-no-answer-v1",
+  "budgetProfileId": "fact-v1-default-budget",
+  "artifacts": {
+    "dataset": {
+      "path": "docs/eval/releases/rag-eval-dev-v2.jsonl",
+      "bytes": 94504,
+      "sha256": "cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d"
+    },
+    "expectationSchema": {
+      "path": "docs/eval/router/bounded-query-router-expectation-v1.schema.json",
+      "bytes": 447,
+      "sha256": "b2097a75449d3e9cfa9c76c1e364bfe1232cf11ba6afaf0a3a5df3ab52f49220"
+    },
+    "expectations": {
+      "path": "docs/eval/router/bounded-query-router-eval-v1-expectations.jsonl",
+      "bytes": 1700,
+      "sha256": "81dd118031f2e744bde485873a23fba0d1e9bd5e7e09103d1032e3bebb0dccf2"
+    },
+    "budget": {
+      "path": "docs/eval/router/bounded-query-router-budget-v1.json",
+      "bytes": 282,
+      "sha256": "30dd4e14425c5c4eb3dee12bad8dd558f6e1a260fe7a03af1e1ff9ee51512849"
+    }
+  },
+  "datasetSampleCount": 150,
+  "datasetOrderedIdsSha256": "5baac0884a917ae20bf6e584207127f5d0e084569c5c07aa0c08d00fd986b67e",
+  "selectionCount": 20,
+  "selectionOrderedIdsSha256": "0617d0de6e4358013854aff010bc410171b3c9a20020f7ba85a2fe9594c7042c",
+  "distribution": {
+    "expectedIntent": {
+      "FACT": 10,
+      "UNSUPPORTED": 10,
+      "INVALID": 0
+    },
+    "requiredStatus": {
+      "REQUIRED": 20,
+      "OPTIONAL": 0
+    }
+  },
+  "requiredChannels": [
+    "classification",
+    "strategy_execution",
+    "budget",
+    "retrieval",
+    "generation_citation",
+    "no_answer",
+    "errors"
+  ],
+  "statusExitCodes": {
+    "PASS": 0,
+    "INVALID": 2,
+    "FAIL": 3,
+    "NOT_EVALUABLE": 4
+  },
+  "executionBoundary": {
+    "providerCallCount": 0,
+    "businessDataOutbound": false,
+    "liveEvaluationStatus": "SKIPPED"
+  }
+}

@@ -2,9 +2,18 @@ package com.enterprise.rag.core.rag.router;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 
 class BoundedQueryRouterTest {
 
@@ -98,6 +107,47 @@ class BoundedQueryRouterTest {
     }
 
     @Test
+    void unknownClassifierPolicyOrStrategyFailsClosedAtConstruction() {
+        List<java.util.function.Consumer<RouterProperties>> mutations = List.of(
+                properties -> properties.setClassifierVersion("classifier-v2"),
+                properties -> properties.setPolicyVersion("policy-v2"),
+                properties -> properties.setStrategyVersion("agentic-v1"));
+
+        for (var mutation : mutations) {
+            RouterProperties properties = new RouterProperties();
+            mutation.accept(properties);
+            assertThrows(IllegalStateException.class, () -> new BoundedQueryRouter(
+                    properties, new DeterministicFactIntentClassifier()));
+        }
+    }
+
+    @Test
+    void everyBudgetHardLimitRejectsBelowMinimumOrAboveMaximum() {
+        List<java.util.function.Consumer<RouterProperties.Fact>> mutations = List.of(
+                fact -> fact.setMaxQueryVariants(0),
+                fact -> fact.setMaxQueryVariants(33),
+                fact -> fact.setMaxRetrievalPasses(0),
+                fact -> fact.setMaxRetrievalPasses(2),
+                fact -> fact.setMaxRerankCalls(-1),
+                fact -> fact.setMaxRerankCalls(2),
+                fact -> fact.setMaxGenerationCalls(0),
+                fact -> fact.setMaxGenerationCalls(2),
+                fact -> fact.setMaxContextTokens(0),
+                fact -> fact.setMaxContextTokens(1201),
+                fact -> fact.setMaxOutputTokens(0),
+                fact -> fact.setMaxOutputTokens(2049),
+                fact -> fact.setDeadlineMillis(999),
+                fact -> fact.setDeadlineMillis(120_001));
+
+        for (var mutation : mutations) {
+            RouterProperties properties = new RouterProperties();
+            mutation.accept(properties.getFact());
+            assertThrows(IllegalStateException.class, () -> new BoundedQueryRouter(
+                    properties, new DeterministicFactIntentClassifier()));
+        }
+    }
+
+    @Test
     void classifierUsesBoundedClosedWorldCuePriority() {
         DeterministicFactIntentClassifier classifier = new DeterministicFactIntentClassifier();
 
@@ -125,5 +175,78 @@ class BoundedQueryRouterTest {
         assertEquals(
                 new QueryClassification(QueryIntent.UNSUPPORTED, QueryRouteReason.AMBIGUOUS),
                 classifier.classify("聊聊 JWT"));
+    }
+
+
+    @Test
+    void classifierMatrixCoversDefinitionUnsupportedAmbiguousAndInvalidInputs() {
+        DeterministicFactIntentClassifier classifier = new DeterministicFactIntentClassifier();
+        List<TestCase> cases = List.of(
+                new TestCase("何谓 RRF？", QueryIntent.FACT, QueryRouteReason.DEFINITION_CUE),
+                new TestCase("谁是 Java 的最初设计者？", QueryIntent.FACT, QueryRouteReason.FACT_LOOKUP_CUE),
+                new TestCase("OAuth 定义在哪里？", QueryIntent.FACT, QueryRouteReason.FACT_LOOKUP_CUE),
+                new TestCase("为什么要分块？", QueryIntent.UNSUPPORTED, QueryRouteReason.AMBIGUOUS),
+                new TestCase("规划一个完整 RAG 平台", QueryIntent.UNSUPPORTED, QueryRouteReason.AMBIGUOUS),
+                new TestCase("全面分析知识库", QueryIntent.UNSUPPORTED, QueryRouteReason.GLOBAL_CUE),
+                new TestCase("给我用药建议", QueryIntent.UNSUPPORTED, QueryRouteReason.HIGH_RISK_CUE),
+                new TestCase("什么是 RAG，并分别说明优缺点", QueryIntent.UNSUPPORTED, QueryRouteReason.MULTI_HOP_CUE),
+                new TestCase("\t\r\n", QueryIntent.INVALID, QueryRouteReason.INVALID_INPUT),
+                new TestCase("正常文本\u0007", QueryIntent.INVALID, QueryRouteReason.INVALID_INPUT));
+
+        for (TestCase testCase : cases) {
+            assertEquals(
+                    new QueryClassification(testCase.intent(), testCase.reason()),
+                    classifier.classify(testCase.query()),
+                    testCase.query());
+        }
+    }
+
+    @Test
+    void classifierIsByteStableAcrossRepeatedConcurrentLocaleAndTimezoneChanges() throws Exception {
+        DeterministicFactIntentClassifier classifier = new DeterministicFactIntentClassifier();
+        QueryClassification expected = classifier.classify("  什么是  ＪＷＴ？  ");
+        Locale originalLocale = Locale.getDefault();
+        TimeZone originalTimeZone = TimeZone.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Kiritimati"));
+            var executor = Executors.newFixedThreadPool(8);
+            try {
+                List<Callable<QueryClassification>> tasks = new ArrayList<>();
+                for (int index = 0; index < 1_000; index++) {
+                    tasks.add(() -> classifier.classify("  什么是  ＪＷＴ？  "));
+                }
+                for (var future : executor.invokeAll(tasks)) {
+                    assertEquals(expected, future.get());
+                }
+            } finally {
+                executor.shutdownNow();
+            }
+        } finally {
+            Locale.setDefault(originalLocale);
+            TimeZone.setDefault(originalTimeZone);
+        }
+    }
+
+    @Test
+    void classifierFuzzRemainsBoundedAndDeterministicForUnicode() {
+        DeterministicFactIntentClassifier classifier = new DeterministicFactIntentClassifier();
+        assertTimeout(Duration.ofSeconds(2), () -> {
+            long state = 0x5eedL;
+            for (int sample = 0; sample < 10_000; sample++) {
+                StringBuilder query = new StringBuilder();
+                int length = sample % 513;
+                for (int index = 0; index < length; index++) {
+                    state = state * 6364136223846793005L + 1442695040888963407L;
+                    int codePoint = 0x20 + (int) Math.floorMod(state, 0xD7FF - 0x20);
+                    query.appendCodePoint(codePoint);
+                }
+                String value = query.toString();
+                assertEquals(classifier.classify(value), classifier.classify(value));
+            }
+        });
+    }
+
+    private record TestCase(String query, QueryIntent intent, QueryRouteReason reason) {
     }
 }

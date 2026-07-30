@@ -1903,3 +1903,20 @@
 - 外调与安全：全部验证使用 mock/property/deterministic fixtures；真实 embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false、费用事件=0。没有新增依赖，未修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/`、accepted baseline 或历史报告；未暂存、未提交、未 push、未创建 PR、未部署。
 - 跳过与剩余风险：versioned router eval/validator/evaluator、candidate/context/token usage、SSE generation 完成/取消后的 citation/final-state、完整 MCP authoritative before/after 与全仓 `mvn -q test` 尚未执行；live router ask/eval 未授权并保持 `SKIPPED`。当前只是第一实现切片，不构成 C16 完成、baseline acceptance、生产默认或真实 provider 质量/SLA 证明。
 - Commit：`pending`；提交责任保持 `用户手动提交`，建议 `feat(rag): 实现C16有界事实路由第一切片`。
+
+## 2026-07-30｜C16 第一实现切片提交补录
+
+- Commit：`32d085cb2a1479aaca2a4b0e47a5efa561eefee7`（`feat(rag): 实现C16有界事实路由第一切片`）。本条只补录上一执行提交的真实 hash；本轮继续实现仍为 `Commit: pending`。
+
+## 2026-07-30｜C16 剩余实现与 Deterministic Evidence 收口
+
+- 范围与实现：补齐 `QueryBudgetUsage/QueryBudgetLedger` 的 candidate/context、estimated context/output token 与 deadline facts；新增 `GenerationBudget` 并把 server-owned context/output ceiling 传入 prompt 与 provider request。SSE 首版在内部缓冲后复用 citation validation，只有 validated answer 才转发原 chunks；terminal signal 记录 transport outcome、classifier/strategy/policy/final state/no-answer reason 与完整 usage，取消/timeout/error 不形成 partial success。
+- Router 结构：`RouterProperties` 增加固定 `strategy-version=fact-v1`，unknown classifier/policy/strategy 与所有 budget hard bounds 在构造期 fail closed；新增 closed-world `QueryStrategyRegistry`、`FactQueryStrategyExecutor` 与 `EvidenceAdmission`，把 fact generation、stream finalize 和 pre/post evidence policy 从主服务中显式编排。分类器只增加通用“是指什么”事实后缀；冻结 20 条 sidecar 为 FACT=10 / UNSUPPORTED=10，intent 全匹配。
+- MCP 与兼容：新增 deterministic `C16McpRouterIntegrationTest`，确认 MCP `rag.ask` 复用同一 enabled `RAGService.ask`、同一 fact route/final state，且 Tool diagnostics 不暴露 route/budget/provider selector。全部 MCP 相邻回归为 18 classes / 102 tests / 0 failures / 0 errors / 0 skipped；公开 request DTO、SSE wire、MCP Tool schema、数据库与前端均未修改。
+- 评测 release：新增 `docs/eval/router/` 下 manifest、ID-only expectation schema/sidecar、固定 budget 与 traceability；dataset 继续固定 `rag-eval-dev-v2` 150 条 identity。新增 Python 标准库 `router_eval_contract.py` 与 `evaluate_bounded_query_router.py`，覆盖安全相对路径、hash/bytes/order/count/distribution、sidecar coverage、七通道、confusion/FACT precision/recall/coverage/unsupported leakage、四状态退出码与 formal no-overwrite。plan-only=`VALID`，manifest SHA-256=`099a35a11cb6301592cb8cf5b41812671caf9b905924676dcb81916b057d8553`。
+- TDD 与聚焦验证：validator 11 tests、evaluator 10 tests 均先观察 module missing RED 后转 GREEN；Router 配置/矩阵/并发/locale/timezone/10,000-case Unicode fuzz、release isolation、evidence policy、budget、generation ceiling、RAG sync/SSE 与 cache 聚焦测试全部通过。C16 所在 `rag-core` 全量为 168 tests / 0 failures / 0 errors / 0 skipped。
+- 全量验证：`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 211 tests / OK。`mvn -q test` 实际为 616 tests / 1 failure / 0 errors / 2 skipped；唯一 failure 是既有 `GenAiTracingConfigurationTest.unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` 在全仓执行时捕获到 OTel 原始连接日志，隔离重跑该类 9/9 通过。该债务已在 roadmap 登记且与 C16 无代码交集，因此不越界修改，也不把全仓结果声明为 GREEN。首次并行全量命令触发工具超时并留下测试 JVM，已只终止本轮启动的四个 JDK 17 测试进程，未触碰 IDE Java 进程。
+- 安全与静态门禁：SensitiveLogs 扫描 369 source files / PASS；protected/frontend/migration/accepted-baseline changes=0；Router production source 的 `docs/eval`、sample ID、sidecar label 引用=0；新增评测普通输出路径的用户绝对路径与 credential value 命中=0（`AuthorizationService` 类名为非 secret 误报）；release artifacts 固定 LF；`git diff --check` 无 whitespace error，仅有既有 CRLF/LF warning。评测 validator、evaluator 和本轮全部业务测试真实 embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false。
+- 文档与状态：更新 `.ai/ACTIVE_TASK.md`、tasks、project、architecture、roadmap、optimization index、eval guide 与 C16 traceability。tasks 只剩用户最终验收后的 baseline exact-copy/archive/`IDLE` 和归档措辞两项，不提前执行。
+- 跳过与剩余风险：前端 build=`SKIPPED`（无前端/API/SSE wire 改动）；live router ask/eval、真实 provider/model、费用/限流与业务数据出站均未授权并 `SKIPPED`。当前证据只支持 default-off `fact-intent-v1/fact-v1/evidence-no-answer-v1` 与固定 deterministic profile，不支持生产默认、真实质量/SLA、multi-hop/global/high-risk 或 Agentic RAG。
+- Commit：`pending`；提交责任保持 `用户手动提交`，建议 `feat(rag): 完成C16有界路由与评测闭环`。

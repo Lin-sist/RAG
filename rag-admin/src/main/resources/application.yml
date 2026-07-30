@@ -108,6 +108,7 @@ rag:
   router:
     enabled: ${RAG_ROUTER_ENABLED:false}
     classifier-version: fact-intent-v1
+    strategy-version: fact-v1
     policy-version: evidence-no-answer-v1
     fact:
       max-query-variants: 8

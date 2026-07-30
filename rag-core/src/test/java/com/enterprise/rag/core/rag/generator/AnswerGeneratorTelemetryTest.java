@@ -83,4 +83,26 @@ class AnswerGeneratorTelemetryTest {
         assertFalse(exported.contains("raw-sensitive-answer"));
         assertFalse(exported.contains("raw-sensitive-credential"));
     }
+
+    @Test
+    void boundedGenerationUsesServerOwnedContextAndOutputCeilings() {
+        LLMProperties properties = new LLMProperties();
+        properties.setProvider("openai");
+        WebClient.Builder webClient = WebClient.builder().exchangeFunction(request -> Mono.just(
+                ClientResponse.create(HttpStatus.OK)
+                        .header("Content-Type", "application/json")
+                        .body("{\"choices\":[{\"message\":{\"content\":\"answer\"}}],\"usage\":{}}")
+                        .build()));
+        AnswerGeneratorImpl generator = new AnswerGeneratorImpl(
+                properties, new PromptBuilder(), new CitationValidator(), webClient,
+                new GenAiTelemetry(openTelemetry));
+
+        var answer = generator.generate(
+                "什么是 JWT？",
+                List.of(),
+                new GenerationBudget(64, 128));
+
+        assertEquals(64, answer.metadata().get("contextTokenBudget"));
+        assertEquals(128, answer.metadata().get("outputTokenBudget"));
+    }
 }

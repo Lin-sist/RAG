@@ -3,6 +3,7 @@ package com.enterprise.rag.core.rag;
 import com.enterprise.rag.common.util.RedisUtil;
 import com.enterprise.rag.core.rag.generator.AnswerGenerator;
 import com.enterprise.rag.core.rag.generator.LLMException;
+import com.enterprise.rag.core.rag.generator.GenerationBudget;
 import com.enterprise.rag.core.rag.model.GeneratedAnswer;
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
@@ -55,6 +56,14 @@ class RAGServiceImplTest {
         redisUtil = mock(RedisUtil.class);
 
         when(answerGenerator.getModelName()).thenReturn("mock-model");
+        when(answerGenerator.generate(anyString(), any(List.class), any(GenerationBudget.class)))
+                .thenAnswer(invocation -> answerGenerator.generate(
+                        invocation.getArgument(0, String.class),
+                        invocation.getArgument(1, List.class)));
+        when(answerGenerator.generateStream(anyString(), any(List.class), any(GenerationBudget.class)))
+                .thenAnswer(invocation -> answerGenerator.generateStream(
+                        invocation.getArgument(0, String.class),
+                        invocation.getArgument(1, List.class)));
         when(redisUtil.getString(any())).thenReturn(null);
         when(queryEngine.retrieve(any(), org.mockito.ArgumentMatchers.<RetrieveOptions>any())).thenReturn(List.of());
         doAnswer(invocation -> RetrievalResult.complete(queryEngine.retrieve(
@@ -264,13 +273,58 @@ class RAGServiceImplTest {
         assertEquals("MULTI_HOP_CUE", response.metadata().get("routeReason"));
         verify(queryEngine, never()).retrieveWithDiagnostics(any(), any());
         verify(answerGenerator, never()).generate(any(), any());
+        verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
+    void enabledRouterStopsOverlengthInvalidQuestionBeforeCacheRetrievalOrGeneration() {
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl routedService = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redisUtil,
+                new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+
+        QAResponse response = routedService.ask(QARequest.of("x".repeat(513), SCOPE));
+
+        assertEquals("unsupported", response.metadata().get("status"));
+        assertEquals("INVALID", response.metadata().get("routeFinalState"));
+        assertEquals("INVALID_INPUT", response.metadata().get("routeReason"));
+        verify(redisUtil, never()).getString(anyString());
+        verify(queryEngine, never()).retrieveWithDiagnostics(any(), any());
+        verify(answerGenerator, never()).generate(any(), any());
+        verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
+    void enabledFactRouteFailsClosedOnUnknownRetrievalDiagnosticsWithoutCacheWrite() {
+        doReturn(new RetrievalResult(List.of(), Map.of("queryVariantCount", 1)))
+                .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl routedService = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redisUtil,
+                new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+
+        QAResponse response = routedService.ask(QARequest.of("什么是 JWT？", SCOPE));
+
+        assertEquals("error", response.metadata().get("status"));
+        assertEquals("ERROR", response.metadata().get("routeFinalState"));
+        assertEquals(1, response.metadata().get("routeRetrievalPasses"));
+        verify(answerGenerator, never()).generate(any(), any());
+        verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
     }
 
     @Test
     void enabledFactRouteReturnsUnifiedNoAnswerWithoutGenerationWhenEvidenceIsEmpty() {
         doReturn(new RetrievalResult(
                 List.of(),
-                Map.of("queryVariantCount", 1, "rerankModelCallCount", 0)))
+                Map.of("queryVariantCount", 1, "rerankModelCallCount", 0, "rerankCandidateCount", 0)))
                 .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
         RouterProperties properties = new RouterProperties();
         properties.setEnabled(true);
@@ -306,13 +360,20 @@ class RAGServiceImplTest {
                 "chunk-1", 1L, "chunk-1", 0.91d, "JWT 是一种紧凑的声明传输格式。", -1, -1);
         doReturn(new RetrievalResult(
                 List.of(context),
-                Map.of("queryVariantCount", 1, "rerankModelCallCount", 0)))
+                Map.of(
+                        "queryVariantCount", 1,
+                        "rerankModelCallCount", 0,
+                        "rerankCandidateCount", 2)))
                 .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
         when(answerGenerator.generate(eq("什么是 JWT？"), eq(List.of(context))))
                 .thenReturn(GeneratedAnswer.of(
                         "JWT 是一种紧凑的声明传输格式。",
                         List.of(citation),
-                        Map.of("model", "deterministic", "validCitations", 1)));
+                        Map.of(
+                                "model", "deterministic",
+                                "validCitations", 1,
+                                "estimatedContextTokens", 100,
+                                "estimatedOutputTokens", 20)));
         RouterProperties properties = new RouterProperties();
         properties.setEnabled(true);
         RAGServiceImpl routedService = new RAGServiceImpl(
@@ -331,6 +392,10 @@ class RAGServiceImplTest {
         assertEquals(1, response.metadata().get("routeGenerationCalls"));
         assertEquals(1, response.metadata().get("routeQueryVariants"));
         assertEquals(0, response.metadata().get("routeRerankCalls"));
+        assertEquals(2, response.metadata().get("routeCandidateCount"));
+        assertEquals(1, response.metadata().get("routeContextCount"));
+        assertEquals(100, response.metadata().get("routeEstimatedContextTokens"));
+        assertEquals(20, response.metadata().get("routeEstimatedOutputTokens"));
         assertEquals("WITHIN_BUDGET", response.metadata().get("routeBudgetOutcome"));
         assertEquals(1, response.citations().size());
     }
@@ -344,13 +409,16 @@ class RAGServiceImplTest {
                 Map.of("documentId", 1L, "chunkId", "chunk-1"));
         doReturn(new RetrievalResult(
                 List.of(context),
-                Map.of("queryVariantCount", 1, "rerankModelCallCount", 0)))
+                Map.of("queryVariantCount", 1, "rerankModelCallCount", 0, "rerankCandidateCount", 1)))
                 .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
         when(answerGenerator.generate(eq("什么是 JWT？"), eq(List.of(context))))
                 .thenReturn(GeneratedAnswer.of(
                         "JWT 是一种紧凑的声明传输格式。",
                         List.of(),
-                        Map.of("model", "deterministic")));
+                        Map.of(
+                                "model", "deterministic",
+                                "estimatedContextTokens", 100,
+                                "estimatedOutputTokens", 20)));
         RouterProperties properties = new RouterProperties();
         properties.setEnabled(true);
         RAGServiceImpl routedService = new RAGServiceImpl(
@@ -394,6 +462,48 @@ class RAGServiceImplTest {
     }
 
     @Test
+    void enabledFactRouteFailsClosedAndSkipsCacheWhenGenerationUsageExceedsBudget() {
+        RetrievedContext context = new RetrievedContext(
+                "JWT 是一种紧凑的声明传输格式。",
+                "chunk-1",
+                0.91f,
+                Map.of("documentId", 1L, "chunkId", "chunk-1"));
+        Citation citation = Citation.grounded(
+                "chunk-1", 1L, "chunk-1", 0.91d, "JWT 是一种紧凑的声明传输格式。", -1, -1);
+        doReturn(new RetrievalResult(
+                List.of(context),
+                Map.of(
+                        "queryVariantCount", 1,
+                        "rerankModelCallCount", 0,
+                        "rerankCandidateCount", 1)))
+                .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
+        when(answerGenerator.generate(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(GeneratedAnswer.of(
+                        "JWT 是一种紧凑的声明传输格式。",
+                        List.of(citation),
+                        Map.of(
+                                "validCitations", 1,
+                                "estimatedContextTokens", 100,
+                                "estimatedOutputTokens", 3000)));
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl routedService = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redisUtil,
+                new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+
+        QAResponse response = routedService.ask(new QARequest(
+                "什么是 JWT？", SCOPE, 5, QARequest.DEFAULT_MIN_SCORE, Map.of(), true, false));
+
+        assertEquals("error", response.metadata().get("status"));
+        assertEquals("ERROR", response.metadata().get("routeFinalState"));
+        assertEquals("CALL_LIMIT_EXCEEDED", response.metadata().get("routeBudgetOutcome"));
+        verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
     void enabledStreamRejectsUnsupportedBeforeRetrievalAndRecordsTerminalRoute() {
         RouterProperties properties = new RouterProperties();
         properties.setEnabled(true);
@@ -417,6 +527,7 @@ class RAGServiceImplTest {
 
         assertEquals(List.of("当前有界路由仅支持事实型问题，请改为单一事实查询。"), chunks);
         assertEquals("UNSUPPORTED", terminalSignal.finalState());
+        assertEquals("NONE", terminalSignal.noAnswerReason());
         assertEquals("MULTI_HOP_CUE", terminalSignal.routeReason());
         assertEquals("none", terminalSignal.effectiveStrategy());
         assertEquals("evidence-no-answer-v1", terminalSignal.policyVersion());
@@ -428,7 +539,7 @@ class RAGServiceImplTest {
     void enabledFactStreamUsesSingleBoundedRetrievalAndRecordsNoAnswer() {
         doReturn(new RetrievalResult(
                 List.of(),
-                Map.of("queryVariantCount", 1, "rerankModelCallCount", 0)))
+                Map.of("queryVariantCount", 1, "rerankModelCallCount", 0, "rerankCandidateCount", 0)))
                 .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
         RouterProperties properties = new RouterProperties();
         properties.setEnabled(true);
@@ -450,10 +561,216 @@ class RAGServiceImplTest {
 
         assertEquals(List.of("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。"), chunks);
         assertEquals("NO_ANSWER", terminalSignal.finalState());
+        assertEquals("INSUFFICIENT_EVIDENCE", terminalSignal.noAnswerReason());
         assertEquals("fact-v1", terminalSignal.effectiveStrategy());
         verify(queryEngine).retrieveWithDiagnostics(
                 eq("什么是 JWT？"),
                 argThat(options -> options.maxQueryVariants() == 8));
         verify(answerGenerator, never()).generateStream(any(), any());
+    }
+
+    @Test
+    void enabledFactStreamEmitsOnlyValidatedAnswerAndRecordsAnswerTerminalState() {
+        RetrievedContext context = new RetrievedContext(
+                "JWT 是一种紧凑的声明传输格式。",
+                "chunk-1",
+                0.91f,
+                Map.of("documentId", 1L, "chunkId", "chunk-1"));
+        doReturn(new RetrievalResult(
+                List.of(context),
+                Map.of(
+                        "queryVariantCount", 1,
+                        "rerankModelCallCount", 0,
+                        "rerankCandidateCount", 1)))
+                .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
+        when(answerGenerator.generateStream(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(reactor.core.publisher.Flux.just("JWT 是一种", "紧凑的声明传输格式。"));
+        Citation citation = Citation.grounded(
+                "chunk-1", 1L, "chunk-1", 0.91d, "JWT 是一种紧凑的声明传输格式。", -1, -1);
+        when(answerGenerator.finalizeStream(
+                eq("什么是 JWT？"),
+                eq("JWT 是一种紧凑的声明传输格式。"),
+                eq(List.of(context)),
+                any(GenerationBudget.class)))
+                .thenReturn(GeneratedAnswer.of(
+                        "JWT 是一种紧凑的声明传输格式。",
+                        List.of(citation),
+                        Map.of(
+                                "validCitations", 1,
+                                "estimatedContextTokens", 100,
+                                "estimatedOutputTokens", 20)));
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl routedService = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redisUtil,
+                new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+        com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal terminalSignal =
+                new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
+
+        List<String> chunks = routedService.askStream(QARequest.stream("什么是 JWT？", SCOPE))
+                .contextWrite(contextView -> contextView.put(
+                        com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY,
+                        terminalSignal))
+                .collectList()
+                .block();
+
+        assertEquals(List.of("JWT 是一种", "紧凑的声明传输格式。"), chunks);
+        assertEquals("ANSWER", terminalSignal.finalState());
+        assertEquals("NONE", terminalSignal.noAnswerReason());
+        assertEquals("fact-v1", terminalSignal.effectiveStrategy());
+    }
+
+    @Test
+    void enabledFactStreamCancellationRecordsErrorWithoutPartialSuccess() {
+        RetrievedContext context = new RetrievedContext(
+                "JWT evidence", "chunk-1", 0.91f, Map.of("documentId", 1L, "chunkId", "chunk-1"));
+        doReturn(new RetrievalResult(
+                List.of(context),
+                Map.of(
+                        "queryVariantCount", 1,
+                        "rerankModelCallCount", 0,
+                        "rerankCandidateCount", 1)))
+                .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
+        when(answerGenerator.generateStream(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(reactor.core.publisher.Flux.never());
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl routedService = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redisUtil,
+                new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+        com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal terminalSignal =
+                new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
+
+        reactor.core.Disposable subscription = routedService.askStream(QARequest.stream("什么是 JWT？", SCOPE))
+                .contextWrite(contextView -> contextView.put(
+                        com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY,
+                        terminalSignal))
+                .subscribe();
+        subscription.dispose();
+
+        assertEquals("CANCELLED", terminalSignal.transportOutcome());
+        assertEquals("ERROR", terminalSignal.finalState());
+        assertEquals("NONE", terminalSignal.noAnswerReason());
+        assertEquals(1, terminalSignal.budgetUsage().generationCalls());
+        verify(answerGenerator, never()).finalizeStream(any(), any(), any(), any());
+    }
+
+    @Test
+    void enabledFactStreamReplacesUnvalidatedOutputWithUnifiedNoAnswer() {
+        RetrievedContext context = new RetrievedContext(
+                "JWT evidence", "chunk-1", 0.91f, Map.of("documentId", 1L, "chunkId", "chunk-1"));
+        doReturn(new RetrievalResult(
+                List.of(context),
+                Map.of(
+                        "queryVariantCount", 1,
+                        "rerankModelCallCount", 0,
+                        "rerankCandidateCount", 1)))
+                .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
+        when(answerGenerator.generateStream(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(reactor.core.publisher.Flux.just("unvalidated output"));
+        when(answerGenerator.finalizeStream(
+                eq("什么是 JWT？"),
+                eq("unvalidated output"),
+                eq(List.of(context)),
+                any(GenerationBudget.class)))
+                .thenReturn(GeneratedAnswer.of(
+                        "unvalidated output",
+                        List.of(),
+                        Map.of("estimatedContextTokens", 20, "estimatedOutputTokens", 5)));
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl routedService = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redisUtil,
+                new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+        com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal terminalSignal =
+                new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
+
+        List<String> chunks = routedService.askStream(QARequest.stream("什么是 JWT？", SCOPE))
+                .contextWrite(contextView -> contextView.put(
+                        com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY,
+                        terminalSignal))
+                .collectList()
+                .block();
+
+        assertEquals(List.of(QAResponse.noResult("什么是 JWT？").answer()), chunks);
+        assertEquals("NO_ANSWER", terminalSignal.finalState());
+        assertEquals("UNVALIDATED_EVIDENCE", terminalSignal.noAnswerReason());
+        assertEquals("SUCCESS", terminalSignal.transportOutcome());
+    }
+
+    @Test
+    void enabledFactSyncAndStreamShareRoutePolicyFinalStateAndUsageSemantics() {
+        RetrievedContext context = new RetrievedContext(
+                "JWT 是一种紧凑的声明传输格式。",
+                "chunk-1",
+                0.91f,
+                Map.of("documentId", 1L, "chunkId", "chunk-1"));
+        Citation citation = Citation.grounded(
+                "chunk-1", 1L, "chunk-1", 0.91d, "JWT 是一种紧凑的声明传输格式。", -1, -1);
+        doReturn(new RetrievalResult(
+                List.of(context),
+                Map.of(
+                        "queryVariantCount", 1,
+                        "rerankModelCallCount", 0,
+                        "rerankCandidateCount", 1)))
+                .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
+        GeneratedAnswer generated = GeneratedAnswer.of(
+                "JWT 是一种紧凑的声明传输格式。",
+                List.of(citation),
+                Map.of(
+                        "validCitations", 1,
+                        "estimatedContextTokens", 100,
+                        "estimatedOutputTokens", 20));
+        when(answerGenerator.generate(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(generated);
+        when(answerGenerator.generateStream(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(reactor.core.publisher.Flux.just(generated.answer()));
+        when(answerGenerator.finalizeStream(
+                eq("什么是 JWT？"), eq(generated.answer()), eq(List.of(context)), any(GenerationBudget.class)))
+                .thenReturn(generated);
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl routedService = new RAGServiceImpl(
+                queryEngine,
+                answerGenerator,
+                redisUtil,
+                new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+
+        QAResponse sync = routedService.ask(new QARequest(
+                "什么是 JWT？", SCOPE, 5, QARequest.DEFAULT_MIN_SCORE, Map.of(), false, false));
+        com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal signal =
+                new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
+        List<String> stream = routedService.askStream(QARequest.stream("什么是 JWT？", SCOPE))
+                .contextWrite(contextView -> contextView.put(
+                        com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY,
+                        signal))
+                .collectList()
+                .block();
+
+        assertEquals(List.of(generated.answer()), stream);
+        assertEquals(sync.metadata().get("routeClassifierVersion"), signal.classifierVersion());
+        assertEquals(sync.metadata().get("routePolicyVersion"), signal.policyVersion());
+        assertEquals(sync.metadata().get("routeEffectiveStrategy"), signal.effectiveStrategy());
+        assertEquals(sync.metadata().get("routeReason"), signal.routeReason());
+        assertEquals(sync.metadata().get("routeFinalState"), signal.finalState());
+        assertEquals(sync.metadata().get("noAnswerReason"), signal.noAnswerReason());
+        assertEquals(sync.metadata().get("routeQueryVariants"), signal.budgetUsage().queryVariants());
+        assertEquals(sync.metadata().get("routeRetrievalPasses"), signal.budgetUsage().retrievalPasses());
+        assertEquals(sync.metadata().get("routeGenerationCalls"), signal.budgetUsage().generationCalls());
+        assertEquals(sync.metadata().get("routeContextCount"), signal.budgetUsage().contextCount());
+        assertEquals(sync.metadata().get("routeEstimatedContextTokens"),
+                signal.budgetUsage().estimatedContextTokens());
+        assertEquals(sync.metadata().get("routeEstimatedOutputTokens"),
+                signal.budgetUsage().estimatedOutputTokens());
     }
 }

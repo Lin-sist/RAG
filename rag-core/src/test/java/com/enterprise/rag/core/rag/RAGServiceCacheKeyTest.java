@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag;
 
 import com.enterprise.rag.common.util.RedisUtil;
 import com.enterprise.rag.core.rag.generator.AnswerGenerator;
+import com.enterprise.rag.core.rag.generator.GenerationBudget;
 import com.enterprise.rag.core.rag.model.Citation;
 import com.enterprise.rag.core.rag.model.GeneratedAnswer;
 import com.enterprise.rag.core.rag.model.QARequest;
@@ -55,7 +56,14 @@ class RAGServiceCacheKeyTest {
         when(answerGenerator.getModelName()).thenReturn("mock-model");
         when(answerGenerator.generate(anyString(), any(List.class))).thenReturn(
                 GeneratedAnswer.of("answer", List.of(Citation.of("doc-thread-pool", "Java 线程池参数详解")),
-                        Map.of("model", "mock-model")));
+                        Map.of(
+                                "model", "mock-model",
+                                "estimatedContextTokens", 100,
+                                "estimatedOutputTokens", 20)));
+        when(answerGenerator.generate(anyString(), any(List.class), any(GenerationBudget.class)))
+                .thenAnswer(invocation -> answerGenerator.generate(
+                        invocation.getArgument(0, String.class),
+                        invocation.getArgument(1, List.class)));
 
         cache = new HashMap<>();
         when(redisUtil.getString(anyString())).thenAnswer(invocation -> cache.get(invocation.getArgument(0)));
@@ -103,7 +111,10 @@ class RAGServiceCacheKeyTest {
             RetrieveOptions options = invocation.getArgument(1, RetrieveOptions.class);
             return new com.enterprise.rag.core.rag.query.RetrievalResult(
                     queryEngine.retrieve(query, options),
-                    Map.of("queryVariantCount", 1, "rerankModelCallCount", 0));
+                    Map.of(
+                            "queryVariantCount", 1,
+                            "rerankModelCallCount", 0,
+                            "rerankCandidateCount", 1));
         })
                 .when(queryEngine).retrieveWithDiagnostics(anyString(), any(RetrieveOptions.class));
         TenantVectorScope scope = new TenantVectorScope(11L, 31L, "kb_java");

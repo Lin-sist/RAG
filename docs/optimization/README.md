@@ -1,6 +1,6 @@
 # RAG 优化文档索引
 
-> 状态日期：2026-07-27
+> 状态日期：2026-07-30
 
 本目录只保留三类内容：当前 v3 证据、已关闭的 v4 阶段证据、历史演进证据。阶段编号只在所属版本目录内解释。
 
@@ -96,6 +96,12 @@
 - archived change：`../../openspec/changes/archive/2026-07-30-mcp-readonly-service/`。已实现默认关闭、本机优先、sessionless Streamable HTTP `/mcp`，复用现有 JWT 与 server-derived tenant identity，提供三种 bounded Resource 和四个固定只读 Tool；search/ask 与 QA cache 均有独立 default-off 开关。
 - 固定 MCP Java SDK `2.0.0`、spec `2025-11-25`、Tool schema SHA-256 和 conformance `0.1.15`；独立官方 Java SDK client、适用的五个 conformance generic scenarios、双 tenant MySQL/Redis/Milvus/MinIO synthetic integration 均通过。权威状态摘要前后一致，real provider/model calls=0、businessDataOutbound=false、真实 Milvus maintenance=`SKIPPED`。
 - Git HEAD `45959672` 的 clean-HEAD driver evidence 已复跑，`workingTreeDirty=false`、权威状态摘要前后一致；7 requirements / 26 scenarios 已接受进 `rag-system` baseline并归档。该证据不外推 MCP OAuth、远程生产部署、真实 provider、Qdrant/Elasticsearch、生产第二业务 tenant、Router 或 Agentic RAG。
+
+### C16：Bounded Query Router（实现完成，等待最终验收）
+
+- active change：`../../openspec/changes/bounded-query-router/`。已实现 default-off `fact-intent-v1`、closed-world `fact-v1` executor、`evidence-no-answer-v1`、跨 stage budget/usage、sync/SSE/MCP read-only attribution 与版本化 cache identity。
+- `../eval/router/bounded-query-router-eval-v1-manifest.json` 固定 v2 dataset identity、20 条 ID-only expectation sidecar、budget profile、七通道与四状态退出码；validator/evaluator 均为 Python 标准库、本地 fail-fast、formal no-overwrite。
+- deterministic evidence 为 provider/model calls=0、businessDataOutbound=false，live router ask/eval 未授权并 `SKIPPED`。当前 delta 尚未接受进 baseline，change 未归档，生产默认仍关闭；不得外推 multi-hop/global/high-risk、真实 provider 质量、生产 SLA 或 Agentic RAG。
 
 ## 历史材料
 

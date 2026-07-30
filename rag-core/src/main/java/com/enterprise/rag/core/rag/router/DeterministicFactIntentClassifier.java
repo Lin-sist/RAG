@@ -19,7 +19,7 @@ public final class DeterministicFactIntentClassifier {
     private static final List<String> DEFINITION_PREFIXES = List.of("什么是", "什么叫", "何谓");
     private static final List<String> FACT_PREFIXES = List.of("谁是", "何时", "什么时候", "哪里", "多少", "哪一年");
     private static final List<String> FACT_SUFFIXES = List.of(
-            "是什么", "是谁", "何时", "什么时候", "在哪里", "多少", "哪一年");
+            "是什么", "是指什么", "是谁", "何时", "什么时候", "在哪里", "多少", "哪一年");
 
     public QueryClassification classify(String query) {
         if (query == null || query.isBlank() || query.length() > MAX_QUERY_LENGTH || containsControlCharacter(query)) {

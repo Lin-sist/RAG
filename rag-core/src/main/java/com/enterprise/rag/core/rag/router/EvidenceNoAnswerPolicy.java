@@ -1,8 +1,17 @@
 package com.enterprise.rag.core.rag.router;
 
 import com.enterprise.rag.core.rag.model.GeneratedAnswer;
+import com.enterprise.rag.core.rag.model.RetrievedContext;
+
+import java.util.List;
 
 public final class EvidenceNoAnswerPolicy {
+
+    public EvidenceAdmission beforeGeneration(List<RetrievedContext> contexts) {
+        return contexts == null || contexts.isEmpty()
+                ? EvidenceAdmission.insufficient()
+                : EvidenceAdmission.proceed();
+    }
 
     public EvidenceDecision afterGeneration(GeneratedAnswer answer) {
         if (answer != null

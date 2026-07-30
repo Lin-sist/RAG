@@ -12,6 +12,10 @@ public final class QueryBudgetLedger {
     private int retrievalPasses;
     private int rerankCalls;
     private int generationCalls;
+    private int candidateCount;
+    private int contextCount;
+    private int estimatedContextTokens;
+    private int estimatedOutputTokens;
     private BudgetOutcome outcome = BudgetOutcome.WITHIN_BUDGET;
 
     public QueryBudgetLedger(QueryExecutionBudget budget) {
@@ -48,6 +52,15 @@ public final class QueryBudgetLedger {
         rerankCalls = actualCount;
     }
 
+    public synchronized void recordRetrievalFacts(int actualCandidateCount, int actualContextCount) {
+        ensureDeadline();
+        if (actualCandidateCount < 0 || actualContextCount < 0 || actualContextCount > actualCandidateCount) {
+            fail(BudgetOutcome.CALL_LIMIT_EXCEEDED);
+        }
+        candidateCount = actualCandidateCount;
+        contextCount = actualContextCount;
+    }
+
     public synchronized void beginGeneration() {
         ensureDeadline();
         if (generationCalls >= budget.maxGenerationCalls()) {
@@ -56,12 +69,28 @@ public final class QueryBudgetLedger {
         generationCalls++;
     }
 
+    public synchronized void recordGenerationFacts(int contextTokens, int outputTokens) {
+        ensureDeadline();
+        if (contextTokens < 0
+                || outputTokens < 0
+                || contextTokens > budget.maxContextTokens()
+                || outputTokens > budget.maxOutputTokens()) {
+            fail(BudgetOutcome.CALL_LIMIT_EXCEEDED);
+        }
+        estimatedContextTokens = contextTokens;
+        estimatedOutputTokens = outputTokens;
+    }
+
     public synchronized QueryBudgetUsage snapshot() {
         return new QueryBudgetUsage(
                 queryVariants,
                 retrievalPasses,
                 rerankCalls,
                 generationCalls,
+                candidateCount,
+                contextCount,
+                estimatedContextTokens,
+                estimatedOutputTokens,
                 Math.max(0L, monotonicMillis.getAsLong() - startedAtMillis),
                 outcome);
     }

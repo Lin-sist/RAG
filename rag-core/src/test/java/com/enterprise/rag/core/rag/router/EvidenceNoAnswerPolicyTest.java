@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag.router;
 
 import com.enterprise.rag.core.rag.model.Citation;
 import com.enterprise.rag.core.rag.model.GeneratedAnswer;
+import com.enterprise.rag.core.rag.model.RetrievedContext;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -30,5 +31,15 @@ class EvidenceNoAnswerPolicyTest {
                 new EvidenceDecision(QueryFinalState.NO_ANSWER, NoAnswerReason.MODEL_REFUSAL),
                 policy.afterGeneration(GeneratedAnswer.of(
                         "cannot answer", List.of(citation), Map.of("status", "no_result", "validCitations", 1))));
+    }
+
+    @Test
+    void preGenerationAdmissionRequiresAtLeastOneCanonicalRetrievedContext() {
+        assertEquals(EvidenceAdmission.insufficient(), policy.beforeGeneration(List.of()));
+        assertEquals(EvidenceAdmission.insufficient(), policy.beforeGeneration(null));
+        assertEquals(
+                EvidenceAdmission.proceed(),
+                policy.beforeGeneration(List.of(new RetrievedContext(
+                        "evidence", "chunk-1", 0.8f, Map.of()))));
     }
 }

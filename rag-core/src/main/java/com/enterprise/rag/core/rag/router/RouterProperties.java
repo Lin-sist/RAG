@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 public class RouterProperties {
     private boolean enabled = false;
     private String classifierVersion = "fact-intent-v1";
+    private String strategyVersion = "fact-v1";
     private String policyVersion = "evidence-no-answer-v1";
     private Fact fact = new Fact();
 
@@ -19,6 +20,9 @@ public class RouterProperties {
         }
         if (!"evidence-no-answer-v1".equals(policyVersion)) {
             throw new IllegalStateException("Unsupported router policy version");
+        }
+        if (!"fact-v1".equals(strategyVersion)) {
+            throw new IllegalStateException("Unsupported router strategy version");
         }
         if (fact == null
                 || fact.maxQueryVariants < 1 || fact.maxQueryVariants > 32

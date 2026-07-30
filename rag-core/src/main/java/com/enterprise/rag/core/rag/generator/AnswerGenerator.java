@@ -21,6 +21,12 @@ public interface AnswerGenerator {
      */
     GeneratedAnswer generate(String query, List<RetrievedContext> contexts);
 
+    default GeneratedAnswer generate(String query,
+            List<RetrievedContext> contexts,
+            GenerationBudget budget) {
+        return generate(query, contexts);
+    }
+
     /**
      * 生成答案（流式）
      *
@@ -29,6 +35,19 @@ public interface AnswerGenerator {
      * @return 答案文本流
      */
     Flux<String> generateStream(String query, List<RetrievedContext> contexts);
+
+    default Flux<String> generateStream(String query,
+            List<RetrievedContext> contexts,
+            GenerationBudget budget) {
+        return generateStream(query, contexts);
+    }
+
+    default GeneratedAnswer finalizeStream(String query,
+            String answer,
+            List<RetrievedContext> contexts,
+            GenerationBudget budget) {
+        return GeneratedAnswer.of(answer, List.of(), java.util.Map.of());
+    }
 
     /**
      * 获取当前使用的模型名称

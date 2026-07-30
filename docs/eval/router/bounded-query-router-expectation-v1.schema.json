@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bounded-query-router-expectation-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sampleId", "expectedIntent", "requiredStatus"],
+  "properties": {
+    "sampleId": {"type": "string", "minLength": 1, "maxLength": 100},
+    "expectedIntent": {"enum": ["FACT", "UNSUPPORTED", "INVALID"]},
+    "requiredStatus": {"enum": ["REQUIRED", "OPTIONAL"]}
+  }
+}
