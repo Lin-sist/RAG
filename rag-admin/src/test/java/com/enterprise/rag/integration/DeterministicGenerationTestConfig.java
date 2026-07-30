@@ -28,6 +28,9 @@ class DeterministicGenerationTestConfig {
         @Override
         public GeneratedAnswer generate(String query, List<RetrievedContext> contexts) {
             invocationCount.incrementAndGet();
+            if ("c15-deterministic-generation-error".equals(query)) {
+                throw new IllegalStateException("deterministic generation failure");
+            }
             return GeneratedAnswer.of(
                     "c14 deterministic synthetic answer",
                     List.of(),

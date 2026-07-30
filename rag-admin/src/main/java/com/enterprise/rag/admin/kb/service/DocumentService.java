@@ -168,6 +168,22 @@ public interface DocumentService {
     }
 
     /**
+     * 在指定 tenant/document 边界内按持久化 chunk index 精确读取一个分块。
+     */
+    default Optional<DocumentChunk> getChunkByIndex(
+            long tenantId, Long documentId, int chunkIndex) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    /**
+     * 在指定 tenant/document 边界内按持久化 vector/chunk identity 精确读取一个分块。
+     */
+    default Optional<DocumentChunk> getChunkByVectorId(
+            long tenantId, Long documentId, String vectorId) {
+        throw new IllegalStateException("TENANT_IDENTITY_REQUIRED");
+    }
+
+    /**
      * 获取文档分块的向量ID列表
      *
      * @param documentId 文档ID

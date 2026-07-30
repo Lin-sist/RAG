@@ -255,6 +255,20 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public Optional<DocumentChunk> getChunkByIndex(
+            long tenantId, Long documentId, int chunkIndex) {
+        return Optional.ofNullable(chunkMapper.selectByTenantAndDocumentIdAndIndex(
+                tenantId, documentId, chunkIndex));
+    }
+
+    @Override
+    public Optional<DocumentChunk> getChunkByVectorId(
+            long tenantId, Long documentId, String vectorId) {
+        return Optional.ofNullable(chunkMapper.selectByTenantAndDocumentIdAndVectorId(
+                tenantId, documentId, vectorId));
+    }
+
+    @Override
     public List<String> getVectorIdsByDocumentId(Long documentId) {
         LambdaQueryWrapper<DocumentChunk> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DocumentChunk::getDocumentId, documentId)

@@ -85,9 +85,11 @@ class McpKnowledgeResourceServiceTest {
 
         McpKnowledgeResourceService service = new McpKnowledgeResourceService(
                 knowledgeBaseService,
+                documentService,
                 mock(AuthorizationService.class),
                 new ObjectMapper(),
-                50);
+                50,
+                McpProperties.DEFAULT_MAX_CHUNK_BYTES);
 
         McpSchema.ListResourcesResult result = service.list(
                 new RequestIdentity(USER_ID, TENANT_A), null);
@@ -135,9 +137,11 @@ class McpKnowledgeResourceServiceTest {
                 .thenReturn(0);
         McpKnowledgeResourceService service = new McpKnowledgeResourceService(
                 knowledgeBaseService,
+                documentService,
                 mock(AuthorizationService.class),
                 new ObjectMapper(),
-                50);
+                50,
+                McpProperties.DEFAULT_MAX_CHUNK_BYTES);
         RequestIdentity identity = new RequestIdentity(USER_ID, TENANT_A);
 
         McpSchema.ListResourcesResult firstPage = service.list(identity, null);
@@ -179,7 +183,12 @@ class McpKnowledgeResourceServiceTest {
                 mock(QAHistoryService.class));
         ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         McpKnowledgeResourceService service = new McpKnowledgeResourceService(
-                knowledgeBaseService, authorizationService, objectMapper, 50);
+                knowledgeBaseService,
+                documentService,
+                authorizationService,
+                objectMapper,
+                50,
+                McpProperties.DEFAULT_MAX_CHUNK_BYTES);
         KnowledgeBase localOwned = knowledgeBase(
                 42L, TENANT_A, USER_ID, false, "authorized");
         localOwned.setVectorCollection("private-vector-canary");

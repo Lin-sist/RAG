@@ -107,10 +107,19 @@ rag:
   # C15 read-only MCP adapter. Disabled and loopback-only by default.
   mcp:
     enabled: ${RAG_MCP_ENABLED:false}
+    external-tools-enabled: ${RAG_MCP_EXTERNAL_TOOLS_ENABLED:false}
+    cache-enabled: ${RAG_MCP_CACHE_ENABLED:false}
     local-only: ${RAG_MCP_LOCAL_ONLY:true}
     allowed-origins: ${RAG_MCP_ALLOWED_ORIGINS:}
     max-request-bytes: ${RAG_MCP_MAX_REQUEST_BYTES:131072}
     resource-page-size: ${RAG_MCP_RESOURCE_PAGE_SIZE:50}
+    max-chunk-bytes: ${RAG_MCP_MAX_CHUNK_BYTES:65536}
+    max-result-bytes: ${RAG_MCP_MAX_RESULT_BYTES:131072}
+    max-query-chars: ${RAG_MCP_MAX_QUERY_CHARS:2000}
+    read-timeout: ${RAG_MCP_READ_TIMEOUT:5s}
+    search-timeout: ${RAG_MCP_SEARCH_TIMEOUT:30s}
+    ask-timeout: ${RAG_MCP_ASK_TIMEOUT:120s}
+    expensive-concurrency-per-user: ${RAG_MCP_EXPENSIVE_CONCURRENCY_PER_USER:2}
   observability:
     tracing:
       enabled: ${RAG_OBSERVABILITY_TRACING_ENABLED:false}

@@ -27,6 +27,34 @@ public interface DocumentChunkMapper extends BaseMapper<DocumentChunk> {
     List<DocumentChunk> selectByTenantAndDocumentId(@Param("tenantId") long tenantId,
             @Param("documentId") long documentId);
 
+    @Select("""
+            SELECT *
+              FROM document_chunk
+             WHERE tenant_id = #{tenantId}
+               AND document_id = #{documentId}
+               AND chunk_index = #{chunkIndex}
+               AND deleted = 0
+             LIMIT 1
+            """)
+    DocumentChunk selectByTenantAndDocumentIdAndIndex(
+            @Param("tenantId") long tenantId,
+            @Param("documentId") long documentId,
+            @Param("chunkIndex") int chunkIndex);
+
+    @Select("""
+            SELECT *
+              FROM document_chunk
+             WHERE tenant_id = #{tenantId}
+               AND document_id = #{documentId}
+               AND vector_id = #{vectorId}
+               AND deleted = 0
+             LIMIT 1
+            """)
+    DocumentChunk selectByTenantAndDocumentIdAndVectorId(
+            @Param("tenantId") long tenantId,
+            @Param("documentId") long documentId,
+            @Param("vectorId") String vectorId);
+
     @Update("""
             UPDATE document_chunk
                SET deleted = 1,

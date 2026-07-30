@@ -1,8 +1,11 @@
 package com.enterprise.rag.admin.mcp;
 
+import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
+import com.enterprise.rag.common.ratelimit.RateLimitResult;
+import com.enterprise.rag.common.ratelimit.RateLimiter;
 import com.enterprise.rag.auth.config.SecurityConfig;
 import com.enterprise.rag.auth.filter.JwtAuthenticationFilter;
 import com.enterprise.rag.auth.handler.JwtAccessDeniedHandler;
@@ -214,8 +217,24 @@ class McpAuthenticationMvcTest {
         }
 
         @Bean
+        DocumentService documentService() {
+            return mock(DocumentService.class);
+        }
+
+        @Bean
         AuthorizationService authorizationService() {
             return mock(AuthorizationService.class);
+        }
+
+        @Bean
+        RateLimiter rateLimiter() {
+            RateLimiter rateLimiter = mock(RateLimiter.class);
+            when(rateLimiter.tryAcquire(
+                            org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.anyString(),
+                            org.mockito.ArgumentMatchers.any()))
+                    .thenReturn(RateLimitResult.allowed(100L, 100L));
+            return rateLimiter;
         }
     }
 }

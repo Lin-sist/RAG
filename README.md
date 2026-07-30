@@ -132,7 +132,7 @@ chmod +x start_backend.sh
 
 Swagger：`http://localhost:8080/swagger-ui.html`
 
-C15 只读 MCP adapter 当前仍在实现中，默认关闭，不能作为已验收能力或生产级 MCP/OAuth 服务使用。开发期配置和手工 Bearer header 边界见 [`docs/architecture/mcp-readonly-service.md`](docs/architecture/mcp-readonly-service.md)。
+C15 只读 MCP adapter 已完成实现期 synthetic evidence，当前等待用户最终验收、手动提交后的 clean-HEAD 复跑与 OpenSpec 归档。它仍默认关闭，不能作为生产级 MCP/OAuth 服务使用；开发期配置、能力边界与复现入口见 [`docs/architecture/mcp-readonly-service.md`](docs/architecture/mcp-readonly-service.md)，7 requirements / 26 scenarios 映射见 [`docs/eval/mcp/c15-mcp-readonly-traceability.md`](docs/eval/mcp/c15-mcp-readonly-traceability.md)。
 
 ### 6.3 启动前端
 
@@ -217,7 +217,7 @@ $env:AUTH_BOOTSTRAP_PASSWORD="<your-strong-password>"
 - `rag.llm.*`：大模型生成参数
 - `rag.embedding.*`：向量化模型参数
 - `rag.vectorstore.*`：向量存储类型与连接参数
-- `rag.mcp.*`：默认关闭的 C15 只读 MCP adapter（仍在实现中）
+- `rag.mcp.*`：默认关闭的 C15 只读 MCP adapter；external Tools 与 QA cache 另有独立 default-off 开关
 - `proxy.*`：外部 API 代理开关
 
 建议通过环境变量覆盖 API Key，不要在生产环境明文存放。

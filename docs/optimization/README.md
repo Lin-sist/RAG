@@ -91,6 +91,12 @@
 - 只使用自有 Testcontainers 与 deterministic test stub，provider/model calls=0、businessDataOutbound=false、真实 Milvus maintenance=`SKIPPED`。结论只适用于 Milvus 支持配置和固定 synthetic attack matrix，不外推 Qdrant/Elasticsearch、生产拓扑、真实迁移或所有 timing side-channel。
 - archived change：`../../openspec/changes/archive/2026-07-27-tenant-isolation-adversarial-evaluation/`。`evaluation` 5 requirements / 15 scenarios 与 `rag-system` 2 requirements / 6 scenarios 已接受进 baseline；生产第二业务 tenant、tenant management、C15/C16 仍需独立 Type C change。
 
+### C15：MCP Read-Only Service（实现证据完成，待验收归档）
+
+- active change：`../../openspec/changes/mcp-readonly-service/`。已实现默认关闭、本机优先、sessionless Streamable HTTP `/mcp`，复用现有 JWT 与 server-derived tenant identity，提供三种 bounded Resource 和四个固定只读 Tool；search/ask 与 QA cache 均有独立 default-off 开关。
+- 固定 MCP Java SDK `2.0.0`、spec `2025-11-25`、Tool schema SHA-256 和 conformance `0.1.15`；独立官方 Java SDK client、适用的五个 conformance generic scenarios、双 tenant MySQL/Redis/Milvus/MinIO synthetic integration 均通过。权威状态摘要前后一致，real provider/model calls=0、businessDataOutbound=false、真实 Milvus maintenance=`SKIPPED`。
+- 当前 driver evidence 来自 dirty implementation tree；用户手动提交后须在 clean HEAD 重跑并最终验收，之后才能接受 7 requirements / 26 scenarios、归档 change。该证据不外推 MCP OAuth、远程生产部署、真实 provider、Qdrant/Elasticsearch、生产第二业务 tenant、Router 或 Agentic RAG。
+
 ## 历史材料
 
 `history/` 保存 v3 正式计划形成前的 hybrid、reranker abstraction 和 token chunker 演进记录。它们可以解释代码为何形成当前结构，但不得单独用于判断当前阶段、指标或待办。

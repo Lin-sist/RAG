@@ -430,3 +430,13 @@ foreign resource 与不存在资源统一 `MCP_RESOURCE_NOT_FOUND`。error TextC
 - **面临的选择**：接受 SDK 忽略 extra 参数、全局开启 ObjectMapper unknown-property fail、在现有 stateless handler decorator 中只校验 `resources/read` 原始参数后委托 SDK。
 - **选了哪个 + 为什么**：选择第三项，只允许 `uri` 与 `_meta`，因为它在身份/业务 handler 前拒绝 `tenantId` 等 selector，同时保留 SDK 的合法 read template dispatch、结果序列化与 lifecycle。
 - **放弃的代价**：接受忽略会违反已批准的 server-derived identity 与 `additionalProperties=false` 边界；全局收紧 ObjectMapper 会影响 initialize、Tools 和其他 SDK record，产生超出本切片的兼容风险。
+
+### 决策 21：SDK 未按 input schema 拒绝 Tool extra 参数时在哪里补严
+- **面临的选择**：只依赖 SDK 2.0.0 的 schema 声明、在每个 Tool service 内重复校验、在公开 stateless handler 边界统一校验 `tools/call` 原始参数后再委托 SDK。
+- **选了哪个 + 为什么**：选择第三项，使用固定 Tool registry 和 JSON Schema 2020-12 等价规则统一拒绝 unknown/reserved field、空文本与数值越界；这样校验发生在身份相关业务执行和 provider-capable handler 之前，合法调用仍由官方 SDK dispatch/serialize。
+- **放弃的代价**：只声明 schema 会让宽松客户端或 SDK 静默带过 selector；分散在 service 内会造成四个 Tool 的协议错误、业务错误和边界规则漂移。
+
+### 决策 22：官方 conformance 0.1.15 如何适配固定 C15 只读注册表
+- **面临的选择**：为跑满套件临时注册其专用 echo/add/long-running/prompt fixture、完全不跑官方套件、只运行不要求专用 fixture 且适用于 C15 capability 的 generic server scenarios。
+- **选了哪个 + 为什么**：选择第三项，固定运行 `server-initialize`、`ping`、`tools-list`、`resources-list`、`dns-rebinding-protection`；其余 active scenarios 依赖套件约定的测试 Tool/Resource/Prompt，注册它们会直接违反 C15“恰好四个只读 Tool、三种 Resource template、无 Prompt/Task”契约。Windows 执行固定使用 Node `22.17.0`，避免 Node 24 在已报告 PASS 后出现 libuv teardown assertion。
+- **放弃的代价**：临时 fixture 会让 conformance 通过建立在生产注册表之外并破坏安全边界；完全跳过则失去官方 wire evidence；因此未运行的 fixture-specific scenarios 明确记为不适用，不能描述为整套全部场景通过。

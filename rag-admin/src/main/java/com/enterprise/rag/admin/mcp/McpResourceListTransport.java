@@ -19,6 +19,7 @@ final class McpResourceListTransport implements McpStatelessServerTransport {
 
     private static final String RESOURCES_LIST_METHOD = "resources/list";
     private static final String RESOURCES_READ_METHOD = "resources/read";
+    private static final String TOOLS_CALL_METHOD = "tools/call";
     private static final Set<String> PAGINATED_PARAMETER_NAMES = Set.of("cursor", "_meta");
     private static final Set<String> READ_PARAMETER_NAMES = Set.of("uri", "_meta");
 
@@ -26,16 +27,19 @@ final class McpResourceListTransport implements McpStatelessServerTransport {
     private final McpKnowledgeResourceService resourceService;
     private final McpRequestIdentityResolver identityResolver;
     private final McpJsonMapper jsonMapper;
+    private final McpToolRequestValidator toolRequestValidator;
 
     McpResourceListTransport(
             McpStatelessServerTransport delegate,
             McpKnowledgeResourceService resourceService,
             McpRequestIdentityResolver identityResolver,
-            McpJsonMapper jsonMapper) {
+            McpJsonMapper jsonMapper,
+            McpToolRequestValidator toolRequestValidator) {
         this.delegate = delegate;
         this.resourceService = resourceService;
         this.identityResolver = identityResolver;
         this.jsonMapper = jsonMapper;
+        this.toolRequestValidator = toolRequestValidator;
     }
 
     @Override
@@ -71,6 +75,17 @@ final class McpResourceListTransport implements McpStatelessServerTransport {
                 io.modelcontextprotocol.common.McpTransportContext context,
                 McpSchema.JSONRPCRequest request) {
             if (!RESOURCES_LIST_METHOD.equals(request.method())) {
+                if (TOOLS_CALL_METHOD.equals(request.method())) {
+                    McpToolRequestValidator.Outcome outcome =
+                            toolRequestValidator.validate(request.params());
+                    if (outcome == McpToolRequestValidator.Outcome.INVALID) {
+                        return Mono.just(invalidArgument(request.id()));
+                    }
+                    if (outcome == McpToolRequestValidator.Outcome.EXTERNAL_TOOLS_DISABLED) {
+                        return Mono.just(McpSchema.JSONRPCResponse.result(
+                                request.id(), toolError("MCP_EXTERNAL_TOOLS_DISABLED")));
+                    }
+                }
                 if (RESOURCES_READ_METHOD.equals(request.method())
                         && !validReadParameters(request.params())) {
                     return Mono.just(invalidArgument(request.id()));
@@ -133,6 +148,13 @@ final class McpResourceListTransport implements McpStatelessServerTransport {
                     requestId,
                     new McpSchema.JSONRPCResponse.JSONRPCError(
                             -32602, "MCP_INVALID_ARGUMENT"));
+        }
+
+        private McpSchema.CallToolResult toolError(String category) {
+            return McpSchema.CallToolResult.builder()
+                    .addTextContent(category)
+                    .isError(true)
+                    .build();
         }
     }
 }

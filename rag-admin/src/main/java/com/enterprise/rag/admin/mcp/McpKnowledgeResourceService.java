@@ -1,6 +1,9 @@
 package com.enterprise.rag.admin.mcp;
 
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
+import com.enterprise.rag.admin.kb.entity.Document;
+import com.enterprise.rag.admin.kb.entity.DocumentChunk;
+import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.RequestIdentity;
@@ -15,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 /** Maps authorized knowledge bases to the bounded MCP Resource discovery shape. */
 final class McpKnowledgeResourceService {
@@ -23,22 +27,32 @@ final class McpKnowledgeResourceService {
     private static final String JSON_MIME_TYPE = "application/json";
 
     private final KnowledgeBaseService knowledgeBaseService;
+    private final DocumentService documentService;
     private final AuthorizationService authorizationService;
     private final ObjectMapper objectMapper;
     private final int pageSize;
+    private final int maxChunkBytes;
 
     McpKnowledgeResourceService(
             KnowledgeBaseService knowledgeBaseService,
+            DocumentService documentService,
             AuthorizationService authorizationService,
             ObjectMapper objectMapper,
-            int pageSize) {
+            int pageSize,
+            int maxChunkBytes) {
         if (pageSize <= 0 || pageSize > McpProperties.MAX_RESOURCE_PAGE_SIZE) {
             throw new IllegalArgumentException("Invalid MCP resource page size");
         }
+        if (maxChunkBytes <= 0
+                || maxChunkBytes > McpProperties.MAX_CONFIGURABLE_CHUNK_BYTES) {
+            throw new IllegalArgumentException("Invalid MCP max chunk bytes");
+        }
         this.knowledgeBaseService = knowledgeBaseService;
+        this.documentService = documentService;
         this.authorizationService = authorizationService;
         this.objectMapper = objectMapper;
         this.pageSize = pageSize;
+        this.maxChunkBytes = maxChunkBytes;
     }
 
     McpSchema.ListResourcesResult list(RequestIdentity identity, String cursor) {
@@ -69,9 +83,20 @@ final class McpKnowledgeResourceService {
         } catch (McpResourceUri.InvalidResourceUriException exception) {
             throw McpResourceReadException.notFound();
         }
-        if (!(resourceUri instanceof McpResourceUri.KnowledgeBase knowledgeBaseUri)) {
-            throw McpResourceReadException.notFound();
+        if (resourceUri instanceof McpResourceUri.KnowledgeBase knowledgeBaseUri) {
+            return readKnowledgeBase(identity, knowledgeBaseUri);
         }
+        if (resourceUri instanceof McpResourceUri.Document documentUri) {
+            return readDocument(identity, documentUri);
+        }
+        if (resourceUri instanceof McpResourceUri.Chunk chunkUri) {
+            return readChunk(identity, chunkUri);
+        }
+        throw McpResourceReadException.notFound();
+    }
+
+    private McpSchema.ReadResourceResult readKnowledgeBase(
+            RequestIdentity identity, McpResourceUri.KnowledgeBase knowledgeBaseUri) {
         KnowledgeBaseDTO knowledgeBase = requireKnowledgeBaseReadAccess(
                 knowledgeBaseUri.knowledgeBaseId(), identity);
         String content = writeJson(new KnowledgeBaseResourceContent(
@@ -85,6 +110,81 @@ final class McpKnowledgeResourceService {
         McpSchema.TextResourceContents resourceContents = new McpSchema.TextResourceContents(
                 knowledgeBaseUri.uri(), JSON_MIME_TYPE, content);
         return new McpSchema.ReadResourceResult(List.of(resourceContents));
+    }
+
+    private McpSchema.ReadResourceResult readDocument(
+            RequestIdentity identity, McpResourceUri.Document documentUri) {
+        requireKnowledgeBaseReadAccess(documentUri.knowledgeBaseId(), identity);
+        Document document = requireDocument(identity.tenantId(), documentUri);
+        String content = writeJson(new DocumentResourceContent(
+                document.getId(),
+                document.getKbId(),
+                document.getTitle(),
+                document.getFileType(),
+                document.getStatus(),
+                document.getChunkCount(),
+                document.getCreatedAt(),
+                document.getUpdatedAt()));
+        McpSchema.TextResourceContents resourceContents = new McpSchema.TextResourceContents(
+                documentUri.uri(), JSON_MIME_TYPE, content);
+        return new McpSchema.ReadResourceResult(List.of(resourceContents));
+    }
+
+    private Document requireDocument(
+            long tenantId, McpResourceUri.Document documentUri) {
+        try {
+            return documentService.getById(tenantId, documentUri.documentId())
+                    .filter(document -> document.getKbId() != null
+                            && documentUri.knowledgeBaseId() == document.getKbId())
+                    .orElseThrow(McpResourceReadException::notFound);
+        } catch (McpResourceReadException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw McpResourceReadException.internalError();
+        }
+    }
+
+    private McpSchema.ReadResourceResult readChunk(
+            RequestIdentity identity, McpResourceUri.Chunk chunkUri) {
+        requireKnowledgeBaseReadAccess(chunkUri.knowledgeBaseId(), identity);
+        requireDocument(identity.tenantId(), new McpResourceUri.Document(
+                chunkUri.knowledgeBaseId(), chunkUri.documentId()));
+        DocumentChunk chunk = requireChunk(identity.tenantId(), chunkUri);
+        McpUtf8Bounder.BoundedText bounded;
+        try {
+            bounded = McpUtf8Bounder.bound(chunk.getContent(), maxChunkBytes);
+        } catch (IllegalArgumentException exception) {
+            throw McpResourceReadException.internalError();
+        }
+        McpSchema.TextResourceContents resourceContents = bounded.truncated()
+                ? new McpSchema.TextResourceContents(
+                        chunkUri.uri(),
+                        "text/plain; charset=utf-8",
+                        bounded.text(),
+                        Map.of("truncated", true))
+                : new McpSchema.TextResourceContents(
+                        chunkUri.uri(),
+                        "text/plain; charset=utf-8",
+                        bounded.text());
+        return new McpSchema.ReadResourceResult(List.of(resourceContents));
+    }
+
+    private DocumentChunk requireChunk(
+            long tenantId, McpResourceUri.Chunk chunkUri) {
+        try {
+            return documentService.getChunkByIndex(
+                            tenantId, chunkUri.documentId(), chunkUri.chunkIndex())
+                    .filter(chunk -> Long.valueOf(tenantId).equals(chunk.getTenantId()))
+                    .filter(chunk -> Long.valueOf(chunkUri.documentId())
+                            .equals(chunk.getDocumentId()))
+                    .filter(chunk -> Integer.valueOf(chunkUri.chunkIndex())
+                            .equals(chunk.getChunkIndex()))
+                    .orElseThrow(McpResourceReadException::notFound);
+        } catch (McpResourceReadException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw McpResourceReadException.internalError();
+        }
     }
 
     private KnowledgeBaseDTO requireKnowledgeBaseReadAccess(
@@ -105,7 +205,7 @@ final class McpKnowledgeResourceService {
         }
     }
 
-    private String writeJson(KnowledgeBaseResourceContent content) {
+    private String writeJson(Object content) {
         try {
             return objectMapper.writeValueAsString(content);
         } catch (JsonProcessingException | RuntimeException exception) {
@@ -152,6 +252,17 @@ final class McpKnowledgeResourceService {
             String description,
             Integer documentCount,
             Boolean isPublic,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+    }
+
+    private record DocumentResourceContent(
+            Long id,
+            Long kbId,
+            String title,
+            String fileType,
+            String status,
+            Integer chunkCount,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
     }

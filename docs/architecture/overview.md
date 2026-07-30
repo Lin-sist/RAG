@@ -1,6 +1,6 @@
 # RAG 项目当前架构
 
-> 状态日期：2026-07-27
+> 状态日期：2026-07-30
 > 本文只描述当前代码中已确认的结构与能力。阶段指标以 `docs/optimization/` 和 `docs/eval/reports/` 中的当前文件为准。
 
 ## 1. 项目定位
@@ -13,7 +13,7 @@
 
 | 模块 | 当前职责 | 主要入口 |
 |---|---|---|
-| `rag-admin` | Spring Boot 启动、REST API、知识库/文档/任务/问答/历史/反馈编排、tenant migration/request identity、OTel SDK 与 OTLP export wiring | `RagQaApplication`、各 Controller、`CurrentUserService`、`DocumentIndexingServiceImpl`、`GenAiTracingConfiguration` |
+| `rag-admin` | Spring Boot 启动、REST API、默认关闭的 C15 只读 MCP adapter、知识库/文档/任务/问答/历史/反馈编排、tenant migration/request identity、OTel SDK 与 OTLP export wiring | `RagQaApplication`、各 Controller、`admin/mcp`、`CurrentUserService`、`DocumentIndexingServiceImpl`、`GenAiTracingConfiguration` |
 | `rag-auth` | 数据库 user/tenant 认证事实、Spring Security、tenant-aware JWT、刷新与注销、Redis token 黑名单 | `SecurityConfig`、`UserDetailsServiceImpl`、`AuthServiceImpl`、`JwtTokenProvider` |
 | `rag-common` | 响应与异常、Redis、限流、幂等、异步任务、安全 GenAI tracing/metrics facade | `GlobalExceptionHandler`、`RedisAsyncTaskManager`、`RequestObservationFilter`、`GenAiTelemetry` |
 | `rag-document` | TXT/Markdown/PDF/Word/代码解析，token 估算和分块 | `DocumentParserFactory`、`DocumentProcessorImpl`、`DocumentChunker` |
@@ -71,6 +71,7 @@
 - C11 已验收归档：默认关闭、fail-open 的 OTel 1.31 tracing core 为 durable ingest 与 ask 建立分离 trace，固定实际执行阶段 topology，并以稳定 task/document/chunk lineage 关联两条链路；W3C/custom context、MDC bridge、同步/流式终态和隐私白名单均由进程内 exporter/fake tests 锁定。4 requirements / 12 scenarios 已接受进 `rag-system` baseline。
 - C12 已验收归档：tracing/metrics/export 三个开关独立且默认关闭；OTLP gRPC exporter 使用有界 queue/batch/timeout 并保持业务 fail-open。低基数 metrics 独立于 trace sampling；本机 Collector→Tempo/Prometheus→Grafana reference stack 固定关键 trace 全保留、普通成功 trace 10% tail sampling、72h/7d retention、localhost 端口与认证边界。4 requirements / 12 scenarios 已接受进 `rag-system` baseline，synthetic evidence 不代表生产容量或 SLA。
 - C13a 已验收归档：V10 建立唯一 legacy tenant，并为 user/knowledge-base 回填非空 tenant identity；认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity` 使用服务端数据库事实，旧无 tenant claim token 被拒绝。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；后续 C13b data-plane enforcement 也已验收归档，但 C14 前仍不构成租户隔离结论。
+- C15 active change 已完成 default-off/local-only/sessionless MCP adapter、三种 bounded Resource 与四个固定只读 Tool。`rag.ask` 走无 history/query-count 的 service boundary；双 tenant Testcontainers、独立官方 Java SDK client 与适用的 conformance 0.1.15 generic scenarios 已通过。当前仍待 clean-HEAD 复跑、用户最终验收与归档，且不代表 MCP OAuth、远程生产部署或真实 provider 已验证。
 - NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
