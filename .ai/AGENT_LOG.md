@@ -1920,3 +1920,21 @@
 - 文档与状态：更新 `.ai/ACTIVE_TASK.md`、tasks、project、architecture、roadmap、optimization index、eval guide 与 C16 traceability。tasks 只剩用户最终验收后的 baseline exact-copy/archive/`IDLE` 和归档措辞两项，不提前执行。
 - 跳过与剩余风险：前端 build=`SKIPPED`（无前端/API/SSE wire 改动）；live router ask/eval、真实 provider/model、费用/限流与业务数据出站均未授权并 `SKIPPED`。当前证据只支持 default-off `fact-intent-v1/fact-v1/evidence-no-answer-v1` 与固定 deterministic profile，不支持生产默认、真实质量/SLA、multi-hop/global/high-risk 或 Agentic RAG。
 - Commit：`pending`；提交责任保持 `用户手动提交`，建议 `feat(rag): 完成C16有界路由与评测闭环`。
+
+## 2026-08-01｜C16 最终验收、baseline 接受与归档
+
+- 用户明确要求归档 C16；按 `用户手动提交` 责任执行收口，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 规格收口：`openspec/changes/bounded-query-router/specs/rag-system/spec.md` 的 5 requirements / 17 scenarios 与 `evaluation/spec.md` 的 4 requirements / 12 scenarios 已分别 literal exact-copy 接受为两个长期 baseline 的 suffix；对比结果 `exact_suffix=true`。
+- 状态收口：C16 tasks 71 项实现/验证任务与 2 项最终收口任务均已勾选；active change 已移至 `openspec/changes/archive/2026-08-01-bounded-query-router/`；`.ai/ACTIVE_TASK.md=IDLE`；未归档 active change=0。
+- 当前证据：`python -B scripts/router_eval_contract.py --plan-only` 返回 `VALID`，selection=20、required channels=7、providerCallCount=0、businessDataOutbound=false、liveEvaluationStatus=`SKIPPED`；既有 C16 focused/MCP/Python 证据保持上一执行记录，Maven 全仓既有 OTel 日志捕获时序失败与 2 个 Redis 环境 skip 仍不声明 GREEN。
+- 同步文档：`openspec/project.md`、`docs/architecture/overview.md`、`docs/roadmap/technical-debt.md`、`docs/optimization/README.md`、`docs/eval/RAG_EVAL_GUIDE.md` 与 C16 traceability 已更新为已验收归档状态；生产默认仍关闭，未扩大为真实 provider 质量、multi-hop/global/high-risk 或 Agentic RAG。
+- 跳过项及原因：前端正式 build 因无前端改动记为 `SKIPPED`；live router ask/eval、真实 provider/model、业务数据出站、真实 Milvus maintenance、部署与远程发布均未授权并保持 `SKIPPED`；OpenSpec CLI 不在 PATH，使用文件级 exact-match/结构检查替代，未声称 CLI validation 通过。
+- 剩余风险：C10 仍为 DRAFT/PENDING_REFERENCE_EVIDENCE；真实生成/citation/judge/provider 质量、生产 Router 默认开启、Qdrant/Elasticsearch 等价隔离、真实 Milvus shadow migration 与高级 Router 策略仍需独立 change/evidence/授权。
+- Commit：`pending`；建议 `docs(openspec): 验收并归档C16有界查询路由`。
+
+## 2026-08-01｜C16 归档后静态验证补录
+
+- 验证：两个 baseline 与归档 delta 均 `exact_suffix=True`；`rag-system` delta=5 requirements / 17 scenarios，`evaluation` delta=4 requirements / 12 scenarios；baseline requirement duplicate titles=0。
+- 验证：`python -B scripts/router_eval_contract.py --plan-only`=`VALID`；`python -B -m unittest discover -s scripts -p 'test_*.py'`=`211 tests / OK`；changed Markdown=15、missing relative links=0；C16 旧 active 路径/等待验收表述扫描=0；`git diff --check`=`PASS`。
+- 范围：source active directory 不存在、archive files=5、archive tasks unchecked=0、active non-archive change dirs=0、`ACTIVE_TASK=IDLE`、unexpected changed paths=0；仅发生计划内 baseline/status/docs/archive 变更。
+- Commit：`pending`；本条为 C16 归档验证补录，不执行暂存或提交。

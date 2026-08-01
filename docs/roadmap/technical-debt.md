@@ -79,7 +79,7 @@
 - 独立观测债务：`GenAiTracingConfigurationTest` 的不可用 collector 时序断言在全仓并发执行时仍可波动、独立复跑通过；该问题不扩入 C13b，必要时另立维护 change。
 - 前端统一设计 token、空态/错态/处理中态和可访问性。
 - 生产数据评测集扩充与反馈闭环。
-- 有界 Query Router：C16 active change 已完成 default-off `fact-v1`、确定性 classifier、预算、evidence no-answer 与版本化 evaluator 实现，等待最终验收；multi-hop/global/high-risk、生产默认开启与真实 provider evidence 仍是后续独立 Type C 工作。
+- 有界 Query Router：C16 已验收归档，完成 default-off `fact-v1`、确定性 classifier、预算、evidence no-answer 与版本化 evaluator；multi-hop/global/high-risk、生产默认开启与真实 provider evidence 仍是后续独立 Type C 工作。
 - MCP 只读知识资源和搜索/问答工具：C15 已验收归档且继续默认关闭；clean-HEAD synthetic evidence 覆盖固定 Resources/Tools、tenant、只读副作用与适用互操作场景。剩余独立债务包括 MCP OAuth Authorization Profile、远程 TLS/proxy trust、生产 rollout、真实 provider smoke 与更广 adapter/topology evidence。
 - Agentic RAG 仅在前述能力有评测门禁后进入。
 

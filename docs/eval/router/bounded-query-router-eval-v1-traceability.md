@@ -1,7 +1,7 @@
 # C16 Bounded Query Router 实现与验证追踪
 
 > 状态日期：2026-07-30  
-> 当前状态：实现完成、等待用户验收；尚未接受进 baseline 或归档。
+> 当前状态：已完成最终验收；delta 已接受进 baseline，change 已归档。
 
 ## 固定身份
 

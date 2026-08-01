@@ -97,8 +97,8 @@
 - [x] 运行 SensitiveLogs、protected paths、credential/absolute path、eval-artifact leakage、Markdown links、no-overwrite 与 `git diff --check`。
 - [x] 建立 C16 requirement/scenario -> test/case/evidence traceability，明确 deterministic/live、provider calls、egress 与受限结论。
 - [x] 更新 tasks、`.ai/AGENT_LOG.md`、`openspec/project.md`、architecture/roadmap/optimization/eval guide 的当前事实。
-- [ ] 用户最终验收后才将双 delta literal exact-copy 接受进 baseline、归档 change 并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
-- [ ] 归档措辞只声明 default-off bounded `fact-v1` 与固定 evaluation profile；不宣称生产默认、真实 provider收益、multi-hop/global/high-risk或 Agentic RAG。
+- [x] 用户最终验收后已将双 delta literal exact-copy 接受进 baseline、归档 change 并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
+- [x] 归档措辞只声明 default-off bounded `fact-v1` 与固定 evaluation profile；不宣称生产默认、真实 provider收益、multi-hop/global/high-risk或 Agentic RAG。
 
 ## 10. 外部调用与提交边界
 

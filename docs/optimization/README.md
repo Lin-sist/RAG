@@ -97,11 +97,11 @@
 - 固定 MCP Java SDK `2.0.0`、spec `2025-11-25`、Tool schema SHA-256 和 conformance `0.1.15`；独立官方 Java SDK client、适用的五个 conformance generic scenarios、双 tenant MySQL/Redis/Milvus/MinIO synthetic integration 均通过。权威状态摘要前后一致，real provider/model calls=0、businessDataOutbound=false、真实 Milvus maintenance=`SKIPPED`。
 - Git HEAD `45959672` 的 clean-HEAD driver evidence 已复跑，`workingTreeDirty=false`、权威状态摘要前后一致；7 requirements / 26 scenarios 已接受进 `rag-system` baseline并归档。该证据不外推 MCP OAuth、远程生产部署、真实 provider、Qdrant/Elasticsearch、生产第二业务 tenant、Router 或 Agentic RAG。
 
-### C16：Bounded Query Router（实现完成，等待最终验收）
+### C16：Bounded Query Router（已验收归档）
 
-- active change：`../../openspec/changes/bounded-query-router/`。已实现 default-off `fact-intent-v1`、closed-world `fact-v1` executor、`evidence-no-answer-v1`、跨 stage budget/usage、sync/SSE/MCP read-only attribution 与版本化 cache identity。
+- archived change：`../../openspec/changes/archive/2026-08-01-bounded-query-router/`。已实现 default-off `fact-intent-v1`、closed-world `fact-v1` executor、`evidence-no-answer-v1`、跨 stage budget/usage、sync/SSE/MCP read-only attribution 与版本化 cache identity。
 - `../eval/router/bounded-query-router-eval-v1-manifest.json` 固定 v2 dataset identity、20 条 ID-only expectation sidecar、budget profile、七通道与四状态退出码；validator/evaluator 均为 Python 标准库、本地 fail-fast、formal no-overwrite。
-- deterministic evidence 为 provider/model calls=0、businessDataOutbound=false，live router ask/eval 未授权并 `SKIPPED`。当前 delta 尚未接受进 baseline，change 未归档，生产默认仍关闭；不得外推 multi-hop/global/high-risk、真实 provider 质量、生产 SLA 或 Agentic RAG。
+- deterministic evidence 为 provider/model calls=0、businessDataOutbound=false，live router ask/eval 未授权并 `SKIPPED`。C16 delta 已接受进 `rag-system` / `evaluation` baseline，change 已归档，生产默认仍关闭；不得外推 multi-hop/global/high-risk、真实 provider 质量、生产 SLA 或 Agentic RAG。
 
 ## 历史材料
 

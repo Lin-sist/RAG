@@ -4,7 +4,7 @@
 
 - 企业知识库 RAG 问答工程原型。
 - 当前主链路：认证 → 知识库 → 文档异步索引 → 混合检索 → LLM 生成 → 引用校验 → 历史与反馈。
-- 当前目标：先完成可信质量工程、生产化基础和个人掌握闭环；C15 只读 MCP 已验收归档，C16 default-off bounded Router 已完成实现并处于最终验收前，Agentic RAG 未开始。
+- 当前目标：先完成可信质量工程、生产化基础和个人掌握闭环；C15 只读 MCP 与 C16 default-off bounded Router 均已验收归档，Agentic RAG 未开始。
 
 ## 当前代码事实
 
@@ -33,7 +33,7 @@
 - C13b 已验收归档：SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 tenant-aware shadow collection/readiness 维护路径已形成指定测试证据。6 requirements / 18 scenarios 已接受进 `rag-system` baseline；真实 Milvus 迁移/切换未授权并 `SKIPPED`，全仓 Maven 仍因既有 OTel collector 时序断言保持非 GREEN。
 - C14 已验收归档：固定 `tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上完成 26/26 required cases，functional/content/error/timing 四通道与 global report 均为 `PASS`。`evaluation` 5 requirements / 15 scenarios 与 `rag-system` 2 requirements / 6 scenarios 已接受进 baseline；provider calls=0、真实 Milvus maintenance=`SKIPPED`。
 - C15 已验收归档：完成 default-off/local-only/sessionless `/mcp`、三种 tenant-scoped Resources、四个固定只读 Tools、严格输入/输出与运行上限。Git HEAD `45959672` 的 clean-HEAD profile、独立 Java SDK client、适用官方 conformance generic scenarios 与双 tenant synthetic side-effect integration 均通过；7 requirements / 26 scenarios 已接受进 `rag-system` baseline，不能描述为 production MCP/OAuth 或真实 provider 已验证。
-- C16 active change 已实现 default-off `fact-intent-v1`、closed-world `fact-v1`、`evidence-no-answer-v1`、跨 stage budget/usage、sync/SSE/MCP attribution，以及独立 `bounded-query-router-eval-v1` validator/evaluator。当前只形成 deterministic 零外调证据；尚未获用户最终验收，delta 未接受进 baseline，change 未归档。
+- C16 已验收归档：实现 default-off `fact-intent-v1`、closed-world `fact-v1`、`evidence-no-answer-v1`、跨 stage budget/usage、sync/SSE/MCP attribution，以及独立 `bounded-query-router-eval-v1` validator/evaluator。5 requirements / 17 scenarios 已接受进 `rag-system` baseline，4 requirements / 12 scenarios 已接受进 `evaluation` baseline；deterministic 主证据为零 provider 调用/零业务数据出站，live router ask/eval 仍为 `SKIPPED`。
 
 ## 当前边界
 

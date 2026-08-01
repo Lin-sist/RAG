@@ -56,7 +56,7 @@
 
 当前 hybrid 与 keyword route 默认开启，RRF 参数为 `rrf-k=60`。reranker 默认仍使用 heuristic；既有 `ModelReranker` 保留通用 HTTP 协议，独立 `NvidiaReranker` 使用 `query.text + passages[].text / rankings[].index+logit` 契约，并允许通过 base URL 与 endpoint path 覆盖自托管 `/v1/ranking` 或托管模型专属 `/reranking` 路径。registry 通过 typed outcome 报告 requested/effective provider、fallback、model calls、候选覆盖与延迟；partial/invalid NVIDIA rankings 整次回退 heuristic，不形成混合排序。C7 full 已在固定开发集完成 clean A/B，但默认 provider 不随评测自动改变。
 
-C16 active implementation 在主链路前增加 `rag.router.enabled=false` 的 bounded Router。开启时，`fact-intent-v1` 只把明确单事实/定义查询交给 closed-world `fact-v1`；multi-hop、global、high-risk、ambiguous 与 invalid 输入在 retrieval/provider 前停止。`FactQueryStrategyExecutor` 复用现有 tenant scope、hybrid/RRF/rerank、generation/citation contract，并通过 immutable budget/usage 与 `evidence-no-answer-v1` 统一 sync/SSE/MCP read-only ask 的 final state/reason。当前实现未接受进 baseline，生产默认仍关闭。
+C16 已验收归档：主链路前增加 `rag.router.enabled=false` 的 bounded Router。开启时，`fact-intent-v1` 只把明确单事实/定义查询交给 closed-world `fact-v1`；multi-hop、global、high-risk、ambiguous 与 invalid 输入在 retrieval/provider 前停止。`FactQueryStrategyExecutor` 复用现有 tenant scope、hybrid/RRF/rerank、generation/citation contract，并通过 immutable budget/usage 与 `evidence-no-answer-v1` 统一 sync/SSE/MCP read-only ask 的 final state/reason。生产默认仍关闭。
 
 同步问答返回完整答案、contexts、citations 和 metadata。SSE 路径当前使用 `SseEmitter` 输出文本流；流式历史保存的 citations 仍为空，这是已确认的能力边界。
 
@@ -74,7 +74,7 @@ C16 active implementation 在主链路前增加 `rag.router.enabled=false` 的 b
 - C12 已验收归档：tracing/metrics/export 三个开关独立且默认关闭；OTLP gRPC exporter 使用有界 queue/batch/timeout 并保持业务 fail-open。低基数 metrics 独立于 trace sampling；本机 Collector→Tempo/Prometheus→Grafana reference stack 固定关键 trace 全保留、普通成功 trace 10% tail sampling、72h/7d retention、localhost 端口与认证边界。4 requirements / 12 scenarios 已接受进 `rag-system` baseline，synthetic evidence 不代表生产容量或 SLA。
 - C13a 已验收归档：V10 建立唯一 legacy tenant，并为 user/knowledge-base 回填非空 tenant identity；认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity` 使用服务端数据库事实，旧无 tenant claim token 被拒绝。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；后续 C13b data-plane enforcement 也已验收归档，但 C14 前仍不构成租户隔离结论。
 - C15 已验收归档：default-off/local-only/sessionless MCP adapter、三种 bounded Resource 与四个固定只读 Tool 已形成长期契约；`rag.ask` 走无 history/query-count 的 service boundary。Git HEAD `45959672` 的 clean-HEAD 双 tenant Testcontainers、独立官方 Java SDK client 与适用 conformance 0.1.15 generic scenarios 通过；7 requirements / 26 scenarios 已接受进 baseline，但不代表 MCP OAuth、远程生产部署或真实 provider 已验证。
-- C16 active change 已落地版本化 `bounded-query-router-eval-v1`：固定 v2 dataset identity、20 条 ID-only route sidecar、budget profile、本地 plan-only validator 与七通道 evaluator。当前 deterministic tests 为零 provider 调用/零业务数据出站；live router evaluation 未授权并 `SKIPPED`，尚不构成 accepted baseline。
+- C16 版本化 `bounded-query-router-eval-v1` 已随归档接受：固定 v2 dataset identity、20 条 ID-only route sidecar、budget profile、本地 plan-only validator 与七通道 evaluator。deterministic tests 为零 provider 调用/零业务数据出站；live router evaluation 未授权并 `SKIPPED`，不外推真实质量或生产 SLA。
 - NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
 - v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
 - 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。

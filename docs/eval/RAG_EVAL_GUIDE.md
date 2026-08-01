@@ -4,7 +4,7 @@
 
 ## C16 bounded Router 独立评测
 
-`router/bounded-query-router-eval-v1-manifest.json` 是 C16 active change 的独立 Router release。它复用并固定 `rag-eval-dev-v2` identity，但只通过 20 条 ID-only sidecar 声明 expected intent/required status，不修改或复制 question、answer、context。先运行：
+`router/bounded-query-router-eval-v1-manifest.json` 是 C16 已归档的独立 Router release。它复用并固定 `rag-eval-dev-v2` identity，但只通过 20 条 ID-only sidecar 声明 expected intent/required status，不修改或复制 question、answer、context。先运行：
 
 ```bash
 python -B scripts/router_eval_contract.py --plan-only
