@@ -1,101 +1,138 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-07-30
-> 本文是从旧维护计划和交接材料中提炼、并按当前代码复核后的待办库存。它不是活动任务计划；每次重大改动应进入独立 OpenSpec change，再从本文移除或标记完成。
+> 状态日期：2026-08-10
+> 本文只登记当前未完成或仍需独立证据的债务，不是活动任务计划。重大改动必须进入独立 OpenSpec change；完成状态以 accepted spec、代码、正式 evidence 和 archive 为准。
+> 长期顺序见 `docs/roadmap/iteration-blueprint.md` v6。
 
-## P0：进入下一轮功能迭代前
+## P0：进入 C17 前
 
-### 1. 前端正式构建（已完成：2026-07-14）
+### 1. OTel unavailable collector 时序测试波动
 
-- 结果：`ignoreDeprecations` 已调整为与 TypeScript 5.7.3 兼容的 `"5.0"`，不再触发 `TS5103`。
-- 验证：标准 build 中的 `vue-tsc -b` 与 `vite build` 均通过，并生成正式 `dist/`。
-- 证据：`rag-frontend/package.json`、`rag-frontend/tsconfig.json`。
+- `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` 在全仓并发测试中仍可能失败，独立复跑通过。
+- 需要先最小复现并确认是测试捕获/并发时序问题还是运行语义问题；前者按既有契约内维护处理，后者升级 Type C。
+- 独立复跑通过只用于诊断，不能把全仓结果写成 GREEN。
 
-### 2. 认证用户与默认凭据治理（已完成：2026-07-15）
+### 2. C17 retrieval profile reference readiness
 
-- 已实现：`UserDetailsServiceImpl` 改为数据库用户与角色查询，历史固定管理员种子由前向 migration 精确隔离，并提供默认关闭、外部凭据驱动的一次性管理员 bootstrap。
-- 验证：MySQL 8.0.36 Testcontainers 覆盖全新 V1→V6、V5 exact seed、changed-admin、重复 migrate 与 Flyway validate；完整 Maven、Python、前端和敏感日志门禁通过。
-- 独立剩余债务：`application.yml` 的开发态 JWT fallback 不属于 C2 登录/refresh 契约，后续需单独治理。
-- 证据：`openspec/changes/archive/2026-07-14-database-backed-authentication/`、`rag-auth/.../UserDetailsServiceImpl.java`、`rag-admin/src/main/resources/db/migration/V6__quarantine_known_admin_seed.sql`。
+- 当前 `rag-eval-dev-v2-retrieval-regression-v1` 仍为 `DRAFT / PENDING_REFERENCE_EVIDENCE`，12 条 target 均为 `null`。
+- 正式 evidence 计划为固定身份 v2/150 × 3 repeats；最多 450 次 debug retrieval、450 次 query embedding。
+- provider/model、KB/fixture、Git/config、数据出站、费用/零费用依据、限流、timeout/retry 与 raw artifact 策略尚未在新的执行闸门确认。
+- 具体 hard floors 与 regression tolerances 必须在完整 evidence 产生后由用户审阅，不得提前猜测。
 
-### 3. 补真实依赖集成测试（主链路已完成：2026-07-15）
+### 3. 开发态 JWT fallback 治理
 
-- 已实现：独立 `c3-integration` Maven/Failsafe 入口使用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding，覆盖登录、上传、异步索引、retrieval、删除与资源清理。
-- 验证：主链路重复运行通过；完整 Maven 203 tests、默认 Maven 202 tests、Python 33 tests 与 SensitiveLogs 门禁通过，均为 0 failures/errors/skipped。
-- 后续进展：LLM、Redis、Milvus 故障语义、C5a durable input 与 C5b 已实现范围均已按独立 OpenSpec change 接受进 baseline。
-- 证据：`openspec/changes/archive/2026-07-15-integration-test-happy-path/`、`openspec/changes/archive/2026-07-15-llm-provider-resilience/`、`openspec/changes/archive/2026-07-15-redis-failure-semantics/`、`openspec/changes/archive/2026-07-15-milvus-failure-semantics/`、`openspec/changes/archive/2026-07-16-durable-index-inputs/`。
+- `application.yml` 的开发态 JWT fallback 不属于既有数据库认证 closeout。
+- 需要独立评估本地易用性与误带生产环境的风险；不得顺手修改 `.env.local` 或 `application-dev.yml`。
 
-### 4. C5 恢复债务（已完成：2026-07-18）
+## P1：真实质量证据与用户结果
 
-- 已实现：legacy 无 ledger 文档有界隔离；固定有界 coordinator、持续 heartbeat、DB-time 指数 backoff、attempt exhausted `FAILED/TERMINAL`；lease 丢失在 embedding/vector mutation 前 fail closed。
-- 已实现：独立 `@Transactional` SQL finalizer 使用 document row lock，原子覆盖 chunks、document 状态/哈希/计数、knowledge-base document count 与 durable task completion；V9 增加 `(document_id, chunk_index)` 唯一约束并兼容清理历史重复行。
-- 真实验证：MySQL 8.0.36 覆盖 fresh/V1/V7→V9、legacy 数据、双 claimant、owner/expiry heartbeat、backoff、attempt 终态、finalize 幂等与 rollback；Redis 7 stop/start 覆盖 outage 503 与 durable owner 投影重建。
-- 收口状态：`2026-07-18-c5-recovery-debt-closeout` 已通过用户验收，delta 已接受进 baseline，change 已归档且活动任务已恢复 `IDLE`；当前无 C5 已登记实现债务残余。
+### 1. Generation / citation / no-answer 真实基线
 
-## P1：下一轮 RAG 质量工程
+- C9a 已形成 deterministic objective lexical claim alignment，但真实 v2/150 generation evidence 尚未执行。
+- 首轮应在 judge off 下固定 full v2/150、provider/model、KB/fixture、Git/config 与 raw artifact 边界，分开报告 retrieval、generation、citation、claim support、no-answer 和 errors。
+- 词法 claim support 不能表述为语义蕴含或完整事实正确性。
 
-### 1. 真实 reranker A/B（已完成：2026-07-20）
+### 2. Judge 真实校准
 
-- C7 已固定 KB、fixture、配置、eval-set 与 Git HEAD，按 `R=3,W=3` 完成 heuristic/NVIDIA 六个 measured runs；comparison=`COMPARABLE`，model 90/90 effective nvidia、fallback=0。
-- NVIDIA 相对 heuristic 的 Recall@5/MRR/Top1 观察提升为 +7.84pp/+0.0895/+3.70pp；server-side rerank P50/P95 为 363/688ms，overall P50 增加 188ms。H1 冷启动污染 aggregate P95，不能据此宣称 model 尾延迟更快。
-- 30 条开发样本不能外推生产收益；用户已验收 C7 evidence 与结论边界，delta 已接受进 `evaluation` baseline，change 已归档。默认仍保持 heuristic；若未来切换默认 provider，须另立 Type C change。
+- C9b tooling、24-case 四象限 gold corpus 与状态语义已完成；live calibration 仍为 `SKIPPED`。
+- accepted contract 固定 canary 4 × 1、full 24 × 3，最大 judge calls 为 4 + 72；任一 case/repeat 缺失不得从成功子集下 agreement 结论。
+- 校准通过前 judge 不应成为 required release gate，也不得自动搜索阈值。
 
-### 2. 评测数据版本治理与扩充（已完成：2026-07-23）
+### 3. Objective / judge quality profile
 
-- C8a 已新增 `rag-eval-dev-v1` manifest、sample schema contract、共享 validator 与 direct/reproducible runner 前置校验；当前 30 条 JSONL 和 3 份 fixture bytes 保持不变。
-- custom eval-set 仅能显式降级为 `UNVERSIONED`，不得形成正式 baseline、可比较结论或质量门禁输入；C7 历史报告不追认回写新 version。
-- C8a 已由用户验收；4 requirements / 13 scenarios 已接受进 `evaluation` baseline 并归档。
-- C8b 已由用户验收并归档：150 条 v2（保留 30 条 seed、新增 120 条）包含 exact quota、fixture grounding/coverage、重复检测、150 条 review sidecar 和 v1/v2 共存；默认 manifest 已切换到 v2，4 requirements / 12 scenarios 已接受进 `evaluation` baseline。
+- 当前首个 C10 profile 只覆盖 retrieval，不包含 generation/objective 或 judge gate。
+- 需要在真实 evidence 充分后分别建立新 profile/version；retrieval、objective 与 judge 保持独立，judge 可先作为 advisory rule。
 
-### 3. 分块结构专项
+### 4. SSE 结构化 terminal result
 
-- 来源：承接已关闭 v4 计划中未执行的 Stage 3；后续须重新分级并独立立项，不从旧 v4 计划续跑。
-- 验证标题感知、长代码块、长段落和父子块策略。
-- 保持 `420/80` 为稳定基线，只做可回滚的单变量实验。
+- 当前流式路径仍以文本 chunk 为主，客户端不能稳定获得 citations、final state、reason、route/budget attribution 与 cancel/error 终态。
+- 需要设计兼容 terminal event，并保证同步、SSE 与 MCP 的 final-state 语义一致；中断或 partial output 不得保存为正常成功历史。
 
-### 4. Claim-level 引用质量
+### 5. 分块结构专项
 
-- C9a 已验收归档 objective lexical claim support：确定性句子/列表拆分，只接受 provenance-valid returned citation snippets，按 exact / `0.70` claim-token coverage 输出逐 claim attribution、全 claim 分母与局部完整性状态；4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline。
-- 该结果只能说明固定算法下的词法证据对齐，不能证明语义蕴含或完整事实正确性；真实 150 条 generation evidence 尚未授权和执行。
-- C9b 已验收归档：judge contract/corpus/validator/runner 与 objective/judge/global 状态分离均已落地，4 requirements / 12 scenarios 已接受进 baseline；live canary/full 未授权并按 `SKIPPED` 收口，未来真实校准仍需单独披露调用量、模型、数据出站、费用/限流并授权。
-- C10 已验收归档：版本化 profile contract、离线 evaluator、固定类别切片、阈值/容差语义、fail-closed 状态和稳定退出码已落地，4 requirements / 12 scenarios 已接受进 baseline。Reference calls 未授权并按 `SKIPPED` 收口，首个 retrieval profile 保持 DRAFT；正式 reference evidence、具体阈值和 ACTIVE quality gate 仍是后续独立 evidence/activation 工作，不得把本次归档解释为质量达标。
+- 标题感知、长代码块、长段落与父子块策略尚未形成独立、可比较 evidence。
+- 保持 `420/80` 为稳定基线，只做单变量、可回滚实验；不得为固定评测题逐题定制。
 
-### 4. SSE 结构化结果
+### 6. 恢复与中断演练
 
-- 当前流式路径只输出文本 chunk，历史保存 citations 为空。
-- 需要设计兼容的结构化完成事件，明确 citations、contexts、metadata 和中断语义。
+- durable index ledger/finalize 已完成，但仍需按独立计划持续演练进程中断、输入损坏、长时间 outage 与恢复操作手册。
+- 演练结果不得与生产 RTO/RPO 或 HA 声明混用。
 
-### 5. 可观测性与恢复演练（C12 本机 reference 闭环已完成：2026-07-26）
+## P2：有界策略、知识源与深度研究
 
-- C11 已建立默认关闭、fail-open 的 OTel 1.31 进程内 tracing core：分离 ingest/ask trace、固定实际执行阶段、稳定 task/document/chunk lineage、W3C/custom context、MDC bridge、同步/流式终态与隐私白名单；4 requirements / 12 scenarios 已接受进 `rag-system` baseline 并归档。
-- C12 已增加默认关闭、fail-open 的 OTLP gRPC trace/metric export、低基数 metrics、本机 Collector/Tempo/Prometheus/Grafana、关键 trace 全保留与普通成功 trace 10% tail sampling、72h/7d retention、认证 dashboard 和 non-SLA local rules；4 requirements / 12 scenarios 已接受进 `rag-system` baseline 并归档。
-- 独立剩余债务：当前只证明单机 synthetic reference 闭环；生产 HA、容量/费用、合规 retention、租户观测权限、跨主机传输、通知渠道与 SLA 仍须独立立项，不能由本机采样结果外推。
-- LLM 429/503/timeout、Redis/Milvus 不可用语义已完成；继续演练索引输入丢失、进程中断与恢复。
+### 1. Router 高级策略
 
-## P2：基线稳定后
+- C16 仅完成 default-off `fact-intent-v1 / fact-v1 / evidence-no-answer-v1`。
+- `multi-hop-v1 → compare-v1 → temporal-v1 → global-v1 → high-risk-v1` 需要逐项独立 classifier、预算、数据集、评测、门禁与 capability claim。
+- 未支持或含糊输入继续 fail closed，不能回退 legacy 或伪装成 fact。
 
-- 组织/租户模型：C13a 已于 2026-07-26 验收归档，完成唯一 legacy tenant、user/knowledge-base 非空归属、服务端 JWT tenant identity 与 immutable request context；该阶段不提供 tenant CRUD/switch 或第二业务 tenant。
-- 强制 tenant filter：C13b 与 C14 均已验收归档；C14 固定双 tenant synthetic matrix 形成 26/26、四通道 `PASS` 的正式 evidence，并接受 7 requirements / 21 scenarios 进入两个 baseline。剩余债务仍包括真实 Milvus shadow migration、真实拓扑/容量/合规/网关 timing、Qdrant/Elasticsearch 等价 adapter evidence，以及生产第二业务 tenant/tenant management；C14 不自动开放 C15/C16。
-- 独立观测债务：`GenAiTracingConfigurationTest` 的不可用 collector 时序断言在全仓并发执行时仍可波动、独立复跑通过；该问题不扩入 C13b，必要时另立维护 change。
-- 前端统一设计 token、空态/错态/处理中态和可访问性。
-- 生产数据评测集扩充与反馈闭环。
-- 有界 Query Router：C16 已验收归档，完成 default-off `fact-v1`、确定性 classifier、预算、evidence no-answer 与版本化 evaluator；multi-hop/global/high-risk、生产默认开启与真实 provider evidence 仍是后续独立 Type C 工作。
-- MCP 只读知识资源和搜索/问答工具：C15 已验收归档且继续默认关闭；clean-HEAD synthetic evidence 覆盖固定 Resources/Tools、tenant、只读副作用与适用互操作场景。剩余独立债务包括 MCP OAuth Authorization Profile、远程 TLS/proxy trust、生产 rollout、真实 provider smoke 与更广 adapter/topology evidence。
-- Agentic RAG 仅在前述能力有评测门禁后进入。
+### 2. Knowledge Source Registry
 
-## 不应重复立项
+- 尚无统一但权限不扁平化的 indexed document、SQL/API、Web、MCP、Graph、multimodal source contract。
+- 需要补 source identity、tenant/permission、freshness/effective time、sensitivity、provenance、failure、cost 与 cache policy。
+- 模型和客户端不得选择 tenant、collection、provider/model、任意 filter 或无限预算。
 
-以下能力已经存在，不应继续以“从零接入”方式创建任务：
+### 3. 多模态证据
 
-- BM25 + dense vector + RRF hybrid retrieval。
-- Reranker 接口、heuristic 实现、HTTP model adapter 和失败降级。
-- 固定评测 KB、`--preflight-only`、只读 `--keep-existing`。
-- citation validation/fallback 与 no-answer 引用抑制。
-- generation/citation/no-answer 客观指标通道。
+- 表格、图片/OCR、页面坐标、音视频证据尚未进入 citation/evaluation contract。
+- 顺序为表格与图片/OCR优先，音视频后置；所有结果仍需回连 artifact 与位置证据。
 
-## 已完成的治理基础
+### 4. MCP 2026 migration
 
-- 根目录 `AGENTS.md` 已建立统一协作规则。
-- `.ai/ACTIVE_TASK.md` 已作为唯一活动任务指针。
-- `.ai/AGENT_LOG.md` 已用于追加执行证据。
-- `openspec/` 已包含 project context、baseline specs 和 change 生命周期。
+- C15 evidence 固定 MCP spec `2025-11-25`，不能直接作为 2026-07-28 验收。
+- 需要独立处理协议 breaking changes、stateless core、Tasks、MRTR/input-required、trace context、authorization 与 compatibility。
+- 远程 OAuth/TLS/proxy trust 未完成前保持 default-off/local-only。
+
+### 5. Durable investigation task
+
+- 尚无可恢复、可取消、带 checkpoint/预算/计划/claim-evidence artifact 的深度研究 runtime。
+- 首版应采用单 durable task + 有界并行子查询，不从 multi-agent swarm 起步。
+- 长期 memory 必须 tenant-scoped、可检查、可删除、有 TTL；聊天历史不默认持久化为 memory。
+
+## P3：受控行动与生产化
+
+### 1. 受控写操作与 A2A
+
+- 写 Tool、dry-run、人工审批、幂等、补偿/不可逆风险和审计 contract 尚未实现。
+- A2A 只在单 Agent durable task 已成熟、可恢复、可取消、可评测后进入；不替代内部领域模型或 MCP。
+
+### 2. 真实租户与向量库迁移
+
+- C14 的 26/26 PASS 只证明固定 synthetic dual-tenant matrix。
+- 真实 Milvus shadow migration/readiness 切换、回滚、第二业务 tenant 与 tenant lifecycle 尚未完成。
+- Qdrant/Elasticsearch 仍缺等价 tenant isolation evidence；在 enforcement mode 下必须继续 fail startup，不能静默降级。
+
+### 3. MCP 远程生产边界
+
+- MCP OAuth Authorization Profile、Protected Resource Metadata、audience/resource binding、scope、TLS、proxy trust、Origin、rate limit 与租户审计尚未完成。
+- 真实 provider smoke、远程 rollout 与生产开放需要独立 change/evidence/授权。
+
+### 4. 可观测性、容量与 SLA
+
+- C12 只完成单机 synthetic reference stack；生产 HA、容量/费用、合规 retention、租户观测权限、跨主机传输、通知、备份恢复和 SLA 仍未验证。
+- local sampling、单机 dashboard 或功能测试不得外推为生产 SLA。
+
+### 5. 前端与反馈闭环
+
+- 前端 design token、空态/错态/处理中态、可访问性、深度研究 task UI、approval UI 和 evidence inspection 仍需分阶段设计。
+- production-like corpus、用户反馈治理、drift monitoring 与 release rollback 尚未闭环。
+
+## 已完成、不得按“从零接入”重复立项
+
+- 数据库认证、主链路 integration、LLM/Redis/Milvus 故障语义；
+- durable index input、task ledger、恢复协调与幂等 finalize；
+- BM25 + dense vector + RRF hybrid retrieval；
+- reranker 接口、heuristic/NVIDIA adapter、fallback 与 provider attribution；
+- v1/v2 dataset governance、claim objective metrics、judge contract、offline quality gate evaluator；
+- GenAI tracing core 与单机 OTel reference export/metrics；
+- tenant identity/enforcement 与固定 synthetic isolation matrix；
+- default-off/local-only C15 read-only MCP；
+- default-off、仅 fact 策略的 C16 bounded Router。
+
+## 治理基础
+
+- 根目录 `AGENTS.md`：协作、安全与验证规则；
+- `.ai/ACTIVE_TASK.md`：唯一活动任务指针；
+- `.ai/AGENT_LOG.md`：只追加执行证据；
+- `openspec/specs/`：accepted 长期契约；
+- `docs/roadmap/iteration-blueprint.md`：v6 长期方向，不替代 active change。

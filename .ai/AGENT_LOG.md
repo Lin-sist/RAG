@@ -1938,3 +1938,14 @@
 - 验证：`python -B scripts/router_eval_contract.py --plan-only`=`VALID`；`python -B -m unittest discover -s scripts -p 'test_*.py'`=`211 tests / OK`；changed Markdown=15、missing relative links=0；C16 旧 active 路径/等待验收表述扫描=0；`git diff --check`=`PASS`。
 - 范围：source active directory 不存在、archive files=5、archive tasks unchecked=0、active non-archive change dirs=0、`ACTIVE_TASK=IDLE`、unexpected changed paths=0；仅发生计划内 baseline/status/docs/archive 变更。
 - Commit：`pending`；本条为 C16 归档验证补录，不执行暂存或提交。
+
+## 2026-08-10｜企业证据型知识运行时迭代蓝图 v6 冻结
+
+- 用户授权与提交责任：用户一次性批准 D01–D36，并明确回复“全部接受”；本轮只执行路线图冻结、技术债重排、静态验证和一次 Agent 中文短提交。该授权不包含 C17/OpenSpec 启动、profile 数值批准、真实 provider 调用、push、PR、部署或发布。
+- 范围与修改：将 `docs/roadmap/iteration-blueprint.md` 从已完成 C1–C16 的 v5 更新为 v6，冻结“企业证据型知识运行时”定位、W0–W6 主线、C17–C21 近端切片、有界策略、知识源联邦、MCP 2026 migration、durable research、受控行动/A2A 与生产化边界；重排 `docs/roadmap/technical-debt.md`，保留并显式列出 OTel 时序、开发态 JWT fallback、C10 DRAFT profile、generation/judge、SSE、分块、恢复演练、真实 Milvus/tenant、远程 MCP、生产观测和前端/反馈债务。
+- 关键决策：下一主线先激活 fixed-identity v2/150 × 3 retrieval reference evidence，再推进 generation objective baseline、judge 4-call canary/72-call full calibration、objective/judge profile 与结构化 SSE；高级 Router 顺序为 multi-hop → compare → temporal → global → high-risk。首个 Agent runtime 固定为单 durable investigation task，不采用 multi-agent swarm；所有新能力继续 default-off、server-owned policy、evidence-first。
+- 验证：`git diff --check`=`PASS`；v6 关键术语/阶段/调用上限扫描全部命中；v5 日期/冻结后首项/C16 readiness 等 stale 表述在两份当前文档中命中=0；临时 `*.v6.tmp` 文件=0；首次范围检查只有两份 roadmap 文档，追加本日志后计划内文件为 3 个。
+- 跳过项及原因：本轮无 Java/Python/frontend/runtime/spec 变更，Maven、Python tests、frontend build、Docker/Testcontainers 均 `SKIPPED`；真实 embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false、费用与限流事件=0。
+- 范围安全：未修改 `.ai/ACTIVE_TASK.md`、active/archive OpenSpec、accepted baseline、业务代码、配置、migration、前端、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或历史评测报告；`ACTIVE_TASK` 继续为 `IDLE`，C17 未启动。
+- 剩余风险：C17 的 provider/model/KB/config 与正式外调预算仍须独立 readiness 和执行授权；具体 hard floors/regression tolerances 必须在完整 reference evidence 后由用户审阅，不能由本蓝图预先填值；蓝图时间窗口不是进度或生产承诺。
+- Commit：`pending`；建议 `docs(路线图): 冻结企业证据型知识运行时蓝图v6`。
