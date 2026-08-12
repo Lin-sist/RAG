@@ -1949,3 +1949,24 @@
 - 范围安全：未修改 `.ai/ACTIVE_TASK.md`、active/archive OpenSpec、accepted baseline、业务代码、配置、migration、前端、`.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 或历史评测报告；`ACTIVE_TASK` 继续为 `IDLE`，C17 未启动。
 - 剩余风险：C17 的 provider/model/KB/config 与正式外调预算仍须独立 readiness 和执行授权；具体 hard floors/regression tolerances 必须在完整 reference evidence 后由用户审阅，不能由本蓝图预先填值；蓝图时间窗口不是进度或生产承诺。
 - Commit：`pending`；建议 `docs(路线图): 冻结企业证据型知识运行时蓝图v6`。
+
+## 2026-08-12｜C17 Retrieval Quality Gate Activation 规划启动
+
+- 用户授权与提交责任：用户在只读 readiness 判定为“规划有条件 GO”后明确要求“现在开始规划”。本轮按 Type C 事前闸门创建单一 change；提交责任默认并明确为 `用户手动提交`，Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 范围与修改：创建 `openspec/changes/retrieval-quality-gate-activation/` 下 proposal、design、tasks 与 `evaluation` spec delta；将 `.ai/ACTIVE_TASK.md` 置为唯一 `ACTIVE / PLANNING_REVIEW`。accepted baseline、业务代码、Python tooling、profile 数值、runtime config 与历史 evidence 均未修改。
+- 已确认事实：启动时 HEAD=`701ade3`、`main...origin/main [ahead 1]`、工作树干净、`ACTIVE_TASK=IDLE`、无其他 active change；C10 profile 仍为 `v1-draft / DRAFT / PENDING_REFERENCE_EVIDENCE`，full v2/150、12 条 rules 的 target 全为空。tracked embedding/rerank 默认不等于 runtime identity，费用/配额与 KB readiness 仍为 `unknown`。
+- 规划决策：新增独立 C17 reference manifest，不复用 C7 arm；固定 5-case canary 与 150×3 full、zero retry、existing-KB fail closed；三次 evidence strict identity/完整性不允许成功子集；locked reference 使用 median 并保留 min/max/spread；hard floors/tolerances 只在完整 evidence 后由用户批准；canonical profile 显式 `v1-draft -> v1`；raw details 留在 ignored tmp，tracked artifact 仅保存脱敏 allowlist。
+- W0 与外调边界：OTel 全仓时序债务作为 live canary/full 的独立硬前置，不混入 C17 diff。规划/offline/plan-only calls=0；建议 canary 上限 5 retrieval + 5 query embedding，full 上限 450 + 450，external rerank/ask/generation/judge=0；两阶段均需单独授权。KB 重建、fixture upload 和 indexing embedding 不在本 change 预算，preflight 不 READY 时停止。
+- 规格与任务：delta 共 4 requirements / 12 scenarios；design 共 14 条三行决策记录；tasks 当前 5 项 planning facts 已勾选、57 项用户批准/实现/W0/外调/阈值/验收与 closeout 保持未勾选。规划批准不等于 offline implementation、live calls、阈值批准或归档授权。
+- 跳过项及原因：本轮仅规划文档与治理指针，Maven、Python full tests、frontend build、Docker/Testcontainers、backend preflight、canary/full provider evidence 均 `SKIPPED`；未获得实现或外调授权。真实 provider calls=0、business data outbound=false、费用/限流事件=0。
+- 剩余风险与下一闸门：用户需审阅 proposal、14 条 design decisions 与 4 requirements / 12 scenarios；重点确认 5-case canary 的额外 5 calls、median reference、三次 source repeat 必须通过最终 profile、canonical `v1-draft -> v1`、W0 独立前置和 raw/tracked artifact 边界。批准后仍需用户明确授权 offline TDD implementation。
+- Commit：`pending`；建议 `docs(openspec): 启动C17检索质量门禁规划`。
+
+## 2026-08-12｜C17 规划静态门禁
+
+- OpenSpec 结构：未归档 active change=1，唯一为 `retrieval-quality-gate-activation`；change artifacts=4。`evaluation` delta=4 requirements / 12 scenarios，GIVEN/WHEN/THEN=12/12/12，与 accepted baseline 重复 requirement title=0。
+- 决策与任务：design decisions=14，三行字段“面临的选择 / 选了哪个 + 为什么 / 放弃的代价”均为 14/14/14；tasks checked=5，仅为用户启动规划、启动事实、规划产物/指针、提交责任和零外调边界；unchecked=57，覆盖待审、W0、实现、外调、阈值、验收与 closeout。
+- 文档与安全：change Markdown missing relative links=0、trailing whitespace=0、TODO/TBD/FIXME/待确认/待补充占位=0；private-key、AKIA、Bearer value、`sk-` credential pattern 命中=0。OpenSpec CLI=`ABSENT`，因此只记录文件级结构/格式检查，不宣称 CLI validation 通过。
+- 范围与 Git：最终 changed/new paths=6，且只包含 `.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md` 与 `openspec/changes/retrieval-quality-gate-activation/**`；unexpected paths=0、accepted baseline diffs=0、business/script/config/frontend diffs=0、staged files=0；`git diff --check`=`PASS`。
+- 跳过项：本轮没有实现代码、profile 数值或 runtime 变更，Maven、Python full tests、frontend build、Docker/Testcontainers、backend preflight 和任何 live/provider evidence 均 `SKIPPED`。planning calls=0、business data outbound=false。
+- Commit：`pending`；提交责任保持 `用户手动提交`，建议 `docs(openspec): 启动C17检索质量门禁规划`。

@@ -2,16 +2,19 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
 ## Active Change
 
-无。C16 `bounded-query-router` 已完成最终验收、baseline 接受与归档。
+- Change ID：`retrieval-quality-gate-activation`
+- 路径：`openspec/changes/retrieval-quality-gate-activation/`
+- 阶段：`PLANNING_REVIEW`
+- 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
-## Last Closeout
+## Current Boundary
 
-- C16 已将 `rag-system` 5 requirements / 17 scenarios 与 `evaluation` 4 requirements / 12 scenarios 精确接受进长期 baseline。
-- 归档目录：`openspec/changes/archive/2026-08-01-bounded-query-router/`。
-- deterministic 主证据保持 provider/model calls=0、business data outbound=false；live router ask/eval 仍为 `SKIPPED`。
-- 能力边界仍为 default-off bounded `fact-intent-v1` / `fact-v1` / `evidence-no-answer-v1`；不宣称生产默认、真实 provider 质量、multi-hop/global/high-risk 或 Agentic RAG。
-- 提交责任保持 `用户手动提交`；本轮 Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- 当前只完成 proposal、design、tasks 与 `evaluation` spec delta；用户批准前不修改业务代码、evaluation tooling、profile 数值或 accepted baseline。
+- W0 OTel 全仓时序债务是 C17 live canary/full 的独立硬前置；聚焦测试通过不能替代 closeout。
+- planning/offline 当前真实 backend/embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false。
+- canary、full reference、阈值批准、baseline acceptance/archive、commit、push、PR、deploy 均为独立授权闸门。
+- 提交责任：`用户手动提交`；Agent 不暂存、不提交。
