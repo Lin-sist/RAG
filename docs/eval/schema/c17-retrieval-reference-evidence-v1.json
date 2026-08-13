@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "c17-retrieval-reference-evidence-v1",
+  "title": "C17 Sanitized Retrieval Reference Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "activationStatus",
+    "reasonCodes",
+    "compiler",
+    "manifest",
+    "profile",
+    "dataset",
+    "runIdentity",
+    "expected",
+    "actual",
+    "identity",
+    "providerAttribution",
+    "callFacts",
+    "artifacts",
+    "rules"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "c17-retrieval-reference-evidence-v1"},
+    "status": {"enum": ["COMPLETE", "INCOMPLETE", "NOT_COMPARABLE", "INVALID"]},
+    "activationStatus": {"enum": ["BLOCKED", "PENDING_THRESHOLD_APPROVAL", "ACTIVE_REFERENCE_LOCKED"]},
+    "reasonCodes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "compiler": {"$ref": "#/$defs/compiler"},
+    "manifest": {"$ref": "#/$defs/manifest"},
+    "profile": {"$ref": "#/$defs/profile"},
+    "dataset": {"$ref": "#/$defs/dataset"},
+    "runIdentity": {"$ref": "#/$defs/runIdentity"},
+    "expected": {"$ref": "#/$defs/counts"},
+    "actual": {"$ref": "#/$defs/actualCounts"},
+    "identity": {"$ref": "#/$defs/identity"},
+    "providerAttribution": {"$ref": "#/$defs/provider"},
+    "callFacts": {"$ref": "#/$defs/callFacts"},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "rules": {"type": "array", "items": {"$ref": "#/$defs/ruleDistribution"}},
+    "lockedReference": {"$ref": "#/$defs/lockedReference"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "compiler": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {"version": {"const": "c17-retrieval-reference-compiler-v1"}}
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "referenceId": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": ["string", "null"]},
+        "version": {"type": ["string", "null"]},
+        "status": {"type": ["string", "null"]},
+        "thresholdStatus": {"type": ["string", "null"]},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "releaseVersion": {"type": ["string", "null"]},
+        "manifestSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "runIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"const": "retrieval-only"},
+        "topK": {"const": 5},
+        "minScore": {"const": 0.3},
+        "enableRerank": {"const": true}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repeatCount": {"type": "integer", "minimum": 0},
+        "runIndexes": {"type": "array", "items": {"type": "integer", "minimum": 1}},
+        "samplesPerRepeat": {"type": "integer", "minimum": 0},
+        "observationCount": {"type": "integer", "minimum": 0}
+      }
+    },
+    "actualCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repeatCount": {"type": "integer", "minimum": 0},
+        "runIndexes": {"type": "array", "items": {"type": "integer", "minimum": 1}},
+        "samplesPerRepeat": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "observationCount": {"type": "integer", "minimum": 0}
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strictIdentitySha256": {"$ref": "#/$defs/sha256"},
+        "gitHead": {"type": ["string", "null"]}
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {"enum": ["PENDING", "MATCHED", "MISMATCH", "INCOMPLETE"]},
+        "requestedProvider": {"type": "string"},
+        "effectiveProvider": {"type": "string"},
+        "fallbackCount": {"type": "integer", "minimum": 0},
+        "modelCallCount": {"type": "integer", "minimum": 0}
+      }
+    },
+    "callFacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "basis": {"const": "manifest_upper_bounds"},
+        "debugRetrieve": {"type": "integer", "minimum": 0},
+        "queryEmbeddingUpperBound": {"type": "integer", "minimum": 0},
+        "externalRerank": {"const": 0},
+        "ask": {"const": 0},
+        "generation": {"const": 0},
+        "llmJudge": {"const": 0}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 1},
+        "detailsSha256": {"$ref": "#/$defs/sha256"},
+        "detailsBytes": {"type": "integer", "minimum": 0},
+        "metadataSha256": {"$ref": "#/$defs/sha256"},
+        "metadataBytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ruleRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 1},
+        "denominator": {"type": "integer", "minimum": 0},
+        "observed": {"type": "number"}
+      }
+    },
+    "ruleDistribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string"},
+        "channel": {"type": "string"},
+        "slice": {"type": "string"},
+        "metric": {"type": "string"},
+        "operator": {"type": "string"},
+        "runs": {"type": "array", "items": {"$ref": "#/$defs/ruleRun"}},
+        "minimum": {"type": "number"},
+        "median": {"type": "number"},
+        "maximum": {"type": "number"},
+        "spread": {"type": "number", "minimum": 0}
+      }
+    },
+    "lockedReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "profile", "dataset", "runIdentity", "rules"],
+      "properties": {
+        "schemaVersion": {"const": "rag-quality-gate-reference-v1"},
+        "profile": {"$ref": "#/$defs/lockedProfile"},
+        "dataset": {"$ref": "#/$defs/dataset"},
+        "runIdentity": {"$ref": "#/$defs/runIdentity"},
+        "rules": {"type": "array", "items": {"$ref": "#/$defs/lockedRule"}}
+      }
+    },
+    "lockedProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "sha256"],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "string"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "lockedRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "channel", "slice", "metric", "operator", "observed"],
+      "properties": {
+        "id": {"type": "string"},
+        "channel": {"type": "string"},
+        "slice": {"type": "string"},
+        "metric": {"type": "string"},
+        "operator": {"type": "string"},
+        "observed": {"type": "number"}
+      }
+    }
+  }
+}

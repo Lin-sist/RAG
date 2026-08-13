@@ -43,6 +43,7 @@ DEFAULT_CONFIG_SNAPSHOT = [
 DEFAULT_KB_NAME = "codex-stage1-repro-eval"
 DEFAULT_KB_MARKER = "codex reproducible retrieval-only eval fixture"
 C7_ARM_SCHEMA = "c7-reranker-ab-v1"
+C17_REFERENCE_SCHEMA = "c17-retrieval-reference-v1"
 C7_ARM_MANIFEST_FIELDS = {
     "schemaVersion",
     "armId",
@@ -59,6 +60,47 @@ C7_ARM_MANIFEST_FIELDS = {
     "measuredRepeats",
     "warmupCalls",
 }
+C17_REFERENCE_MANIFEST_FIELDS = {
+    "schemaVersion",
+    "referenceId",
+    "compilerVersion",
+    "dataset",
+    "targetProfile",
+    "execution",
+    "providerPolicy",
+    "errorPolicy",
+    "canary",
+    "full",
+    "rawArtifactPolicy",
+    "trackedOutputAllowlist",
+}
+C17_CALL_BUDGET_FIELDS = {
+    "debugRetrieve",
+    "queryEmbeddingUpperBound",
+    "externalRerank",
+    "ask",
+    "generation",
+    "llmJudge",
+}
+C17_TRACKED_OUTPUT_ALLOWLIST = [
+    "schemaVersion",
+    "status",
+    "activationStatus",
+    "reasonCodes",
+    "compiler",
+    "manifest",
+    "profile",
+    "dataset",
+    "runIdentity",
+    "expected",
+    "actual",
+    "identity",
+    "providerAttribution",
+    "callFacts",
+    "artifacts",
+    "rules",
+    "lockedReference",
+]
 TERMINAL_TASK_STATES = {"COMPLETED", "FAILED", "CANCELLED"}
 SUCCESS_DOCUMENT_STATES = {"COMPLETED"}
 FAILED_DOCUMENT_STATES = {"FAILED", "CANCELLED"}
@@ -128,6 +170,17 @@ def parse_args() -> argparse.Namespace:
         "--arm-manifest",
         default="",
         help="Optional C7 sanitized reranker arm manifest JSON. Required for official C7 A/B arms.",
+    )
+    parser.add_argument(
+        "--reference-manifest",
+        default="",
+        help="Optional C17 retrieval reference execution manifest JSON.",
+    )
+    parser.add_argument(
+        "--reference-mode",
+        choices=("canary", "full"),
+        default="full",
+        help="C17 reference execution slice. Requires --reference-manifest.",
     )
     parser.add_argument(
         "--keep-existing",
@@ -510,6 +563,281 @@ def load_arm_manifest(path: Path) -> dict[str, Any]:
     return {**value, "sha256": hashlib.sha256(canonical).hexdigest()}
 
 
+def _require_exact_fields(value: Any, fields: set[str], code: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != fields:
+        raise ApiError(code)
+    return value
+
+
+def _require_relative_path(value: Any, code: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ApiError(code)
+    path = Path(value)
+    if path.is_absolute() or ".." in path.parts:
+        raise ApiError(code)
+    return path.as_posix()
+
+
+def _validate_call_budget(value: Any, expected: dict[str, int]) -> dict[str, int]:
+    budget = _require_exact_fields(value, C17_CALL_BUDGET_FIELDS, "c17_call_budget_invalid")
+    if any(isinstance(item, bool) or not isinstance(item, int) or item < 0 for item in budget.values()):
+        raise ApiError("c17_call_budget_invalid")
+    if budget != expected:
+        raise ApiError("c17_call_budget_invalid")
+    return budget
+
+
+def load_reference_manifest(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ApiError(f"c17_manifest_not_found: {path}") from exc
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ApiError("c17_manifest_json_invalid") from exc
+    manifest = _require_exact_fields(
+        value,
+        C17_REFERENCE_MANIFEST_FIELDS,
+        "c17_manifest_fields_invalid",
+    )
+    if manifest.get("schemaVersion") != C17_REFERENCE_SCHEMA:
+        raise ApiError("c17_manifest_schema_invalid")
+    for field in ("referenceId", "compilerVersion"):
+        if not isinstance(manifest.get(field), str) or not manifest[field]:
+            raise ApiError("c17_manifest_identity_invalid")
+    if manifest["compilerVersion"] != "c17-retrieval-reference-compiler-v1":
+        raise ApiError("c17_manifest_identity_invalid")
+
+    dataset = _require_exact_fields(
+        manifest.get("dataset"),
+        {
+            "manifestPath",
+            "manifestSha256",
+            "releaseVersion",
+            "expectedSampleCount",
+            "selectionMode",
+        },
+        "c17_dataset_identity_invalid",
+    )
+    if (
+        _require_relative_path(dataset.get("manifestPath"), "c17_dataset_identity_invalid")
+        != "docs/eval/dataset-manifest.json"
+    ):
+        raise ApiError("c17_dataset_identity_invalid")
+    if (
+        not isinstance(dataset.get("manifestSha256"), str)
+        or len(dataset["manifestSha256"]) != 64
+        or dataset.get("releaseVersion") != "rag-eval-dev-v2"
+        or dataset.get("expectedSampleCount") != 150
+        or dataset.get("selectionMode") != "full"
+    ):
+        raise ApiError("c17_dataset_identity_invalid")
+
+    target = _require_exact_fields(
+        manifest.get("targetProfile"),
+        {"path", "profileId", "draftVersion", "activeVersion"},
+        "c17_profile_identity_invalid",
+    )
+    if (
+        _require_relative_path(target.get("path"), "c17_profile_identity_invalid")
+        != "docs/eval/gates/rag-eval-dev-v2-retrieval-regression-v1.json"
+    ):
+        raise ApiError("c17_profile_identity_invalid")
+    if (
+        target.get("profileId") != "rag-eval-dev-v2-retrieval-regression"
+        or target.get("draftVersion") != "v1-draft"
+        or target.get("activeVersion") != "v1"
+    ):
+        raise ApiError("c17_profile_identity_invalid")
+
+    execution = _require_exact_fields(
+        manifest.get("execution"),
+        {"measuredRepeats", "runIndexes", "keepExisting", "runIdentity"},
+        "c17_execution_identity_invalid",
+    )
+    run_identity = _require_exact_fields(
+        execution.get("runIdentity"),
+        {"mode", "topK", "minScore", "enableRerank"},
+        "c17_execution_identity_invalid",
+    )
+    if (
+        execution.get("measuredRepeats") != 3
+        or execution.get("runIndexes") != [1, 2, 3]
+        or execution.get("keepExisting") is not True
+        or run_identity
+        != {"mode": "retrieval-only", "topK": 5, "minScore": 0.3, "enableRerank": True}
+    ):
+        raise ApiError("c17_execution_identity_invalid")
+
+    provider = _require_exact_fields(
+        manifest.get("providerPolicy"),
+        {
+            "requestedProvider",
+            "effectiveProvider",
+            "fallbackCountMax",
+            "modelCallCountMax",
+        },
+        "c17_provider_policy_invalid",
+    )
+    if provider != {
+        "requestedProvider": "heuristic",
+        "effectiveProvider": "heuristic",
+        "fallbackCountMax": 0,
+        "modelCallCountMax": 0,
+    }:
+        raise ApiError("c17_provider_policy_invalid")
+
+    error_policy = _require_exact_fields(
+        manifest.get("errorPolicy"),
+        {
+            "retrieveErrorsMax",
+            "rateLimitErrorsMax",
+            "retryCountMax",
+            "missingObservationsMax",
+            "unexpectedObservationsMax",
+        },
+        "c17_error_policy_invalid",
+    )
+    if any(value != 0 for value in error_policy.values()):
+        raise ApiError("c17_error_policy_invalid")
+
+    canary = _require_exact_fields(
+        manifest.get("canary"),
+        {"sampleIds", "measuredRepeats", "callBudget"},
+        "c17_canary_invalid",
+    )
+    expected_canary_ids = [
+        "fact-001",
+        "definition-001",
+        "reasoning-001",
+        "multi-hop-001",
+        "no-answer-001",
+    ]
+    if canary.get("sampleIds") != expected_canary_ids or canary.get("measuredRepeats") != 1:
+        raise ApiError("c17_canary_invalid")
+    _validate_call_budget(
+        canary.get("callBudget"),
+        {
+            "debugRetrieve": 5,
+            "queryEmbeddingUpperBound": 5,
+            "externalRerank": 0,
+            "ask": 0,
+            "generation": 0,
+            "llmJudge": 0,
+        },
+    )
+
+    full = _require_exact_fields(
+        manifest.get("full"),
+        {"expectedSampleCount", "measuredRepeats", "callBudget"},
+        "c17_full_invalid",
+    )
+    if full.get("expectedSampleCount") != 150 or full.get("measuredRepeats") != 3:
+        raise ApiError("c17_full_invalid")
+    _validate_call_budget(
+        full.get("callBudget"),
+        {
+            "debugRetrieve": 450,
+            "queryEmbeddingUpperBound": 450,
+            "externalRerank": 0,
+            "ask": 0,
+            "generation": 0,
+            "llmJudge": 0,
+        },
+    )
+
+    raw_policy = _require_exact_fields(
+        manifest.get("rawArtifactPolicy"),
+        {"directory", "noOverwrite", "tracked"},
+        "c17_raw_artifact_policy_invalid",
+    )
+    if (
+        _require_relative_path(raw_policy.get("directory"), "c17_raw_artifact_policy_invalid")
+        != "tmp/eval/c17"
+        or raw_policy.get("noOverwrite") is not True
+        or raw_policy.get("tracked") is not False
+    ):
+        raise ApiError("c17_raw_artifact_policy_invalid")
+    allowlist = manifest.get("trackedOutputAllowlist")
+    if allowlist != C17_TRACKED_OUTPUT_ALLOWLIST:
+        raise ApiError("c17_output_allowlist_invalid")
+
+    canonical = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return {**manifest, "sha256": hashlib.sha256(canonical).hexdigest()}
+
+
+def validate_manifest_exclusivity(args: argparse.Namespace) -> None:
+    if getattr(args, "arm_manifest", "") and getattr(args, "reference_manifest", ""):
+        raise ApiError("c17_c7_manifest_conflict")
+    if getattr(args, "reference_mode", "full") != "full" and not getattr(args, "reference_manifest", ""):
+        raise ApiError("c17_reference_manifest_required")
+
+
+def _c17_output_path_is_raw(path_value: str, directory: str) -> bool:
+    path = Path(path_value)
+    expected_directory = Path(directory)
+    if path.is_absolute() or ".." in path.parts:
+        return False
+    if len(path.parts) <= len(expected_directory.parts):
+        return False
+    return path.parts[: len(expected_directory.parts)] == expected_directory.parts
+
+
+def validate_c17_reference_plan(
+    args: argparse.Namespace,
+    manifest: dict[str, Any],
+    selected_samples: list[dict[str, Any]],
+    run_indexes: list[int],
+) -> None:
+    if not getattr(args, "keep_existing", False):
+        raise ApiError("c17_keep_existing_required")
+    if getattr(args, "include_ask", False) or getattr(args, "judge_mode", "off") != "off":
+        raise ApiError("c17_retrieval_only_required")
+    if (
+        int(getattr(args, "max_ask_retries", 0)) != 0
+        or getattr(args, "retry_ask_timeouts", False)
+    ):
+        raise ApiError("c17_zero_retry_required")
+    expected_identity = manifest["execution"]["runIdentity"]
+    if (
+        args.top_k != expected_identity["topK"]
+        or args.min_score != expected_identity["minScore"]
+        or args.enable_rerank is not expected_identity["enableRerank"]
+    ):
+        raise ApiError("c17_run_identity_mismatch")
+    if not getattr(args, "no_overwrite", False):
+        raise ApiError("c17_no_overwrite_required")
+    raw_directory = manifest["rawArtifactPolicy"]["directory"]
+    if any(
+        not _c17_output_path_is_raw(str(value), raw_directory)
+        for value in (args.report, args.details_json, args.metadata_json)
+    ):
+        raise ApiError("c17_raw_output_path_required")
+
+    mode = getattr(args, "reference_mode", "full")
+    selected_ids = [str(sample.get("id")) for sample in selected_samples]
+    if mode == "canary":
+        expected_ids = manifest["canary"]["sampleIds"]
+        if (
+            list(getattr(args, "sample_ids", None) or []) != expected_ids
+            or int(getattr(args, "sample_limit", 0)) != 0
+            or selected_ids != expected_ids
+            or args.repeat != manifest["canary"]["measuredRepeats"]
+            or run_indexes != [1]
+        ):
+            raise ApiError("c17_canary_selection_mismatch")
+    elif mode == "full":
+        if (
+            getattr(args, "sample_ids", None)
+            or int(getattr(args, "sample_limit", 0)) != 0
+            or len(selected_ids) != manifest["full"]["expectedSampleCount"]
+            or args.repeat != manifest["full"]["measuredRepeats"]
+            or run_indexes != manifest["execution"]["runIndexes"]
+        ):
+            raise ApiError("c17_full_selection_mismatch")
+    else:
+        raise ApiError("c17_reference_mode_invalid")
+
+
 def git_head() -> str:
     try:
         return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
@@ -528,12 +856,24 @@ def build_metadata(
 ) -> dict[str, Any]:
     chunk_count = sum(int(doc.get("chunkCount") or 0) for doc in docs)
     eval_path = Path(args.eval_set)
+    reference_manifest = getattr(args, "reference_manifest_data", None)
     repeat_total = int(
         (arm_manifest or {}).get("measuredRepeats")
+        or (
+            reference_manifest.get(getattr(args, "reference_mode", "full"), {}).get("measuredRepeats")
+            if isinstance(reference_manifest, dict)
+            else 0
+        )
         or getattr(args, "repeat", 1)
     )
     metadata = {
-        "evaluationSchema": C7_ARM_SCHEMA if arm_manifest else "rag-eval-v1",
+        "evaluationSchema": (
+            C7_ARM_SCHEMA
+            if arm_manifest
+            else C17_REFERENCE_SCHEMA
+            if isinstance(reference_manifest, dict)
+            else "rag-eval-v1"
+        ),
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "baseUrl": args.base_url,
         "evalSet": args.eval_set,
@@ -585,6 +925,15 @@ def build_metadata(
         "claimMetricConfig": dict(eval_runner.CLAIM_METRIC_CONFIG),
         "judgeContractConfig": eval_runner.judge_contract.contract_config(args),
         "armManifest": dict(arm_manifest) if arm_manifest else None,
+        "referenceManifest": (
+            {
+                "referenceId": reference_manifest.get("referenceId"),
+                "sha256": reference_manifest.get("sha256"),
+                "mode": getattr(args, "reference_mode", "full"),
+            }
+            if isinstance(reference_manifest, dict)
+            else None
+        ),
         "repeat": {"index": run_index, "total": repeat_total},
         "warmup": {"calls": int((arm_manifest or {}).get("warmupCalls", 0))},
     }
@@ -780,6 +1129,10 @@ def estimate_live_calls(args: argparse.Namespace, samples: list[dict[str, Any]],
     answerable_count = sum(1 for sample in samples if sample.get("should_answer", True))
     ask_calls = len(samples) * repeat if args.include_ask else 0
     judge_calls = answerable_count * repeat if args.include_ask and args.judge_mode == "llm" else 0
+    reference_manifest = getattr(args, "reference_manifest_data", None)
+    if isinstance(reference_manifest, dict):
+        mode = getattr(args, "reference_mode", "full")
+        return dict(reference_manifest[mode]["callBudget"])
     calls = {
         "debugRetrieve": len(samples) * repeat,
         "ask": ask_calls,
@@ -862,6 +1215,11 @@ def build_plan(
         plan["armId"] = manifest.get("armId")
         plan["armManifestSha256"] = manifest.get("sha256")
         plan["warmupCalls"] = 0 if getattr(args, "skip_warmup", False) else manifest.get("warmupCalls", 0)
+    reference_manifest = getattr(args, "reference_manifest_data", None)
+    if isinstance(reference_manifest, dict):
+        plan["referenceId"] = reference_manifest.get("referenceId")
+        plan["referenceManifestSha256"] = reference_manifest.get("sha256")
+        plan["referenceMode"] = getattr(args, "reference_mode", "full")
     dataset_identity = getattr(args, "dataset_release_identity", None)
     if isinstance(dataset_identity, dict):
         plan["datasetReleaseIdentity"] = dataset_identity
@@ -940,12 +1298,16 @@ def main() -> int:
     args.base_url = args.base_url.rstrip("/")
     fixtures = [Path(value) for value in (args.fixtures or [str(path) for path in DEFAULT_FIXTURES])]
     try:
+        validate_manifest_exclusivity(args)
         args.dataset_release_identity = validate_eval_dataset(args, fixtures)
     except dataset_contract.DatasetContractError as exc:
         print(
             f"Dataset validation failed: errorCode={exc.code} artifact={exc.artifact}",
             file=sys.stderr,
         )
+        return 2
+    except ApiError as exc:
+        print(str(exc), file=sys.stderr)
         return 2
     missing = [str(path) for path in fixtures if not path.exists()]
     if missing:
@@ -959,7 +1321,16 @@ def main() -> int:
     except ApiError as exc:
         print(str(exc), file=sys.stderr)
         return 2
-    args.arm_manifest_data = load_arm_manifest(Path(args.arm_manifest)) if args.arm_manifest else None
+    try:
+        args.arm_manifest_data = load_arm_manifest(Path(args.arm_manifest)) if args.arm_manifest else None
+        args.reference_manifest_data = (
+            load_reference_manifest(Path(args.reference_manifest))
+            if args.reference_manifest
+            else None
+        )
+    except ApiError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     if args.arm_manifest_data:
         if args.repeat != int(args.arm_manifest_data["measuredRepeats"]):
             print("--repeat must match arm manifest measuredRepeats", file=sys.stderr)
@@ -974,6 +1345,17 @@ def main() -> int:
     if not selected_samples:
         print("No eval samples selected. Check --sample-id/--sample-limit.", file=sys.stderr)
         return 2
+    if args.reference_manifest_data:
+        try:
+            validate_c17_reference_plan(
+                args,
+                args.reference_manifest_data,
+                selected_samples,
+                run_indexes,
+            )
+        except ApiError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
     if args.plan_only:
         print_plan(build_plan(args, fixtures, selected_samples))
         return 0

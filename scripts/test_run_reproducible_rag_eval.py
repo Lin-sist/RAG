@@ -153,6 +153,136 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             with self.assertRaisesRegex(runner.ApiError, "fields invalid"):
                 runner.load_arm_manifest(path)
 
+    def test_load_c17_reference_manifest_validates_and_returns_stable_hash(self) -> None:
+        manifest_path = self.repo_root() / "docs/eval/config/c17-retrieval-reference-v1.json"
+
+        manifest = runner.load_reference_manifest(manifest_path)
+
+        self.assertEqual(runner.C17_REFERENCE_SCHEMA, manifest["schemaVersion"])
+        self.assertEqual(150, manifest["full"]["expectedSampleCount"])
+        self.assertEqual(3, manifest["full"]["measuredRepeats"])
+        self.assertRegex(manifest["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_load_c17_reference_manifest_rejects_unknown_secret_field(self) -> None:
+        source = self.repo_root() / "docs/eval/config/c17-retrieval-reference-v1.json"
+        payload = json.loads(source.read_text(encoding="utf-8"))
+        payload["apiKey"] = "must-not-be-accepted"
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "unsafe-c17.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+            with self.assertRaisesRegex(runner.ApiError, "c17_manifest_fields_invalid"):
+                runner.load_reference_manifest(path)
+
+    def test_c17_raw_output_path_rejects_absolute_or_traversal_paths(self) -> None:
+        self.assertTrue(runner._c17_output_path_is_raw("tmp/eval/c17/run.json", "tmp/eval/c17"))
+        self.assertFalse(runner._c17_output_path_is_raw("../tmp/eval/c17/run.json", "tmp/eval/c17"))
+        self.assertFalse(runner._c17_output_path_is_raw("C:/tmp/eval/c17/run.json", "tmp/eval/c17"))
+
+    def test_c17_full_and_canary_plans_have_fixed_zero_expansion_budgets(self) -> None:
+        manifest = runner.load_reference_manifest(
+            self.repo_root() / "docs/eval/config/c17-retrieval-reference-v1.json"
+        )
+        all_samples = runner.read_eval_samples(
+            self.repo_root() / "docs/eval/releases/rag-eval-dev-v2.jsonl"
+        )
+
+        full_args = self.eval_command_args(include_ask=False)
+        full_args.eval_set = str(self.repo_root() / "docs/eval/releases/rag-eval-dev-v2.jsonl")
+        full_args.sample_ids = None
+        full_args.sample_limit = 0
+        full_args.repeat = 3
+        full_args.run_indexes = None
+        full_args.keep_existing = True
+        full_args.judge_mode = "off"
+        full_args.max_ask_retries = 0
+        full_args.retry_ask_timeouts = False
+        full_args.no_overwrite = True
+        full_args.report = "tmp/eval/c17/reference.md"
+        full_args.details_json = "tmp/eval/c17/reference-details.json"
+        full_args.metadata_json = "tmp/eval/c17/reference-metadata.json"
+        full_args.reference_mode = "full"
+        full_args.reference_manifest_data = manifest
+        runner.validate_c17_reference_plan(full_args, manifest, all_samples, [1, 2, 3])
+        full_plan = runner.build_plan(full_args, [], all_samples)
+
+        canary_args = self.eval_command_args(include_ask=False)
+        canary_args.eval_set = full_args.eval_set
+        canary_args.sample_ids = list(manifest["canary"]["sampleIds"])
+        canary_args.sample_limit = 0
+        canary_args.repeat = 1
+        canary_args.run_indexes = None
+        canary_args.keep_existing = True
+        canary_args.judge_mode = "off"
+        canary_args.max_ask_retries = 0
+        canary_args.retry_ask_timeouts = False
+        canary_args.no_overwrite = True
+        canary_args.report = "tmp/eval/c17/canary.md"
+        canary_args.details_json = "tmp/eval/c17/canary-details.json"
+        canary_args.metadata_json = "tmp/eval/c17/canary-metadata.json"
+        canary_args.reference_mode = "canary"
+        canary_args.reference_manifest_data = manifest
+        canary_samples = runner.select_eval_samples(
+            all_samples,
+            canary_args.sample_ids,
+            canary_args.sample_limit,
+        )
+        runner.validate_c17_reference_plan(canary_args, manifest, canary_samples, [1])
+        canary_plan = runner.build_plan(canary_args, [], canary_samples)
+
+        self.assertEqual(
+            {
+                "debugRetrieve": 450,
+                "queryEmbeddingUpperBound": 450,
+                "externalRerank": 0,
+                "ask": 0,
+                "generation": 0,
+                "llmJudge": 0,
+            },
+            full_plan["estimatedLiveCalls"],
+        )
+        self.assertEqual(150, full_plan["selectedSampleCount"])
+        self.assertEqual([1, 2, 3], full_plan["runIndexes"])
+        self.assertEqual(5, canary_plan["selectedSampleCount"])
+        self.assertEqual(5, canary_plan["estimatedLiveCalls"]["debugRetrieve"])
+        self.assertEqual(5, canary_plan["estimatedLiveCalls"]["queryEmbeddingUpperBound"])
+        self.assertTrue(all(
+            canary_plan["estimatedLiveCalls"][field] == 0
+            for field in ("externalRerank", "ask", "generation", "llmJudge")
+        ))
+
+    def test_c17_plan_rejects_missing_keep_existing_before_execution(self) -> None:
+        manifest = runner.load_reference_manifest(
+            self.repo_root() / "docs/eval/config/c17-retrieval-reference-v1.json"
+        )
+        samples = runner.read_eval_samples(
+            self.repo_root() / "docs/eval/releases/rag-eval-dev-v2.jsonl"
+        )
+        args = self.eval_command_args(include_ask=False)
+        args.sample_ids = None
+        args.sample_limit = 0
+        args.repeat = 3
+        args.keep_existing = False
+        args.judge_mode = "off"
+        args.max_ask_retries = 0
+        args.retry_ask_timeouts = False
+        args.no_overwrite = True
+        args.report = "tmp/eval/c17/reference.md"
+        args.details_json = "tmp/eval/c17/reference-details.json"
+        args.metadata_json = "tmp/eval/c17/reference-metadata.json"
+        args.reference_mode = "full"
+
+        with self.assertRaisesRegex(runner.ApiError, "c17_keep_existing_required"):
+            runner.validate_c17_reference_plan(args, manifest, samples, [1, 2, 3])
+
+    def test_c17_and_c7_manifests_are_mutually_exclusive(self) -> None:
+        args = self.eval_command_args(include_ask=False)
+        args.arm_manifest = "c7.json"
+        args.reference_manifest = "c17.json"
+
+        with self.assertRaisesRegex(runner.ApiError, "c17_c7_manifest_conflict"):
+            runner.validate_manifest_exclusivity(args)
+
     def test_build_metadata_adds_c7_eval_identity_sample_order_and_arm_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
@@ -614,6 +744,10 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             judge_timeout=30.0,
             judge_max_context_chars=4000,
         )
+
+    @staticmethod
+    def repo_root() -> Path:
+        return Path(__file__).resolve().parents[1]
 
 
 if __name__ == "__main__":

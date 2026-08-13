@@ -494,6 +494,59 @@ python -B scripts\evaluate_quality_gate.py `
 
 未来激活首个 retrieval profile 前，仍须单独披露并授权 v2/150×3 reference 运行的 provider/model、最多调用量、数据出站、费用/零费用依据、限流、timeout/retry 与 raw artifact 策略。当前 offline implementation 授权不包含这些调用。
 
+### 6.3 C17 retrieval reference 计划与本地 compiler
+
+C17 使用独立的 `docs/eval/config/c17-retrieval-reference-v1.json`，不复用 C7 双 arm manifest。它固定五类各一条的 canary、full 150×3、existing KB、heuristic attribution、zero retry/error/fallback/model rerank，以及 raw output 只能写入 ignored `tmp/eval/c17/` 并开启 `--no-overwrite`。C17 与 `--arm-manifest` 不能同时使用，任何 selection、repeat、run identity、输出目录或调用预算漂移都会在 login 前失败。
+
+以下 full plan-only 是纯本地检查，实际调用量为 0；其计划上限必须是 debug retrieval=450、query embedding=450，其余 external rerank/ask/generation/judge=0：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --plan-only `
+  --reference-manifest docs\eval\config\c17-retrieval-reference-v1.json `
+  --reference-mode full --keep-existing --repeat 3 `
+  --max-ask-retries 0 --no-retry-ask-timeouts --judge-mode off `
+  --report tmp\eval\c17\reference.md `
+  --details-json tmp\eval\c17\reference-details.json `
+  --metadata-json tmp\eval\c17\reference-metadata.json `
+  --no-overwrite
+```
+
+canary plan 使用同一 manifest，但固定为一次、五条 ID；不得把 canary observation 混入正式 reference：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --plan-only `
+  --reference-manifest docs\eval\config\c17-retrieval-reference-v1.json `
+  --reference-mode canary --keep-existing `
+  --sample-id fact-001 --sample-id definition-001 `
+  --sample-id reasoning-001 --sample-id multi-hop-001 `
+  --sample-id no-answer-001 `
+  --max-ask-retries 0 --no-retry-ask-timeouts --judge-mode off `
+  --report tmp\eval\c17\canary.md `
+  --details-json tmp\eval\c17\canary-details.json `
+  --metadata-json tmp\eval\c17\canary-metadata.json `
+  --no-overwrite
+```
+
+live 前必须先完成独立 W0 closeout，再用相同参数改为 `--preflight-only` 并显式提供本地凭据。preflight 只登录、检查已有 KB 和三份 document/index 状态，不创建、上传或运行 retrieval/provider。canary 需要单独授权最多 5 次 debug retrieval/5 次 query embedding；只有 canary clean 后，full 450/450 才能再次单独申请授权。两阶段都不自动 retry，不调用 external reranker、ask、generation 或 judge。
+
+三份 full details/metadata 都存在后，用 compiler 做纯本地严格聚合：
+
+```powershell
+python -B scripts\compile_retrieval_reference.py `
+  --details tmp\eval\c17\reference-details-run1.json `
+  --details tmp\eval\c17\reference-details-run2.json `
+  --details tmp\eval\c17\reference-details-run3.json `
+  --metadata tmp\eval\c17\reference-metadata-run1.json `
+  --metadata tmp\eval\c17\reference-metadata-run2.json `
+  --metadata tmp\eval\c17\reference-metadata-run3.json `
+  --output-json docs\eval\reports\c17-retrieval-reference-review-v1.json `
+  --no-overwrite
+```
+
+compiler 只返回 `COMPLETE / INCOMPLETE / NOT_COMPARABLE / INVALID`。只有 exact 450 observations、三次 strict identity、RETRIEVAL_ONLY、zero error/retry 和 heuristic attribution 全部成立时，才输出 12 条规则的三次 denominator/observed 与 min/median/max/spread。输出不复制 question、expected/retrieved context、provider body、numeric KB id、vector collection、凭据或绝对路径。当前 canonical profile 仍为 `DRAFT / PENDING_REFERENCE_EVIDENCE`，所以 COMPLETE 也只进入人工阈值审阅，不能产生 gate PASS 或 locked reference；用户批准全部 target/tolerance 并形成最终 ACTIVE profile hash 后，才允许生成 median locked reference 和离线重放。
+
 ## 7. 如何记录优化前后对比
 
 临时实验报告默认写入 `tmp/eval/`，避免把每次本地运行都提交到仓库：

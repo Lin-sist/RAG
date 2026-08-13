@@ -1970,3 +1970,22 @@
 - 范围与 Git：最终 changed/new paths=6，且只包含 `.ai/ACTIVE_TASK.md`、`.ai/AGENT_LOG.md` 与 `openspec/changes/retrieval-quality-gate-activation/**`；unexpected paths=0、accepted baseline diffs=0、business/script/config/frontend diffs=0、staged files=0；`git diff --check`=`PASS`。
 - 跳过项：本轮没有实现代码、profile 数值或 runtime 变更，Maven、Python full tests、frontend build、Docker/Testcontainers、backend preflight 和任何 live/provider evidence 均 `SKIPPED`。planning calls=0、business data outbound=false。
 - Commit：`pending`；提交责任保持 `用户手动提交`，建议 `docs(openspec): 启动C17检索质量门禁规划`。
+
+## 2026-08-12｜C17 规划提交补录与 Offline Implementation 授权
+
+- 规划提交补录：Commit=`9181897`（`docs(openspec): 启动C17检索质量门禁规划`）。本条只补录上一规划提交的真实 hash，不回改历史记录。
+- 用户授权：用户明确表示“授权你 commit 权限，规划通过，现在开始实现阶段”，据此批准 proposal、design 14 条决策与 `evaluation` delta 的 4 requirements / 12 scenarios，并授权 C17 计划内 offline TDD implementation 和本地 Agent commit。
+- 授权边界：本轮可修改 C17 manifest/schema、Python evaluation tooling/tests、eval guide、active tasks 与 AGENT_LOG；不包含 W0 OTel 修改、canary/full backend/provider 调用、profile 阈值批准、baseline acceptance/archive、push、PR、部署或发布。
+- 实现顺序：先用 RED tests 固定 manifest/参数 fail-fast、canary/full 调用预算、三次 strict identity/completeness 与 rule distribution；再实现 runner/纯本地 compiler，最后运行聚焦和全量 Python/static gates。
+- 外调状态：实现阶段继续保持 backend/embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false、费用/限流事件=0。
+- Commit：`pending`。
+
+## 2026-08-12｜C17 Offline Reference Tooling Implementation
+
+- 范围与修改文件：新增 `docs/eval/config/c17-retrieval-reference-v1.json`、执行/脱敏 evidence schemas、`scripts/compile_retrieval_reference.py` 与 tests；更新 reproducible runner、C10 evaluator 纯 observed 入口、eval guide、active tasks/指针。未修改 dataset/fixture、Java/POM/frontend、retrieval/chunking/embedding/rerank/metric 公式、production QA/default provider、accepted specs 或历史 artifacts。
+- 已确认事实与关键决策：C17/C7 manifest 互斥；C17 只允许 existing KB、ignored `tmp/eval/c17/`、no-overwrite、zero retry、heuristic attribution；full 计划固定 150×3=450 debug retrieval / 最多 450 query embedding，canary 固定 5 IDs/1 repeat=5/5，external rerank/ask/generation/judge=0。compiler 只本地读取三份 details/metadata，严格校验 repeat/sample/dataset/fixture/document/KB/config/Git/run/metric/provider identity，复用 C10 rule observed 计算并输出 COMPLETE/INCOMPLETE/NOT_COMPARABLE/INVALID；DRAFT COMPLETE 仍只 `PENDING_THRESHOLD_APPROVAL`。
+- RED→GREEN：RED 先得到 `ModuleNotFoundError: compile_retrieval_reference`、runner 缺 `load_reference_manifest`、evaluator 缺 `calculate_rule_observation`；GREEN 聚焦 `python -B -m unittest test_compile_retrieval_reference test_run_reproducible_rag_eval test_evaluate_quality_gate`=`63 tests PASS`。
+- 全量验证：`python -B -m unittest discover -s scripts -p 'test_*.py'`=`226 tests PASS`；C17 manifest 与 synthetic COMPLETE pack 均通过 `jsonschema`；full/canary plan-only=`PASS` 且 actual calls=0；`python -B scripts/check_sensitive_logs.py --root .`=`PASS (370 source files)`；3 个 C17 JSON 可解析、`tmp/eval/c17` 被 `.gitignore` 命中、protected/accepted/history paths diff=0、`git diff --check`=`PASS`。
+- 跳过项：W0 OTel closeout、backend preflight、真实 KB/MySQL/Milvus、canary/full embedding/provider、ACTIVE profile/reference replay、baseline acceptance/archive 均未授权或仍有前置，记 `SKIPPED`；Java/POM/frontend/runtime/API 无改动，因此 Maven/frontend build 也 `SKIPPED`。本轮 backend/embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false。
+- 剩余风险：当前只是 offline tooling GREEN，不是 reference evidence 或 active gate；profile 仍 `DRAFT / PENDING_REFERENCE_EVIDENCE`。W0 与 preflight 未完成，canary/full 仍需分别披露 runtime fingerprint、费用/限流/数据出站并取得授权；编译器的 ACTIVE replay 路径目前以 synthetic unit test 覆盖，须在用户批准 12 条 target/tolerance 后以真实三次 source evidence 重放。
+- Commit：`pending`；用户已授权本 change 计划内本地 Agent commit，建议 `feat(eval): 实现C17检索参考证据工具链`；push/PR/deploy 未授权。

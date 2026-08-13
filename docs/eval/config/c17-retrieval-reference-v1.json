@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "c17-retrieval-reference-v1",
+  "referenceId": "rag-eval-dev-v2-retrieval-reference-v1",
+  "compilerVersion": "c17-retrieval-reference-compiler-v1",
+  "dataset": {
+    "manifestPath": "docs/eval/dataset-manifest.json",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
+    "releaseVersion": "rag-eval-dev-v2",
+    "expectedSampleCount": 150,
+    "selectionMode": "full"
+  },
+  "targetProfile": {
+    "path": "docs/eval/gates/rag-eval-dev-v2-retrieval-regression-v1.json",
+    "profileId": "rag-eval-dev-v2-retrieval-regression",
+    "draftVersion": "v1-draft",
+    "activeVersion": "v1"
+  },
+  "execution": {
+    "measuredRepeats": 3,
+    "runIndexes": [1, 2, 3],
+    "keepExisting": true,
+    "runIdentity": {
+      "mode": "retrieval-only",
+      "topK": 5,
+      "minScore": 0.3,
+      "enableRerank": true
+    }
+  },
+  "providerPolicy": {
+    "requestedProvider": "heuristic",
+    "effectiveProvider": "heuristic",
+    "fallbackCountMax": 0,
+    "modelCallCountMax": 0
+  },
+  "errorPolicy": {
+    "retrieveErrorsMax": 0,
+    "rateLimitErrorsMax": 0,
+    "retryCountMax": 0,
+    "missingObservationsMax": 0,
+    "unexpectedObservationsMax": 0
+  },
+  "canary": {
+    "sampleIds": [
+      "fact-001",
+      "definition-001",
+      "reasoning-001",
+      "multi-hop-001",
+      "no-answer-001"
+    ],
+    "measuredRepeats": 1,
+    "callBudget": {
+      "debugRetrieve": 5,
+      "queryEmbeddingUpperBound": 5,
+      "externalRerank": 0,
+      "ask": 0,
+      "generation": 0,
+      "llmJudge": 0
+    }
+  },
+  "full": {
+    "expectedSampleCount": 150,
+    "measuredRepeats": 3,
+    "callBudget": {
+      "debugRetrieve": 450,
+      "queryEmbeddingUpperBound": 450,
+      "externalRerank": 0,
+      "ask": 0,
+      "generation": 0,
+      "llmJudge": 0
+    }
+  },
+  "rawArtifactPolicy": {
+    "directory": "tmp/eval/c17",
+    "noOverwrite": true,
+    "tracked": false
+  },
+  "trackedOutputAllowlist": [
+    "schemaVersion",
+    "status",
+    "activationStatus",
+    "reasonCodes",
+    "compiler",
+    "manifest",
+    "profile",
+    "dataset",
+    "runIdentity",
+    "expected",
+    "actual",
+    "identity",
+    "providerAttribution",
+    "callFacts",
+    "artifacts",
+    "rules",
+    "lockedReference"
+  ]
+}

@@ -89,6 +89,35 @@ class EvaluateQualityGateTest(unittest.TestCase):
         self.assertEqual(1, len(result["rules"]))
         self.assertEqual("profile_draft", result["rules"][0]["reason"])
 
+    def test_draft_rule_observation_reuses_gate_metric_calculation_without_pass(self) -> None:
+        profile = self.active_profile([
+            {
+                "id": "overall-recall5",
+                "channel": "retrieval",
+                "slice": "overall",
+                "metric": "recall_at_5",
+                "operator": "minInclusive",
+                "target": None,
+                "required": True,
+            }
+        ])
+        details = self.complete_retrieval_details()
+        annotated_evidence = list(zip(self.samples, details["samples"], strict=True))
+
+        observation = evaluate_quality_gate.calculate_rule_observation(
+            profile["rules"][0],
+            profile["slices"][0],
+            annotated_evidence,
+        )
+
+        self.assertEqual("COMPLETE", observation["status"])
+        self.assertEqual(1.0, observation["observed"])
+        self.assertEqual(
+            sum(len(sample["expected_contexts"]) for sample in self.samples if sample["should_answer"]),
+            observation["denominator"],
+        )
+        self.assertNotIn("result", observation)
+
     def test_invalid_profile_returns_invalid_contract_result(self) -> None:
         profile = self.active_profile([])
         profile["schemaVersion"] = "unknown-profile-schema"

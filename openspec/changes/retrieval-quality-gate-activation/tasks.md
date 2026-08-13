@@ -5,10 +5,10 @@
 - [x] 用户要求在 readiness 通过后开始阶段规划。
 - [x] 启动事实：HEAD=`701ade3`，工作树干净，`main...origin/main [ahead 1]`，`ACTIVE_TASK=IDLE`，无其他 active change，C1–C16 已归档。
 - [x] 创建 proposal、design、tasks 与 `evaluation` spec delta，并将 `.ai/ACTIVE_TASK.md` 指向唯一 C17 change。
-- [x] 提交责任保持 `用户手动提交`；Agent 不暂存、不提交、不 push、不创建 PR、不部署。
+- [x] 规划阶段提交责任为 `用户手动提交`；规划获批后用户已授权本 change 的本地 Agent commit，仍不包含 push、PR 或部署。
 - [x] 本规划阶段真实 backend/embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false。
-- [ ] 用户审阅并批准 proposal、design 14 条决策记录与 `evaluation` delta 的 4 requirements / 12 scenarios。
-- [ ] 用户明确授权进入 offline TDD implementation；该授权不自动包含 canary/full provider calls、阈值批准、baseline acceptance、archive 或提交。
+- [x] 用户审阅并批准 proposal、design 14 条决策记录与 `evaluation` delta 的 4 requirements / 12 scenarios。
+- [x] 用户明确授权进入 offline TDD implementation，并授权计划内本地 commit；该授权不包含 canary/full provider calls、阈值批准、baseline acceptance、archive、push、PR 或部署。
 
 ## 1. W0 And Runtime Readiness Prerequisite
 
@@ -19,47 +19,47 @@
 
 ## 2. C17 Manifest And Plan Budget
 
-- [ ] RED：manifest schema/version、dataset/profile identity、selection、repeat、run config、expected provider、error/retry policy 或调用预算缺失/漂移时，在 backend call 前返回稳定 invalid code。
-- [ ] RED：full 计划不是 150×3、canary IDs/数量漂移、`--keep-existing` 缺失、include-ask/judge/model rerank 非零时 fail closed。
-- [ ] GREEN：新增 `c17-retrieval-reference-v1` schema、tracked manifest、loader 与 canonical hash。
-- [ ] GREEN：runner plan 对 canary/full 显示 debug retrieval、query embedding、external rerank、ask、generation、judge 的精确上限。
-- [ ] GREEN：C17 manifest 与 C7 arm manifest 职责隔离，禁止同时使用或互相冒充。
+- [x] RED：manifest schema/version、dataset/profile identity、selection、repeat、run config、expected provider、error/retry policy 或调用预算缺失/漂移时，在 backend call 前返回稳定 invalid code。
+- [x] RED：full 计划不是 150×3、canary IDs/数量漂移、`--keep-existing` 缺失、include-ask/judge/model rerank 非零时 fail closed。
+- [x] GREEN：新增 `c17-retrieval-reference-v1` schema、tracked manifest、loader 与 canonical hash。
+- [x] GREEN：runner plan 对 canary/full 显示 debug retrieval、query embedding、external rerank、ask、generation、judge 的精确上限。
+- [x] GREEN：C17 manifest 与 C7 arm manifest 职责隔离，禁止同时使用或互相冒充。
 
 ## 3. Strict Reference Compiler
 
-- [ ] RED：三个 run 的 Git/config/fixture/KB/document/dataset/selection/retrieval/metric/repeat identity 任一漂移均为 `NOT_COMPARABLE`。
-- [ ] RED：missing/unexpected run/sample、Report status 非 `RETRIEVAL_ONLY`、retrieve/rate-limit/retry/fallback/model rerank call 任一非零均阻止 `COMPLETE`。
-- [ ] RED：compiler 不得删除失败 observation、缩小 denominator、从成功子集计算或把缺失填 0。
-- [ ] GREEN：新增纯本地 compiler，按 `runIndex + sampleId` 校验 exact 450 observations 与三份 details/metadata hash。
-- [ ] GREEN：status 固定为 `COMPLETE / INCOMPLETE / NOT_COMPARABLE / INVALID`，保留 expected/actual counts 和 safe reasons。
+- [x] RED：三个 run 的 Git/config/fixture/KB/document/dataset/selection/retrieval/metric/repeat identity 任一漂移均为 `NOT_COMPARABLE`。
+- [x] RED：missing/unexpected run/sample、Report status 非 `RETRIEVAL_ONLY`、retrieve/rate-limit/retry/fallback/model rerank call 任一非零均阻止 `COMPLETE`。
+- [x] RED：compiler 不得删除失败 observation、缩小 denominator、从成功子集计算或把缺失填 0。
+- [x] GREEN：新增纯本地 compiler，按 `runIndex + sampleId` 校验 exact 450 observations 与三份 details/metadata hash。
+- [x] GREEN：status 固定为 `COMPLETE / INCOMPLETE / NOT_COMPARABLE / INVALID`，保留 expected/actual counts 和 safe reasons。
 
 ## 4. Rule Distribution And Reference Lock
 
-- [ ] RED：DRAFT target 为 null 时仍能用 C10 同一纯计算逻辑得到 12 条 rule observed，但不能产生 gate PASS 或 locked reference。
-- [ ] RED：三次 observed 的 min/median/max/spread 与手算 fixture 一致，偶数/奇数、有限数、rounding 语义稳定。
-- [ ] GREEN：抽取并复用 evaluator 的 slice/rule observed 计算，避免复制指标公式。
-- [ ] GREEN：生成脱敏 threshold review pack，包含每次 denominator/observed 与 min/median/max/spread，不含 raw sample/provider 内容。
-- [ ] RED：ACTIVE profile hash/version/dataset/run/rule identity 不匹配时不能生成 locked reference。
-- [ ] GREEN：用户批准阈值后，以 median 生成 `reference.rules[].observed`，绑定最终 ACTIVE profile SHA-256。
+- [x] RED：DRAFT target 为 null 时仍能用 C10 同一纯计算逻辑得到 12 条 rule observed，但不能产生 gate PASS 或 locked reference。
+- [x] RED：三次 observed 的 min/median/max/spread 与手算 fixture 一致，偶数/奇数、有限数、rounding 语义稳定。
+- [x] GREEN：抽取并复用 evaluator 的 slice/rule observed 计算，避免复制指标公式。
+- [x] GREEN：生成脱敏 threshold review pack，包含每次 denominator/observed 与 min/median/max/spread，不含 raw sample/provider 内容。
+- [x] RED：ACTIVE profile hash/version/dataset/run/rule identity 不匹配时不能生成 locked reference。
+- [x] GREEN：用户批准阈值后，以 median 生成 `reference.rules[].observed`，绑定最终 ACTIVE profile SHA-256。
 - [ ] GREEN：三个 source reference repeat 对最终 hard floor/reference tolerance 分别重放且 required rules 全部 PASS。
 
 ## 5. Safety Compatibility And Documentation
 
-- [ ] raw report/details/metadata 只写 `tmp/eval/c17/` 且 `--no-overwrite`；tracked artifact 使用 schema + allowlist。
-- [ ] 普通/跟踪输出不包含 question、expected answer/context、retrieved context、provider body、secret、Authorization、numeric KB id/vector collection 或绝对路径。
-- [ ] C7/C8/C9/C10 历史 artifacts 保持原样，不能按文件名或 aggregate 追认为 C17 reference。
-- [ ] 当前 DRAFT profile 在阈值批准前继续得到 `NOT_EVALUABLE/4`；existing C10 evaluator/status/exit-code tests 保持兼容。
-- [ ] 更新 `docs/eval/RAG_EVAL_GUIDE.md` 的 plan/preflight/canary/full/compiler/review/activation/no-overwrite 与 external-call boundary。
-- [ ] 明确 C17 不修改 dataset、retrieval/rerank/embedding/metric 公式、production QA、默认 provider、generation/citation/no-answer answer quality、judge 或 CI 平台配置。
+- [x] raw report/details/metadata 只写 `tmp/eval/c17/` 且 `--no-overwrite`；tracked artifact 使用 schema + allowlist。
+- [x] 普通/跟踪输出不包含 question、expected answer/context、retrieved context、provider body、secret、Authorization、numeric KB id/vector collection 或绝对路径。
+- [x] C7/C8/C9/C10 历史 artifacts 保持原样，不能按文件名或 aggregate 追认为 C17 reference。
+- [x] 当前 DRAFT profile 在阈值批准前继续得到 `NOT_EVALUABLE/4`；existing C10 evaluator/status/exit-code tests 保持兼容。
+- [x] 更新 `docs/eval/RAG_EVAL_GUIDE.md` 的 plan/preflight/canary/full/compiler/review/activation/no-overwrite 与 external-call boundary。
+- [x] 明确 C17 不修改 dataset、retrieval/rerank/embedding/metric 公式、production QA、默认 provider、generation/citation/no-answer answer quality、judge 或 CI 平台配置。
 
 ## 6. Offline Verification Before Any Live Call
 
-- [ ] 运行 compiler/runner/evaluator 聚焦 tests，记录 RED→GREEN 证据。
-- [ ] 运行 `python -B -m unittest discover -s scripts -p 'test_*.py'`。
-- [ ] 运行 C17 full manifest 的 plan-only，确认 selected=150、repeat=3、debug retrieval=450、query embedding upper bound=450、其他外部通道=0。
-- [ ] 运行 fixed canary plan-only，确认 5 IDs、1 repeat、debug retrieval/query embedding upper bound=5。
-- [ ] 运行 SensitiveLogs、raw text/absolute path、Markdown links、protected paths、historical artifact 非覆盖与 `git diff --check`。
-- [ ] Java/POM/frontend/runtime/API 无改动时，将 Maven/frontend build 记为 `SKIPPED`；同时保留独立 W0 closeout 前置，不用此 SKIPPED 消除 W0 债务。
+- [x] 运行 compiler/runner/evaluator 聚焦 tests，记录 RED→GREEN 证据。
+- [x] 运行 `python -B -m unittest discover -s scripts -p 'test_*.py'`。
+- [x] 运行 C17 full manifest 的 plan-only，确认 selected=150、repeat=3、debug retrieval=450、query embedding upper bound=450、其他外部通道=0。
+- [x] 运行 fixed canary plan-only，确认 5 IDs、1 repeat、debug retrieval/query embedding upper bound=5。
+- [x] 运行 SensitiveLogs、raw text/absolute path、Markdown links、protected paths、historical artifact 非覆盖与 `git diff --check`。
+- [x] Java/POM/frontend/runtime/API 无改动时，将 Maven/frontend build 记为 `SKIPPED`；同时保留独立 W0 closeout 前置，不用此 SKIPPED 消除 W0 债务。
 
 ## 7. Preflight And Canary Authorization Gate
 
@@ -93,4 +93,4 @@
 - [ ] 将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`，验证 exact suffix/无重复 requirement title。
 - [ ] 同步 project/architecture/roadmap/optimization/eval guide 与 append-only `.ai/AGENT_LOG.md`。
 - [ ] 将 change 归档到 `openspec/changes/archive/<date>-retrieval-quality-gate-activation/` 并恢复 `.ai/ACTIVE_TASK.md=IDLE`。
-- [ ] 提交责任保持 `用户手动提交`；baseline acceptance、archive、commit、push、PR、deploy 均不从实现或外调授权自动继承。
+- [ ] 提交责任为本 change 计划内 `Agent 提交`；baseline acceptance、archive、push、PR、deploy 均不从实现或外调授权自动继承。

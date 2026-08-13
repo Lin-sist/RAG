@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "c17-retrieval-reference-v1",
+  "title": "C17 Retrieval Reference Execution Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "referenceId",
+    "compilerVersion",
+    "dataset",
+    "targetProfile",
+    "execution",
+    "providerPolicy",
+    "errorPolicy",
+    "canary",
+    "full",
+    "rawArtifactPolicy",
+    "trackedOutputAllowlist"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "c17-retrieval-reference-v1"},
+    "referenceId": {"type": "string", "minLength": 1},
+    "compilerVersion": {"const": "c17-retrieval-reference-compiler-v1"},
+    "dataset": {"$ref": "#/$defs/dataset"},
+    "targetProfile": {"$ref": "#/$defs/targetProfile"},
+    "execution": {"$ref": "#/$defs/execution"},
+    "providerPolicy": {"$ref": "#/$defs/providerPolicy"},
+    "errorPolicy": {"$ref": "#/$defs/errorPolicy"},
+    "canary": {"$ref": "#/$defs/canary"},
+    "full": {"$ref": "#/$defs/full"},
+    "rawArtifactPolicy": {"$ref": "#/$defs/rawArtifactPolicy"},
+    "trackedOutputAllowlist": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "$defs": {
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestPath", "manifestSha256", "releaseVersion", "expectedSampleCount", "selectionMode"],
+      "properties": {
+        "manifestPath": {"const": "docs/eval/dataset-manifest.json"},
+        "manifestSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "releaseVersion": {"const": "rag-eval-dev-v2"},
+        "expectedSampleCount": {"const": 150},
+        "selectionMode": {"const": "full"}
+      }
+    },
+    "targetProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "profileId", "draftVersion", "activeVersion"],
+      "properties": {
+        "path": {"const": "docs/eval/gates/rag-eval-dev-v2-retrieval-regression-v1.json"},
+        "profileId": {"const": "rag-eval-dev-v2-retrieval-regression"},
+        "draftVersion": {"const": "v1-draft"},
+        "activeVersion": {"const": "v1"}
+      }
+    },
+    "runIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "topK", "minScore", "enableRerank"],
+      "properties": {
+        "mode": {"const": "retrieval-only"},
+        "topK": {"const": 5},
+        "minScore": {"const": 0.3},
+        "enableRerank": {"const": true}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measuredRepeats", "runIndexes", "keepExisting", "runIdentity"],
+      "properties": {
+        "measuredRepeats": {"const": 3},
+        "runIndexes": {"const": [1, 2, 3]},
+        "keepExisting": {"const": true},
+        "runIdentity": {"$ref": "#/$defs/runIdentity"}
+      }
+    },
+    "providerPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestedProvider", "effectiveProvider", "fallbackCountMax", "modelCallCountMax"],
+      "properties": {
+        "requestedProvider": {"const": "heuristic"},
+        "effectiveProvider": {"const": "heuristic"},
+        "fallbackCountMax": {"const": 0},
+        "modelCallCountMax": {"const": 0}
+      }
+    },
+    "errorPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retrieveErrorsMax", "rateLimitErrorsMax", "retryCountMax", "missingObservationsMax", "unexpectedObservationsMax"],
+      "properties": {
+        "retrieveErrorsMax": {"const": 0},
+        "rateLimitErrorsMax": {"const": 0},
+        "retryCountMax": {"const": 0},
+        "missingObservationsMax": {"const": 0},
+        "unexpectedObservationsMax": {"const": 0}
+      }
+    },
+    "callBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["debugRetrieve", "queryEmbeddingUpperBound", "externalRerank", "ask", "generation", "llmJudge"],
+      "properties": {
+        "debugRetrieve": {"type": "integer", "minimum": 0},
+        "queryEmbeddingUpperBound": {"type": "integer", "minimum": 0},
+        "externalRerank": {"const": 0},
+        "ask": {"const": 0},
+        "generation": {"const": 0},
+        "llmJudge": {"const": 0}
+      }
+    },
+    "canaryCallBudget": {
+      "allOf": [
+        {"$ref": "#/$defs/callBudget"},
+        {
+          "type": "object",
+          "properties": {
+            "debugRetrieve": {"const": 5},
+            "queryEmbeddingUpperBound": {"const": 5}
+          }
+        }
+      ]
+    },
+    "fullCallBudget": {
+      "allOf": [
+        {"$ref": "#/$defs/callBudget"},
+        {
+          "type": "object",
+          "properties": {
+            "debugRetrieve": {"const": 450},
+            "queryEmbeddingUpperBound": {"const": 450}
+          }
+        }
+      ]
+    },
+    "canary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sampleIds", "measuredRepeats", "callBudget"],
+      "properties": {
+        "sampleIds": {"const": ["fact-001", "definition-001", "reasoning-001", "multi-hop-001", "no-answer-001"]},
+        "measuredRepeats": {"const": 1},
+        "callBudget": {"$ref": "#/$defs/canaryCallBudget"}
+      }
+    },
+    "full": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedSampleCount", "measuredRepeats", "callBudget"],
+      "properties": {
+        "expectedSampleCount": {"const": 150},
+        "measuredRepeats": {"const": 3},
+        "callBudget": {"$ref": "#/$defs/fullCallBudget"}
+      }
+    },
+    "rawArtifactPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["directory", "noOverwrite", "tracked"],
+      "properties": {
+        "directory": {"const": "tmp/eval/c17"},
+        "noOverwrite": {"const": true},
+        "tracked": {"const": false}
+      }
+    }
+  }
+}

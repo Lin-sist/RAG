@@ -486,11 +486,10 @@ def _not_evaluable_result(
     }
 
 
-def _evaluate_rule(
+def calculate_rule_observation(
     rule: dict[str, Any],
     slice_definition: dict[str, Any],
     annotated_evidence: list[tuple[dict[str, Any], dict[str, Any]]],
-    reference_rule: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     selected = _select_slice(slice_definition, annotated_evidence)
     operator = rule.get("operator")
@@ -500,9 +499,6 @@ def _evaluate_rule(
         "judge",
     }:
         raise GateContractError("profile_rule_invalid")
-    target = rule.get("target")
-    if not _finite_number(target):
-        raise GateContractError("profile_threshold_invalid")
     required = rule.get("required") is True
     common = {
         "id": rule["id"],
@@ -510,7 +506,6 @@ def _evaluate_rule(
         "slice": rule["slice"],
         "metric": rule["metric"],
         "operator": rule["operator"],
-        "target": float(target),
         "denominator": None,
         "required": required,
     }
@@ -518,7 +513,7 @@ def _evaluate_rule(
         return {
             **common,
             "observed": None,
-            "result": "NOT_EVALUABLE" if required else "SKIPPED",
+            "status": "INCOMPLETE",
             "reason": "required_metric_missing" if required else "optional_metric_missing",
         }
     observed, total = _calculate_metric(str(rule.get("metric")), selected)
@@ -527,9 +522,41 @@ def _evaluate_rule(
         return {
             **common,
             "observed": observed,
-            "result": "NOT_EVALUABLE" if required else "SKIPPED",
+            "status": "INCOMPLETE",
             "reason": "denominator_insufficient",
         }
+    return {
+        **common,
+        "observed": observed,
+        "status": "COMPLETE",
+        "reason": "observation_complete",
+    }
+
+
+def _evaluate_rule(
+    rule: dict[str, Any],
+    slice_definition: dict[str, Any],
+    annotated_evidence: list[tuple[dict[str, Any], dict[str, Any]]],
+    reference_rule: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    target = rule.get("target")
+    if not _finite_number(target):
+        raise GateContractError("profile_threshold_invalid")
+    observation = calculate_rule_observation(rule, slice_definition, annotated_evidence)
+    common = {
+        key: value
+        for key, value in observation.items()
+        if key not in {"status", "reason"}
+    }
+    common["target"] = float(target)
+    if observation["status"] != "COMPLETE":
+        return {
+            **common,
+            "result": "NOT_EVALUABLE" if observation["required"] else "SKIPPED",
+            "reason": observation["reason"],
+        }
+    observed = float(observation["observed"])
+    operator = str(rule["operator"])
     hard_passed = observed >= float(target) if operator == "minInclusive" else observed <= float(target)
     reference_passed: bool | None = None
     reference_observed: float | None = None
