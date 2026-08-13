@@ -16,7 +16,7 @@
 - [x] 引用独立 W0 closeout commit `f2f0ec3`：聚焦 12 tests 与全仓 617 tests 均为 0 failures / 0 errors，不再以原聚焦 9/9 覆盖全仓 unavailable-collector 时序债务。
 - [x] W0 确认为 logging 全局状态重置后的测试稳定性问题，已按独立 Type B 修复/验证/提交；OTel diff 未混入 C17 提交。
 - [x] W0 不需要改变 runtime semantics，因此无需停止 C17 或创建第二个 Type C change。
-- [ ] 在任何 C17 live call 前固定 clean Git HEAD、dataset/profile/manifest、KB/fixture/document、tracked config 与 raw artifact policy。
+- [x] 在任何 C17 live call 前固定 clean Git HEAD=`82707068deaea038e96d842d4253cf50c40b3070`、v2/150 dataset、DRAFT profile、C17 manifest、既有 KB 的 3/3 COMPLETED fixtures、tracked config hash 与 ignored `tmp/eval/c17/` no-overwrite raw policy。
 
 ## 2. C17 Manifest And Plan Budget
 
@@ -64,10 +64,11 @@
 
 ## 7. Preflight And Canary Authorization Gate
 
-- [ ] 以 `--preflight-only --keep-existing` 验证本机 backend、固定 KB、三份 fixture/document 状态；provider calls=0、mutation=0。
-- [ ] 若 preflight 不 READY，停止；不创建/删除 KB、不上传 fixture、不触发 indexing embedding。
-- [ ] 记录不含 secret 的 runtime embedding provider/model/endpoint host/path/dimension/timeout/fallback、Git/config hash、费用或零费用依据、限流/配额与 retry=0。
-- [ ] 向用户披露 canary：5 debug retrieval、最多 5 query embedding、5 条 tracked question 可能出站；取得单独授权。
+- [x] 以 `--preflight-only --keep-existing` 验证本机 backend 与固定 KB：status=`READY`、3/3 fixture/document=`COMPLETED`、chunk counts=11/14/25；provider calls=0、mutation=0。
+- [x] preflight 已 READY；未创建/删除 KB、未上传 fixture、未触发 indexing embedding。
+- [x] runtime fingerprint：OpenAI-compatible NVIDIA hosted `nvidia/llama-nemotron-embed-1b-v2`、`integrate.api.nvidia.com/v1/embeddings`、dimension=2048、timeout=60000ms、fallback=false、proxy=`127.0.0.1:7897` reachable、Git=`8270706`、tracked config SHA-256=`d66479a5...a6575`、retry=0；官方 NIM FAQ 支持 Developer Program 原型/研发免费访问，但账户 quota/rate-limit 仍 unknown。
+- [x] 已向用户披露 canary：5 debug retrieval、最多 5 query embedding、5 条 tracked eval question 经本机代理出站到 NVIDIA；external rerank/ask/generation/judge=0、retry=0、预期直接费用=0 但 quota 不可本地证明。
+- [ ] 用户在上述具体数据目的地与范围披露后明确批准 canary 出站；概括的“完成 C17”授权未通过外调安全门，禁止绕过。
 - [ ] 执行固定 5-case canary；任何 auth/429/timeout/retrieve error、identity drift、fallback/model rerank call 均停止且不自动重试。
 - [ ] 证明 canary 仅为环境检查，不进入 reference aggregate、不形成质量结论。
 

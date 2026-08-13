@@ -2010,3 +2010,13 @@
 ## 2026-08-13｜C17 W0 引用提交补录
 
 - Commit：`e3af60e`（`docs(eval): 记录C17的W0前置关闭`）。本条只补录上一治理提交的真实 hash，不回改历史记录；本次采用独立纯日志补录提交，不递归记录该补录提交自身 hash。
+
+## 2026-08-13｜C17 W0 后 mutation-free preflight
+
+- 范围与启动事实：先确认 `EmbeddingServiceImpl.java` 的规范化 worktree hash 与 HEAD blob 完全一致并通过路径级索引刷新清除 CRLF/LF 伪改动；随后独立 W0 commits=`f2f0ec3`/`e3af60e`/纯日志 `8270706`，当前 clean HEAD=`82707068deaea038e96d842d4253cf50c40b3070`。恢复既有 Docker Desktop 与 5 个 compose 容器，MySQL/Redis/etcd/MinIO/Milvus 均 healthy；未修改 `.env.local`、`application-dev.yml` 或 tracked runtime config。
+- Preflight：使用 C17 full manifest 参数运行 `--preflight-only --keep-existing`，status=`READY`、mutationFree=true、expected/matched fixture=3/3、missing/incomplete=0/0、document states 全为 `COMPLETED`、chunk counts=11/14/25。只执行本地登录与 KB/document 读取；未创建/删除 KB、未上传 fixture、未触发 indexing embedding，provider/embedding/rerank/ask/generation/judge calls=0。
+- Runtime fingerprint：OpenAI-compatible adapter + NVIDIA hosted `nvidia/llama-nemotron-embed-1b-v2`，endpoint host/path=`integrate.api.nvidia.com/v1/embeddings`，dimension=2048、timeout=60000ms、fallback=false、API key present（值未输出）、local proxy `127.0.0.1:7897` reachable；Git=`8270706`、`application.yml` SHA-256=`d66479a5ae5c8f92d37a1d5fbe933d5e32e0134c7844c35587d95486d5ba6575`、heuristic rerank、eval retry=0。
+- 费用/限流与数据出站：通过 agent-reach/Exa 核对 NVIDIA 官方 NIM FAQ/model catalog；Developer Program hosted endpoints 用于原型/研发并提供免费访问，因此 canary 预期直接费用=0，但账户剩余 quota/rate-limit 无本地/官方固定数值证据，保持 unknown。已披露 5 条 tracked eval question 将经本机代理出站到 NVIDIA，external rerank/ask/generation/judge=0。
+- 阻断与跳过：在执行前，外调安全门拒绝把概括的“完成 C17”授权解释为这 5 条具体问题向具体 NVIDIA endpoint 出站的知情授权；命令未启动、canary files 均不存在、canary/provider calls=0、business data outbound=false。必须由用户在上述披露后明确批准，禁止绕过；full 450/450、threshold approval、activation/archive 继续 `SKIPPED`。
+- 剩余风险：NVIDIA hosted endpoint/API catalog、账户 entitlement/quota 可能变化；canary 获批后任何 auth/429/timeout/provider drift/fallback/model rerank 均停止且不重试。canary clean 也不自动授权 full。
+- Commit：`pending`；提交责任为 `Agent 提交`，建议 `docs(eval): 记录C17预检就绪状态`；push/PR/deploy 未授权。
