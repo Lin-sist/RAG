@@ -2002,3 +2002,7 @@
 - 跳过项及原因：21 项为既有外部环境 smoke/MySQL migration/recovery 条件跳过；本次不启动本地 collector 或 MySQL，不把这些跳过项包装为真实集成通过。frontend、C17 backend preflight 与 provider calls 均未执行；business data outbound=false、费用/限流事件=0。
 - 范围安全与剩余风险：`EmbeddingServiceImpl.java` 的规范化 worktree hash 与 HEAD blob 均为 `765ee8801b3e6923cf540068249e075962e3e064`，路径级索引刷新后 staged/worktree diff 均为空；W0 已可供 C17 引用，但 C17 仍需独立 preflight、canary/full evidence、阈值批准与 activation replay。
 - Commit：`pending`；提交责任为 `Agent 提交`，建议 `fix(observability): 稳定OTel安全日志过滤器重装`；push/PR/deploy 未授权。
+
+## 2026-08-13｜W0 OTel 修复提交补录
+
+- Commit：`f2f0ec3`（`fix(observability): 稳定OTel安全日志过滤器重装`）。本条只补录上一执行提交的真实 hash，不回改历史记录。

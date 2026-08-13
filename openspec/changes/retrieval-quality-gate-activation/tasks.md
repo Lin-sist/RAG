@@ -9,12 +9,13 @@
 - [x] 本规划阶段真实 backend/embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false。
 - [x] 用户审阅并批准 proposal、design 14 条决策记录与 `evaluation` delta 的 4 requirements / 12 scenarios。
 - [x] 用户明确授权进入 offline TDD implementation，并授权计划内本地 commit；该授权不包含 canary/full provider calls、阈值批准、baseline acceptance、archive、push、PR 或部署。
+- [x] 用户在 W0 伪改动/时序问题处理完成后，授权继续完成 C17 剩余内容；本地 commit 仍不包含 push、PR 或部署，live call 仍须先完成 runtime 披露并遵守 canary/full 固定预算。
 
 ## 1. W0 And Runtime Readiness Prerequisite
 
-- [ ] 引用独立 W0 closeout 证据，确认不能再仅以聚焦 9/9 覆盖全仓 unavailable-collector 时序债务。
-- [ ] 若 W0 只是测试稳定性问题，按独立 Type B 范围完成修复/验证；不把 OTel 改动混入 C17 diff。
-- [ ] 若 W0 需要改变 runtime semantics，停止 C17 推进并请求用户先建立独立 Type C change。
+- [x] 引用独立 W0 closeout commit `f2f0ec3`：聚焦 12 tests 与全仓 617 tests 均为 0 failures / 0 errors，不再以原聚焦 9/9 覆盖全仓 unavailable-collector 时序债务。
+- [x] W0 确认为 logging 全局状态重置后的测试稳定性问题，已按独立 Type B 修复/验证/提交；OTel diff 未混入 C17 提交。
+- [x] W0 不需要改变 runtime semantics，因此无需停止 C17 或创建第二个 Type C change。
 - [ ] 在任何 C17 live call 前固定 clean Git HEAD、dataset/profile/manifest、KB/fixture/document、tracked config 与 raw artifact policy。
 
 ## 2. C17 Manifest And Plan Budget
