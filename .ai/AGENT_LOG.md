@@ -2020,3 +2020,7 @@
 - 阻断与跳过：在执行前，外调安全门拒绝把概括的“完成 C17”授权解释为这 5 条具体问题向具体 NVIDIA endpoint 出站的知情授权；命令未启动、canary files 均不存在、canary/provider calls=0、business data outbound=false。必须由用户在上述披露后明确批准，禁止绕过；full 450/450、threshold approval、activation/archive 继续 `SKIPPED`。
 - 剩余风险：NVIDIA hosted endpoint/API catalog、账户 entitlement/quota 可能变化；canary 获批后任何 auth/429/timeout/provider drift/fallback/model rerank 均停止且不重试。canary clean 也不自动授权 full。
 - Commit：`pending`；提交责任为 `Agent 提交`，建议 `docs(eval): 记录C17预检就绪状态`；push/PR/deploy 未授权。
+
+## 2026-08-13｜C17 Preflight 提交补录
+
+- Commit：`f5ffbbd`（`docs(eval): 记录C17预检就绪状态`）。本条只补录上一执行提交的真实 hash，不回改历史记录；本次采用独立纯日志补录提交，不递归记录该补录提交自身 hash。
