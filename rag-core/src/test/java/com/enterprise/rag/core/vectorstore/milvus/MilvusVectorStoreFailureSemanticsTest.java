@@ -149,6 +149,42 @@ class MilvusVectorStoreFailureSemanticsTest {
     }
 
     @Test
+    void scopedUpsertShouldAcceptNumericallyEquivalentLegacyScopeMetadata() {
+        when(milvusClient.delete(any(DeleteParam.class))).thenReturn(R.success());
+        when(milvusClient.insert(any(InsertParam.class))).thenReturn(R.success());
+        TenantVectorScope scope = new TenantVectorScope(11L, 31L, "tenant_11_kb_31_v2");
+
+        vectorStore.upsert(scope, List.of(new VectorDocument(
+                "doc-1", new float[] {0.1f, 0.2f}, "content",
+                Map.of("tenantId", 11.0d, "kbId", 31.0d))));
+
+        ArgumentCaptor<InsertParam> insertCaptor = ArgumentCaptor.forClass(InsertParam.class);
+        verify(milvusClient).insert(insertCaptor.capture());
+        String serialized = String.valueOf(insertCaptor.getValue().getFields().stream()
+                .filter(field -> "metadata".equals(field.getName()))
+                .findFirst()
+                .orElseThrow()
+                .getValues()
+                .get(0));
+        assertTrue(serialized.contains("\"tenantId\":11"));
+        assertTrue(serialized.contains("\"kbId\":31"));
+    }
+
+    @Test
+    void scopedUpsertShouldRejectRoundedNumericScopeMetadata() {
+        long tenantId = 9_007_199_254_740_993L;
+        TenantVectorScope scope = new TenantVectorScope(
+                tenantId, 31L, "tenant_9007199254740993_kb_31_v2");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> vectorStore.upsert(scope, List.of(new VectorDocument(
+                        "doc-1", new float[] {0.1f, 0.2f}, "content",
+                        Map.of("tenantId", 9_007_199_254_740_992d, "kbId", 31.0d)))));
+
+        verify(milvusClient, never()).insert(any(InsertParam.class));
+    }
+
+    @Test
     void createShouldDeclareIndependentTenantAndKnowledgeBaseScalarFields() {
         when(milvusClient.hasCollection(any(HasCollectionParam.class))).thenReturn(R.success(false));
         when(milvusClient.createCollection(any(CreateCollectionParam.class))).thenReturn(R.success());

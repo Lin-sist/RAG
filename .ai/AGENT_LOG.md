@@ -2040,3 +2040,16 @@
 - 最终验证：`python -B -m unittest test_run_reproducible_rag_eval`=`42 tests PASS`；`python -B -m unittest discover -s scripts -p 'test_*.py'`=`235 tests PASS`；`python -B scripts/check_sensitive_logs.py --root .`=`PASS (370 source files)`；`git diff --check`=`PASS`。
 - 范围复核：tracked diff 仅为 C17 runner/tests、eval guide、active tasks/指针和 append-only log；dataset/release/fixtures、accepted specs、archive/history、Java/POM/frontend/runtime/provider diffs=0。三份 canary raw artifacts 均由 `/tmp/eval/` ignore 规则覆盖。
 - 结论边界：上述 GREEN 只证明 fail-closed tooling 修复，不把 `FAILED` canary 改写为通过。真实 shadow migration、canary rerun 和 full reference 仍未执行；Commit=`pending`。
+
+## 2026-08-13｜C17 Canary 门禁修复提交补录
+
+- Commit：`abd3c70`（`fix(eval): 让C17预检与单次运行失败关闭`）。本条只补录上一执行提交的真实 hash，不回改历史记录。
+
+## 2026-08-13｜C17 首次 Shadow Migration 失败与 Scope Marker 修复
+
+- 授权与执行边界：用户明确批准一次真实 zero-retry shadow migration。执行前复核 MySQL 为 `LEGACY_PENDING`、3/3 documents COMPLETED、50 chunks/50 vector IDs，Milvus source exists=true/count=50/dimension=2048、deterministic shadow exists=false；本地后端先停止以冻结写入，迁移使用无 Web、无业务调度器、禁用 Flyway 的最小 MyBatis 上下文。授权范围内 provider/embedding/rerank/ask/generation/judge/LLM calls=0、business data outbound=false，不删除 source、不自动清理或重试。
+- 首次真实结果：source audit 已读到 50/50，但 shadow upsert 前抛出稳定 `Vector metadata scope conflicts with server scope`。根因是 legacy metadata 经 Gson 读取后把等价 `kbId` 表示为浮点数，而 `MilvusVectorStore` 使用字符串比较，导致 `10.0` 与服务端 `10` 被误判冲突。迁移按合同停止；MySQL=`AUDIT_FAILED`、expected/observed/migrated/missing/mismatch=`50/50/0/0/0`、last error=`maintenance_failure`、active mapping=`SOURCE_ACTIVE`，Milvus source=50、shadow exists=true/count=0。没有第二次迁移、cleanup 或 mapping switch。
+- TDD 与修改文件：先补 `MilvusVectorStoreFailureSemanticsTest` 的等价 legacy 数值用例，RED 稳定复现原异常；最小实现改为数值等价后 GREEN。随后增加 IEEE-754 大整数舍入安全用例，RED 证明直接 `double == long` 会误接收，再以 `BigDecimal` 精确比较收口；真实冲突、非整数和不可解析值继续 fail closed。修改 `MilvusVectorStore.java`、对应测试、C17 tasks/active pointer 与本 append-only 日志；未修改 migration contract、SQL schema、API、provider/config、dataset/profile/accepted specs。
+- 验证：等价数值单测 RED=`IllegalArgumentException`、GREEN=`PASS`；大整数舍入单测 RED=`expected IllegalArgumentException but reached vector dependency`、GREEN=`PASS`；`MilvusVectorStoreFailureSemanticsTest` + `VectorShadowMigrationServiceTest`=`18 tests / 0 failures / 0 errors`；最终 `mvn -q test` exit=0，按本次 Surefire XML 汇总=`619 tests / 0 failures / 0 errors / 2 skipped`。
+- 跳过项与剩余风险：原授权明确 zero retry，因此修复后真实 migration retry=`SKIPPED`，现存空 shadow 未清理，backend 保持停止；mutation-free preflight、canary rerun、full 450/450、compiler、threshold approval、ACTIVE replay、baseline acceptance/archive 均未执行。下一步必须先重新披露现存 `AUDIT_FAILED`/空 shadow 状态并取得一次新的 migration retry 授权；即使迁移成功，canary 仍需新的独立外调授权。
+- Commit：`pending`；提交责任为 `Agent 提交`，建议 `fix(vector): 兼容legacy scope数值标记`；push/PR/deploy 未授权。

@@ -71,6 +71,10 @@
 - [x] 用户在上述具体数据目的地与范围披露后明确批准 canary 出站。
 - [x] 执行固定 5-case canary 并按门禁停止：5/5 local debug retrieval 均返回 `VECTOR_INDEX_NOT_READY` / HTTP 503，Report status=`FAILED`、retrieveErrors=5、rateLimit/retry/fallback/model rerank=0；失败发生在 embedding 前，不自动重试。
 - [x] canary 仅为环境检查，未进入 reference aggregate、不形成质量结论；full 450/450 未启动。
+- [x] 用户明确批准一次真实 zero-retry shadow migration：source 只读、创建 deterministic tenant-aware shadow、复制/审计 50 vectors、成功后原子切换 mapping/readiness；provider/embedding/rerank/LLM=0、数据不出站、不删除 source、不自动清理。
+- [x] 首次真实执行在 source audit 50/50 后失败并停止：legacy JSON 的等价浮点 `kbId` 被 `MilvusVectorStore` 字符串比较误判为 scope conflict；MySQL=`AUDIT_FAILED`、source mapping 保持 active、source=50、shadow=0，未重试或清理。
+- [x] TDD 修复既有 C13b contract bug：scope marker 使用精确数值等价，接受 `11.0 == 11` 且拒绝 IEEE-754 大整数舍入伪相等；Milvus/shadow 聚焦 tests 与最终全仓 Maven 均通过。
+- [ ] 在披露失败现场、修复证据、现存空 shadow 与 rollback 边界后，由用户重新明确授权一次 migration retry；首次授权不得自动复用。
 
 ## 8. Full Reference Authorization And Execution
 

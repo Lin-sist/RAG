@@ -41,6 +41,7 @@ import io.milvus.response.SearchResultsWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.function.Supplier;
@@ -379,9 +380,24 @@ public class MilvusVectorStore implements VectorStore, LegacyVectorSourceReader 
                 continue;
             }
             Object actual = entry.getValue();
-            if (actual == null || !String.valueOf(expected).equals(String.valueOf(actual))) {
+            if (!scopeValueMatches(actual, expected)) {
                 throw new IllegalArgumentException("Vector metadata scope conflicts with server scope");
             }
+        }
+    }
+
+    private boolean scopeValueMatches(Object actual, long expected) {
+        if (actual instanceof Number number) {
+            try {
+                return new BigDecimal(number.toString()).compareTo(BigDecimal.valueOf(expected)) == 0;
+            } catch (NumberFormatException ignored) {
+                return false;
+            }
+        }
+        try {
+            return actual != null && Long.parseLong(String.valueOf(actual)) == expected;
+        } catch (NumberFormatException ignored) {
+            return false;
         }
     }
 
