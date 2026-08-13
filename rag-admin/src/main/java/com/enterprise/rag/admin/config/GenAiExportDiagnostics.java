@@ -13,7 +13,6 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.logging.Filter;
 import java.util.logging.Level;
@@ -28,7 +27,6 @@ public final class GenAiExportDiagnostics {
 
     private static final String GRPC_EXPORTER_LOGGER =
             "io.opentelemetry.exporter.internal.grpc.GrpcExporter";
-    private static final AtomicBoolean SAFE_LOG_FILTER_INSTALLED = new AtomicBoolean();
     private final LongAdder[][] successes = new LongAdder[Signal.values().length][Phase.values().length];
     private final LongAdder[][] failures = new LongAdder[Signal.values().length][Phase.values().length];
 
@@ -42,13 +40,18 @@ public final class GenAiExportDiagnostics {
     }
 
     static void installSafeGrpcLogFilter() {
-        if (!SAFE_LOG_FILTER_INSTALLED.compareAndSet(false, true)) {
-            return;
-        }
         Logger logger = Logger.getLogger(GRPC_EXPORTER_LOGGER);
         Filter existing = logger.getFilter();
-        logger.setFilter(record -> {
-            if (existing != null && !existing.isLoggable(record)) {
+        if (!(existing instanceof SafeGrpcLogFilter)) {
+            logger.setFilter(new SafeGrpcLogFilter(existing));
+        }
+    }
+
+    private record SafeGrpcLogFilter(Filter delegate) implements Filter {
+
+        @Override
+        public boolean isLoggable(java.util.logging.LogRecord record) {
+            if (delegate != null && !delegate.isLoggable(record)) {
                 return false;
             }
             if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
@@ -57,7 +60,7 @@ public final class GenAiExportDiagnostics {
                 record.setThrown(null);
             }
             return true;
-        });
+        }
     }
 
     SpanExporter observe(SpanExporter delegate) {

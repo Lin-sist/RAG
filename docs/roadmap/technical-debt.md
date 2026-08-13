@@ -6,20 +6,14 @@
 
 ## P0：进入 C17 前
 
-### 1. OTel unavailable collector 时序测试波动
-
-- `GenAiTracingConfigurationTest#unavailableCollectorIsBoundedFailOpenAndRecordsOnlySafeFailureFacts` 在全仓并发测试中仍可能失败，独立复跑通过。
-- 需要先最小复现并确认是测试捕获/并发时序问题还是运行语义问题；前者按既有契约内维护处理，后者升级 Type C。
-- 独立复跑通过只用于诊断，不能把全仓结果写成 GREEN。
-
-### 2. C17 retrieval profile reference readiness
+### 1. C17 retrieval profile reference readiness
 
 - 当前 `rag-eval-dev-v2-retrieval-regression-v1` 仍为 `DRAFT / PENDING_REFERENCE_EVIDENCE`，12 条 target 均为 `null`。
 - 正式 evidence 计划为固定身份 v2/150 × 3 repeats；最多 450 次 debug retrieval、450 次 query embedding。
 - provider/model、KB/fixture、Git/config、数据出站、费用/零费用依据、限流、timeout/retry 与 raw artifact 策略尚未在新的执行闸门确认。
 - 具体 hard floors 与 regression tolerances 必须在完整 evidence 产生后由用户审阅，不得提前猜测。
 
-### 3. 开发态 JWT fallback 治理
+### 2. 开发态 JWT fallback 治理
 
 - `application.yml` 的开发态 JWT fallback 不属于既有数据库认证 closeout。
 - 需要独立评估本地易用性与误带生产环境的风险；不得顺手修改 `.env.local` 或 `application-dev.yml`。

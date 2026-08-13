@@ -11,11 +11,31 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.logging.Filter;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class GenAiExportDiagnosticsTest {
+
+    @Test
+    void safeGrpcLogFilterIsReinstalledAfterExternalLoggerReset() {
+        Logger logger = Logger.getLogger(
+                "io.opentelemetry.exporter.internal.grpc.GrpcExporter");
+        Filter original = logger.getFilter();
+        try {
+            GenAiExportDiagnostics.installSafeGrpcLogFilter();
+            logger.setFilter(null);
+
+            GenAiExportDiagnostics.installSafeGrpcLogFilter();
+
+            assertNotNull(logger.getFilter());
+        } finally {
+            logger.setFilter(original);
+        }
+    }
 
     @Test
     void traceExporterExceptionsAndLifecycleFailuresBecomeFixedSafeCounters() {

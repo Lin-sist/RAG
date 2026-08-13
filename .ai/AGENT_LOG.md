@@ -1989,3 +1989,16 @@
 - 跳过项：W0 OTel closeout、backend preflight、真实 KB/MySQL/Milvus、canary/full embedding/provider、ACTIVE profile/reference replay、baseline acceptance/archive 均未授权或仍有前置，记 `SKIPPED`；Java/POM/frontend/runtime/API 无改动，因此 Maven/frontend build 也 `SKIPPED`。本轮 backend/embedding/rerank/ask/generation/judge/LLM/provider calls=0、business data outbound=false。
 - 剩余风险：当前只是 offline tooling GREEN，不是 reference evidence 或 active gate；profile 仍 `DRAFT / PENDING_REFERENCE_EVIDENCE`。W0 与 preflight 未完成，canary/full 仍需分别披露 runtime fingerprint、费用/限流/数据出站并取得授权；编译器的 ACTIVE replay 路径目前以 synthetic unit test 覆盖，须在用户批准 12 条 target/tolerance 后以真实三次 source evidence 重放。
 - Commit：`pending`；用户已授权本 change 计划内本地 Agent commit，建议 `feat(eval): 实现C17检索参考证据工具链`；push/PR/deploy 未授权。
+
+## 2026-08-13｜C17 Offline Tooling 提交补录
+
+- Commit：`c9d86d5`（`feat(eval): 实现C17检索参考证据工具链`）。本条只补录上一执行提交的真实 hash，不回改历史记录。
+
+## 2026-08-13｜W0 OTel unavailable-collector 时序债务收口
+
+- 范围与修改文件：作为 C17 live 前的独立 Type B 前置，修改 `GenAiExportDiagnostics.java` 与对应测试，使安全 JUL filter 在被外部 logging 初始化重置后可幂等重装；从 `docs/roadmap/technical-debt.md` 移除已关闭的 W0 债务。不修改 exporter、timeout、queue、fail-open、指标语义、C17 evaluation tooling 或 accepted specs。
+- 已确认事实与关键决策：修复前全仓 `mvn -q test` 稳定复现唯一失败，`GenAiTracingConfigurationTest` 第 188 行捕获到原始 endpoint；相同 9-test 类独立运行通过。根因是 Spring 全仓前序 logging 状态清除了 logger filter，而进程级 `AtomicBoolean` 阻止后续 context 重装，属于既有安全契约内测试/全局状态稳定性问题，不需要改变 runtime semantics 或新建 Type C change。
+- 验证：聚焦 `mvn -q -pl rag-admin -am '-Dtest=GenAiExportDiagnosticsTest,GenAiTracingConfigurationTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`=`12 tests PASS`；全仓 `mvn -q test`=`PASS`。按本次运行时间筛选 Surefire XML：617 tests、0 failures、0 errors、21 skipped，其中 `rag-admin` 322 tests 全通过；OTLP 日志只保留固定安全消息。
+- 跳过项及原因：21 项为既有外部环境 smoke/MySQL migration/recovery 条件跳过；本次不启动本地 collector 或 MySQL，不把这些跳过项包装为真实集成通过。frontend、C17 backend preflight 与 provider calls 均未执行；business data outbound=false、费用/限流事件=0。
+- 范围安全与剩余风险：`EmbeddingServiceImpl.java` 的规范化 worktree hash 与 HEAD blob 均为 `765ee8801b3e6923cf540068249e075962e3e064`，路径级索引刷新后 staged/worktree diff 均为空；W0 已可供 C17 引用，但 C17 仍需独立 preflight、canary/full evidence、阈值批准与 activation replay。
+- Commit：`pending`；提交责任为 `Agent 提交`，建议 `fix(observability): 稳定OTel安全日志过滤器重装`；push/PR/deploy 未授权。
