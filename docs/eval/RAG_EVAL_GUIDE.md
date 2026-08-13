@@ -529,7 +529,7 @@ python -B scripts\run_reproducible_rag_eval.py `
   --no-overwrite
 ```
 
-live 前必须先完成独立 W0 closeout，再用相同参数改为 `--preflight-only` 并显式提供本地凭据。preflight 只登录、检查已有 KB 和三份 document/index 状态，不创建、上传或运行 retrieval/provider。canary 需要单独授权最多 5 次 debug retrieval/5 次 query embedding；只有 canary clean 后，full 450/450 才能再次单独申请授权。两阶段都不自动 retry，不调用 external reranker、ask、generation 或 judge。
+live 前必须先完成独立 W0 closeout，再用相同参数改为 `--preflight-only` 并显式提供本地凭据。preflight 只登录、检查已有 KB、三份 document/index 状态，并通过只读 statistics 验证 vector readiness/count 与预期 chunk 总数一致；任一状态不可读或数量不一致都返回 `BLOCKED`。它不创建、上传或运行 retrieval/provider，显示输出也不包含数字 KB ID 或 vector collection。canary 需要单独授权最多 5 次 debug retrieval/5 次 query embedding；只有 canary clean 后，full 450/450 才能再次单独申请授权。两阶段都不自动 retry，不调用 external reranker、ask、generation 或 judge；C17 child report 非 `RETRIEVAL_ONLY`、error/retry 非零、样本或 heuristic attribution 漂移时，父 runner 必须非零退出。
 
 三份 full details/metadata 都存在后，用 compiler 做纯本地严格聚合：
 

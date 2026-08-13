@@ -519,6 +519,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
                 {"fileName": "java-interview-guide.md", "status": "COMPLETED", "chunkCount": 20},
             ],
             [Path("test-data/springboot-basics.md"), Path("test-data/java-interview-guide.md")],
+            {"status": "READY", "vectorCount": 38},
         )
 
         self.assertEqual("READY", result["status"])
@@ -527,6 +528,38 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual([], result["fixtures"]["missing"])
         self.assertEqual([], result["fixtures"]["incomplete"])
 
+    def test_probe_vector_readiness_uses_read_only_statistics_endpoint(self) -> None:
+        args = argparse.Namespace(base_url="http://localhost:8080", timeout=60.0)
+        with mock.patch.object(
+            runner,
+            "call_json",
+            return_value={"code": 200, "data": {"vectorCount": 50}},
+        ) as call_json:
+            result = runner.probe_vector_readiness(args, "token", 15)
+
+        self.assertEqual({"status": "READY", "vectorCount": 50}, result)
+        call_json.assert_called_once_with(
+            "GET",
+            "http://localhost:8080/api/knowledge-bases/15/statistics",
+            None,
+            "token",
+            args.timeout,
+        )
+
+    def test_probe_vector_readiness_fails_closed_without_leaking_backend_error(self) -> None:
+        args = argparse.Namespace(base_url="http://localhost:8080", timeout=60.0)
+        with mock.patch.object(
+            runner,
+            "call_json",
+            side_effect=runner.ApiError("HTTP 503 raw provider body"),
+        ):
+            result = runner.probe_vector_readiness(args, "token", 15)
+
+        self.assertEqual(
+            {"status": "BLOCKED", "vectorCount": None, "reason": "VECTOR_READINESS_UNAVAILABLE"},
+            result,
+        )
+
     def test_build_preflight_reports_missing_and_incomplete_fixtures(self) -> None:
         args = self.eval_command_args(include_ask=False)
         result = runner.build_preflight(
@@ -534,11 +567,147 @@ class ReproducibleRagEvalTest(unittest.TestCase):
             {"id": 15, "name": "codex-stage1-repro-eval"},
             [{"title": "springboot-basics.md", "status": "PROCESSING", "chunkCount": 0}],
             [Path("test-data/springboot-basics.md"), Path("test-data/java-interview-guide.md")],
+            {"status": "READY", "vectorCount": 0},
         )
 
         self.assertEqual("BLOCKED", result["status"])
         self.assertEqual(["java-interview-guide.md"], result["fixtures"]["missing"])
         self.assertEqual(["springboot-basics.md"], result["fixtures"]["incomplete"])
+
+    def test_build_preflight_blocks_when_vector_readiness_is_unavailable(self) -> None:
+        args = self.eval_command_args(include_ask=False)
+        result = runner.build_preflight(
+            args,
+            {"id": 15, "name": "codex-stage1-repro-eval", "vectorCollection": "kb_test"},
+            [{"title": "springboot-basics.md", "status": "COMPLETED", "chunkCount": 1}],
+            [Path("test-data/springboot-basics.md")],
+            {"status": "BLOCKED", "vectorCount": None, "reason": "VECTOR_READINESS_UNAVAILABLE"},
+        )
+
+        self.assertEqual("BLOCKED", result["status"])
+        self.assertEqual("VECTOR_READINESS_UNAVAILABLE", result["vectorReadiness"]["reason"])
+
+    def test_build_preflight_blocks_when_vector_count_does_not_match_chunks(self) -> None:
+        args = self.eval_command_args(include_ask=False)
+        result = runner.build_preflight(
+            args,
+            {"id": 15, "name": "codex-stage1-repro-eval", "vectorCollection": "kb_test"},
+            [{"title": "springboot-basics.md", "status": "COMPLETED", "chunkCount": 2}],
+            [Path("test-data/springboot-basics.md")],
+            {"status": "READY", "vectorCount": 1},
+        )
+
+        self.assertEqual("BLOCKED", result["status"])
+        self.assertEqual("VECTOR_COUNT_MISMATCH", result["vectorReadiness"]["reason"])
+        self.assertEqual(2, result["vectorReadiness"]["expectedVectorCount"])
+
+    def test_preflight_display_omits_numeric_kb_id_and_vector_collection(self) -> None:
+        display = runner.redact_preflight_for_display({
+            "status": "READY",
+            "mutationFree": True,
+            "baseUrl": "http://localhost:8080",
+            "knowledgeBase": {"id": 15, "vectorCollection": "secret_collection"},
+            "vectorReadiness": {"status": "READY", "vectorCount": 50, "expectedVectorCount": 50},
+            "fixtures": {"expectedCount": 0, "matchedCount": 0, "missing": [], "incomplete": [], "documents": []},
+            "nextStep": "continue",
+        })
+
+        serialized = json.dumps(display, sort_keys=True)
+        self.assertNotIn("secret_collection", serialized)
+        self.assertNotIn('"id": 15', serialized)
+        self.assertEqual("READY", display["vectorReadiness"]["status"])
+
+    def test_validate_c17_live_run_rejects_failed_report_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            details_path = Path(tmp_dir) / "details.json"
+            details_path.write_text(
+                json.dumps({"reportStatus": "FAILED"}),
+                encoding="utf-8",
+            )
+            manifest = runner.load_reference_manifest(
+                Path(__file__).resolve().parents[1]
+                / "docs/eval/config/c17-retrieval-reference-v1.json"
+            )
+
+            with self.assertRaisesRegex(runner.ApiError, "c17_live_report_status_invalid"):
+                runner.validate_c17_live_run(details_path, manifest, ["fact-001"])
+
+    def test_validate_c17_live_run_rejects_nonzero_error_or_retry_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            details_path = Path(tmp_dir) / "details.json"
+            details_path.write_text(
+                json.dumps({
+                    "reportStatus": "RETRIEVAL_ONLY",
+                    "runCounts": {"retrieveErrors": 1, "rateLimitErrors": 0, "retryCount": 0},
+                    "sampleCount": 1,
+                    "samples": [],
+                }),
+                encoding="utf-8",
+            )
+            manifest = runner.load_reference_manifest(
+                Path(__file__).resolve().parents[1]
+                / "docs/eval/config/c17-retrieval-reference-v1.json"
+            )
+
+            with self.assertRaisesRegex(runner.ApiError, "c17_live_error_policy_exceeded"):
+                runner.validate_c17_live_run(details_path, manifest, ["fact-001"])
+
+    def test_validate_c17_live_run_accepts_exact_clean_heuristic_observations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            details_path = Path(tmp_dir) / "details.json"
+            details_path.write_text(
+                json.dumps({
+                    "reportStatus": "RETRIEVAL_ONLY",
+                    "runCounts": {"retrieveErrors": 0, "rateLimitErrors": 0, "retryCount": 0},
+                    "sampleCount": 1,
+                    "samples": [{
+                        "id": "fact-001",
+                        "errors": {"retrieval": None},
+                        "rerankAttribution": {
+                            "requestedProvider": "heuristic",
+                            "effectiveProvider": "heuristic",
+                            "fallbackCount": 0,
+                            "modelCallCount": 0,
+                        },
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            manifest = runner.load_reference_manifest(
+                Path(__file__).resolve().parents[1]
+                / "docs/eval/config/c17-retrieval-reference-v1.json"
+            )
+
+            runner.validate_c17_live_run(details_path, manifest, ["fact-001"])
+
+    def test_validate_c17_live_run_rejects_sample_or_provider_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            details_path = Path(tmp_dir) / "details.json"
+            details_path.write_text(
+                json.dumps({
+                    "reportStatus": "RETRIEVAL_ONLY",
+                    "runCounts": {"retrieveErrors": 0, "rateLimitErrors": 0, "retryCount": 0},
+                    "sampleCount": 1,
+                    "samples": [{
+                        "id": "other-id",
+                        "errors": {"retrieval": None},
+                        "rerankAttribution": {
+                            "requestedProvider": "heuristic",
+                            "effectiveProvider": "unknown",
+                            "fallbackCount": 0,
+                            "modelCallCount": 0,
+                        },
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            manifest = runner.load_reference_manifest(
+                Path(__file__).resolve().parents[1]
+                / "docs/eval/config/c17-retrieval-reference-v1.json"
+            )
+
+            with self.assertRaisesRegex(runner.ApiError, "c17_live_observation_invalid"):
+                runner.validate_c17_live_run(details_path, manifest, ["fact-001"])
 
     def test_find_existing_eval_kb_rejects_marker_mismatch(self) -> None:
         args = self.eval_command_args(include_ask=False)
@@ -701,11 +870,17 @@ class ReproducibleRagEvalTest(unittest.TestCase):
                 mock.patch.object(runner, "login", return_value="token"),
                 mock.patch.object(runner, "find_existing_eval_kb", return_value=kb),
                 mock.patch.object(runner, "list_documents", return_value=docs),
+                mock.patch.object(
+                    runner,
+                    "probe_vector_readiness",
+                    return_value={"status": "READY", "vectorCount": 1},
+                ) as probe_vector_readiness,
                 mock.patch.object(runner, "get_or_create_kb") as get_or_create_kb,
                 mock.patch.object(runner, "run_eval") as run_eval,
             ):
                 self.assertEqual(0, runner.main())
 
+            probe_vector_readiness.assert_called_once_with(mock.ANY, "token", 15)
             get_or_create_kb.assert_not_called()
             run_eval.assert_not_called()
 

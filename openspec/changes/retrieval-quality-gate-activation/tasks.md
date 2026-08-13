@@ -64,13 +64,13 @@
 
 ## 7. Preflight And Canary Authorization Gate
 
-- [x] 以 `--preflight-only --keep-existing` 验证本机 backend 与固定 KB：status=`READY`、3/3 fixture/document=`COMPLETED`、chunk counts=11/14/25；provider calls=0、mutation=0。
-- [x] preflight 已 READY；未创建/删除 KB、未上传 fixture、未触发 indexing embedding。
+- [x] 以 `--preflight-only --keep-existing` 验证本机 backend 与固定 KB：首版只检查 document 状态而误报 `READY`；canary 暴露 legacy vector readiness 后已用 TDD 增加只读 statistics/count 门禁，复验为 `BLOCKED / VECTOR_READINESS_UNAVAILABLE`、expected vectors=50。
+- [x] 修复后 preflight 不 READY，因此停止；未创建/删除 KB、未上传 fixture、未触发 indexing embedding。只读 Milvus 盘点确认 source collection 存在、vector count=50、dimension=2048。
 - [x] runtime fingerprint：OpenAI-compatible NVIDIA hosted `nvidia/llama-nemotron-embed-1b-v2`、`integrate.api.nvidia.com/v1/embeddings`、dimension=2048、timeout=60000ms、fallback=false、proxy=`127.0.0.1:7897` reachable、Git=`8270706`、tracked config SHA-256=`d66479a5...a6575`、retry=0；官方 NIM FAQ 支持 Developer Program 原型/研发免费访问，但账户 quota/rate-limit 仍 unknown。
 - [x] 已向用户披露 canary：5 debug retrieval、最多 5 query embedding、5 条 tracked eval question 经本机代理出站到 NVIDIA；external rerank/ask/generation/judge=0、retry=0、预期直接费用=0 但 quota 不可本地证明。
-- [ ] 用户在上述具体数据目的地与范围披露后明确批准 canary 出站；概括的“完成 C17”授权未通过外调安全门，禁止绕过。
-- [ ] 执行固定 5-case canary；任何 auth/429/timeout/retrieve error、identity drift、fallback/model rerank call 均停止且不自动重试。
-- [ ] 证明 canary 仅为环境检查，不进入 reference aggregate、不形成质量结论。
+- [x] 用户在上述具体数据目的地与范围披露后明确批准 canary 出站。
+- [x] 执行固定 5-case canary 并按门禁停止：5/5 local debug retrieval 均返回 `VECTOR_INDEX_NOT_READY` / HTTP 503，Report status=`FAILED`、retrieveErrors=5、rateLimit/retry/fallback/model rerank=0；失败发生在 embedding 前，不自动重试。
+- [x] canary 仅为环境检查，未进入 reference aggregate、不形成质量结论；full 450/450 未启动。
 
 ## 8. Full Reference Authorization And Execution
 

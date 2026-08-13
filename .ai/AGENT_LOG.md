@@ -2024,3 +2024,19 @@
 ## 2026-08-13｜C17 Preflight 提交补录
 
 - Commit：`f5ffbbd`（`docs(eval): 记录C17预检就绪状态`）。本条只补录上一执行提交的真实 hash，不回改历史记录；本次采用独立纯日志补录提交，不递归记录该补录提交自身 hash。
+
+## 2026-08-13｜C17 Canary 失败与 Vector Readiness 门禁修复
+
+- 授权与实际调用：用户在具体披露后明确批准固定 5 条 tracked eval question 向 NVIDIA embeddings endpoint 出站，预算为 5 debug retrieval / 最多 5 query embedding、external rerank/ask/generation/judge=0、retry=0。实际发起 5 次 localhost debug retrieval；五次均在 embedding 前被 `VECTOR_INDEX_NOT_READY` / HTTP 503 拦截，因此实际 query embedding/provider calls=0、business data outbound=false、retry/fallback/model rerank=0、预期费用=0。
+- Canary 证据：runner invocation 退出码虽为 0，但 raw details 的 Report status=`FAILED`、objective status=`FAILED`、retrieveErrors=5、rateLimitErrors=0、sampleCount=5、heuristic attribution=unknown；按报告字段判定 canary `FAILED`，不以进程退出码冒充 clean。raw report/details/metadata 仅位于 ignored `tmp/eval/c17/`，未进入 reference aggregate，未形成质量结论，也未启动 full。
+- 根因与只读盘点：runtime 在 `KnowledgeBaseServiceImpl.requireReadyVectorScope` 检查 SQL `vector_readiness` 时 fail closed；V12 对 legacy KB 的默认状态为 `LEGACY_PENDING`。只读 Milvus inventory 确认 source collection exists=true、vectorCount=50、dimension=2048，与三份 COMPLETED documents 的 11+14+25=50 chunks 一致；无需重新 embedding，正确恢复路径是既有 C13b tenant-aware shadow migration。
+- TDD 工具修复：`run_reproducible_rag_eval.py` 的 preflight 新增只读 `/statistics` probe，vector statistics 不可读或 count 与 expected chunks 不一致时 `BLOCKED`；显示输出移除数字 KB ID/collection。C17 live child details 非 `RETRIEVAL_ONLY`、error/retry 非零、sample identity 或 heuristic/fallback/model-call attribution 漂移时，父 runner 现在非零失败。对应测试按逐项 RED→GREEN 增补。
+- 验证：runner 聚焦 `42 tests PASS`；阶段中间全量 Python=`231 tests PASS`，待本条最终改动后再复跑；SensitiveLogs=`PASS (370 source files)`、真实修复后 preflight=`BLOCKED / VECTOR_READINESS_UNAVAILABLE`、expected vectors=50、matched fixtures=3。未修改 dataset、retrieval/rerank/embedding/metric 公式、production QA/provider、Java/POM/frontend、accepted specs 或历史 artifacts。
+- 跳过与剩余风险：真实 shadow collection 创建、50 vector 复制、全量审计、SQL mapping/readiness 原子切换、失败后的清理/重试均未授权，保持 `SKIPPED`；full 450/450、compiler、threshold approval、ACTIVE replay、baseline acceptance/archive 同样 `SKIPPED`。shadow migration 不出站、不调用 embedding/rerank/LLM，但会新增本地 collection 并写 MySQL readiness；source collection 保留用于回滚，任何清理不在授权建议内。
+- Commit：`pending`；提交责任为 `Agent 提交`，建议 `fix(eval): 让C17预检与单次运行失败关闭`；push/PR/deploy 未授权。
+
+## 2026-08-13｜C17 Canary 门禁修复最终静态复验
+
+- 最终验证：`python -B -m unittest test_run_reproducible_rag_eval`=`42 tests PASS`；`python -B -m unittest discover -s scripts -p 'test_*.py'`=`235 tests PASS`；`python -B scripts/check_sensitive_logs.py --root .`=`PASS (370 source files)`；`git diff --check`=`PASS`。
+- 范围复核：tracked diff 仅为 C17 runner/tests、eval guide、active tasks/指针和 append-only log；dataset/release/fixtures、accepted specs、archive/history、Java/POM/frontend/runtime/provider diffs=0。三份 canary raw artifacts 均由 `/tmp/eval/` ignore 规则覆盖。
+- 结论边界：上述 GREEN 只证明 fail-closed tooling 修复，不把 `FAILED` canary 改写为通过。真实 shadow migration、canary rerun 和 full reference 仍未执行；Commit=`pending`。

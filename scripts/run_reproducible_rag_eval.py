@@ -289,6 +289,39 @@ def find_existing_eval_kb(args: argparse.Namespace, token: str) -> dict[str, Any
     return kb
 
 
+def probe_vector_readiness(
+    args: argparse.Namespace,
+    token: str,
+    kb_id: int,
+) -> dict[str, Any]:
+    try:
+        data = unwrap(call_json(
+            "GET",
+            f"{args.base_url}/api/knowledge-bases/{kb_id}/statistics",
+            None,
+            token,
+            args.timeout,
+        ))
+    except ApiError:
+        return {
+            "status": "BLOCKED",
+            "vectorCount": None,
+            "reason": "VECTOR_READINESS_UNAVAILABLE",
+        }
+    if (
+        not isinstance(data, dict)
+        or isinstance(data.get("vectorCount"), bool)
+        or not isinstance(data.get("vectorCount"), int)
+        or data["vectorCount"] < 0
+    ):
+        return {
+            "status": "BLOCKED",
+            "vectorCount": None,
+            "reason": "VECTOR_STATISTICS_INVALID",
+        }
+    return {"status": "READY", "vectorCount": int(data["vectorCount"])}
+
+
 def delete_matching_kbs(args: argparse.Namespace, token: str) -> None:
     for kb in list_kbs(args, token):
         if kb.get("name") != args.kb_name:
@@ -436,6 +469,7 @@ def build_preflight(
     kb: dict[str, Any],
     docs: list[dict[str, Any]],
     fixtures: list[Path],
+    vector_readiness: dict[str, Any],
 ) -> dict[str, Any]:
     expected_files = {path.name for path in fixtures}
     relevant = docs_for_expected_files(docs, expected_files)
@@ -456,7 +490,20 @@ def build_preflight(
         for name, doc in by_name.items()
         if str(doc.get("status") or "") not in SUCCESS_DOCUMENT_STATES
     )
-    ready = not missing and not incomplete
+    expected_vector_count = sum(int(doc.get("chunkCount") or 0) for doc in by_name.values())
+    checked_vector_readiness = dict(vector_readiness)
+    checked_vector_readiness["expectedVectorCount"] = expected_vector_count
+    if (
+        checked_vector_readiness.get("status") == "READY"
+        and checked_vector_readiness.get("vectorCount") != expected_vector_count
+    ):
+        checked_vector_readiness["status"] = "BLOCKED"
+        checked_vector_readiness["reason"] = "VECTOR_COUNT_MISMATCH"
+    ready = (
+        not missing
+        and not incomplete
+        and checked_vector_readiness.get("status") == "READY"
+    )
     return {
         "status": "READY" if ready else "BLOCKED",
         "mutationFree": True,
@@ -466,6 +513,7 @@ def build_preflight(
             "name": kb.get("name"),
             "vectorCollection": kb.get("vectorCollection"),
         },
+        "vectorReadiness": checked_vector_readiness,
         "fixtures": {
             "expectedCount": len(expected_files),
             "matchedCount": len(by_name),
@@ -481,9 +529,9 @@ def build_preflight(
             ],
         },
         "nextStep": (
-            "Run a small generation/citation smoke with --keep-existing --include-ask."
+            "Proceed to the separately authorized live evaluation slice."
             if ready
-            else "Restore the missing or incomplete eval fixtures before running evaluation."
+            else "Restore fixture indexing and vector readiness before running evaluation."
         ),
     }
 
@@ -1162,6 +1210,66 @@ def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, 
     subprocess.run(command, check=True, env=env)
 
 
+def validate_c17_live_run(
+    details_path: Path,
+    manifest: dict[str, Any],
+    expected_sample_ids: list[str],
+) -> None:
+    try:
+        details = json.loads(details_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ApiError("c17_live_details_invalid") from exc
+    if not isinstance(details, dict):
+        raise ApiError("c17_live_details_invalid")
+    if details.get("reportStatus") != "RETRIEVAL_ONLY":
+        raise ApiError("c17_live_report_status_invalid")
+    run_counts = details.get("runCounts")
+    if not isinstance(run_counts, dict):
+        raise ApiError("c17_live_run_counts_invalid")
+    for field, policy_field in (
+        ("retrieveErrors", "retrieveErrorsMax"),
+        ("rateLimitErrors", "rateLimitErrorsMax"),
+        ("retryCount", "retryCountMax"),
+    ):
+        value = run_counts.get(field)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value > manifest["errorPolicy"][policy_field]
+        ):
+            raise ApiError("c17_live_error_policy_exceeded")
+    samples = details.get("samples")
+    if (
+        not isinstance(samples, list)
+        or details.get("sampleCount") != len(expected_sample_ids)
+        or [sample.get("id") for sample in samples if isinstance(sample, dict)]
+        != expected_sample_ids
+    ):
+        raise ApiError("c17_live_observation_invalid")
+    provider = manifest["providerPolicy"]
+    for sample in samples:
+        if not isinstance(sample, dict):
+            raise ApiError("c17_live_observation_invalid")
+        attribution = sample.get("rerankAttribution")
+        errors = sample.get("errors")
+        fallback_count = attribution.get("fallbackCount") if isinstance(attribution, dict) else None
+        model_call_count = attribution.get("modelCallCount") if isinstance(attribution, dict) else None
+        if (
+            not isinstance(attribution, dict)
+            or not isinstance(errors, dict)
+            or errors.get("retrieval") is not None
+            or attribution.get("requestedProvider") != provider["requestedProvider"]
+            or attribution.get("effectiveProvider") != provider["effectiveProvider"]
+            or isinstance(fallback_count, bool)
+            or not isinstance(fallback_count, int)
+            or fallback_count > provider["fallbackCountMax"]
+            or isinstance(model_call_count, bool)
+            or not isinstance(model_call_count, int)
+            or model_call_count > provider["modelCallCountMax"]
+        ):
+            raise ApiError("c17_live_observation_invalid")
+
+
 def redact_command(command: list[str]) -> list[str]:
     redacted = list(command)
     for option in ("--password", "--judge-api-key"):
@@ -1266,6 +1374,7 @@ def print_plan(plan: dict[str, Any]) -> None:
 
 def redact_preflight_for_display(preflight: dict[str, Any]) -> dict[str, Any]:
     knowledge_base = preflight.get("knowledgeBase") or {}
+    vector_readiness = preflight.get("vectorReadiness") or {}
     fixtures = preflight.get("fixtures") or {}
     documents = fixtures.get("documents") or []
     return {
@@ -1273,8 +1382,13 @@ def redact_preflight_for_display(preflight: dict[str, Any]) -> dict[str, Any]:
         "mutationFree": preflight.get("mutationFree"),
         "baseUrl": preflight.get("baseUrl"),
         "knowledgeBase": {
-            "id": knowledge_base.get("id"),
-            "vectorCollection": knowledge_base.get("vectorCollection"),
+            "present": bool(knowledge_base),
+        },
+        "vectorReadiness": {
+            "status": vector_readiness.get("status"),
+            "reason": vector_readiness.get("reason"),
+            "vectorCount": vector_readiness.get("vectorCount"),
+            "expectedVectorCount": vector_readiness.get("expectedVectorCount"),
         },
         "fixtures": {
             "expectedCount": fixtures.get("expectedCount", 0),
@@ -1372,7 +1486,14 @@ def main() -> int:
         if kb is None:
             raise ApiError(f"Eval KB {args.kb_name!r} does not exist; preflight never creates it")
         kb_id = int(kb["id"])
-        preflight = build_preflight(args, kb, list_documents(args, token, kb_id), fixtures)
+        vector_readiness = probe_vector_readiness(args, token, kb_id)
+        preflight = build_preflight(
+            args,
+            kb,
+            list_documents(args, token, kb_id),
+            fixtures,
+            vector_readiness,
+        )
         print(json.dumps(redact_preflight_for_display(preflight), ensure_ascii=False, indent=2))
         return 0 if preflight["status"] == "READY" else 1
 
@@ -1416,6 +1537,12 @@ def main() -> int:
         )
         write_json(metadata_path, metadata, args.no_overwrite)
         run_eval(args, kb_id, report_path, details_path, metadata_path)
+        if args.reference_manifest_data:
+            validate_c17_live_run(
+                details_path,
+                args.reference_manifest_data,
+                [str(sample["id"]) for sample in selected_samples],
+            )
 
     return 0
 
