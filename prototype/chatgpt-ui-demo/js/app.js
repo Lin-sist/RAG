@@ -453,6 +453,23 @@ const EVAL_DATA = {
   ],
 };
 
+/* ---------------- 上传任务面板 mock（口径对齐 TaskController / TaskState） ----------------
+   TaskState: PENDING/RUNNING/COMPLETED/CANCELLED/FAILED；进度消息对齐
+   DocumentIndexingServiceImpl 的真实回调序列（10/30/50/70/85/100）。 */
+const TASK_STAGES = [
+  { p: 10, msg: "开始解析文档" },
+  { p: 30, msg: "文档解析中" },
+  { p: 50, msg: "生成向量嵌入" },
+  { p: 70, msg: "写入向量数据库" },
+  { p: 85, msg: "持久化分块记录" },
+  { p: 100, msg: "任务执行完成" },
+];
+const NEW_FILE_POOL = [
+  { name: "spring-aop-proxy-deep-dive.md", type: "md", size: "64 KB", chunks: 11 },
+  { name: "rag-eval-addendum.pdf", type: "pdf", size: "150 KB", chunks: 21 },
+  { name: "meeting-notes-0829.txt", type: "txt", size: "5 KB", chunks: 3 },
+];
+
 /* ---------------- 全局状态 ---------------- */
 const state = {
   view: "home",            // home | chat | kb | kb-detail | eval
@@ -462,6 +479,7 @@ const state = {
   kbCurrent: null,         // 详情页正在查看的知识库
   kbDocQuery: "",          // 详情页文档搜索词
   evalMode: "current",     // 评测看板：current（真实态）| passing（通过态）
+  kbTask: null,            // 上传任务面板当前任务（后台推进）
   streaming: false,
   streamTimer: null,
   kbFilter: "all",
@@ -1156,7 +1174,7 @@ function renderKbDocs() {
       <span class="type-pill ${esc(f.type)}">${esc(f.type)}</span>
       <div class="doc-main">
         <div class="doc-name">${esc(f.name)}</div>
-        <div class="doc-sub"><span class="badge tiny ${f.status !== "done" ? "proc" : ""}"><i></i>${f.status === "done" ? "已完成" : "处理中"}</span><span>${esc(f.size)}</span></div>
+        <div class="doc-sub"><span class="badge tiny ${f.status === "done" ? "" : f.status === "processing" ? "proc" : "cancel"}"><i></i>${f.status === "done" ? "已完成" : f.status === "processing" ? "处理中" : "已取消"}</span><span>${esc(f.size)}</span></div>
       </div>
       <span class="doc-chunks">${f.chunks} 块</span>
       <span class="doc-time">${esc(f.time.slice(5))}</span>
@@ -1195,6 +1213,138 @@ function openDocPop(anchor, fileName) {
 }
 
 function closeDoc() { $("#docPop").hidden = true; }
+
+/* ---------------- 上传任务面板 ---------------- */
+function nowStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function openTaskModal() {
+  const kb = KBS.find(k => k.name === state.kbCurrent);
+  if (!kb) return;
+  if (!state.kbTask || state.kbTask.status === "COMPLETED" || state.kbTask.status === "CANCELLED") {
+    const processing = kb.files.find(f => f.status === "processing");
+    if (processing) {
+      /* 恢复"处理中"文档的任务：从解析中段继续推进 */
+      state.kbTask = {
+        id: "task_" + Math.random().toString(16).slice(2, 8),
+        fileName: processing.name, fileType: processing.type, size: processing.size,
+        chunks: 6, kb, docFile: processing, isNew: false,
+        progress: 20 + Math.round(Math.random() * 15),
+        msg: "文档解析中", status: "RUNNING",
+      };
+      scheduleTaskTicks();
+    } else {
+      state.kbTask = null;
+    }
+  }
+  $("#taskOverlay").hidden = false;
+  renderTaskBody();
+}
+
+function startNewTask() {
+  const kb = KBS.find(k => k.name === state.kbCurrent);
+  if (!kb) return;
+  (state.kbTaskTimers || []).forEach(clearTimeout);
+  const pick = NEW_FILE_POOL[Math.floor(Math.random() * NEW_FILE_POOL.length)];
+  state.kbTask = {
+    id: "task_" + Math.random().toString(16).slice(2, 8),
+    fileName: pick.name, fileType: pick.type, size: pick.size, chunks: pick.chunks,
+    kb, isNew: true, progress: 0, msg: "任务已提交，排队中", status: "PENDING",
+  };
+  scheduleTaskTicks();
+  renderTaskBody();
+}
+
+function scheduleTaskTicks() {
+  const t = state.kbTask;
+  const timers = [];
+  let acc = 650;
+  if (t.status === "PENDING") {
+    timers.push(setTimeout(() => {
+      if (state.kbTask !== t || t.status !== "PENDING") return;
+      t.status = "RUNNING";
+      if (!$("#taskOverlay").hidden) renderTaskBody();
+    }, 700));
+  }
+  TASK_STAGES.filter(s => s.p > t.progress).forEach(s => {
+    acc += 900 + Math.random() * 1100;
+    timers.push(setTimeout(() => {
+      if (state.kbTask !== t || t.status !== "RUNNING") return;
+      t.progress = s.p;
+      t.msg = s.msg;
+      if (s.p >= 100) finishTask(t);
+      if (!$("#taskOverlay").hidden) renderTaskBody();
+    }, acc));
+  });
+  state.kbTaskTimers = timers;
+}
+
+function finishTask(t) {
+  t.status = "COMPLETED";
+  if (t.isNew) {
+    t.kb.files.push({
+      name: t.fileName, type: t.fileType, status: "done", size: t.size,
+      time: nowStr(), chunks: t.chunks,
+      preview: `## 新上传文档（演示）\n\n此文档由任务面板演示上传生成，已完成解析、分块、向化与入库，可参与检索。\n\n各阶段进度消息对齐后端索引服务的真实回调序列。`,
+    });
+  } else if (t.docFile) {
+    t.docFile.status = "done";
+    t.docFile.chunks = t.chunks;
+  }
+  if (state.view === "kb-detail" && state.kbCurrent === t.kb.name) renderKbDetail();
+}
+
+function cancelCurrentTask() {
+  const t = state.kbTask;
+  if (!t || (t.status !== "RUNNING" && t.status !== "PENDING")) return;
+  (state.kbTaskTimers || []).forEach(clearTimeout);
+  t.status = "CANCELLED";
+  t.msg = "任务已取消";
+  if (!t.isNew && t.docFile) t.docFile.status = "cancelled";
+  if (state.view === "kb-detail" && state.kbCurrent === t.kb.name) renderKbDocs();
+  renderTaskBody();
+}
+
+function renderTaskBody() {
+  const t = state.kbTask;
+  const body = $("#taskBody");
+  if (!t) {
+    body.innerHTML = `
+      <div class="mt-empty">${icon("upload", 26)}<p>暂无进行中的上传任务</p>
+        <button class="chip sm" data-act="task-new">${icon("upload", 13)}<span>上传新文档（演示）</span></button>
+      </div>`;
+    return;
+  }
+  const stCls = { PENDING: "proc", RUNNING: "proc", COMPLETED: "", CANCELLED: "cancel" }[t.status] || "";
+  const running = t.status === "RUNNING" || t.status === "PENDING";
+  const pct = Math.round(t.progress);
+  const marks = TASK_STAGES.map(s => `<span class="mt-mark ${t.progress >= s.p ? "hit" : ""}" style="left:${s.p}%"></span>`).join("");
+  body.innerHTML = `
+    <div class="mt-file">
+      <span class="type-pill ${esc(t.fileType)}">${esc(t.fileType)}</span>
+      <div class="mt-filemeta">
+        <div class="mt-fname">${esc(t.fileName)}</div>
+        <div class="mt-sub">taskId: ${esc(t.id)}<span class="dot-sep">·</span>${esc(t.size)}</div>
+      </div>
+      <span class="badge tiny ${stCls}"><i></i>${t.status}</span>
+    </div>
+    <div class="mt-progress">
+      <div class="mt-pct"><b>${pct}%</b><span class="mt-msg">${esc(t.msg)}</span></div>
+      <div class="mt-bar"><i class="${t.status === "COMPLETED" ? "done" : t.status === "CANCELLED" ? "cancelled" : ""}" style="width:${pct}%"></i>${marks}</div>
+    </div>
+    <div class="mt-actions">
+      ${running
+        ? `<button class="chip sm" data-act="task-cancel">${icon("x", 13)}<span>取消任务</span></button>`
+        : `<span class="mt-done-note">${t.status === "COMPLETED" ? "文档已完成索引，可参与检索" : "任务已取消，可重新上传"}</span>`}
+    </div>
+    <div class="mt-foot">
+      <button class="chip sm" data-act="task-new">${icon("upload", 13)}<span>再演示一个上传</span></button>
+      <span class="mt-note">演示任务，不发起真实上传 · 阶段消息对齐后端索引服务</span>
+    </div>`;
+}
 
 /* ---------------- 评测看板视图 ---------------- */
 function metricRowHtml(m, passing) {
@@ -1571,7 +1721,9 @@ document.addEventListener("click", e => {
       toast("已删除知识库（演示数据）");
       break;
     }
-    case "kbd-upload": toast("上传文档为演示占位"); break;
+    case "kbd-upload": openTaskModal(); break;
+    case "task-cancel": cancelCurrentTask(); break;
+    case "task-new": startNewTask(); break;
     case "doc-open": openDocPop(target, target.dataset.name); break;
     case "doc-del": {
       e.stopPropagation();
