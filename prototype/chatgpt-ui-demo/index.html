@@ -25,8 +25,8 @@
       <button class="nav-item" data-act="new-chat" id="navNewChat"></button>
       <button class="nav-item" data-act="open-kb" id="navKb"></button>
       <button class="nav-item" data-act="open-eval" id="navEval"></button>
+      <button class="nav-item" data-act="open-mcp" id="navMcp"></button>
       <button class="nav-item" data-act="nav-ph" data-ph="项目"></button>
-      <button class="nav-item" data-act="nav-ph" data-ph="插件"></button>
       <button class="nav-item" data-act="nav-ph" data-ph="更多"></button>
     </nav>
 
@@ -119,6 +119,11 @@
     <section class="view view-eval" id="viewEval" hidden>
       <div class="eval-inner" id="evalInner"></div>
     </section>
+
+    <!-- MCP 服务视图 -->
+    <section class="view view-mcp" id="viewMcp" hidden>
+      <div class="eval-inner" id="mcpInner"></div>
+    </section>
   </main>
 </div>
 
@@ -131,6 +136,7 @@
         <button class="c-btn" data-act="plus-menu" data-tip="添加内容" id="plusBtn"><span class="icon-slot" data-icon="plus"></span></button>
         <textarea id="composerInput" rows="1" placeholder="问问 RAG 知识库"></textarea>
         <div class="c-right">
+          <button class="c-btn" data-act="adv-menu" data-tip="检索高级选项" id="advBtn"><span class="icon-slot" data-icon="sliders"></span></button>
           <button class="reason-btn" data-act="reason-menu"><span id="reasonLabel">高</span> <span class="icon-slot" data-icon="chev-d" data-size="14"></span></button>
           <button class="c-btn" data-act="mic" data-tip="听写" id="micBtn"><span class="icon-slot" data-icon="mic"></span></button>
           <button class="voice-btn" id="voiceBtn" data-act="voice-or-send">

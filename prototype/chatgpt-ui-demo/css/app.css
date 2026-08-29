@@ -446,6 +446,45 @@ html[data-theme="light"] .pipe-step.done .ps-dot::after { color: #0c8a5f; }
 .pipe-stats { font-size: 12px; color: var(--text-3); padding: 7px 0 2px; margin-top: 4px; border-top: 1px dashed var(--border-2); }
 .pipe-stats b { color: var(--text-2); font-weight: 500; }
 
+/* 管道拦截态（C13 租户 scope 校验演示） */
+.pipe-step.blocked .ps-dot { border-color: #ff7a7a; background: rgba(255, 122, 122, .12); }
+.pipe-step.blocked .ps-dot::after {
+  content: "✕";
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 8px; font-weight: 700; line-height: 1;
+  color: #ff7a7a;
+}
+.pipe-step.blocked .ps-name { color: #ff7a7a; }
+html[data-theme="light"] .pipe-step.blocked .ps-dot { border-color: #d64545; }
+html[data-theme="light"] .pipe-step.blocked .ps-dot::after { color: #d64545; }
+html[data-theme="light"] .pipe-step.blocked .ps-name { color: #d64545; }
+.rt-blocked { color: #ff7a7a; }
+html[data-theme="light"] .rt-blocked { color: #d64545; }
+.retrieval-toggle .rt-blocked { font-weight: 500; }
+.pipe-blocked-note {
+  margin-top: 8px;
+  font-size: 12.5px; color: var(--text-3); line-height: 1.65;
+  padding: 9px 11px;
+  background: rgba(255, 122, 122, .06);
+  border: 1px solid rgba(255, 122, 122, .22);
+  border-radius: 10px;
+}
+html[data-theme="light"] .pipe-blocked-note { background: rgba(214, 69, 69, .05); border-color: rgba(214, 69, 69, .25); }
+
+/* MCP 页少量补充 */
+.eval-gate.tone-off { border-left-color: var(--text-3); }
+.tone-off .gate-dot { background: var(--text-3); box-shadow: 0 0 0 4px rgba(128, 128, 128, .12); }
+.meta-note { font-size: 11.5px; color: var(--text-3); padding: 1px 0 6px; margin-top: -3px; }
+.badge.tiny.dim-off i { background: var(--text-3); }
+.meta-lab.mono { font-family: var(--mono); font-size: 11.5px; }
+.mcp-res { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.mcp-res:last-child { border-bottom: none; }
+.mcp-res-uri { font-size: 12.5px; color: var(--text); word-break: break-all; }
+.mcp-res-meta { display: flex; align-items: center; gap: 9px; margin-top: 6px; flex-wrap: wrap; }
+.mcp-res-name { font-size: 11.5px; color: var(--text-2); font-family: var(--mono); }
+.mcp-res-desc { font-size: 12px; color: var(--text-3); }
+
 /* 检索中 shimmer */
 .thinking-line { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 6px 0; }
 .shimmer {

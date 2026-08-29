@@ -76,6 +76,8 @@ const P = {
   upload: '<path d="M12 15V4"/><path d="m7.5 8 4.5-4 4.5 4"/><path d="M5 19.5h14"/>',
   evals: '<path d="M5 20v-8"/><path d="M12 20V5"/><path d="M19 20v-11"/>',
   star: '<path d="m12 3.6 2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8Z"/>',
+  shield: '<path d="M12 3 5 5.5v5c0 4.5 3 8.2 7 10.3 4-2.1 7-5.8 7-10.3v-5Z"/><path d="m9 11.5 2.2 2.2L15.5 9"/>',
+  plug: '<path d="M9 7V3"/><path d="M15 7V3"/><path d="M7 7h10v4a5 5 0 0 1-10 0Z"/><path d="M12 16v5"/>',
   download: '<path d="M12 4v10.5"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/>',
   db: '<ellipse cx="12" cy="5.5" rx="7" ry="2.8"/><path d="M5 5.5v13c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8v-13"/><path d="M5 12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8"/>',
 };
@@ -385,27 +387,68 @@ function mkVariants(question, n) {
   ]);
 }
 
-function mkPipe(question, chunks, reason) {
+/* fact-intent-v1 演示判定：仅明确单事实/定义查询进入 closed-world fact 路由 */
+function classifyIntent(question) {
+  return /什么是|是什么[？?！!。]*$|的定义/.test(question.trim()) ? "fact" : "normal";
+}
+
+function mkPipe(question, chunks, reason, adv) {
   const p = REASON_PROFILE[reason] || REASON_PROFILE["中"];
+  const a = adv || { router: false, cache: true, minScore: 0, adversarial: false };
   const jitter = base => +(base * p.factor * (0.9 + Math.random() * 0.2)).toFixed(2);
+  const steps = [];
+  const msRoute = a.router ? jitter(0.02) : 0;
+  if (a.router) {
+    steps.push({
+      key: "route", name: "查询路由", ms: msRoute,
+      detail: classifyIntent(question) === "fact"
+        ? "fact-intent-v1 → fact route（closed-world fact-v1）"
+        : "fact-intent-v1 → normal route（完整检索链路）",
+    });
+  }
   const msRewrite = jitter(0.06);
-  const msRecall = jitter(0.2);
+  const msRecall = jitter(0.22);
   const msRerank = p.rerank ? jitter(0.14) : 0;
   const msAssemble = jitter(0.04);
+  steps.push(
+    { key: "rewrite", name: "查询改写", ms: msRewrite, detail: `变体 ×${p.variants}` },
+    { key: "hybrid", name: "混合召回", ms: msRecall,
+      detail: `dense ${Math.round(p.topK * 0.6)} · BM25 ${Math.round(p.topK * 0.5)} → RRF(k=60) top-${p.topK}` },
+    ...(p.rerank ? [{ key: "rerank", name: "重排", ms: msRerank,
+      detail: `${p.topK} → ${chunks.length} · effective: heuristic · no fallback` }] : []),
+    a.adversarial
+      ? { key: "tenant", name: "租户 scope 过滤", ms: 0, tone: "blocked",
+          detail: `filter "tenant=other" → RAG_SCOPE_FILTER_RESERVED 已拒绝` }
+      : { key: "tenant", name: "租户 scope 过滤", ms: jitter(0.01), detail: `tenant: legacy · 服务端持有` },
+  );
+  if (a.adversarial) {
+    return {
+      variants: mkVariants(question, p.variants),
+      topK: p.topK,
+      rerank: p.rerank,
+      steps,
+      total: +(steps.reduce((n, s) => n + s.ms, 0)).toFixed(2),
+      topScore: 0,
+      avgScore: 0,
+      tokens: 0,
+      finalN: 0,
+      blocked: true,
+    };
+  }
   const scores = chunks.map(c => c.score);
   const tokens = 200 + chunks.length * 180 + Math.round(Math.random() * 100);
-  const steps = [
-    { key: "rewrite", name: "查询改写", ms: msRewrite, detail: `变体 ×${p.variants}` },
-    { key: "recall", name: "向量召回", ms: msRecall, detail: `top-${p.topK} 候选` },
-    ...(p.rerank ? [{ key: "rerank", name: "重排", ms: msRerank, detail: `${p.topK} → ${chunks.length}` }] : []),
-    { key: "assemble", name: "上下文组装", ms: msAssemble, detail: `≈${(tokens / 1000).toFixed(1)}k tokens` },
-  ];
+  steps.push({
+    key: "assemble", name: "上下文组装", ms: msAssemble,
+    detail: `≈${(tokens / 1000).toFixed(1)}k tokens · min-score ${a.minScore}${a.cache ? " · 响应缓存开启" : ""}`,
+  });
   return {
     variants: mkVariants(question, p.variants),
     topK: p.topK,
     rerank: p.rerank,
     steps,
-    total: +(msRewrite + msRecall + msRerank + msAssemble).toFixed(2),
+    total: +(steps.reduce((n, s) => n + s.ms, 0)).toFixed(2),
+    cache: a.cache,
+    minScore: a.minScore,
     topScore: scores.length ? Math.max(...scores) : 0,
     avgScore: scores.length ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : 0,
     tokens,
@@ -464,6 +507,39 @@ const EVAL_DATA = {
   ],
 };
 
+/* ---------------- MCP 只读服务页 mock（口径对齐 C15 / rag.mcp.* / McpServerConfiguration） ---------------- */
+const MCP_DATA = {
+  endpoint: "/mcp",
+  transport: "HTTP servlet · stateless（sessionless）",
+  props: [
+    { k: "rag.mcp.enabled", v: "false", env: "RAG_MCP_ENABLED", note: "生产默认关闭" },
+    { k: "rag.mcp.local-only", v: "true", env: "RAG_MCP_LOCAL_ONLY", note: "仅回环访问" },
+    { k: "rag.mcp.external-tools-enabled", v: "false", env: "RAG_MCP_EXTERNAL_TOOLS_ENABLED", note: "rag.search / rag.ask 依赖此开关" },
+    { k: "rag.mcp.cache-enabled", v: "false", env: "RAG_MCP_CACHE_ENABLED", note: "资源读取缓存" },
+    { k: "rag.mcp.allowed-origins", v: "（空）", env: "RAG_MCP_ALLOWED_ORIGINS", note: "未配置外部来源" },
+  ],
+  limits: [
+    { k: "资源分页", v: "50 / 页 · 上限 100" },
+    { k: "单 chunk 上限", v: "64 KB" },
+    { k: "单次结果上限", v: "128 KB" },
+    { k: "查询长度上限", v: "2,000 字符" },
+    { k: "超时", v: "read 5s · search 30s · ask 120s" },
+  ],
+  resources: [
+    { uri: "rag://knowledge-bases/{kbId}", name: "knowledge-base", mime: "application/json", desc: "授权范围内的知识库元数据" },
+    { uri: "rag://knowledge-bases/{kbId}/documents/{documentId}", name: "knowledge-base-document", mime: "application/json", desc: "知识库内的文档元数据" },
+    { uri: "rag://knowledge-bases/{kbId}/documents/{documentId}/chunks/{chunkIndex}", name: "knowledge-base-document-chunk", mime: "text/plain", desc: "有界文档 chunk 文本" },
+  ],
+  tools: [
+    { name: "rag.search", ext: true, desc: "混合检索知识库片段 · external 工具，依赖 external-tools-enabled" },
+    { name: "rag.ask", ext: true, desc: "只读问答 · 走无 history / 无 query-count 的 service boundary · external 工具" },
+    { name: "rag.get-citation", ext: false, desc: "按引用 ID 读取引用详情（internal）" },
+    { name: "rag.compare-sources", ext: false, desc: "对比多个来源片段（internal）" },
+  ],
+  conformance: "Git HEAD 45959672：双 tenant Testcontainers + 独立官方 Java SDK client + conformance 0.1.15 generic scenarios 通过",
+  boundary: "sessionless · local-only · 未验证 OAuth 与远程生产部署 · 真实 provider 未接入",
+};
+
 /* ---------------- 上传任务面板 mock（口径对齐 TaskController / TaskState） ----------------
    TaskState: PENDING/RUNNING/COMPLETED/CANCELLED/FAILED；进度消息对齐
    DocumentIndexingServiceImpl 的真实回调序列（10/30/50/70/85/100）。 */
@@ -491,6 +567,7 @@ const state = {
   kbDocQuery: "",          // 详情页文档搜索词
   evalMode: "current",     // 评测看板：current（真实态）| passing（通过态）
   kbTask: null,            // 上传任务面板当前任务（后台推进）
+  qaAdv: { router: false, cache: true, minScore: 0, adversarial: false }, // 对齐生产默认
   streaming: false,
   streamTimer: null,
   kbFilter: "all",
@@ -507,7 +584,9 @@ function renderSidebar() {
   $("#navKb").classList.toggle("active", state.view === "kb" || state.view === "kb-detail");
   $("#navEval").innerHTML = `${icon("evals")}<span>评测</span>`;
   $("#navEval").classList.toggle("active", state.view === "eval");
-  const phs = [["folder", "项目"], ["apps", "插件"], ["dots", "更多"]];
+  $("#navMcp").innerHTML = `${icon("plug")}<span>MCP 服务</span>`;
+  $("#navMcp").classList.toggle("active", state.view === "mcp");
+  const phs = [["folder", "项目"], ["dots", "更多"]];
   $$(".nav-item[data-ph]").forEach((el, i) => {
     el.innerHTML = `${icon(phs[i][0])}<span>${phs[i][1]}</span>`;
   });
@@ -557,6 +636,7 @@ function show(view) {
   $("#viewKb").hidden = view !== "kb";
   $("#viewKbDetail").hidden = view !== "kb-detail";
   $("#viewEval").hidden = view !== "eval";
+  $("#viewMcp").hidden = view !== "mcp";
 
   const composer = $("#composerBox").closest(".composer");
   if (view === "home") $("#composerHomeSlot").appendChild(composer);
@@ -568,6 +648,7 @@ function show(view) {
   if (view === "kb") renderKbTable();
   if (view === "kb-detail") renderKbDetail();
   if (view === "eval") renderEval();
+  if (view === "mcp") renderMcp();
   if (view === "chat") requestAnimationFrame(() => { $("#msgScroll").scrollTop = $("#msgScroll").scrollHeight; });
 }
 
@@ -658,12 +739,16 @@ function pipeHtml(r) {
   const pipe = r.pipe;
   if (!pipe) return "";
   const steps = pipe.steps.map(s => `
-    <div class="pipe-step done">
+    <div class="pipe-step done ${s.tone || ""}">
       <span class="ps-dot"></span>
       <span class="ps-name">${esc(s.name)}</span>
       <span class="ps-detail">${esc(s.detail)}</span>
       <span class="ps-ms">${s.ms.toFixed(2)}s</span>
     </div>`).join("");
+  if (pipe.blocked) {
+    return `<div class="pipe">${steps}</div>
+      <div class="pipe-blocked-note">客户端 filter 携带服务端保留字段 "tenant"。多租户 data-plane 由服务端持有租户事实，客户端无法声明或伪造租户归属（C13 enforcement · 演示）。</div>`;
+  }
   const variants = pipe.variants.map(v => `
     <div class="variant-row">
       <span class="v-query">${esc(v.query)}</span>
@@ -679,6 +764,15 @@ function pipeHtml(r) {
 }
 
 function retrievalHtml(r, conv, openable = true) {
+  const pipe = r.pipe;
+  if (pipe && pipe.blocked) {
+    return `<div class="retrieval">
+      <button class="retrieval-toggle" ${openable ? 'data-act="retrieval-toggle"' : ""}>
+        ${icon("shield", 15)}<span class="rt-blocked">请求已拒绝 · RAG_SCOPE_FILTER_RESERVED</span><span class="icon-slot chev">${icon("chevR", 14)}</span>
+      </button>
+      <div class="retrieval-body">${pipeHtml(r)}</div>
+    </div>`;
+  }
   const label = `已检索 「${esc(r.kb)}」· ${r.chunks.length} 个片段 · ${r.ms} 秒`;
   const rows = r.chunks.map((c, i) => `
     <div class="rc-row">${icon("file", 14)}
@@ -858,8 +952,13 @@ function startAsk(question) {
 
   const qa = pickQA(question);
   const turn = { role: "assistant", retrieval: qa.retrieval, cites: qa.cites, answer: qa.answer, _demo: true };
-  turn.retrieval.pipe = mkPipe(question, turn.retrieval.chunks, state.reason);
+  turn.retrieval.pipe = mkPipe(question, turn.retrieval.chunks, state.reason, state.qaAdv);
   turn.retrieval.ms = turn.retrieval.pipe.total.toFixed(2);
+  if (turn.retrieval.pipe.blocked) {
+    turn.cites = [];
+    turn.retrieval.chunks = [];
+    turn.answer = `请求已在进入检索前被拒绝。\n\n客户端 filter 携带服务端保留字段 \`tenant\`，触发 \`RAG_SCOPE_FILTER_RESERVED\` 校验失败——多租户 data-plane 的租户事实由服务端持有，客户端无法声明或伪造租户归属。\n\n这是 C13 tenant data-plane enforcement 的用户可见行为（演示）。关闭输入框「高级」菜单中的"模拟越权 filter"后可恢复正常问答。`;
+  }
   conv.turns.push(turn);
 
   renderConv(conv, true);
@@ -871,7 +970,7 @@ function startAsk(question) {
 /* 检索进行中的实时管道（步骤逐个点亮） */
 function pipeLiveHtml(pipe) {
   return `<div class="pipe live">` + pipe.steps.map((s, i) => `
-    <div class="pipe-step${i === 0 ? " active" : ""}" data-idx="${i}">
+    <div class="pipe-step${i === 0 ? " active" : ""} ${s.tone || ""}" data-idx="${i}">
       <span class="ps-dot"></span>
       <span class="ps-name">${esc(s.name)}</span>
       <span class="ps-detail">${esc(s.detail)}</span>
@@ -1480,6 +1579,80 @@ function renderEval() {
   countUpKpis();
 }
 
+/* ---------------- MCP 只读服务视图 ---------------- */
+function renderMcp() {
+  const m = MCP_DATA;
+  $("#mcpInner").innerHTML = `
+    <div class="eval-head eval-rise">
+      <div class="eval-head-meta">
+        <h1 class="eval-title">MCP 服务</h1>
+        <span class="eval-subline">C15 只读 Model Context Protocol adapter · 口径对齐 rag.mcp.* 配置 · 演示数据</span>
+      </div>
+      <div class="eval-head-right">
+        <span class="badge"><i></i>endpoint ${esc(m.endpoint)}</span>
+      </div>
+    </div>
+
+    <div class="eval-gate eval-rise d1 tone-off">
+      <span class="gate-dot"></span>
+      <div class="gate-meta">
+        <div class="gate-state"><b>DEFAULT OFF</b><span>${esc(m.transport)}</span></div>
+        <div class="gate-reason">生产默认关闭且仅回环访问：${esc(m.props[0].k)}=false · local-only=true · 无会话状态</div>
+        <div class="gate-note">启用后经 ${esc(m.endpoint)} 暴露只读资源与工具；本页展示配置契约，不代表远程部署或 OAuth 已验证</div>
+      </div>
+    </div>
+
+    <div class="eval-grid eval-rise d2">
+      <div class="kbd-card">
+        <div class="kbd-card-head"><span class="kbd-card-title">配置开关 <em>rag.mcp.*</em></span></div>
+        <div class="eval-identity-body">
+          ${m.props.map(p => `
+            <div class="meta-row"><span class="meta-lab mono">${esc(p.k)}</span>
+              <span class="meta-val"><span class="badge tiny ${p.v === "true" ? "" : "dim-off"}"><i></i>${esc(p.v)}</span></span></div>
+            <div class="meta-note">${esc(p.note)}</div>`).join("")}
+        </div>
+      </div>
+      <div class="kbd-card">
+        <div class="kbd-card-head"><span class="kbd-card-title">有界限额</span></div>
+        <div class="eval-identity-body">
+          ${m.limits.map(l => `<div class="meta-row"><span class="meta-lab">${esc(l.k)}</span><span class="meta-val">${esc(l.v)}</span></div>`).join("")}
+          <div class="meta-div"></div>
+          <div class="meta-row col"><span class="meta-lab">一致性验证</span><span class="meta-val">${esc(m.conformance)}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kbd-card eval-rise d3" style="margin-bottom:14px">
+      <div class="kbd-card-head"><span class="kbd-card-title">资源模板 <em>3 个 · 有界只读</em></span></div>
+      <div class="eval-identity-body">
+        ${m.resources.map(r => `
+          <div class="mcp-res">
+            <div class="mcp-res-uri mono">${esc(r.uri)}</div>
+            <div class="mcp-res-meta"><span class="badge tiny">${esc(r.mime)}</span><span class="mcp-res-name">${esc(r.name)}</span><span class="mcp-res-desc">${esc(r.desc)}</span></div>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    <div class="kbd-card eval-rise d4" style="margin-bottom:14px">
+      <div class="kbd-card-head"><span class="kbd-card-title">只读工具 <em>4 个固定工具</em></span></div>
+      <div class="eval-identity-body">
+        ${m.tools.map(t => `
+          <div class="mcp-res">
+            <div class="mcp-res-uri mono">${esc(t.name)}<span class="badge tiny ${t.ext ? "proc" : ""}" style="margin-left:8px">${t.ext ? "external" : "internal"}</span></div>
+            <div class="mcp-res-meta"><span class="mcp-res-desc">${esc(t.desc)}</span></div>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    <div class="kbd-card eval-rise d5">
+      <div class="kbd-card-head"><span class="kbd-card-title">能力边界</span></div>
+      <div class="eval-identity-body">
+        <div class="meta-row col"><span class="meta-val">${esc(m.boundary)}</span></div>
+      </div>
+    </div>
+    <div class="eval-foot">本页为配置契约演示 · 开关与限额对齐 application.yml 的 rag.mcp.* 与 McpProperties 默认值</div>`;
+}
+
 /* ---------------- 弹窗与菜单 ---------------- */
 function closeMenu() { $("#menu").hidden = true; }
 function closeCite() { $("#citePop").hidden = true; }
@@ -1633,6 +1806,34 @@ document.addEventListener("click", e => {
     }
     case "open-kb": show("kb"); break;
     case "open-eval": show("eval"); break;
+    case "open-mcp": show("mcp"); break;
+    case "adv-menu": {
+      const a = state.qaAdv;
+      const sw = (act, label, on, onText, offText) => `
+        <button class="menu-item" data-act="${act}">
+          <span class="icon-slot">${icon(on ? "check" : "x", 16)}</span><span>${label}</span>
+          <span class="mi-right">${on ? onText : offText}</span>
+        </button>`;
+      openMenu(target, `
+        <div class="menu-label">检索高级选项 · 对齐后端默认</div>
+        ${sw("adv-router", "查询路由 fact-intent-v1", a.router, "rag.router.enabled=true", "默认关")}
+        ${sw("adv-cache", "响应缓存", a.cache, "enableCache=true", "已关闭")}
+        <div class="menu-label">min-score 过滤</div>
+        <div class="menu-scroll">${["0", "0.3", "0.5"].map(v => `
+          <button class="menu-item" data-act="adv-minscore" data-v="${v}">
+            <span class="icon-slot">${icon("sliders", 15)}</span><span>${v}</span>
+            ${String(a.minScore) === v ? `<span class="check">${icon("check", 15)}</span>` : ""}
+          </button>`).join("")}
+        </div>
+        <div class="menu-div"></div>
+        ${sw("adv-adversarial", "模拟越权 filter（tenant=other）", a.adversarial, "将触发 RAG_SCOPE_FILTER_RESERVED", "演示 C13 租户隔离")}
+      `, { below: true, align: "left" });
+      break;
+    }
+    case "adv-router": state.qaAdv.router = !state.qaAdv.router; closeMenu(); toast(state.qaAdv.router ? "查询路由：开启（rag.router.enabled=true）" : "查询路由：关闭（生产默认）"); break;
+    case "adv-cache": state.qaAdv.cache = !state.qaAdv.cache; closeMenu(); toast(`响应缓存：${state.qaAdv.cache ? "开启" : "关闭"}`); break;
+    case "adv-minscore": state.qaAdv.minScore = parseFloat(target.dataset.v); closeMenu(); toast(`min-score 过滤：${state.qaAdv.minScore}`); break;
+    case "adv-adversarial": state.qaAdv.adversarial = !state.qaAdv.adversarial; closeMenu(); toast(state.qaAdv.adversarial ? "已开启越权模拟：下一次提问将被租户 scope 校验拦截" : "已关闭越权模拟"); break;
     case "eval-mode": {
       if (target.dataset.v && target.dataset.v !== state.evalMode) {
         state.evalMode = target.dataset.v;
