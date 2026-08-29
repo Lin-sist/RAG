@@ -459,6 +459,13 @@ html[data-theme="light"] .pipe-step.done .ps-dot::after { color: #0c8a5f; }
 html[data-theme="light"] .pipe-step.blocked .ps-dot { border-color: #d64545; }
 html[data-theme="light"] .pipe-step.blocked .ps-dot::after { color: #d64545; }
 html[data-theme="light"] .pipe-step.blocked .ps-name { color: #d64545; }
+/* 降级警告态（Milvus 部分降级演示） */
+.pipe-step.warn.done .ps-dot { border-color: #e8a33d; background: rgba(232, 163, 61, .14); }
+.pipe-step.warn.done .ps-dot::after { content: "!"; color: #e8a33d; }
+.pipe-step.warn .ps-name { color: #e8a33d; }
+html[data-theme="light"] .pipe-step.warn.done .ps-dot { border-color: #d68a1a; }
+html[data-theme="light"] .pipe-step.warn.done .ps-dot::after { color: #d68a1a; }
+html[data-theme="light"] .pipe-step.warn .ps-name { color: #d68a1a; }
 .rt-blocked { color: #ff7a7a; }
 html[data-theme="light"] .rt-blocked { color: #d64545; }
 .retrieval-toggle .rt-blocked { font-weight: 500; }
@@ -1233,6 +1240,12 @@ html[data-theme="light"] .fb-star.on { color: #d68a1a; }
 .cp-kb { font-size: 12px; color: var(--text-3); margin-top: 2px; }
 .cp-close { flex: none; }
 .cp-body { padding: 14px 16px; font-size: 13.5px; line-height: 1.75; color: var(--text-2); max-height: 220px; overflow-y: auto; }
+.cp-edge-note {
+  padding: 7px 16px;
+  font-size: 11px; color: var(--text-3); line-height: 1.5;
+  border-top: 1px dashed var(--border);
+  background: var(--chip-bg);
+}
 .cp-foot { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-3); }
 .cp-score { display: flex; align-items: center; gap: 8px; }
 .cp-open { font-size: 12.5px; color: var(--text); padding: 5px 10px; border-radius: 8px; }

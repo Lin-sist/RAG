@@ -499,8 +499,11 @@ function mkPipe(question, chunks, reason, adv) {
   const msAssemble = jitter(0.04);
   steps.push(
     { key: "rewrite", name: "查询改写", ms: msRewrite, detail: `变体 ×${p.variants}` },
-    { key: "hybrid", name: "混合召回", ms: msRecall,
-      detail: `dense ${Math.round(p.topK * 0.6)} · BM25 ${Math.round(p.topK * 0.5)} → RRF(k=60) top-${p.topK}` },
+    a.milvusDegraded
+      ? { key: "hybrid", name: "混合召回", ms: msRecall, tone: "warn",
+          detail: `dense 不可用（MILVUS_DEGRADED）· 仅 BM25 ${Math.round(p.topK * 0.5)} → top-${p.topK} · 检索继续，结果可能变差` }
+      : { key: "hybrid", name: "混合召回", ms: msRecall,
+          detail: `dense ${Math.round(p.topK * 0.6)} · BM25 ${Math.round(p.topK * 0.5)} → RRF(k=60) top-${p.topK}` },
     ...(p.rerank ? [{ key: "rerank", name: "重排", ms: msRerank,
       detail: `${p.topK} → ${chunks.length} · effective: heuristic · no fallback` }] : []),
     a.adversarial
@@ -713,7 +716,7 @@ const state = {
   kbDocQuery: "",          // 详情页文档搜索词
   evalMode: "current",     // 评测看板：current（真实态）| passing（通过态）
   kbTask: null,            // 上传任务面板当前任务（后台推进）
-  qaAdv: { router: false, cache: true, minScore: 0, adversarial: false }, // 对齐生产默认
+  qaAdv: { router: false, cache: true, minScore: 0, adversarial: false, milvusDegraded: false }, // 对齐生产默认
   streaming: false,
   streamTimer: null,
   kbFilter: "all",
@@ -1429,7 +1432,7 @@ function renderKbDetail() {
 
     <div class="kbd-kpis kbd-rise d2">
       <div class="kbd-kpi"><b class="kpi-n" data-n="${kb.files.length}">0</b><span>文档</span></div>
-      <div class="kbd-kpi"><b class="kpi-n" data-n="${chunks}">0</b><span>总块数</span></div>
+      <div class="kbd-kpi"><b class="kpi-n" data-n="${chunks}">0</b><span>向量数</span></div>
       <div class="kbd-kpi"><b class="kpi-n" data-n="${parseFloat(kb.size)}" data-dec="${sizeDec}" data-suf=" ${kb.size.replace(/^[\d.]+\s*/, "")}">0</b><span>索引体积</span></div>
       <div class="kbd-kpi"><b class="kpi-n" data-n="${kb.hits}">0</b><span>累计检索命中</span></div>
     </div>
@@ -1451,6 +1454,9 @@ function renderKbDetail() {
         <div class="meta-row"><span class="meta-lab">向量集合</span>
           <span class="meta-val mono">${esc(kb.collection)}<button class="meta-copy" data-act="kbd-copy-id" data-tip="复制">${icon("copy", 13)}</button></span></div>
         <div class="meta-row"><span class="meta-lab">知识库 ID</span><span class="meta-val">${kb.id}</span></div>
+        <div class="meta-row"><span class="meta-lab">租户归属</span><span class="meta-val">legacy · 服务端持有</span></div>
+        <div class="meta-row"><span class="meta-lab">向量库</span><span class="meta-val">Milvus · dim 2048</span></div>
+        <div class="meta-row"><span class="meta-lab">分块配置</span><span class="meta-val">chunk 420 / overlap 80</span></div>
         <div class="meta-row"><span class="meta-lab">创建时间</span><span class="meta-val">${esc(kb.createdAt)}</span></div>
         <div class="meta-row"><span class="meta-lab">更新时间</span><span class="meta-val">${esc(kb.updatedAt)}</span></div>
         <div class="meta-row col"><span class="meta-lab">描述</span><span class="meta-val">${esc(kb.sub || "暂无描述")}</span></div>
@@ -2054,6 +2060,7 @@ function openCite(anchor, turnIdx, citeIdx) {
       <button class="icon-btn cp-close" data-act="close-cite">${icon("x", 16)}</button>
     </div>
     <div class="cp-body">${esc(c.snippet)}</div>
+    <div class="cp-edge-note">流式路径边界：当前后端流式历史 citations 为空，引用以最终 terminal event 为准（演示）</div>
     <div class="cp-foot">
       <span class="cp-score">相似度 <b>${esc(c.score)}</b><span class="rc-bar"><i style="width:${Math.round(parseFloat(c.score) * 100)}%"></i></span> chunk #${c.chunk}</span>
       <button class="cp-open" data-act="cite-open-src">打开原文</button>
@@ -2116,6 +2123,7 @@ document.addEventListener("click", e => {
           </button>`).join("")}
         </div>
         <div class="menu-div"></div>
+        ${sw("adv-milvus", "模拟 Milvus 降级", a.milvusDegraded, "dense 路不可用 · 仅 BM25 继续", "演示部分降级")}
         ${sw("adv-adversarial", "模拟越权 filter（tenant=other）", a.adversarial, "将触发 RAG_SCOPE_FILTER_RESERVED", "演示 C13 租户隔离")}
       `, { below: true, align: "left" });
       break;
@@ -2123,6 +2131,7 @@ document.addEventListener("click", e => {
     case "adv-router": state.qaAdv.router = !state.qaAdv.router; closeMenu(); toast(state.qaAdv.router ? "查询路由：开启（rag.router.enabled=true）" : "查询路由：关闭（生产默认）"); break;
     case "adv-cache": state.qaAdv.cache = !state.qaAdv.cache; closeMenu(); toast(`响应缓存：${state.qaAdv.cache ? "开启" : "关闭"}`); break;
     case "adv-minscore": state.qaAdv.minScore = parseFloat(target.dataset.v); closeMenu(); toast(`min-score 过滤：${state.qaAdv.minScore}`); break;
+    case "adv-milvus": state.qaAdv.milvusDegraded = !state.qaAdv.milvusDegraded; closeMenu(); toast(state.qaAdv.milvusDegraded ? "已开启 Milvus 降级模拟：dense 路不可用，仅 BM25 继续（部分降级）" : "已关闭 Milvus 降级模拟"); break;
     case "adv-adversarial": state.qaAdv.adversarial = !state.qaAdv.adversarial; closeMenu(); toast(state.qaAdv.adversarial ? "已开启越权模拟：下一次提问将被租户 scope 校验拦截" : "已关闭越权模拟"); break;
     case "eval-mode": {
       if (target.dataset.v && target.dataset.v !== state.evalMode) {
@@ -2152,7 +2161,7 @@ document.addEventListener("click", e => {
     }
     case "user-menu": {
       openMenu(target, `
-        <button class="pu-head">${'<span class="avatar">A</span>'}<div class="profile-meta"><span class="profile-name">admin</span><span class="profile-sub">个人账户</span></div><span class="pu-arrow">${icon("chevR", 16)}</span></button>
+        <button class="pu-head">${'<span class="avatar">A</span>'}<div class="profile-meta"><span class="profile-name">admin</span><span class="profile-sub">个人账户 · tenant: legacy</span></div><span class="pu-arrow">${icon("chevR", 16)}</span></button>
         <div class="menu-div"></div>
         ${menuItem("nav-ph", "sliders", "个性化", 'data-ph="个性化"')}
         ${menuItem("nav-ph", "person", "个人资料", 'data-ph="个人资料"')}
