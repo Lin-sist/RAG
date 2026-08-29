@@ -74,6 +74,7 @@ const P = {
   trash: '<path d="M5 6.5h14"/><path d="M8.5 6.5v-1A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5v1"/><path d="m6.5 6.5.8 12.4a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12.4"/>',
   arrowL: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
   upload: '<path d="M12 15V4"/><path d="m7.5 8 4.5-4 4.5 4"/><path d="M5 19.5h14"/>',
+  evals: '<path d="M5 20v-8"/><path d="M12 20V5"/><path d="M19 20v-11"/>',
   download: '<path d="M12 4v10.5"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/>',
   db: '<ellipse cx="12" cy="5.5" rx="7" ry="2.8"/><path d="M5 5.5v13c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8v-13"/><path d="M5 12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8"/>',
 };
@@ -412,14 +413,55 @@ CONVS.forEach(c => {
   });
 });
 
+/* ---------------- 评测看板 mock（口径对齐 openspec/specs/evaluation） ----------------
+   指标通道 recall_at_3 / recall_at_5 / mrr；数据集 rag-eval-dev-v2 = 150 样本
+   （30 固定 seed）；gate 结果 PASS/FAIL/NOT_EVALUABLE/INVALID；报告状态
+   CLEAN/PARTIAL/RETRIEVAL_ONLY/FAILED。数值为演示样例，不代表真实测量。 */
+const EVAL_DATA = {
+  dataset: {
+    name: "rag-eval-dev-v2",
+    samples: 150, seed: 30,
+    answerable: 130, noAnswer: 20,
+    difficulty: "easy 50 · medium 65 · hard 35",
+    types: "fact 35 · definition 30 · reasoning 40 · multi_hop 25 · no_answer 20",
+    head: "9e97063",
+  },
+  gate: {
+    current: {
+      state: "BLOCKED", tone: "bad",
+      profile: "C10 retrieval profile · DRAFT / PENDING_REFERENCE_EVIDENCE",
+      reason: "shadow migration AUDIT_FAILED · 向量索引未就绪（VECTOR_READINESS_UNAVAILABLE）",
+      note: "fail closed：不修改 accepted baseline，不产生质量结论",
+    },
+    passing: {
+      state: "ACTIVE · PASS", tone: "good",
+      profile: "C10 retrieval profile · ACTIVE / APPROVED",
+      reason: "全部质量规则通过 · 证据身份与选择完整性校验通过",
+      note: "通过态为演示理想结果，与仓库当前现状不同",
+    },
+  },
+  metrics: [
+    { key: "recall_at_5", name: "Recall@5", threshold: 0.80, baseline: 0.842, shadow: 0.861 },
+    { key: "recall_at_3", name: "Recall@3", threshold: 0.72, baseline: 0.761, shadow: 0.748 },
+    { key: "mrr", name: "MRR", threshold: 0.65, baseline: 0.689, shadow: 0.702 },
+  ],
+  runs: [
+    { name: "BASELINE", status: "pass", report: "CLEAN", note: "全量 150 题 · recall@5 0.842（locked reference）", time: "8月12日" },
+    { name: "CANARY", status: "fail", report: "FAILED", note: "VECTOR_INDEX_NOT_READY · embedding 前失败 ×5", time: "8月26日" },
+    { name: "PREFLIGHT", status: "blocked", report: "BLOCKED", note: "VECTOR_READINESS_UNAVAILABLE · fail closed", time: "8月27日" },
+    { name: "SHADOW MIGRATION", status: "fail", report: "AUDIT_FAILED", note: "scope 标记比较已修复 · 待显式重试授权", time: "8月28日" },
+  ],
+};
+
 /* ---------------- 全局状态 ---------------- */
 const state = {
-  view: "home",            // home | chat | kb | kb-detail
+  view: "home",            // home | chat | kb | kb-detail | eval
   mode: "chat",            // 聊天 | 工作
   convId: null,
   kbScope: null,           // 输入框选择的知识库范围
   kbCurrent: null,         // 详情页正在查看的知识库
   kbDocQuery: "",          // 详情页文档搜索词
+  evalMode: "current",     // 评测看板：current（真实态）| passing（通过态）
   streaming: false,
   streamTimer: null,
   kbFilter: "all",
@@ -435,7 +477,9 @@ function renderSidebar() {
   $("#navNewChat").innerHTML = `${icon("newchat")}<span>新聊天</span>`;
   $("#navKb").innerHTML = `${icon("library")}<span>知识库</span>`;
   $("#navKb").classList.toggle("active", state.view === "kb" || state.view === "kb-detail");
-  const phs = [["folder", "项目"], ["clock", "已安排"], ["apps", "插件"], ["dots", "更多"]];
+  $("#navEval").innerHTML = `${icon("evals")}<span>评测</span>`;
+  $("#navEval").classList.toggle("active", state.view === "eval");
+  const phs = [["folder", "项目"], ["apps", "插件"], ["dots", "更多"]];
   $$(".nav-item[data-ph]").forEach((el, i) => {
     el.innerHTML = `${icon(phs[i][0])}<span>${phs[i][1]}</span>`;
   });
@@ -484,6 +528,7 @@ function show(view) {
   $("#viewChat").hidden = view !== "chat";
   $("#viewKb").hidden = view !== "kb";
   $("#viewKbDetail").hidden = view !== "kb-detail";
+  $("#viewEval").hidden = view !== "eval";
 
   const composer = $("#composerBox").closest(".composer");
   if (view === "home") $("#composerHomeSlot").appendChild(composer);
@@ -494,6 +539,7 @@ function show(view) {
   if (view === "home") renderSuggest();
   if (view === "kb") renderKbTable();
   if (view === "kb-detail") renderKbDetail();
+  if (view === "eval") renderEval();
   if (view === "chat") requestAnimationFrame(() => { $("#msgScroll").scrollTop = $("#msgScroll").scrollHeight; });
 }
 
@@ -1022,7 +1068,7 @@ function sparkSvg(data) {
 }
 
 function countUpKpis() {
-  $$("#kbdInner .kpi-n[data-n]").forEach(el => {
+  $$(".kpi-n[data-n]").forEach(el => {
     const target = parseFloat(el.dataset.n), dec = +(el.dataset.dec || 0), suf = el.dataset.suf || "";
     const t0 = performance.now(), dur = 520;
     const tick = now => {
@@ -1149,6 +1195,102 @@ function openDocPop(anchor, fileName) {
 }
 
 function closeDoc() { $("#docPop").hidden = true; }
+
+/* ---------------- 评测看板视图 ---------------- */
+function metricRowHtml(m, passing) {
+  const bar = (v, cls) => `<span class="m-bar"><i class="${cls}" style="width:${Math.round(v * 100)}%"></i></span>`;
+  const shadowCell = passing
+    ? `<span class="m-val">${m.shadow.toFixed(3)}</span>${bar(m.shadow, "shadow")}`
+    : `<span class="m-val dim">—</span><span class="m-bar"><i class="shadow pending"></i></span>`;
+  let delta = "";
+  if (passing) {
+    const d = +(m.shadow - m.baseline).toFixed(3);
+    const ok = m.shadow >= m.threshold;
+    delta = `<span class="m-delta ${ok ? "ok" : "bad"}">${d >= 0 ? "+" : ""}${d.toFixed(3)} · ${ok ? "达标" : "未达标"}</span>`;
+  }
+  return `
+    <div class="metric-row">
+      <div class="m-head"><span class="m-name">${esc(m.name)}</span><span class="m-th">阈值 ${m.threshold.toFixed(2)}</span></div>
+      <div class="m-line"><span class="m-tag">baseline</span><span class="m-val">${m.baseline.toFixed(3)}</span>${bar(m.baseline, "base")}</div>
+      <div class="m-line"><span class="m-tag">shadow</span>${shadowCell}${delta}</div>
+    </div>`;
+}
+
+function renderEval() {
+  const ds = EVAL_DATA.dataset;
+  const passing = state.evalMode === "passing";
+  const gate = passing ? EVAL_DATA.gate.passing : EVAL_DATA.gate.current;
+  $("#evalInner").innerHTML = `
+    <div class="eval-head eval-rise">
+      <div class="eval-head-meta">
+        <h1 class="eval-title">评测</h1>
+        <span class="eval-subline">检索质量门禁 · 口径对齐 openspec evaluation spec · 演示数据</span>
+      </div>
+      <div class="eval-head-right">
+        <div class="eval-seg">
+          <button class="eval-seg-btn ${!passing ? "on" : ""}" data-act="eval-mode" data-v="current">当前态</button>
+          <button class="eval-seg-btn ${passing ? "on" : ""}" data-act="eval-mode" data-v="passing">通过态</button>
+        </div>
+        <button class="chip sm" data-act="eval-run">${icon("spark", 14)}<span>运行评测</span></button>
+      </div>
+    </div>
+
+    <div class="eval-gate eval-rise d1 tone-${gate.tone}">
+      <span class="gate-dot"></span>
+      <div class="gate-meta">
+        <div class="gate-state"><b>${esc(gate.state)}</b><span>${esc(gate.profile)}</span></div>
+        <div class="gate-reason">${esc(gate.reason)}</div>
+        <div class="gate-note">${esc(gate.note)}</div>
+      </div>
+    </div>
+
+    <div class="kbd-kpis eval-rise d2">
+      <div class="kbd-kpi"><b class="kpi-n" data-n="${ds.samples}">0</b><span>评测题目 · 含 ${ds.seed} 固定 seed</span></div>
+      <div class="kbd-kpi"><b class="kpi-n" data-n="${ds.answerable}" data-suf=" / ${ds.noAnswer}">0</b><span>可答 / 拒答（no-answer）</span></div>
+      <div class="kbd-kpi"><b class="kpi-n" data-n="${ds.types.split("·").length}" data-suf=" 类">0</b><span>题型配额</span></div>
+      <div class="kbd-kpi"><b class="kpi-n" data-n="3" data-suf=" 档">0</b><span>难度 easy / medium / hard</span></div>
+    </div>
+
+    <div class="eval-grid eval-rise d3">
+      <div class="kbd-card eval-metrics">
+        <div class="kbd-card-head"><span class="kbd-card-title">指标对比 <em>baseline vs shadow</em></span></div>
+        <div class="eval-metrics-body">
+          ${passing ? EVAL_DATA.metrics.map(m => metricRowHtml(m, true)).join("") : EVAL_DATA.metrics.map(m => metricRowHtml(m, false)).join("")}
+          ${passing ? "" : `<div class="m-waiting">等待有效证据：未产生质量结论前不呈现 shadow 分数，不猜测盲区。</div>`}
+        </div>
+      </div>
+
+      <div class="kbd-card eval-identity">
+        <div class="kbd-card-head"><span class="kbd-card-title">评测集身份</span></div>
+        <div class="eval-identity-body">
+          <div class="meta-row"><span class="meta-lab">数据集</span><span class="meta-val mono">${esc(ds.name)}</span></div>
+          <div class="meta-row"><span class="meta-lab">版本状态</span><span class="meta-val">${passing ? "VALID · versioned release" : "UNVERSIONED 证据不可回溯接受"}</span></div>
+          <div class="meta-row"><span class="meta-lab">固定 seed</span><span class="meta-val">${ds.seed} 样本 · 不可变</span></div>
+          <div class="meta-row"><span class="meta-lab">可复现 reference</span><span class="meta-val">${passing ? "locked median · 已锁定" : "待编译（PENDING_REFERENCE_EVIDENCE）"}</span></div>
+          <div class="meta-row"><span class="meta-lab">Git HEAD</span><span class="meta-val mono">${esc(ds.head)}</span></div>
+          <div class="meta-div"></div>
+          <div class="meta-row col"><span class="meta-lab">题型配额</span><span class="meta-val">${esc(ds.types)}</span></div>
+          <div class="meta-row col"><span class="meta-lab">难度配额</span><span class="meta-val">${esc(ds.difficulty)}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kbd-card eval-runs eval-rise d4">
+      <div class="kbd-card-head"><span class="kbd-card-title">近期运行</span><span class="kbd-card-title em-note">对应仓库真实事件序列 · 演示化</span></div>
+      <div class="eval-runs-body">
+        ${EVAL_DATA.runs.map(r => `
+          <div class="run-row">
+            <span class="run-dot ${r.status}"></span>
+            <span class="run-name">${esc(r.name)}</span>
+            <span class="badge tiny ${r.status === "pass" ? "" : r.status === "blocked" ? "proc" : "fail"}"><i></i>${esc(r.report)}</span>
+            <span class="run-note">${esc(r.note)}</span>
+            <span class="run-time">${esc(r.time)}</span>
+          </div>`).join("")}
+      </div>
+    </div>
+    <div class="eval-foot">本页为界面演示：分数与结论均为样例，不构成真实评测证据；真实运行以 scripts/ 与评测报告为准。</div>`;
+  countUpKpis();
+}
 
 /* ---------------- 弹窗与菜单 ---------------- */
 function closeMenu() { $("#menu").hidden = true; }
@@ -1302,6 +1444,15 @@ document.addEventListener("click", e => {
       break;
     }
     case "open-kb": show("kb"); break;
+    case "open-eval": show("eval"); break;
+    case "eval-mode": {
+      if (target.dataset.v && target.dataset.v !== state.evalMode) {
+        state.evalMode = target.dataset.v;
+        renderEval();
+      }
+      break;
+    }
+    case "eval-run": toast("评测运行为演示占位 · 不发起真实评测调用"); break;
     case "nav-ph": toast(`「${target.dataset.ph}」为演示占位`); break;
     case "open-conv": {
       closeMenu();
