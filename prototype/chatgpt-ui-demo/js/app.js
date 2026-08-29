@@ -342,6 +342,76 @@ const SUGGESTIONS = {
   ],
 };
 
+/* ---------------- 检索管道 mock（字段口径对齐 /api/qa/debug/retrieve） ----------------
+   RetrievalDebugResponse: queryVariants[{query,weight}] / topK / enableRerank /
+   contextCount / topScore / avgScore；此处按检索深度档位派生演示数据。 */
+const REASON_PROFILE = {
+  "低": { topK: 8,  rerank: false, variants: 1, factor: 0.65 },
+  "中": { topK: 16, rerank: true,  variants: 2, factor: 1 },
+  "高": { topK: 24, rerank: true,  variants: 3, factor: 1.35 },
+};
+
+const VARIANT_HINTS = [
+  [/微调|finetun|fine-tun/i, ["大模型微调 与 RAG 的区别 适用场景", "LoRA 参数高效微调 方式对比"]],
+  [/检索质量|评估|评测|recall|mrr/i, ["检索质量评估指标 Recall@k MRR nDCG", "评测集固定版本 检索门禁 shadow 对比"]],
+  [/spring|事务|transactional/i, ["@Transactional 声明式事务 属性配置", "事务失效场景 AOP 代理 同类调用"]],
+  [/jwt|登录|认证|token/i, ["JWT 登录签发 access refresh token 流程", "令牌刷新 撤销 黑名单 风险"]],
+  [/向量|关键词|检索|hybrid|bm25/i, ["向量检索 语义相似度 高维投影", "BM25 词频 逆文档频率 精确匹配"]],
+];
+
+function mkVariants(question, n) {
+  const q = question.trim();
+  const base = [{ query: q, weight: 1 }];
+  if (n < 2) return base;
+  const hint = VARIANT_HINTS.find(([re]) => re.test(q));
+  if (hint) return base.concat(hint[1].slice(0, n - 1).map((query, i) => ({ query, weight: +(0.7 - i * 0.25).toFixed(2) })));
+  const parts = q.split(/[？?！!。,，；;\s]+/).filter(p => p.length >= 2);
+  const kws = parts.slice(0, 2).join(" ") || q;
+  return base.concat([
+    { query: kws, weight: 0.7 },
+    ...(n > 2 ? [{ query: `${q} 的核心概念与常见误区`, weight: 0.45 }] : []),
+  ]);
+}
+
+function mkPipe(question, chunks, reason) {
+  const p = REASON_PROFILE[reason] || REASON_PROFILE["中"];
+  const jitter = base => +(base * p.factor * (0.9 + Math.random() * 0.2)).toFixed(2);
+  const msRewrite = jitter(0.06);
+  const msRecall = jitter(0.2);
+  const msRerank = p.rerank ? jitter(0.14) : 0;
+  const msAssemble = jitter(0.04);
+  const scores = chunks.map(c => c.score);
+  const tokens = 200 + chunks.length * 180 + Math.round(Math.random() * 100);
+  const steps = [
+    { key: "rewrite", name: "查询改写", ms: msRewrite, detail: `变体 ×${p.variants}` },
+    { key: "recall", name: "向量召回", ms: msRecall, detail: `top-${p.topK} 候选` },
+    ...(p.rerank ? [{ key: "rerank", name: "重排", ms: msRerank, detail: `${p.topK} → ${chunks.length}` }] : []),
+    { key: "assemble", name: "上下文组装", ms: msAssemble, detail: `≈${(tokens / 1000).toFixed(1)}k tokens` },
+  ];
+  return {
+    variants: mkVariants(question, p.variants),
+    topK: p.topK,
+    rerank: p.rerank,
+    steps,
+    total: +(msRewrite + msRecall + msRerank + msAssemble).toFixed(2),
+    topScore: scores.length ? Math.max(...scores) : 0,
+    avgScore: scores.length ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : 0,
+    tokens,
+    finalN: chunks.length,
+  };
+}
+
+/* 历史对话的检索行统一补挂管道数据（按「中」档口径） */
+CONVS.forEach(c => {
+  const q = (c.turns[0] && c.turns[0].text) || c.title;
+  c.turns.forEach(t => {
+    if (t.role === "assistant" && t.retrieval && !t.retrieval.pipe) {
+      t.retrieval.pipe = mkPipe(q, t.retrieval.chunks, "中");
+      t.retrieval.ms = t.retrieval.pipe.total.toFixed(2);
+    }
+  });
+});
+
 /* ---------------- 全局状态 ---------------- */
 const state = {
   view: "home",            // home | chat | kb | kb-detail
@@ -513,10 +583,35 @@ function mdRender(src, conv) {
 }
 
 /* ---------------- 消息渲染 ---------------- */
+function pipeHtml(r) {
+  const pipe = r.pipe;
+  if (!pipe) return "";
+  const steps = pipe.steps.map(s => `
+    <div class="pipe-step done">
+      <span class="ps-dot"></span>
+      <span class="ps-name">${esc(s.name)}</span>
+      <span class="ps-detail">${esc(s.detail)}</span>
+      <span class="ps-ms">${s.ms.toFixed(2)}s</span>
+    </div>`).join("");
+  const variants = pipe.variants.map(v => `
+    <div class="variant-row">
+      <span class="v-query">${esc(v.query)}</span>
+      <span class="v-weight"><i style="width:${Math.round(v.weight * 100)}%"></i></span>
+      <span class="v-num">${v.weight.toFixed(2)}</span>
+    </div>`).join("");
+  return `
+    <div class="pipe">${steps}</div>
+    <div class="pipe-label">查询变体${pipe.rerank ? "" : " · 未启用重排"}</div>
+    ${variants}
+    <div class="pipe-stats">top <b>${pipe.topScore.toFixed(2)}</b><span class="dot-sep">·</span>avg <b>${pipe.avgScore.toFixed(2)}</b><span class="dot-sep">·</span>${pipe.finalN} 片段 ≈${(pipe.tokens / 1000).toFixed(1)}k tokens</div>
+    <div class="pipe-label">命中片段</div>`;
+}
+
 function retrievalHtml(r, conv, openable = true) {
   const label = `已检索 「${esc(r.kb)}」· ${r.chunks.length} 个片段 · ${r.ms} 秒`;
-  const rows = r.chunks.map(c => `
+  const rows = r.chunks.map((c, i) => `
     <div class="rc-row">${icon("file", 14)}
+      <span class="rc-rank">${i + 1}</span>
       <span class="rc-name">${esc(c.file)}</span>
       <span class="rc-bar"><i style="width:${Math.round(c.score * 100)}%"></i></span>
       <span class="rc-meta">#${c.chunk} · ${c.score.toFixed(2)}</span>
@@ -525,7 +620,7 @@ function retrievalHtml(r, conv, openable = true) {
     <button class="retrieval-toggle" ${openable ? 'data-act="retrieval-toggle"' : ""}>
       ${icon("spark", 15)}<span>${label}</span><span class="icon-slot chev">${icon("chevR", 14)}</span>
     </button>
-    <div class="retrieval-body">${rows}</div>
+    <div class="retrieval-body">${pipeHtml(r)}${rows}</div>
   </div>`;
 }
 
@@ -692,12 +787,25 @@ function startAsk(question) {
 
   const qa = pickQA(question);
   const turn = { role: "assistant", retrieval: qa.retrieval, cites: qa.cites, answer: qa.answer, _demo: true };
+  turn.retrieval.pipe = mkPipe(question, turn.retrieval.chunks, state.reason);
+  turn.retrieval.ms = turn.retrieval.pipe.total.toFixed(2);
   conv.turns.push(turn);
 
   renderConv(conv, true);
   show("chat");
   renderSidebar();
   streamTurn(conv, turn);
+}
+
+/* 检索进行中的实时管道（步骤逐个点亮） */
+function pipeLiveHtml(pipe) {
+  return `<div class="pipe live">` + pipe.steps.map((s, i) => `
+    <div class="pipe-step${i === 0 ? " active" : ""}" data-idx="${i}">
+      <span class="ps-dot"></span>
+      <span class="ps-name">${esc(s.name)}</span>
+      <span class="ps-detail">${esc(s.detail)}</span>
+      <span class="ps-ms"></span>
+    </div>`).join("") + `</div>`;
 }
 
 function streamTurn(conv, turn) {
@@ -707,7 +815,7 @@ function streamTurn(conv, turn) {
   const col = $("#msgCol");
   const wrap = document.createElement("div");
   wrap.className = "turn assistant";
-  wrap.innerHTML = `<div class="thinking-line">${icon("spark", 15)}<span class="shimmer" id="thinkLabel">正在检索知识库「${esc(turn.retrieval.kb)}」...</span></div>`;
+  wrap.innerHTML = `<div class="thinking-line">${icon("spark", 15)}<span class="shimmer" id="thinkLabel">正在检索「${esc(turn.retrieval.kb)}」...</span></div>${pipeLiveHtml(turn.retrieval.pipe || { steps: [] })}`;
   col.appendChild(wrap);
   autoScroll(true);
 
@@ -717,8 +825,26 @@ function streamTurn(conv, turn) {
   };
   const follow = () => { if (nearBottom()) $("#msgScroll").scrollTop = $("#msgScroll").scrollHeight; };
 
+  /* 管道步骤依次点亮；总时长随检索深度档位伸缩 */
+  state.pipeTimers = [];
+  let acc = 0;
+  (turn.retrieval.pipe ? turn.retrieval.pipe.steps : []).forEach((s, i) => {
+    acc += Math.max(150, s.ms * 850);
+    const at = acc;
+    state.pipeTimers.push(setTimeout(() => {
+      const row = wrap.querySelector(`.pipe-step[data-idx="${i}"]`);
+      if (!row || !state.streaming) return;
+      row.classList.remove("active");
+      row.classList.add("done");
+      row.querySelector(".ps-ms").textContent = s.ms.toFixed(2) + "s";
+      const next = wrap.querySelector(`.pipe-step[data-idx="${i + 1}"]`);
+      if (next) next.classList.add("active");
+    }, at));
+  });
+
   setTimeout(() => {
-    if (!state.streaming) return;
+    if (!state.streaming || !conv.turns.includes(turn)) return;
+    if (!conv._cites) conv._cites = turn.cites;
     conv._cites = turn.cites; conv._turnIdx = idx;
     wrap.innerHTML = retrievalHtml(turn.retrieval, conv) + `<div class="md" id="streamMd"></div>`;
     const md = $("#streamMd", wrap);
@@ -732,7 +858,7 @@ function streamTurn(conv, turn) {
       follow();
       if (pos >= full.length) finishStream(conv, turn, wrap, md, false);
     }, 16);
-  }, 900);
+  }, acc + 220);
 }
 
 function finishStream(conv, turn, wrap, md, stopped) {
@@ -756,15 +882,24 @@ function finishStream(conv, turn, wrap, md, stopped) {
 
 function stopStream() {
   if (!state.streaming) return;
+  (state.pipeTimers || []).forEach(clearTimeout);
+  state.pipeTimers = null;
   const md = $("#streamMd");
   clearInterval(state.streamTimer);
   state.streamTimer = null;
   state.streaming = false;
+  const conv = CONVS.find(c => c.id === state.convId);
+  const turn = conv && conv.turns[conv.turns.length - 1];
   if (md) {
     const wrap = md.closest(".turn");
-    const conv = CONVS.find(c => c.id === state.convId);
-    const turn = conv && conv.turns[conv.turns.length - 1];
     if (turn) { turn.answer = md.textContent || turn.answer; finishStream(conv, turn, wrap, md, true); }
+  } else if (conv && turn && turn.role === "assistant") {
+    /* 检索阶段停止：直接呈现已完成管道 + 完整回答（标注已停止） */
+    const wrap = $("#msgCol .turn:last-child");
+    if (wrap) {
+      conv._cites = turn.cites; conv._turnIdx = conv.turns.indexOf(turn);
+      wrap.innerHTML = retrievalHtml(turn.retrieval, conv) + `<div class="md">${mdRender(turn.answer, conv)}<p class="shimmer" style="display:inline;font-size:13px">（已停止生成）</p></div>`;
+    }
   }
   updateVoiceBtn();
   toast("已停止生成");

@@ -399,6 +399,42 @@ html[data-theme="light"] .composer-box { box-shadow: 0 2px 14px rgba(0, 0, 0, .0
 .rc-meta { flex: none; color: var(--text-3); font-size: 12px; }
 .rc-bar { flex: none; width: 52px; height: 4px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
 .rc-bar i { display: block; height: 100%; background: var(--text-3); border-radius: 4px; }
+.rc-rank { flex: none; width: 16px; text-align: center; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* 检索管道（对齐 /api/qa/debug/retrieve 口径的演示视图） */
+.pipe { margin: 2px 0 10px; }
+.pipe-step { display: flex; align-items: center; gap: 9px; padding: 4px 0; font-size: 13px; color: var(--text-2); }
+.ps-dot {
+  flex: none; width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-2);
+  position: relative;
+}
+.pipe-step.active .ps-dot { border-color: var(--blue); animation: pspulse 1s ease-in-out infinite; }
+.pipe-step.done .ps-dot { border-color: #34c77b; background: rgba(52, 199, 123, .16); }
+.pipe-step.done .ps-dot::after {
+  content: "✓";
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 9px; font-weight: 700; line-height: 1;
+  color: #34c77b;
+}
+html[data-theme="light"] .pipe-step.done .ps-dot { border-color: #0c8a5f; }
+html[data-theme="light"] .pipe-step.done .ps-dot::after { color: #0c8a5f; }
+@keyframes pspulse { 50% { box-shadow: 0 0 0 4px rgba(61, 127, 251, .16); } }
+.ps-name { flex: none; font-weight: 500; color: var(--text); }
+.ps-detail { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text-3); }
+.ps-ms { flex: none; min-width: 34px; text-align: right; font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.pipe.live .pipe-step:not(.active):not(.done) { opacity: .4; }
+
+.pipe-label { font-size: 11.5px; color: var(--text-3); padding: 5px 0 3px; letter-spacing: .3px; }
+.variant-row { display: flex; align-items: center; gap: 9px; padding: 4px 0; font-size: 12.5px; color: var(--text-2); }
+.v-query { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v-weight { flex: none; width: 56px; height: 4px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+.v-weight i { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
+.v-num { flex: none; font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.pipe-stats { font-size: 12px; color: var(--text-3); padding: 7px 0 2px; margin-top: 4px; border-top: 1px dashed var(--border-2); }
+.pipe-stats b { color: var(--text-2); font-weight: 500; }
 
 /* 检索中 shimmer */
 .thinking-line { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 6px 0; }
