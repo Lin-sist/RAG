@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-accent="default">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG 智能问答 · 高仿 ChatGPT 界面 Demo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ececec' d='M12 2.6c.66 5.3 3.55 8.2 8.85 8.85.5.06.5 1.04 0 1.1-5.3.65-8.19 3.55-8.85 8.85-.06.5-1.04.5-1.1 0-.65-5.3-3.55-8.19-8.85-8.85-.5-.06-.5-1.04 0-1.1 5.3-.65 8.2-3.55 8.85-8.85.06-.5 1.04-.5 1.1 0Z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ======================= 侧栏 ======================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <div class="wordmark">RAG 智能问答</div>
+      <div class="sb-head-actions">
+        <button class="icon-btn" data-act="open-search" data-tip="搜索" data-key="Ctrl+K"></button>
+        <button class="icon-btn" data-act="toggle-sb" data-tip="收起边栏"></button>
+      </div>
+    </div>
+
+    <nav class="sb-nav">
+      <button class="nav-item" data-act="new-chat" id="navNewChat"></button>
+      <button class="nav-item" data-act="open-kb" id="navKb"></button>
+      <button class="nav-item" data-act="nav-ph" data-ph="项目"></button>
+      <button class="nav-item" data-act="nav-ph" data-ph="已安排"></button>
+      <button class="nav-item" data-act="nav-ph" data-ph="插件"></button>
+      <button class="nav-item" data-act="nav-ph" data-ph="更多"></button>
+    </nav>
+
+    <div class="sb-scroll" id="histScroll">
+      <div class="sb-section-label">最近</div>
+      <div id="histList"></div>
+    </div>
+
+    <div class="sb-foot">
+      <button class="profile-btn" id="profileBtn" data-act="user-menu">
+        <span class="avatar">A</span>
+        <span class="profile-meta">
+          <span class="profile-name">admin</span>
+          <span class="profile-sub">个人账户</span>
+        </span>
+        <span class="profile-right icon-slot" data-icon="help"></span>
+      </button>
+    </div>
+  </aside>
+  <div class="sb-backdrop" id="sbBackdrop" data-act="toggle-sb"></div>
+
+  <!-- ======================= 主区域 ======================= -->
+  <main class="main" id="main">
+
+    <header class="topbar">
+      <div class="topbar-left" id="topbarLeft"></div>
+      <div class="segmented" id="segMode">
+        <button class="seg on" data-mode="chat">聊天</button>
+        <button class="seg" data-mode="work">工作</button>
+      </div>
+      <div class="topbar-right" id="topbarRight"></div>
+    </header>
+
+    <!-- 首页（空会话） -->
+    <section class="view view-home" id="viewHome">
+      <div class="home-inner">
+        <h1 class="greeting" id="greeting">你好，admin。准备好开始了吗？</h1>
+        <div class="composer-slot" id="composerHomeSlot"></div>
+        <div class="suggest-line" id="suggestLine"></div>
+      </div>
+    </section>
+
+    <!-- 会话视图 -->
+    <section class="view view-chat" id="viewChat" hidden>
+      <div class="msg-scroll" id="msgScroll">
+        <div class="msg-col" id="msgCol"></div>
+      </div>
+      <div class="composer-dock" id="composerChatSlot"></div>
+      <button class="scroll-bottom" id="scrollBottom" data-act="scroll-bottom" hidden></button>
+    </section>
+
+    <!-- 知识库（资料库）视图 -->
+    <section class="view view-kb" id="viewKb" hidden>
+      <div class="kb-inner">
+        <div class="kb-head">
+          <h1 class="kb-title">知识库</h1>
+          <div class="kb-head-right">
+            <div class="kb-search">
+              <span class="icon-slot" data-icon="search"></span>
+              <input id="kbSearchInput" type="text" placeholder="搜索" />
+            </div>
+            <button class="btn-new" data-act="kb-new-menu">新建 <span class="icon-slot" data-icon="chev-d" data-size="14"></span></button>
+          </div>
+        </div>
+
+        <div class="kb-toolbar">
+          <div class="kb-chips" id="kbChips">
+            <button class="chip on" data-act="kb-chip" data-filter="all">全部</button>
+            <button class="chip" data-act="kb-chip" data-filter="kb">知识库</button>
+            <button class="chip" data-act="kb-chip" data-filter="doc">文档</button>
+          </div>
+          <div class="kb-viewbtns">
+            <button class="icon-btn" data-act="kb-filter" data-tip="筛选"><span class="icon-slot" data-icon="filter"></span></button>
+            <span class="v-div"></span>
+            <button class="icon-btn" data-mode="grid" data-act="kb-mode" data-tip="网格视图"><span class="icon-slot" data-icon="grid"></span></button>
+            <button class="icon-btn on" data-mode="list" data-act="kb-mode" data-tip="列表视图"><span class="icon-slot" data-icon="list"></span></button>
+          </div>
+        </div>
+
+        <div class="kb-table" id="kbTable"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ======================= 输入框（唯一节点，视图间搬移） ======================= -->
+<template id="composerTpl">
+  <div class="composer">
+    <div class="kb-scope-row" id="kbScopeRow" hidden></div>
+    <div class="composer-box" id="composerBox">
+      <div class="c-row">
+        <button class="c-btn" data-act="plus-menu" data-tip="添加内容" id="plusBtn"><span class="icon-slot" data-icon="plus"></span></button>
+        <textarea id="composerInput" rows="1" placeholder="问问 RAG 知识库"></textarea>
+        <div class="c-right">
+          <button class="reason-btn" data-act="reason-menu"><span id="reasonLabel">高</span> <span class="icon-slot" data-icon="chev-d" data-size="14"></span></button>
+          <button class="c-btn" data-act="mic" data-tip="听写" id="micBtn"><span class="icon-slot" data-icon="mic"></span></button>
+          <button class="voice-btn" id="voiceBtn" data-act="voice-or-send">
+            <span class="wave"><i></i><i></i><i></i><i></i></span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="composer-hint" id="composerHint">AI 可能产生不准确内容，请核对引用来源 · 演示数据，不会发起真实请求</div>
+  </div>
+</template>
+
+<!-- ======================= 搜索弹窗 ======================= -->
+<div class="overlay" id="searchOverlay" hidden>
+  <div class="modal-search" role="dialog">
+    <div class="ms-input">
+      <input id="searchInput" type="text" placeholder="搜索对话与知识库..." autocomplete="off" />
+      <button class="icon-btn" data-act="close-modal"><span class="icon-slot" data-icon="x"></span></button>
+    </div>
+    <div class="ms-body" id="searchResults"></div>
+  </div>
+</div>
+
+<!-- ======================= 设置弹窗 ======================= -->
+<div class="overlay" id="settingsOverlay" hidden>
+  <div class="modal-settings" role="dialog">
+    <div class="set-side">
+      <button class="set-x icon-btn" data-act="close-modal"><span class="icon-slot" data-icon="x"></span></button>
+      <div class="set-search">
+        <span class="icon-slot" data-icon="search" data-size="15"></span>
+        <input type="text" placeholder="搜索设置" />
+      </div>
+      <div class="set-nav" id="setNav"></div>
+    </div>
+    <div class="set-main" id="setMain"></div>
+  </div>
+</div>
+
+<!-- ======================= 引用详情浮层 ======================= -->
+<div class="cite-pop" id="citePop" hidden></div>
+
+<!-- 菜单容器 / 提示 -->
+<div class="menu" id="menu" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

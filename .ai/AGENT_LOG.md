@@ -2053,3 +2053,29 @@
 - 验证：等价数值单测 RED=`IllegalArgumentException`、GREEN=`PASS`；大整数舍入单测 RED=`expected IllegalArgumentException but reached vector dependency`、GREEN=`PASS`；`MilvusVectorStoreFailureSemanticsTest` + `VectorShadowMigrationServiceTest`=`18 tests / 0 failures / 0 errors`；最终 `mvn -q test` exit=0，按本次 Surefire XML 汇总=`619 tests / 0 failures / 0 errors / 2 skipped`。
 - 跳过项与剩余风险：原授权明确 zero retry，因此修复后真实 migration retry=`SKIPPED`，现存空 shadow 未清理，backend 保持停止；mutation-free preflight、canary rerun、full 450/450、compiler、threshold approval、ACTIVE replay、baseline acceptance/archive 均未执行。下一步必须先重新披露现存 `AUDIT_FAILED`/空 shadow 状态并取得一次新的 migration retry 授权；即使迁移成功，canary 仍需新的独立外调授权。
 - Commit：`pending`；提交责任为 `Agent 提交`，建议 `fix(vector): 兼容legacy scope数值标记`；push/PR/deploy 未授权。
+
+## 2026-08-29｜前端 UX 迭代建议文档落盘
+
+- 任务类型：Type B 文档任务；不指向 active change，`.ai/ACTIVE_TASK.md`（C17 retrieval-quality-gate-activation）未改动、未受影响。
+- 范围与修改文件：新增 `docs/roadmap/frontend-ux-iteration.md`（前端体验迭代建议池：总体判断、2026-08-29 代码事实快照、F-01~F-16 条目清单含优先级/定级/状态、4 个推进切片、与既有 roadmap/债务的关系、验证基线、落地流程、迭代记录）；追加本日志。未修改任何代码、配置、spec 或既有文档。
+- 已确认事实：路由 `/chat` 仅用 `ChatPanel.vue`；`RagChatInterface.vue`/`ChatView.vue` 无引用，`ChatMessage/RetrievedContextList/CitationList` 仅被 `ChatView.vue` 间接引用（死代码簇结论已按引用核实）；`thumbUp/thumbDown` 仅 `console.log`；`useSSE.ts` 已有 AbortController；`highlight.js` 已声明未接入 md 实例；markdown-it `html:false` 无 XSS 敞口；dark mode 变量齐全。侧栏 collapse 行为与 history/feedback 后端接口覆盖情况在文档中标注"待确认"，未臆断。
+- 验证：`git diff --check` = PASS；文档引用的 9 个文件路径逐一经 `ls` 核实存在。文档类改动无需构建类验证。
+- 跳过项：未运行前端 build（本任务无代码改动）；死代码删除、任何条目实现均未启动，文档落盘不等于实现授权。
+- 剩余风险：§2 快照基于当日 main 分支，代码演进后需回写；F-05/F-06 高档与 F-10 等条目定级依赖后端接口核实结果。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获 Agent 提交授权），建议 `docs(roadmap): 新增前端UX迭代建议文档`；push/PR/deploy 未授权。
+
+## 2026-08-29｜高仿 ChatGPT 界面静态 Demo（独立原型）
+
+- 任务类型：前端演示原型（未触碰 `rag-frontend` 生产代码与 C17 active change；`.ai/ACTIVE_TASK.md` 未改动）。
+- 范围与修改文件：仅新增 `prototype/chatgpt-ui-demo/`（`index.html`、`css/app.css`、`js/app.js`、`README.md`）；追加本日志。设计基线为 `docs/开发文档/前端文档/UI-Reference/` 下 7 张 ChatGPT 网页端截图（2026-08 深色界面）。
+- 已确认事实与关键决策：纯静态零依赖（内联 SVG 图标、系统字体、无 CDN），双击或任意静态服务可开；品牌沿用"RAG 智能问答"，界面结构复刻 ChatGPT（侧栏/问候页/气泡/资料库表格/搜索弹窗/设置弹窗/用户菜单）；RAG 特色为知识库范围 chip、`已检索 × 个片段`折叠行、引用角标浮层（相似度+chunk）、评测库"评测"徽标；全部数据为本地 mock，界面常驻"演示数据"提示，无任何网络请求。
+- 验证：`node --check js/app.js`=PASS；`git diff --check`=PASS；经本地 `http.server` + 内置浏览器在 1600×900 逐视图截图验证：首页（暗/亮主题）、会话流式输出（含代码块复制按钮、消息操作）、检索展开、引用浮层、知识库列表/网格视图、搜索弹窗、设置弹窗（外观/强调色真实生效）、用户菜单、侧栏收起、聊天/工作分段。浏览器自动化验证中发现并修复 5 个问题：`topbar-right` 缺 `margin-left:auto`、composer 在 flex 容器内被压缩、`data-icon` 未水合导致 +/mic/筛选/视图切换/关闭按钮无图标、`pickQA` 误读 `CONVS[0]`（被新建对话占用）致发送抛错、`renderConv` 与流式轮重复渲染。
+- 跳过项：未运行 `rag-frontend` 的 vue-tsc build（demo 不在其构建体系内，未改任何前端源码）；键盘 Enter 发送在本自动化环境中无法注入按键，已用页面内调用等效验证，真实键盘路径为标准 `keydown` 监听；移动端仅做了 ≤900px 的 CSS 适配，未逐机型截图。
+- 剩余风险：demo 仅证明视觉与交互方向，不代表任何已实现能力；若后续要把该皮肤落入 `rag-frontend`，需按 `docs/roadmap/frontend-ux-iteration.md` 条目定级（Type B/C）并立 OpenSpec change；`localStorage` 持久化仅存主题/强调色，无用户数据。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获 Agent 提交授权），建议 `demo(frontend): 新增高仿ChatGPT界面静态原型`；push/PR/deploy 未授权。
+
+## 2026-08-29｜高仿 ChatGPT Demo 用户反馈修复（+图标缺失 / 移除右缘悬浮按钮）
+
+- 范围与修改文件：仅 `prototype/chatgpt-ui-demo/` 内 3 个文件。`index.html` 删除右缘悬浮分享按钮节点；`js/app.js` 将 `initComposer()`（模板克隆）调整到 `initStaticIcons()`（`data-icon` 水合）之前，修复 `#plusBtn`/`#micBtn` 图标不显示（根因：水合时模板节点尚未入 DOM）；同步移除 `floatShare` 相关 JS（图标 map、`show()` 显隐、`float-share` 菜单 case）；`css/app.css` 删除 `.float-share` 样式块及媒体查询引用。
+- 验证：`node --check js/app.js`=PASS；`grep` 确认无 `float-share/floatShare` 残留；浏览器重载后检查 `plusSvg=true`、`micSvg=true`、`floatGone=true`，截图确认输入框左侧 `+`、右侧听写图标正常渲染、右缘无悬浮按钮；顶栏「分享/更多」菜单（copy-link/export-md）未受影响。
+- 跳过项与剩余风险：无新增；其余边界同上一条 Demo 记录。Commit：`pending`；提交责任为用户手动提交，建议并入 `demo(frontend): 新增高仿ChatGPT界面静态原型`；push/PR/deploy 未授权。
