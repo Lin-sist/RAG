@@ -75,6 +75,7 @@ const P = {
   arrowL: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
   upload: '<path d="M12 15V4"/><path d="m7.5 8 4.5-4 4.5 4"/><path d="M5 19.5h14"/>',
   evals: '<path d="M5 20v-8"/><path d="M12 20V5"/><path d="M19 20v-11"/>',
+  pulse: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   star: '<path d="m12 3.6 2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8Z"/>',
   shield: '<path d="M12 3 5 5.5v5c0 4.5 3 8.2 7 10.3 4-2.1 7-5.8 7-10.3v-5Z"/><path d="m9 11.5 2.2 2.2L15.5 9"/>',
   plug: '<path d="M9 7V3"/><path d="M15 7V3"/><path d="M7 7h10v4a5 5 0 0 1-10 0Z"/><path d="M12 16v5"/>',
@@ -507,6 +508,31 @@ const EVAL_DATA = {
   ],
 };
 
+/* Reranker A/B（C7 full · R=3 W=3 · COMPARABLE）—— 数字为仓库真实测量，非演示编造 */
+const RERANKER_AB = {
+  status: "COMPARABLE",
+  note: "R=3 · W=3 · 三个 repeat 一致 · 无 fallback",
+  metrics: [
+    { name: "Recall@5", heur: 0.6863, nvidia: 0.7647 },
+    { name: "MRR", heur: 0.7346, nvidia: 0.8241 },
+    { name: "Top1", heur: 0.963, nvidia: 1.0 },
+  ],
+  latency: [
+    { k: "NVIDIA rerank P50 / P95", v: "363 / 688 ms" },
+    { k: "overall retrieval P50 增量", v: "+188 ms" },
+    { k: "H1 冷启动 heuristic run1 P95", v: "14484 ms（仅诊断，不计入 aggregate）" },
+  ],
+  conclusion: "NVIDIA 三项指标均优于 heuristic，但生产默认 provider 不随评测自动改变，仍为 heuristic",
+};
+
+/* 生成侧质量通道（C9a claim 归因 + C9b judge 校准） */
+const GEN_CHANNELS = [
+  { k: "claim 归因（C9a）", v: "sentence-list-v1 确定性拆分 · 0.70 claim-token coverage · support rate 独立报告" },
+  { k: "rag-judge-v1（C9b）", v: "faithful × relevant 双分数 · threshold 0.70 · 模型配置身份固定" },
+  { k: "静态校准", v: "24 条独立样本 · 四象限各 6 条" },
+  { k: "live judge", v: "SKIPPED · 不构成真实 agreement 或生产质量结论" },
+];
+
 /* ---------------- MCP 只读服务页 mock（口径对齐 C15 / rag.mcp.* / McpServerConfiguration） ---------------- */
 const MCP_DATA = {
   endpoint: "/mcp",
@@ -538,6 +564,33 @@ const MCP_DATA = {
   ],
   conformance: "Git HEAD 45959672：双 tenant Testcontainers + 独立官方 Java SDK client + conformance 0.1.15 generic scenarios 通过",
   boundary: "sessionless · local-only · 未验证 OAuth 与远程生产部署 · 真实 provider 未接入",
+};
+
+/* ---------------- 可观测性页 mock（口径对齐 C11/C12 / observability.* / deploy/observability） ---------------- */
+const OBS_DATA = {
+  switches: [
+    { k: "observability.tracing.enabled", env: "RAG_OBSERVABILITY_TRACING_ENABLED", v: false, note: "durable ingest 与 ask 建立分离 trace" },
+    { k: "observability.metrics.enabled", env: "RAG_OBSERVABILITY_METRICS_ENABLED", v: false, note: "低基数 metrics · 独立于 trace sampling" },
+    { k: "observability.export.enabled", env: "RAG_OBSERVABILITY_EXPORT_ENABLED", v: false, note: "OTLP gRPC exporter · 有界 queue/batch/timeout" },
+  ],
+  exportParams: [
+    { k: "OTLP endpoint", v: "http://127.0.0.1:4317" },
+    { k: "export timeout / schedule-delay", v: "3000 ms / 5000 ms" },
+    { k: "metric interval", v: "30000 ms" },
+    { k: "queue / batch", v: "2048 / 512" },
+  ],
+  topology: [
+    { k: "双链路分离", v: "durable ingest trace 与 ask trace 独立建立，固定实际执行阶段 topology" },
+    { k: "lineage 关联", v: "以稳定 task / document / chunk lineage 关联两条链路" },
+    { k: "上下文传播", v: "W3C traceparent + custom context · MDC bridge · 同步/流式终态" },
+    { k: "失败语义", v: "tracing/metrics/export 三开关独立 · 全部 fail-open，不影响业务" },
+  ],
+  stack: [
+    { name: "OpenTelemetry Collector", ver: "contrib 0.157.0", note: "127.0.0.1:4317 · OTLP gRPC 接入" },
+    { name: "Grafana Tempo", ver: "2.10.7", note: "关键 trace 全保留 · 普通成功 trace 10% tail sampling · 72h" },
+    { name: "Prometheus", ver: "v3.13.1", note: "metrics 存储 · retention 7d" },
+    { name: "Grafana", ver: "13.1.1", note: "127.0.0.1:3000 · 预置 provisioning 与 dashboards" },
+  ],
 };
 
 /* ---------------- 上传任务面板 mock（口径对齐 TaskController / TaskState） ----------------
@@ -586,7 +639,9 @@ function renderSidebar() {
   $("#navEval").classList.toggle("active", state.view === "eval");
   $("#navMcp").innerHTML = `${icon("plug")}<span>MCP 服务</span>`;
   $("#navMcp").classList.toggle("active", state.view === "mcp");
-  const phs = [["folder", "项目"], ["dots", "更多"]];
+  $("#navObs").innerHTML = `${icon("pulse")}<span>可观测</span>`;
+  $("#navObs").classList.toggle("active", state.view === "obs");
+  const phs = [["dots", "更多"]];
   $$(".nav-item[data-ph]").forEach((el, i) => {
     el.innerHTML = `${icon(phs[i][0])}<span>${phs[i][1]}</span>`;
   });
@@ -637,6 +692,7 @@ function show(view) {
   $("#viewKbDetail").hidden = view !== "kb-detail";
   $("#viewEval").hidden = view !== "eval";
   $("#viewMcp").hidden = view !== "mcp";
+  $("#viewObs").hidden = view !== "obs";
 
   const composer = $("#composerBox").closest(".composer");
   if (view === "home") $("#composerHomeSlot").appendChild(composer);
@@ -649,6 +705,7 @@ function show(view) {
   if (view === "kb-detail") renderKbDetail();
   if (view === "eval") renderEval();
   if (view === "mcp") renderMcp();
+  if (view === "obs") renderObs();
   if (view === "chat") requestAnimationFrame(() => { $("#msgScroll").scrollTop = $("#msgScroll").scrollHeight; });
 }
 
@@ -1562,7 +1619,34 @@ function renderEval() {
       </div>
     </div>
 
-    <div class="kbd-card eval-runs eval-rise d4">
+    <div class="eval-grid eval-rise d4" style="margin-bottom:14px">
+      <div class="kbd-card">
+        <div class="kbd-card-head">
+          <span class="kbd-card-title">Reranker A/B <em>heuristic vs NVIDIA</em></span>
+          <span class="badge tiny ${RERANKER_AB.status === "COMPARABLE" ? "" : "proc"}"><i></i>${esc(RERANKER_AB.status)}</span>
+        </div>
+        <div class="eval-metrics-body">
+          ${RERANKER_AB.metrics.map(m => {
+            const d = +((m.nvidia - m.heur) * 100).toFixed(2);
+            return `<div class="m-head"><span class="m-name">${esc(m.name)}</span><span class="m-th">NVIDIA +${d.toFixed(2)}pp</span></div>
+            <div class="m-line"><span class="m-tag">heuristic</span><span class="m-val">${(m.heur * 100).toFixed(2)}%</span><span class="m-bar"><i class="base" style="width:${Math.round(m.heur * 100)}%"></i></span></div>
+            <div class="m-line"><span class="m-tag">nvidia</span><span class="m-val">${(m.nvidia * 100).toFixed(2)}%</span><span class="m-bar"><i class="shadow" style="width:${Math.round(m.nvidia * 100)}%"></i></span></div>`;
+          }).join("")}
+          <div class="meta-div"></div>
+          ${RERANKER_AB.latency.map(l => `<div class="meta-row"><span class="meta-lab">${esc(l.k)}</span><span class="meta-val">${esc(l.v)}</span></div>`).join("")}
+          <div class="m-waiting">${esc(RERANKER_AB.conclusion)}。${esc(RERANKER_AB.note)}。</div>
+        </div>
+      </div>
+
+      <div class="kbd-card">
+        <div class="kbd-card-head"><span class="kbd-card-title">生成侧质量通道 <em>C9a / C9b</em></span></div>
+        <div class="eval-identity-body">
+          ${GEN_CHANNELS.map(g => `<div class="meta-row col"><span class="meta-lab">${esc(g.k)}</span><span class="meta-val">${esc(g.v)}</span></div>`).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="kbd-card eval-runs eval-rise d5">
       <div class="kbd-card-head"><span class="kbd-card-title">近期运行</span><span class="kbd-card-title em-note">对应仓库真实事件序列 · 演示化</span></div>
       <div class="eval-runs-body">
         ${EVAL_DATA.runs.map(r => `
@@ -1651,6 +1735,71 @@ function renderMcp() {
       </div>
     </div>
     <div class="eval-foot">本页为配置契约演示 · 开关与限额对齐 application.yml 的 rag.mcp.* 与 McpProperties 默认值</div>`;
+}
+
+/* ---------------- 可观测性视图 ---------------- */
+function renderObs() {
+  const o = OBS_DATA;
+  $("#obsInner").innerHTML = `
+    <div class="eval-head eval-rise">
+      <div class="eval-head-meta">
+        <h1 class="eval-title">可观测</h1>
+        <span class="eval-subline">C11/C12 OTel tracing · metrics · export · 口径对齐 observability.* 配置 · 演示数据</span>
+      </div>
+      <div class="eval-head-right">
+        <span class="badge"><i></i>OTel 1.31 · OTLP gRPC</span>
+      </div>
+    </div>
+
+    <div class="eval-gate eval-rise d1 tone-off">
+      <span class="gate-dot"></span>
+      <div class="gate-meta">
+        <div class="gate-state"><b>三开关独立 · 默认关闭</b><span>tracing / metrics / export</span></div>
+        <div class="gate-reason">全部 fail-open：可观测组件不可用时不影响业务链路</div>
+        <div class="gate-note">synthetic evidence 不代表生产容量或 SLA；本页为配置契约演示</div>
+      </div>
+    </div>
+
+    <div class="eval-grid eval-rise d2">
+      <div class="kbd-card">
+        <div class="kbd-card-head"><span class="kbd-card-title">开关 <em>observability.*</em></span></div>
+        <div class="eval-identity-body">
+          ${o.switches.map(s => `
+            <div class="meta-row"><span class="meta-lab mono">${esc(s.k)}</span>
+              <span class="meta-val"><span class="badge tiny ${s.v ? "" : "dim-off"}"><i></i>${s.v}</span></span></div>
+            <div class="meta-note">${esc(s.env)} · ${esc(s.note)}</div>`).join("")}
+        </div>
+      </div>
+      <div class="kbd-card">
+        <div class="kbd-card-head"><span class="kbd-card-title">Export 参数</span></div>
+        <div class="eval-identity-body">
+          ${o.exportParams.map(p => `<div class="meta-row"><span class="meta-lab">${esc(p.k)}</span><span class="meta-val">${esc(p.v)}</span></div>`).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="kbd-card eval-rise d3" style="margin-bottom:14px">
+      <div class="kbd-card-head"><span class="kbd-card-title">Trace 拓扑 <em>C11 契约</em></span></div>
+      <div class="eval-identity-body">
+        ${o.topology.map(t => `<div class="meta-row col"><span class="meta-lab">${esc(t.k)}</span><span class="meta-val">${esc(t.v)}</span></div>`).join("")}
+      </div>
+    </div>
+
+    <div class="kbd-card eval-rise d4">
+      <div class="kbd-card-head">
+        <span class="kbd-card-title">Grafana 参考栈 <em>deploy/observability</em></span>
+        <button class="chip sm" data-act="obs-grafana">${icon("link", 13)}<span>打开 Grafana</span></button>
+      </div>
+      <div class="eval-identity-body">
+        ${o.stack.map((s, i) => `
+          <div class="obs-stack-row">
+            <span class="obs-step-n">${i + 1}</span>
+            <div class="obs-stack-main"><b>${esc(s.name)}</b><span class="obs-stack-ver mono">${esc(s.ver)}</span><div class="obs-stack-note">${esc(s.note)}</div></div>
+          </div>`).join("")}
+        <div class="m-waiting">端口仅绑定 127.0.0.1 并保留认证边界；本页不发起真实连接。</div>
+      </div>
+    </div>
+    <div class="eval-foot">本页为配置契约演示 · 对齐 application.yml observability.* 与 deploy/observability 参考栈</div>`;
 }
 
 /* ---------------- 弹窗与菜单 ---------------- */
@@ -1807,6 +1956,8 @@ document.addEventListener("click", e => {
     case "open-kb": show("kb"); break;
     case "open-eval": show("eval"); break;
     case "open-mcp": show("mcp"); break;
+    case "open-obs": show("obs"); break;
+    case "obs-grafana": toast("Grafana 为演示占位 · 参考栈地址 http://127.0.0.1:3000（需先启动 deploy/observability）"); break;
     case "adv-menu": {
       const a = state.qaAdv;
       const sw = (act, label, on, onText, offText) => `

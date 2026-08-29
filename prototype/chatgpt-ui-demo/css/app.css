@@ -485,6 +485,22 @@ html[data-theme="light"] .pipe-blocked-note { background: rgba(214, 69, 69, .05)
 .mcp-res-name { font-size: 11.5px; color: var(--text-2); font-family: var(--mono); }
 .mcp-res-desc { font-size: 12px; color: var(--text-3); }
 
+/* 可观测页：参考栈组件行 */
+.obs-stack-row { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.obs-stack-row:last-of-type { border-bottom: none; }
+.obs-step-n {
+  flex: none; width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  display: grid; place-items: center;
+  font-size: 11.5px; color: var(--text-2); font-weight: 600;
+  margin-top: 1px;
+}
+.obs-stack-main { flex: 1 1 auto; min-width: 0; }
+.obs-stack-main b { font-size: 13.5px; font-weight: 500; margin-right: 8px; }
+.obs-stack-ver { font-size: 11.5px; color: var(--text-3); }
+.obs-stack-note { font-size: 12px; color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+
 /* 检索中 shimmer */
 .thinking-line { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 6px 0; }
 .shimmer {
