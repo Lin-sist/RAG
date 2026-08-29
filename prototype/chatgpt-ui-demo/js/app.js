@@ -72,6 +72,8 @@ const P = {
   link: '<path d="m9.5 14.5 5-5"/><path d="M11 6.8 12.8 5a3.8 3.8 0 0 1 5.4 5.4l-1.9 1.9"/><path d="M13 17.2 11.2 19a3.8 3.8 0 0 1-5.4-5.4l1.9-1.9"/>',
   pencil: '<path d="M14.5 5.5l4 4"/><path d="m5 19 .9-3.9 9.7-9.7a1.9 1.9 0 0 1 2.7 0l.3.3a1.9 1.9 0 0 1 0 2.7L8.9 18.1 5 19Z"/>',
   trash: '<path d="M5 6.5h14"/><path d="M8.5 6.5v-1A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5v1"/><path d="m6.5 6.5.8 12.4a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12.4"/>',
+  arrowL: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+  upload: '<path d="M12 15V4"/><path d="m7.5 8 4.5-4 4.5 4"/><path d="M5 19.5h14"/>',
   download: '<path d="M12 4v10.5"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/>',
   db: '<ellipse cx="12" cy="5.5" rx="7" ry="2.8"/><path d="M5 5.5v13c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8v-13"/><path d="M5 12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8"/>',
 };
@@ -80,17 +82,91 @@ function icon(name, size = 18, sw = 1.7) {
 }
 
 /* ---------------- Mock 数据（全部为演示样例） ---------------- */
+
+/* 评测系列知识库共用的一组评测文档（total 为该库总分块数，随分块实验档位变化） */
+const evalFiles = total => {
+  const c = [Math.round(total * .45), Math.round(total * .35), Math.round(total * .20)];
+  return [
+    { name: "eval-metrics.md", type: "md", status: "done", size: "210 KB", time: "2026/08/24 10:12", chunks: c[0],
+      preview: `## 检索质量常用指标\n\n- **Recall@k**：标准片段是否出现在 top-k，衡量"找没找到"；\n- **MRR**：首个命中片段的倒数排名均值，衡量"排得靠不靠前"；\n- **nDCG**：考虑分级相关性时的整体排序质量。\n\n> 指标口径一旦写入文档就不再漂移，所有 profile 共用同一套计算脚本。` },
+    { name: "rag-eval-dev-v2-spec.md", type: "md", status: "done", size: "184 KB", time: "2026/08/24 10:08", chunks: c[1],
+      preview: `## 评测集固定约定\n\n评测集 \`rag-eval-dev-v2\` 固定题目、标准答案与出处 chunk 的版本。\n\n向量库索引维度、分片与 snapshot 必须可复现，禁止中途变更口径；需要升级时新建 v3，而不是原地改写。` },
+    { name: "quality-gate.md", type: "md", status: "done", size: "96 KB", time: "2026/08/24 10:03", chunks: c[2],
+      preview: `## 检索质量门禁\n\n新检索配置先在 **shadow profile** 中与 baseline 跑同题对比，达到既定阈值后才允许切换。\n\n未达标时 **fail closed**，不得静默放行；门禁结论必须附带评测集版本与 Git HEAD。` },
+  ];
+};
+
 const KBS = [
-  { name: "Test", docs: 5, size: "2.1 MB", time: "8月28日", sub: "日常联调知识库", evalKb: false },
-  { name: "codex-stage1-repro-eval", docs: 3, size: "640 KB", time: "8月27日", sub: "阶段一复现评测集", evalKb: true },
-  { name: "codex-stage2-fill-chunking", docs: 3, size: "712 KB", time: "8月26日", sub: "阶段二填充分块对比", evalKb: true },
-  { name: "codex-stage2-chunk-768", docs: 3, size: "690 KB", time: "8月26日", sub: "768 token 分块实验", evalKb: true },
-  { name: "codex-stage2-chunk-512", docs: 3, size: "672 KB", time: "8月25日", sub: "512 token 分块实验", evalKb: true },
-  { name: "codex-stage2-chunk-1024", docs: 3, size: "705 KB", time: "8月25日", sub: "1024 token 分块实验", evalKb: true },
-  { name: "eval-baseline", docs: 3, size: "580 KB", time: "8月24日", sub: "固定评测基线", evalKb: true },
-  { name: "RAG知识点", docs: 1, size: "96 KB", time: "8月20日", sub: "RAG 核心概念笔记", evalKb: false },
-  { name: "JWT登录认证", docs: 4, size: "348 KB", time: "8月18日", sub: "认证与令牌机制", evalKb: false },
-  { name: "spring注解讲解", docs: 6, size: "512 KB", time: "8月12日", sub: "Spring 常用注解", evalKb: false },
+  { name: "Test", docs: 5, size: "2.1 MB", time: "8月28日", sub: "日常联调知识库", evalKb: false,
+    id: 16, collection: "kb_7ca9fe574a8046d7", visibility: "私有", createdAt: "2026/07/15 21:12", updatedAt: "2026/08/28 18:40",
+    hits: 132, activity: [4, 9, 6, 12, 8, 15, 11],
+    files: [
+      { name: "每日学习SOP（精简可持续版）.md", type: "md", status: "done", size: "48 KB", time: "2026/07/15 21:12", chunks: 24,
+        preview: `## 每日学习 SOP（精简可持续版）\n\n1. **固定时段**：每天 21:00-21:40，只做输入与回顾，不追求时长；\n2. **一进一出**：输入一个概念，输出一段用自己的话写的笔记；\n3. **周五回顾**：把本周笔记丢进知识库，让 RAG 帮忙串联遗漏点。\n\n> 可持续比强度重要：断了一天不清零，第二天接着来。` },
+      { name: "test-md.md", type: "md", status: "done", size: "18 KB", time: "2026/07/15 21:12", chunks: 8,
+        preview: `## 上传链路测试文档\n\n用于验证 Markdown 解析：标题、列表、**加粗**、\`行内代码\` 与代码块。\n\n\`\`\`text\nupload → parse → chunk → embed → upsert\n\`\`\`\n\n各环节计数正常即视为通过。` },
+      { name: "quarterly-report-sample.pdf", type: "pdf", status: "done", size: "320 KB", time: "2026/07/20 09:30", chunks: 34,
+        preview: `## 季度报告样例（PDF 解析验证）\n\n本文件用于验证 PDF 转文本与表格抽取：\n\n- 段落跨页时的顺序保持；\n- 双栏排版下的阅读顺序还原；\n- 表格线性化后的可检索性。\n\n解析失败或乱码时，会在文档状态中标记为"处理中/失败"。` },
+      { name: "meeting-notes.txt", type: "txt", status: "done", size: "6 KB", time: "2026/08/28 18:40", chunks: 4,
+        preview: `## 8月28日 联调会纪要（纯文本）\n\n1. 知识库详情页原型走查，交互回到列表保留筛选状态；\n2. 文档预览浮层沿用引用浮层的定位逻辑；\n3. 评测系列知识库分块数按档位递减展示，用于对比演示。` },
+      { name: "readme.md", type: "md", status: "processing", size: "4 KB", time: "2026/08/28 18:41", chunks: 0,
+        preview: `## 关于这个知识库\n\n日常联调专用：上传样例文件、验证解析与检索链路。\n\n此文档正在向量化处理中（演示"处理中"状态），完成后即可参与检索。` },
+    ] },
+  { name: "codex-stage1-repro-eval", docs: 3, size: "640 KB", time: "8月27日", sub: "阶段一复现评测集", evalKb: true,
+    id: 15, collection: "kb_51c0e2a97b3d4e18", visibility: "私有", createdAt: "2026/08/10 14:20", updatedAt: "2026/08/27 11:02",
+    hits: 86, activity: [2, 6, 8, 5, 9, 7, 10], files: evalFiles(74) },
+  { name: "codex-stage2-fill-chunking", docs: 3, size: "712 KB", time: "8月26日", sub: "阶段二填充分块对比", evalKb: true,
+    id: 14, collection: "kb_9d3ba5f602c841aa", visibility: "私有", createdAt: "2026/08/12 09:05", updatedAt: "2026/08/26 16:44",
+    hits: 91, activity: [3, 5, 7, 6, 8, 9, 8], files: evalFiles(88) },
+  { name: "codex-stage2-chunk-768", docs: 3, size: "690 KB", time: "8月26日", sub: "768 token 分块实验", evalKb: true,
+    id: 13, collection: "kb_2e8f71c95a0d4b36", visibility: "私有", createdAt: "2026/08/12 09:02", updatedAt: "2026/08/26 15:30",
+    hits: 77, activity: [2, 4, 6, 5, 7, 8, 6], files: evalFiles(96) },
+  { name: "codex-stage2-chunk-512", docs: 3, size: "672 KB", time: "8月25日", sub: "512 token 分块实验", evalKb: true,
+    id: 12, collection: "kb_c4a92d07e1f8435b", visibility: "私有", createdAt: "2026/08/12 08:58", updatedAt: "2026/08/25 20:15",
+    hits: 95, activity: [5, 7, 9, 8, 10, 12, 9], files: evalFiles(138) },
+  { name: "codex-stage2-chunk-1024", docs: 3, size: "705 KB", time: "8月25日", sub: "1024 token 分块实验", evalKb: true,
+    id: 11, collection: "kb_a6b05d834c7e49f2", visibility: "私有", createdAt: "2026/08/12 08:55", updatedAt: "2026/08/25 19:48",
+    hits: 69, activity: [1, 3, 4, 4, 6, 5, 7], files: evalFiles(71) },
+  { name: "eval-baseline", docs: 3, size: "580 KB", time: "8月24日", sub: "固定评测基线", evalKb: true,
+    id: 10, collection: "kb_f09d4c62b5a13e87", visibility: "私有", createdAt: "2026/08/08 10:00", updatedAt: "2026/08/24 10:12",
+    hits: 148, activity: [6, 8, 10, 9, 12, 14, 11], files: evalFiles(64) },
+  { name: "RAG知识点", docs: 1, size: "96 KB", time: "8月20日", sub: "RAG 核心概念笔记", evalKb: false,
+    id: 9, collection: "kb_3b7e95a10d6c42f8", visibility: "私有", createdAt: "2026/08/01 20:15", updatedAt: "2026/08/20 22:06",
+    hits: 210, activity: [9, 14, 11, 18, 15, 22, 19],
+    files: [
+      { name: "rag-notes.md", type: "md", status: "done", size: "96 KB", time: "2026/08/20 22:06", chunks: 18,
+        preview: `## RAG 核心概念笔记\n\n**RAG** 不修改模型参数，把知识放在外部向量库，检索相关片段后拼入上下文，适合知识频繁更新、需要给出处的场景。\n\n## 关键环节\n\n1. **分块（chunking）**：粒度决定召回上限；\n2. **嵌入（embedding）**：语义投影到高维空间；\n3. **重排（rerank）**：用更重的模型统一排序；\n4. **引用（citation）**：回答必须能回溯到原文片段。\n\n> 微调负责"会说话"，RAG 负责"有依据"。` },
+    ] },
+  { name: "JWT登录认证", docs: 4, size: "348 KB", time: "8月18日", sub: "认证与令牌机制", evalKb: false,
+    id: 8, collection: "kb_e58c21f9a3d74b60", visibility: "私有", createdAt: "2026/07/22 13:40", updatedAt: "2026/08/18 17:25",
+    hits: 164, activity: [7, 10, 8, 13, 11, 16, 12],
+    files: [
+      { name: "jwt-flow.md", type: "md", status: "done", size: "88 KB", time: "2026/08/18 17:20", chunks: 16,
+        preview: `## JWT 登录签发流程\n\n登录成功后使用 \`HS256\` 签发 **access token（短期）** 与 **refresh token（长期）**。\n\n后续请求通过 \`Authorization: Bearer\` 头携带，服务端本地验签，无需查询会话存储。` },
+      { name: "token-refresh.md", type: "md", status: "done", size: "76 KB", time: "2026/08/18 17:22", chunks: 12,
+        preview: `## 令牌刷新与续期\n\naccess token 有效期应设置得较短；过期后用 refresh token 换取新令牌。\n\nrefresh token **一次一换**，旧值立即作废以降低泄露风险；刷新接口要做并发去重。` },
+      { name: "jwt-risks.md", type: "md", status: "done", size: "64 KB", time: "2026/08/18 17:24", chunks: 10,
+        preview: `## JWT 的风险与兜底\n\nJWT 签发后无法主动撤销，登出与封禁场景需要配合**黑名单或极短有效期**兜底。\n\n切勿在 payload 中放置敏感信息——payload 只是 Base64 编码，不是加密。` },
+      { name: "auth-architecture.pdf", type: "pdf", status: "done", size: "120 KB", time: "2026/07/22 13:40", chunks: 28,
+        preview: `## 认证架构图解（PDF）\n\n网关层只做验签不做签发；签发集中在认证服务，便于统一轮换密钥。\n\n双 token 体系下，网关对 access token 无状态校验，对登出名单走 Redis 黑名单。` },
+    ] },
+  { name: "spring注解讲解", docs: 6, size: "512 KB", time: "8月12日", sub: "Spring 常用注解", evalKb: false,
+    id: 7, collection: "kb_7d1a38e5b9c64f02", visibility: "私有", createdAt: "2026/07/05 11:30", updatedAt: "2026/08/12 15:52",
+    hits: 187, activity: [8, 12, 10, 15, 13, 18, 14],
+    files: [
+      { name: "spring-core.md", type: "md", status: "done", size: "92 KB", time: "2026/08/12 15:40", chunks: 20,
+        preview: `## Spring 核心概念\n\nSpring 是一个轻量级的 Java 企业级开发框架，核心是 **IoC 容器**与 **AOP**。\n\n它通过容器管理对象生命周期与依赖关系，让业务代码专注于自身逻辑。` },
+      { name: "ioc-di-notes.md", type: "md", status: "done", size: "78 KB", time: "2026/08/12 15:42", chunks: 15,
+        preview: `## 控制反转与依赖注入\n\n控制反转（IoC）把对象的创建与装配交给容器；依赖注入（DI）是它的实现方式。\n\n常用构造器注入，配合 \`@ComponentScan\` 与 \`@Autowired\` 等注解完成装配。` },
+      { name: "transactional.md", type: "md", status: "done", size: "86 KB", time: "2026/08/12 15:45", chunks: 18,
+        preview: `## @Transactional 常用属性\n\n- \`rollbackFor\`：指定触发回滚的异常，默认只回滚 \`RuntimeException\` 与 \`Error\`；\n- \`propagation\`：传播行为，常用 \`REQUIRED\`（默认）与 \`REQUIRES_NEW\`；\n- \`readOnly\`：只读事务，底层可做优化。\n\n\`\`\`java\n@Transactional(rollbackFor = Exception.class)\npublic void createOrder(Order order) {\n    orderMapper.insert(order);\n    stockService.deduct(order);\n}\n\`\`\`` },
+      { name: "aop-proxy.md", type: "md", status: "done", size: "70 KB", time: "2026/08/12 15:48", chunks: 13,
+        preview: `## AOP 代理与事务失效\n\n同类内部 \`this.methodB()\` 调用不会经过代理对象，事务切面不生效。\n\n这是 \`@Transactional\` 失效最常见的原因，需通过注入自身代理或拆分类解决。` },
+      { name: "component-scan.md", type: "md", status: "done", size: "54 KB", time: "2026/08/12 15:50", chunks: 9,
+        preview: `## @ComponentScan 扫描规则\n\n默认扫描当前配置类所在包及子包；跨包注册需要显式指定 \`basePackages\`。\n\n与 \`@Bean\` 的区别：组件扫描适合自己的代码，\`@Bean\` 适合第三方类。` },
+      { name: "tx-config.yml", type: "yml", status: "done", size: "12 KB", time: "2026/08/12 15:52", chunks: 3,
+        preview: `## 事务配置样例\n\n\`\`\`yaml\nspring:\n  transaction:\n    default-timeout: 30\n  datasource:\n    hikari:\n      auto-commit: false\n\`\`\`\n\n超时与隔离级别在方法上的注解优先于全局配置。` },
+    ] },
 ];
 const RECENT_DOCS = [
   { name: "test-upload.txt", size: "2 KB", time: "昨天", kb: "Test" },
@@ -268,10 +344,12 @@ const SUGGESTIONS = {
 
 /* ---------------- 全局状态 ---------------- */
 const state = {
-  view: "home",            // home | chat | kb
+  view: "home",            // home | chat | kb | kb-detail
   mode: "chat",            // 聊天 | 工作
   convId: null,
   kbScope: null,           // 输入框选择的知识库范围
+  kbCurrent: null,         // 详情页正在查看的知识库
+  kbDocQuery: "",          // 详情页文档搜索词
   streaming: false,
   streamTimer: null,
   kbFilter: "all",
@@ -286,7 +364,7 @@ const state = {
 function renderSidebar() {
   $("#navNewChat").innerHTML = `${icon("newchat")}<span>新聊天</span>`;
   $("#navKb").innerHTML = `${icon("library")}<span>知识库</span>`;
-  $("#navKb").classList.toggle("active", state.view === "kb");
+  $("#navKb").classList.toggle("active", state.view === "kb" || state.view === "kb-detail");
   const phs = [["folder", "项目"], ["clock", "已安排"], ["apps", "插件"], ["dots", "更多"]];
   $$(".nav-item[data-ph]").forEach((el, i) => {
     el.innerHTML = `${icon(phs[i][0])}<span>${phs[i][1]}</span>`;
@@ -335,6 +413,7 @@ function show(view) {
   $("#viewHome").hidden = view !== "home";
   $("#viewChat").hidden = view !== "chat";
   $("#viewKb").hidden = view !== "kb";
+  $("#viewKbDetail").hidden = view !== "kb-detail";
 
   const composer = $("#composerBox").closest(".composer");
   if (view === "home") $("#composerHomeSlot").appendChild(composer);
@@ -344,6 +423,7 @@ function show(view) {
   renderTopbar();
   if (view === "home") renderSuggest();
   if (view === "kb") renderKbTable();
+  if (view === "kb-detail") renderKbDetail();
   if (view === "chat") requestAnimationFrame(() => { $("#msgScroll").scrollTop = $("#msgScroll").scrollHeight; });
 }
 
@@ -784,6 +864,157 @@ function renderKbTable() {
   $$(".kb-viewbtns .icon-btn").forEach(b => b.classList.toggle("on", b.dataset.mode === state.kbMode));
 }
 
+/* ---------------- 知识库详情视图 ---------------- */
+const sumChunks = kb => kb.files.reduce((n, f) => n + f.chunks, 0);
+
+function sparkSvg(data) {
+  const w = 280, h = 64, pad = 5;
+  const max = Math.max(...data, 1);
+  const step = (w - pad * 2) / (data.length - 1);
+  const pts = data.map((v, i) => [pad + i * step, h - pad - (v / max) * (h - pad * 2 - 4)]);
+  const line = pts.map(p => p.map(n => +n.toFixed(1)).join(",")).join(" ");
+  const area = `${pad},${h - 2} ${line} ${w - pad},${h - 2}`;
+  const [lx, ly] = pts[pts.length - 1];
+  return `<svg class="kbd-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="kbdSparkFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color:var(--blue);stop-opacity:.26"/>
+      <stop offset="1" style="stop-color:var(--blue);stop-opacity:0"/>
+    </linearGradient></defs>
+    <polygon points="${area}" fill="url(#kbdSparkFill)"></polygon>
+    <polyline points="${line}" fill="none" style="stroke:var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+    <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3" style="fill:var(--blue)"></circle>
+  </svg>`;
+}
+
+function countUpKpis() {
+  $$("#kbdInner .kpi-n[data-n]").forEach(el => {
+    const target = parseFloat(el.dataset.n), dec = +(el.dataset.dec || 0), suf = el.dataset.suf || "";
+    const t0 = performance.now(), dur = 520;
+    const tick = now => {
+      const p = Math.min((now - t0) / dur, 1), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = (target * e).toFixed(dec) + suf;
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+function renderKbDetail() {
+  const kb = KBS.find(k => k.name === state.kbCurrent);
+  if (!kb) { show("kb"); return; }
+  const chunks = sumChunks(kb);
+  const avg = Math.round(kb.activity.reduce((a, b) => a + b, 0) / kb.activity.length);
+  const sizeDec = /\./.test(kb.size) ? 1 : 0;
+  $("#kbdInner").innerHTML = `
+    <div class="kbd-top kbd-rise">
+      <button class="kbd-back" data-act="kbd-back">${icon("arrowL", 16)}<span>知识库</span></button>
+      <div class="kbd-top-right">
+        <span class="badge dim">${esc(kb.visibility || "私有")}</span>
+        <button class="btn-new" data-act="kbd-ask">${icon("spark", 15)}<span>开始提问</span></button>
+        <button class="icon-btn" data-act="kbd-more" data-tip="更多">${icon("dots")}</button>
+      </div>
+    </div>
+
+    <div class="kbd-hero kbd-rise d1">
+      <span class="kb-icon lg">${icon("db", 22)}</span>
+      <div class="kbd-hero-meta">
+        <div class="kbd-title-row">
+          <h1 class="kbd-title">${esc(kb.name)}</h1>
+          <span class="badge"><i></i>${kb.evalKb ? "评测" : "就绪"}</span>
+        </div>
+        <div class="kbd-subline">${esc(kb.sub || "暂无描述")}<span class="dot-sep">·</span>更新于 ${esc(kb.time)}</div>
+      </div>
+    </div>
+
+    <div class="kbd-kpis kbd-rise d2">
+      <div class="kbd-kpi"><b class="kpi-n" data-n="${kb.files.length}">0</b><span>文档</span></div>
+      <div class="kbd-kpi"><b class="kpi-n" data-n="${chunks}">0</b><span>总块数</span></div>
+      <div class="kbd-kpi"><b class="kpi-n" data-n="${parseFloat(kb.size)}" data-dec="${sizeDec}" data-suf=" ${kb.size.replace(/^[\d.]+\s*/, "")}">0</b><span>索引体积</span></div>
+      <div class="kbd-kpi"><b class="kpi-n" data-n="${kb.hits}">0</b><span>累计检索命中</span></div>
+    </div>
+
+    <div class="kbd-grid kbd-rise d3">
+      <div class="kbd-card kbd-docs-card">
+        <div class="kbd-card-head">
+          <span class="kbd-card-title">文档 <em>${kb.files.length}</em></span>
+          <div class="kbd-docs-tools">
+            <div class="doc-search">${icon("search", 15)}<input id="docSearchInput" type="text" placeholder="搜索文档" value="${esc(state.kbDocQuery)}" /></div>
+            <button class="chip sm" data-act="kbd-upload">${icon("upload", 15)}<span>上传文档</span></button>
+          </div>
+        </div>
+        <div class="kbd-docs" id="kbdDocs"></div>
+      </div>
+
+      <aside class="kbd-card kbd-meta">
+        <div class="kbd-card-title">基本信息</div>
+        <div class="meta-row"><span class="meta-lab">向量集合</span>
+          <span class="meta-val mono">${esc(kb.collection)}<button class="meta-copy" data-act="kbd-copy-id" data-tip="复制">${icon("copy", 13)}</button></span></div>
+        <div class="meta-row"><span class="meta-lab">知识库 ID</span><span class="meta-val">${kb.id}</span></div>
+        <div class="meta-row"><span class="meta-lab">创建时间</span><span class="meta-val">${esc(kb.createdAt)}</span></div>
+        <div class="meta-row"><span class="meta-lab">更新时间</span><span class="meta-val">${esc(kb.updatedAt)}</span></div>
+        <div class="meta-row col"><span class="meta-lab">描述</span><span class="meta-val">${esc(kb.sub || "暂无描述")}</span></div>
+        <div class="meta-div"></div>
+        <div class="kbd-card-title">近 7 天检索</div>
+        ${sparkSvg(kb.activity)}
+        <div class="spark-legend"><span>日均 <b>${avg}</b> 次</span><span>演示数据</span></div>
+      </aside>
+    </div>`;
+  renderKbDocs();
+  countUpKpis();
+}
+
+function renderKbDocs() {
+  const kb = KBS.find(k => k.name === state.kbCurrent);
+  if (!kb) return;
+  const q = state.kbDocQuery.trim().toLowerCase();
+  const files = kb.files.filter(f => !q || f.name.toLowerCase().includes(q));
+  const wrap = $("#kbdDocs");
+  if (!wrap) return;
+  wrap.innerHTML = files.length ? files.map(f => `
+    <div class="doc-row" data-act="doc-open" data-name="${esc(f.name)}">
+      <span class="type-pill ${esc(f.type)}">${esc(f.type)}</span>
+      <div class="doc-main">
+        <div class="doc-name">${esc(f.name)}</div>
+        <div class="doc-sub"><span class="badge tiny ${f.status !== "done" ? "proc" : ""}"><i></i>${f.status === "done" ? "已完成" : "处理中"}</span><span>${esc(f.size)}</span></div>
+      </div>
+      <span class="doc-chunks">${f.chunks} 块</span>
+      <span class="doc-time">${esc(f.time.slice(5))}</span>
+      <button class="doc-del" data-act="doc-del" data-name="${esc(f.name)}" data-tip="删除">${icon("trash", 15)}</button>
+    </div>`).join("") : `<div class="ms-none">没有匹配「${esc(state.kbDocQuery)}」的文档</div>`;
+}
+
+/* 文档预览浮层（定位逻辑与引用浮层一致：优先上方，放不下转下方） */
+function openDocPop(anchor, fileName) {
+  const kb = KBS.find(k => k.name === state.kbCurrent);
+  const f = kb && kb.files.find(x => x.name === fileName);
+  if (!f) return;
+  const pop = $("#docPop");
+  pop.innerHTML = `
+    <div class="cp-head">
+      <span class="cp-icon">${icon("doc", 17)}</span>
+      <div class="cp-title"><div class="cp-file">${esc(f.name)}</div><div class="cp-kb">来自知识库「${esc(kb.name)}」</div></div>
+      <button class="icon-btn cp-close" data-act="doc-close">${icon("x", 16)}</button>
+    </div>
+    <div class="dp-meta">
+      <span class="badge tiny ${f.status !== "done" ? "proc" : ""}"><i></i>${f.status === "done" ? "已完成" : "处理中"}</span>
+      <span>${f.chunks} 块</span><span>${esc(f.size)}</span><span>${esc(f.time)}</span>
+    </div>
+    <div class="dp-body md">${mdRender(f.preview, null)}</div>
+    <div class="cp-foot">
+      <span>演示预览内容，不代表真实文档</span>
+      <button class="cp-open" data-act="doc-ask">${icon("spark", 13)} 就此提问</button>
+    </div>`;
+  pop.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let x = Math.max(8, Math.min(r.left - 40, innerWidth - pw - 8));
+  let y = r.top - ph - 10;
+  if (y < 8) y = Math.min(r.bottom + 10, innerHeight - ph - 8);
+  pop.style.left = x + "px"; pop.style.top = y + "px";
+}
+
+function closeDoc() { $("#docPop").hidden = true; }
+
 /* ---------------- 弹窗与菜单 ---------------- */
 function closeMenu() { $("#menu").hidden = true; }
 function closeCite() { $("#citePop").hidden = true; }
@@ -916,6 +1147,7 @@ document.addEventListener("click", e => {
   /* 点击空白处关闭浮层 */
   if (!e.target.closest(".menu")) closeMenu();
   if (!e.target.closest(".cite-pop") && !e.target.closest("[data-act='cite-open']")) closeCite();
+  if (!e.target.closest(".doc-pop") && !e.target.closest("[data-act='doc-open']")) closeDoc();
 
   if (!target) return;
   const act = target.dataset.act;
@@ -1004,8 +1236,66 @@ document.addEventListener("click", e => {
     case "kb-filter": toast("筛选为演示占位"); break;
     case "kb-mode": state.kbMode = target.dataset.mode; renderKbTable(); break;
     case "kb-row": {
-      state.kbScope = target.dataset.name;
+      state.kbCurrent = target.dataset.name;
+      state.kbDocQuery = "";
+      closeDoc();
+      show("kb-detail");
+      break;
+    }
+    case "kbd-back": show("kb"); break;
+    case "kbd-ask": {
+      state.kbScope = state.kbCurrent;
+      state.convId = null; $("#msgCol").innerHTML = "";
+      renderScope(); show("home");
+      $("#composerInput").focus();
+      break;
+    }
+    case "kbd-more": {
+      openMenu(target, `
+        ${menuItem("kbd-rename", "pencil", "重命名", 'data-ph="重命名"')}
+        ${menuItem("kbd-copy-id", "copy", "复制向量集合 ID")}
+        ${menuItem("kbd-scope", "bubble", "设为提问范围")}
+        <div class="menu-div"></div>
+        ${menuItem("kbd-del", "trash", "删除知识库", "", "danger")}
+      `, { below: true, align: "right" });
+      break;
+    }
+    case "kbd-rename": closeMenu(); toast("重命名为演示占位"); break;
+    case "kbd-copy-id": {
+      closeMenu();
+      const kb = KBS.find(k => k.name === state.kbCurrent);
+      if (kb) copyText(kb.collection, "向量集合 ID 已复制");
+      break;
+    }
+    case "kbd-scope": {
+      closeMenu();
+      state.kbScope = state.kbCurrent;
+      state.convId = null; $("#msgCol").innerHTML = "";
+      renderScope(); show("home");
+      $("#composerInput").focus();
       toast(`已把「${state.kbScope}」设为提问范围`);
+      break;
+    }
+    case "kbd-del": {
+      closeMenu(); closeDoc();
+      const i = KBS.findIndex(k => k.name === state.kbCurrent);
+      if (i > -1) KBS.splice(i, 1);
+      state.kbCurrent = null;
+      show("kb");
+      toast("已删除知识库（演示数据）");
+      break;
+    }
+    case "kbd-upload": toast("上传文档为演示占位"); break;
+    case "doc-open": openDocPop(target, target.dataset.name); break;
+    case "doc-del": {
+      e.stopPropagation();
+      toast("删除文档为演示占位");
+      break;
+    }
+    case "doc-close": closeDoc(); break;
+    case "doc-ask": {
+      closeDoc();
+      state.kbScope = state.kbCurrent;
       state.convId = null; $("#msgCol").innerHTML = "";
       renderScope(); show("home");
       $("#composerInput").focus();
@@ -1132,6 +1422,14 @@ $("#searchInput").addEventListener("keydown", e => {
 });
 $("#kbSearchInput").addEventListener("input", e => { state.kbQuery = e.target.value; renderKbTable(); });
 
+/* 详情页文档搜索框为动态渲染，走事件委托；仅重绘列表，保持输入框焦点 */
+document.addEventListener("input", e => {
+  if (e.target.id === "docSearchInput") {
+    state.kbDocQuery = e.target.value;
+    renderKbDocs();
+  }
+});
+
 $$(".overlay").forEach(ov => ov.addEventListener("click", e => { if (e.target === ov) ov.hidden = true; }));
 $$("#segMode .seg").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
 
@@ -1140,7 +1438,9 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     if (!$("#menu").hidden) { closeMenu(); return; }
     if (!$("#citePop").hidden) { closeCite(); return; }
-    $$(".overlay").forEach(ov => ov.hidden = true);
+    if (!$("#docPop").hidden) { closeDoc(); return; }
+    if ($$(".overlay").some(ov => !ov.hidden)) { $$(".overlay").forEach(ov => ov.hidden = true); return; }
+    if (state.view === "kb-detail") show("kb");
   }
 });
 
