@@ -253,20 +253,30 @@ body.sb-collapsed .topbar-left .wordmark { margin-right: 6px; }
 @keyframes gfade { from { opacity: 0; transform: translateY(6px); } }
 
 .suggest-line {
-  margin-top: 22px;
+  margin-top: 26px;
   width: 100%;
-  display: flex; align-items: center; gap: 10px;
-  padding: 4px 6px;
-  color: var(--text-2);
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 10px;
-  min-height: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
-.suggest-line:hover .suggest-text { color: var(--text); }
-.suggest-line .icon-slot { color: var(--text-3); flex: none; }
-.suggest-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color .15s; }
-.suggest-line.fading .suggest-text { animation: gfade .4s var(--ease); }
+.suggest-card {
+  display: flex; align-items: center; gap: 11px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 13.5px; color: var(--text-2);
+  text-align: left;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.suggest-card:hover { background: var(--hover); border-color: var(--border-2); color: var(--text); }
+.suggest-card .icon-slot { color: var(--text-3); flex: none; transition: color .15s; }
+.suggest-card:hover .icon-slot { color: var(--text); }
+.sc-text {
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  line-height: 1.5;
+}
 
 /* ==========================================================================
    输入框（Composer）
@@ -878,6 +888,56 @@ html[data-theme="light"] .mt-bar i.done { background: #0c8a5f; }
 }
 .mt-note { font-size: 11.5px; color: var(--text-3); }
 
+/* ==========================================================================
+   我的反馈面板
+   ========================================================================== */
+.modal-feedback {
+  width: min(560px, 92vw);
+  margin: 13vh auto 40px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  animation: pop .22s var(--ease);
+}
+.fb-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px; }
+.fb-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.fb-stat b { font-size: 20px; font-weight: 600; letter-spacing: -.3px; }
+.fb-stat span { font-size: 11.5px; color: var(--text-3); }
+.fb-stat b.c-good { color: #34c77b; }
+.fb-stat b.c-bad { color: #ff7a7a; }
+html[data-theme="light"] .fb-stat b.c-good { color: #0c8a5f; }
+html[data-theme="light"] .fb-stat b.c-bad { color: #d64545; }
+.fb-list { display: flex; flex-direction: column; }
+.fb-item { padding: 13px 0; border-bottom: 1px solid var(--border); }
+.fb-item:last-child { border-bottom: none; }
+.fb-head { display: flex; align-items: center; justify-content: space-between; }
+.fb-stars { display: inline-flex; gap: 2px; }
+.fb-star { color: var(--border-2); display: inline-grid; place-items: center; }
+.fb-star.on { color: #e8a33d; }
+html[data-theme="light"] .fb-star.on { color: #d68a1a; }
+.fb-time { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.fb-q { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--text-2); }
+.fb-q .icon-slot { color: var(--text-3); flex: none; }
+.fb-qtext { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-q .badge { flex: none; }
+.fb-comment {
+  margin-top: 8px;
+  font-size: 12.5px; color: var(--text-3); line-height: 1.6;
+  padding: 9px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.fb-foot { font-size: 11.5px; color: var(--text-3); padding-top: 12px; }
+
 /* 文档预览浮层（与引用浮层同语言） */
 .doc-pop {
   position: fixed; z-index: 110;
@@ -1096,4 +1156,6 @@ html[data-theme="light"] .mt-bar i.done { background: #0c8a5f; }
   .eval-grid { grid-template-columns: 1fr; }
   .run-note { white-space: normal; }
   .run-name { width: 110px; }
+  .suggest-line { grid-template-columns: 1fr; }
+  .fb-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; }
 }

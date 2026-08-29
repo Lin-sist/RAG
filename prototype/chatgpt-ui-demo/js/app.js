@@ -75,6 +75,7 @@ const P = {
   arrowL: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
   upload: '<path d="M12 15V4"/><path d="m7.5 8 4.5-4 4.5 4"/><path d="M5 19.5h14"/>',
   evals: '<path d="M5 20v-8"/><path d="M12 20V5"/><path d="M19 20v-11"/>',
+  star: '<path d="m12 3.6 2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8Z"/>',
   download: '<path d="M12 4v10.5"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/>',
   db: '<ellipse cx="12" cy="5.5" rx="7" ry="2.8"/><path d="M5 5.5v13c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8v-13"/><path d="M5 12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8"/>',
 };
@@ -340,8 +341,18 @@ const SUGGESTIONS = {
     { icon: "clock", text: "把本周的检索质量评测结论整理成一条工作周报" },
     { icon: "sliders", text: "帮我安排明天上午的向量库迁移验证任务" },
     { icon: "doc", text: "总结这个项目当前剩余的技术债清单" },
+    { icon: "db", text: "对比 codex-stage2 各分块实验知识库的差异" },
   ],
 };
+
+/* ---------------- 我的反馈 mock（口径对齐 FeedbackRequest/QAFeedbackDTO：rating 1-5 + comment） ---------------- */
+const FEEDBACKS = [
+  { qaTitle: "请你讲讲 RAG 项目的检索质量该怎么评估", kb: "eval-baseline", rating: 5, comment: "指标口径讲得清楚，门禁建议直接可用于周报。", time: "2026/08/27 10:24" },
+  { qaTitle: "帮我总结JWT登录认证", kb: "JWT登录认证", rating: 2, comment: "引用的文档版本较旧，未覆盖 refresh token 并发去重的部分。", time: "2026/08/26 21:05" },
+  { qaTitle: "什么是大模型微调？", kb: "RAG知识点", rating: 4, comment: "", time: "2026/08/25 15:42" },
+  { qaTitle: "什么是spring你知道吗？", kb: "spring注解讲解", rating: 1, comment: "答案没有命中 multi_hop 语义，只返回了单篇片段。", time: "2026/08/24 09:18" },
+  { qaTitle: "向量检索和关键词检索的区别", kb: "RAG知识点", rating: 5, comment: "", time: "2026/08/22 20:31" },
+];
 
 /* ---------------- 检索管道 mock（字段口径对齐 /api/qa/debug/retrieve） ----------------
    RetrievalDebugResponse: queryVariants[{query,weight}] / topK / enableRerank /
@@ -487,7 +498,6 @@ const state = {
   kbQuery: "",
   reason: "高",
   settingsSection: "常规",
-  suggestIdx: 0,
 };
 
 /* ---------------- 侧栏 ---------------- */
@@ -563,17 +573,14 @@ function show(view) {
 
 /* ---------------- 首页 ---------------- */
 function renderSuggest() {
-  const arr = SUGGESTIONS[state.mode];
-  const s = arr[state.suggestIdx % arr.length];
+  const arr = SUGGESTIONS[state.mode].slice(0, 4);
   const el = $("#suggestLine");
-  el.classList.add("fading");
-  setTimeout(() => el.classList.remove("fading"), 420);
-  el.dataset.act = "suggest";
-  el.innerHTML = `<span class="icon-slot">${icon(s.icon, 17)}</span><span class="suggest-text">${esc(s.text)}</span>`;
+  el.classList.remove("fading");
+  el.innerHTML = arr.map(s => `
+    <button class="suggest-card" data-act="suggest-card" data-text="${esc(s.text)}">
+      <span class="icon-slot">${icon(s.icon, 16)}</span><span class="sc-text">${esc(s.text)}</span>
+    </button>`).join("");
 }
-setInterval(() => {
-  if (state.view === "home" && !document.hidden) { state.suggestIdx++; renderSuggest(); }
-}, 7000);
 
 function setMode(mode) {
   state.mode = mode;
@@ -1346,6 +1353,37 @@ function renderTaskBody() {
     </div>`;
 }
 
+/* ---------------- 我的反馈面板 ---------------- */
+function openFeedback() {
+  closeMenu();
+  $("#feedbackOverlay").hidden = false;
+  renderFeedback();
+}
+
+function renderFeedback() {
+  const good = FEEDBACKS.filter(f => f.rating >= 4).length;
+  const bad = FEEDBACKS.filter(f => f.rating <= 2).length;
+  const stars = n => Array.from({ length: 5 }, (_, i) => `<span class="fb-star ${i < n ? "on" : ""}">${icon("star", 12)}</span>`).join("");
+  $("#feedbackBody").innerHTML = `
+    <div class="fb-stats">
+      <div class="fb-stat"><b>${FEEDBACKS.length}</b><span>总反馈</span></div>
+      <div class="fb-stat"><b class="c-good">${good}</b><span>好评（4-5 星）</span></div>
+      <div class="fb-stat"><b class="c-bad">${bad}</b><span>差评（1-2 星）</span></div>
+    </div>
+    <div class="fb-list">
+      ${FEEDBACKS.map(f => `
+        <div class="fb-item">
+          <div class="fb-head">
+            <span class="fb-stars">${stars(f.rating)}</span>
+            <span class="fb-time">${esc(f.time)}</span>
+          </div>
+          <div class="fb-q">${icon("bubble", 13)}<span class="fb-qtext">${esc(f.qaTitle)}</span>${f.kb ? `<span class="badge tiny">${esc(f.kb)}</span>` : ""}</div>
+          ${f.comment ? `<div class="fb-comment">${esc(f.comment)}</div>` : ""}
+        </div>`).join("")}
+    </div>
+    <div class="fb-foot">演示数据 · 口径对齐 FeedbackRequest（rating 1-5 + comment）；聊天中点赞/点踩会写入此列表</div>`;
+}
+
 /* ---------------- 评测看板视图 ---------------- */
 function metricRowHtml(m, passing) {
   const bar = (v, cls) => `<span class="m-bar"><i class="${cls}" style="width:${Math.round(v * 100)}%"></i></span>`;
@@ -1627,6 +1665,7 @@ document.addEventListener("click", e => {
         <div class="menu-div"></div>
         ${menuItem("nav-ph", "sliders", "个性化", 'data-ph="个性化"')}
         ${menuItem("nav-ph", "person", "个人资料", 'data-ph="个人资料"')}
+        ${menuItem("open-feedback", "star", "我的反馈")}
         ${menuItem("open-settings", "gear", "设置")}
         <div class="menu-div"></div>
         ${menuItem("nav-ph", "help", "帮助", 'data-ph="帮助"', "")}
@@ -1635,6 +1674,7 @@ document.addEventListener("click", e => {
       break;
     }
     case "open-settings": closeMenu(); openSettings(); break;
+    case "open-feedback": openFeedback(); break;
     case "set-sec": state.settingsSection = target.dataset.name; renderSettingsNav(); renderSettingsMain(); break;
     case "close-modal": case "close-cite": target.closest(".overlay") && (target.closest(".overlay").hidden = true); closeCite(); break;
     case "toggle-sw": target.classList.toggle("on"); break;
@@ -1812,11 +1852,7 @@ document.addEventListener("click", e => {
       toast("已删除对话（演示数据）");
       break;
     }
-    case "suggest": {
-      const s = SUGGESTIONS[state.mode][state.suggestIdx % SUGGESTIONS[state.mode].length];
-      startAsk(s.text);
-      break;
-    }
+    case "suggest-card": startAsk(target.dataset.text); break;
     case "scroll-bottom": $("#msgScroll").scrollTop = $("#msgScroll").scrollHeight; break;
     case "retrieval-toggle": target.closest(".retrieval").classList.toggle("open"); break;
     case "cite-open": openCite(target, target.dataset.turn, target.dataset.cite); break;
@@ -1830,6 +1866,14 @@ document.addEventListener("click", e => {
     }
     case "msg-like": case "msg-dislike": {
       target.classList.toggle("picked");
+      const fConv = CONVS.find(c => c.id === state.convId);
+      FEEDBACKS.unshift({
+        qaTitle: fConv ? fConv.title : "未命名对话",
+        kb: fConv && fConv.tag ? fConv.tag : "",
+        rating: act === "msg-like" ? 5 : 2,
+        comment: "",
+        time: nowStr(),
+      });
       toast(act === "msg-like" ? "已记录好评（演示数据）" : "已记录差评（演示数据）");
       break;
     }
