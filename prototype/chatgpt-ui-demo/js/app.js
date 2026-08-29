@@ -390,7 +390,9 @@ function mkVariants(question, n) {
 
 /* fact-intent-v1 演示判定：仅明确单事实/定义查询进入 closed-world fact 路由 */
 function classifyIntent(question) {
-  return /什么是|是什么[？?！!。]*$|的定义/.test(question.trim()) ? "fact" : "normal";
+  const q = question.trim();
+  if (/对比.{1,30}(和|与|vs)|比较.{1,30}(和|与|vs)|(和|与|vs)[^？?]{0,24}(区别|差异)/i.test(q)) return "compare";
+  return /什么是|是什么[？?！!。]*$|的定义/.test(q) ? "fact" : "normal";
 }
 
 /* 终态语义（口径对齐 C21 structured-sse-terminal-contract 与 QAResponse 五态工厂） */
@@ -400,6 +402,36 @@ const TERMINAL_META = {
   UNSUPPORTED: { cls: "warn", icon: "shield" },
   ERROR: { cls: "bad", icon: "x" },
   CANCELLED: { cls: "muted", icon: "x" },
+};
+
+/* compare-v1 原型数据（蓝图 W2 规划策略；素材取自知识源 hybrid-retrieval.md 与 bm25-notes.md） */
+const COMPARE_DEMO = {
+  answer: `以下按 compare-v1 契约做**来源归属对比**：共同点、差异与冲突各自挂回来源，不把多个来源融合成无归属结论。\n\n来源 A 与来源 B 的时间/版本不一致已在卡片中显式标注{{cite:0}}{{cite:1}}。`,
+  chunks: [
+    { file: "hybrid-retrieval.md", chunk: 6, score: 0.9 },
+    { file: "bm25-notes.md", chunk: 2, score: 0.83 },
+  ],
+  cites: [
+    { file: "hybrid-retrieval.md", kb: "RAG知识点", score: "0.90", chunk: 6, snippet: "生产环境通常采用混合检索：关键词（BM25）与向量双路召回，再经 rerank 模型统一重排，兼顾字面精确匹配与语义泛化。" },
+    { file: "bm25-notes.md", kb: "RAG知识点", score: "0.83", chunk: 2, snippet: "BM25 基于词频与逆文档频率，对编号、类名、错误码等字面明确的查询非常可靠，但对同义改写敏感度低。" },
+  ],
+  compare: {
+    a: { name: "向量检索（dense retrieval）", file: "hybrid-retrieval.md", chunk: 6, time: "2026-08-20", ver: "v2" },
+    b: { name: "关键词检索（BM25）", file: "bm25-notes.md", chunk: 2, time: "2026-08-01", ver: "v1" },
+    timeMismatch: true,
+    agreements: [
+      { text: "两者都是回答\"怎么找到相关内容\"的检索路线，生产环境通常组合使用" },
+    ],
+    differences: [
+      { src: "a", text: "把语义投影到高维空间，\"换个说法也能找到\"；但对没见过的专有名词容易漂移" },
+      { src: "b", text: "基于词频与逆文档频率，对编号、类名、错误码等字面明确的查询非常可靠" },
+      { src: "b", text: "对同义改写敏感度低——换一种说法可能检索不到" },
+    ],
+    conflicts: [
+      { note: "来源 A（较新，v2）已覆盖 rerank 组合场景；来源 B（v1）未提及——差异结论以较新来源为准，并标注待人工复核" },
+    ],
+  },
+  terminal: { state: "ANSWER", detail: "compare 原型 · 2 来源归属 · 1 冲突已标注" },
 };
 
 function terminalStripHtml(t) {
@@ -413,6 +445,37 @@ function terminalStripHtml(t) {
     </div>`;
 }
 
+/* compare-v1 来源归属对比卡（W2 规划策略 · 原型演示） */
+function compareHtml(c) {
+  if (!c) return "";
+  const side = (s, tag, cls) => `
+    <div class="cmp-side">
+      <span class="cmp-tag ${cls}">${tag}</span>
+      <div class="cmp-side-name">${esc(s.name)}</div>
+      <div class="cmp-src mono">${icon("file", 12)} ${esc(s.file)} · #${s.chunk} · ${esc(s.time)} · ${esc(s.ver)}</div>
+    </div>`;
+  const claim = (text, srcLabel, conflict) => `
+    <div class="cmp-claim${conflict ? " is-conflict" : ""}">
+      <span class="cmp-src-badge">${srcLabel}</span>
+      <span class="cmp-claim-text">${esc(text)}</span>
+    </div>`;
+  return `
+    <div class="compare-card">
+      <div class="cmp-head"><span class="badge tiny proc">compare-v1 · W2 规划策略 · 原型演示</span></div>
+      <div class="cmp-sides">${side(c.a, "侧 A", "ta")}${side(c.b, "侧 B", "tb")}</div>
+      ${c.timeMismatch ? `
+      <div class="cmp-mismatch">${icon("shield", 13)}<span>来源时间/版本不一致：侧 A ${esc(c.a.time)} · ${esc(c.a.ver)} vs 侧 B ${esc(c.b.time)} · ${esc(c.b.ver)}——差异结论需注明出处时点</span></div>` : ""}
+      <div class="cmp-sec-title">共同点</div>
+      ${c.agreements.map(x => claim(x.text, "A+B")).join("")}
+      <div class="cmp-sec-title">差异</div>
+      ${c.differences.map(x => claim(x.text, x.src.toUpperCase())).join("")}
+      <div class="cmp-sec-title">冲突</div>
+      ${(c.conflicts || []).length
+        ? c.conflicts.map(x => claim(x.note, "A vs B", true)).join("")
+        : claim("未发现直接冲突", "—")}
+    </div>`;
+}
+
 function mkPipe(question, chunks, reason, adv) {
   const p = REASON_PROFILE[reason] || REASON_PROFILE["中"];
   const a = adv || { router: false, cache: true, minScore: 0, adversarial: false };
@@ -420,11 +483,14 @@ function mkPipe(question, chunks, reason, adv) {
   const steps = [];
   const msRoute = a.router ? jitter(0.02) : 0;
   if (a.router) {
+    const kind = classifyIntent(question);
     steps.push({
       key: "route", name: "查询路由", ms: msRoute,
-      detail: classifyIntent(question) === "fact"
+      detail: kind === "fact"
         ? "fact-intent-v1 → fact route（closed-world fact-v1）"
-        : "fact-intent-v1 → normal route（完整检索链路）",
+        : kind === "compare"
+          ? "fact-intent-v1 → compare-v1 route（W2 规划策略 · 原型演示）"
+          : "fact-intent-v1 → normal route（完整检索链路）",
     });
   }
   const msRewrite = jitter(0.06);
@@ -879,6 +945,7 @@ function turnHtml(t, conv, idx) {
   return `<div class="turn assistant" data-turn="${idx}">
     ${retrievalHtml(t.retrieval, conv)}
     <div class="md">${mdRender(t.answer, conv)}</div>
+    ${compareHtml(t.compare)}
     <div class="msg-actions">
       <button class="ma-btn" data-act="msg-copy" data-tip="复制" data-turn="${idx}">${icon("copy", 16)}</button>
       <button class="ma-btn" data-act="msg-like" data-tip="好评" data-turn="${idx}">${icon("thumbU", 16)}</button>
@@ -1067,6 +1134,17 @@ function startAsk(question) {
     turn.terminal = { state: "UNSUPPORTED", detail: "RAG_SCOPE_FILTER_RESERVED · 请求未进入检索与生成" };
   }
   if (qa.terminal) turn.terminal = qa.terminal;
+  /* compare-v1 路由命中（W2 规划策略 · 原型演示）：仅在查询路由开启时生效 */
+  if (!turn.retrieval.pipe.blocked && state.qaAdv.router && classifyIntent(question) === "compare") {
+    const c = COMPARE_DEMO;
+    turn.compare = c.compare;
+    turn.cites = c.cites;
+    turn.retrieval.chunks = c.chunks;
+    turn.retrieval.pipe = mkPipe(question, c.chunks, state.reason, state.qaAdv);
+    turn.retrieval.ms = turn.retrieval.pipe.total.toFixed(2);
+    turn.answer = c.answer;
+    turn.terminal = c.terminal;
+  }
   conv.turns.push(turn);
 
   renderConv(conv, true);
@@ -1145,6 +1223,7 @@ function finishStream(conv, turn, wrap, md, stopped) {
   state.streaming = false;
   if (stopped) turn.answer = mdRender._partial || turn.answer;
   md.innerHTML = mdRender(turn.answer, conv) + (stopped ? `<p class="shimmer" style="display:inline;font-size:13px">（已停止生成）</p>` : "");
+  if (turn.compare && !stopped) md.insertAdjacentHTML("afterend", compareHtml(turn.compare));
   if (stopped) {
     turn.terminal = { state: "CANCELLED", detail: "partial output 未保存为成功历史" };
   } else if (!turn.terminal) {
