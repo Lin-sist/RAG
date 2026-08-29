@@ -568,6 +568,31 @@ html[data-theme="light"] .pipe-blocked-note { background: rgba(214, 69, 69, .05)
 .ma-btn .icon-slot svg { transition: transform .12s; }
 .ma-btn:active .icon-slot svg { transform: scale(.88); }
 
+/* 终态条（口径对齐 C21 structured-sse-terminal-contract） */
+.terminal-strip {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 8px;
+  height: 24px; padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--chip-bg);
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.terminal-strip .icon-slot { display: inline-grid; place-items: center; }
+.ts-state { font-family: var(--mono); font-weight: 600; letter-spacing: .4px; }
+.ts-detail { color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; }
+.ts-ok { border-color: rgba(52, 199, 123, .3); color: var(--text-2); }
+.ts-ok .ts-state, .ts-ok .icon-slot { color: #34c77b; }
+.ts-warn { border-color: rgba(232, 163, 61, .35); }
+.ts-warn .ts-state, .ts-warn .icon-slot { color: #e8a33d; }
+.ts-bad { border-color: rgba(255, 122, 122, .35); }
+.ts-bad .ts-state, .ts-bad .icon-slot { color: #ff7a7a; }
+.ts-muted .ts-state, .ts-muted .icon-slot { color: var(--text-3); }
+html[data-theme="light"] .ts-ok .ts-state, html[data-theme="light"] .ts-ok .icon-slot { color: #0c8a5f; }
+html[data-theme="light"] .ts-warn .ts-state, html[data-theme="light"] .ts-warn .icon-slot { color: #d68a1a; }
+html[data-theme="light"] .ts-bad .ts-state, html[data-theme="light"] .ts-bad .icon-slot { color: #d64545; }
+
 /* 回到底部 */
 .scroll-bottom {
   position: absolute; left: 50%; transform: translateX(-50%);

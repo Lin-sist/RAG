@@ -393,6 +393,26 @@ function classifyIntent(question) {
   return /什么是|是什么[？?！!。]*$|的定义/.test(question.trim()) ? "fact" : "normal";
 }
 
+/* 终态语义（口径对齐 C21 structured-sse-terminal-contract 与 QAResponse 五态工厂） */
+const TERMINAL_META = {
+  ANSWER: { cls: "ok", icon: "check" },
+  NO_ANSWER: { cls: "warn", icon: "shield" },
+  UNSUPPORTED: { cls: "warn", icon: "shield" },
+  ERROR: { cls: "bad", icon: "x" },
+  CANCELLED: { cls: "muted", icon: "x" },
+};
+
+function terminalStripHtml(t) {
+  if (!t) return "";
+  const meta = TERMINAL_META[t.state] || TERMINAL_META.ANSWER;
+  return `
+    <div class="terminal-strip ts-${meta.cls}">
+      <span class="icon-slot">${icon(meta.icon, 13)}</span>
+      <span class="ts-state">${esc(t.state)}</span>
+      ${t.detail ? `<span class="ts-detail">${esc(t.detail)}</span>` : ""}
+    </div>`;
+}
+
 function mkPipe(question, chunks, reason, adv) {
   const p = REASON_PROFILE[reason] || REASON_PROFILE["中"];
   const a = adv || { router: false, cache: true, minScore: 0, adversarial: false };
@@ -437,10 +457,12 @@ function mkPipe(question, chunks, reason, adv) {
     };
   }
   const scores = chunks.map(c => c.score);
-  const tokens = 200 + chunks.length * 180 + Math.round(Math.random() * 100);
+  const tokens = chunks.length === 0 ? 0 : 200 + chunks.length * 180 + Math.round(Math.random() * 100);
   steps.push({
     key: "assemble", name: "上下文组装", ms: msAssemble,
-    detail: `≈${(tokens / 1000).toFixed(1)}k tokens · min-score ${a.minScore}${a.cache ? " · 响应缓存开启" : ""}`,
+    detail: chunks.length === 0
+      ? `0 片段通过 min-score ${a.minScore} · 无可用上下文`
+      : `≈${(tokens / 1000).toFixed(1)}k tokens · min-score ${a.minScore}${a.cache ? " · 响应缓存开启" : ""}`,
   });
   return {
     variants: mkVariants(question, p.variants),
@@ -461,9 +483,14 @@ function mkPipe(question, chunks, reason, adv) {
 CONVS.forEach(c => {
   const q = (c.turns[0] && c.turns[0].text) || c.title;
   c.turns.forEach(t => {
-    if (t.role === "assistant" && t.retrieval && !t.retrieval.pipe) {
-      t.retrieval.pipe = mkPipe(q, t.retrieval.chunks, "中");
-      t.retrieval.ms = t.retrieval.pipe.total.toFixed(2);
+    if (t.role === "assistant") {
+      if (t.retrieval && !t.retrieval.pipe) {
+        t.retrieval.pipe = mkPipe(q, t.retrieval.chunks, "中");
+        t.retrieval.ms = t.retrieval.pipe.total.toFixed(2);
+      }
+      if (!t.terminal) {
+        t.terminal = { state: "ANSWER", detail: `evidence-backed · ${(t.cites || []).length} 引用` };
+      }
     }
   });
 });
@@ -859,6 +886,7 @@ function turnHtml(t, conv, idx) {
       <button class="ma-btn" data-act="msg-regen" data-tip="重新生成" data-turn="${idx}">${icon("refresh", 16)}</button>
       <button class="ma-btn" data-act="msg-share" data-tip="分享" data-turn="${idx}">${icon("share", 16)}</button>
     </div>
+    ${terminalStripHtml(t.terminal)}
   </div>`;
 }
 
@@ -962,6 +990,27 @@ ${items.join("\n")}
 其中 \`codex-*\` 与 \`eval-*\` 是**评测用知识库**，日常业务提问建议选择其余知识库作为检索范围。{{cite:1}}`,
     };
   }
+  /* 超出知识库范围的提问 → evidence-no-answer-v1 拒答（演示"为什么拒答"） */
+  if (/天气|股价|彩票|赛事|新闻|汇率|今晚|明天.{0,4}(会|将)/.test(q)) {
+    return {
+      retrieval: { kb, ms: "0.31", chunks: [] },
+      cites: [],
+      answer: `「${kb}」知识库中没有找到可支持回答的依据。\n\n检索已完成：查询改写并混合召回了候选，但没有片段通过 min-score 阈值。按 \`evidence-no-answer-v1\` 契约，系统选择拒答而不是编造——这正是"为什么拒答"的可解释性（演示）。换个知识库内的问题试试。`,
+      terminal: { state: "NO_ANSWER", detail: "evidence-no-answer-v1 · 0 片段通过阈值，拒答优于编造" },
+    };
+  }
+  /* 模拟 LLM 生成失败（对应 LLM Provider 有界重试与故障分类） */
+  if (/模拟(一个)?错误|trigger error/i.test(q)) {
+    return {
+      retrieval: { kb, ms: "0.45", chunks: [
+        { file: "matched-1.md", chunk: 4, score: 0.88 },
+        { file: "matched-2.md", chunk: 11, score: 0.79 },
+      ] },
+      cites: [],
+      answer: `生成失败：LLM provider 请求超时（\`LLM_PROVIDER_TIMEOUT\`）。\n\n\`max-retries=0\`（生产默认有界重试），失败已分类并记录 diagnostics，不产生部分成功的历史。可稍后重试（演示）。`,
+      terminal: { state: "ERROR", detail: "LLM_PROVIDER_TIMEOUT · max-retries=0 · 已记录 diagnostics" },
+    };
+  }
   /* 兜底模板 */
   const n = 3 + (question.length % 3);
   return {
@@ -1015,7 +1064,9 @@ function startAsk(question) {
     turn.cites = [];
     turn.retrieval.chunks = [];
     turn.answer = `请求已在进入检索前被拒绝。\n\n客户端 filter 携带服务端保留字段 \`tenant\`，触发 \`RAG_SCOPE_FILTER_RESERVED\` 校验失败——多租户 data-plane 的租户事实由服务端持有，客户端无法声明或伪造租户归属。\n\n这是 C13 tenant data-plane enforcement 的用户可见行为（演示）。关闭输入框「高级」菜单中的"模拟越权 filter"后可恢复正常问答。`;
+    turn.terminal = { state: "UNSUPPORTED", detail: "RAG_SCOPE_FILTER_RESERVED · 请求未进入检索与生成" };
   }
+  if (qa.terminal) turn.terminal = qa.terminal;
   conv.turns.push(turn);
 
   renderConv(conv, true);
@@ -1094,6 +1145,11 @@ function finishStream(conv, turn, wrap, md, stopped) {
   state.streaming = false;
   if (stopped) turn.answer = mdRender._partial || turn.answer;
   md.innerHTML = mdRender(turn.answer, conv) + (stopped ? `<p class="shimmer" style="display:inline;font-size:13px">（已停止生成）</p>` : "");
+  if (stopped) {
+    turn.terminal = { state: "CANCELLED", detail: "partial output 未保存为成功历史" };
+  } else if (!turn.terminal) {
+    turn.terminal = { state: "ANSWER", detail: `evidence-backed · ${(turn.cites || []).length} 引用 · ${turn.retrieval.ms}s` };
+  }
   const acts = document.createElement("div");
   acts.className = "msg-actions";
   const idx = conv.turns.indexOf(turn);
@@ -1104,6 +1160,9 @@ function finishStream(conv, turn, wrap, md, stopped) {
     <button class="ma-btn" data-act="msg-regen" data-tip="重新生成" data-turn="${idx}">${icon("refresh", 16)}</button>
     <button class="ma-btn" data-act="msg-share" data-tip="分享" data-turn="${idx}">${icon("share", 16)}</button>`;
   wrap.appendChild(acts);
+  const strip = document.createElement("div");
+  strip.innerHTML = terminalStripHtml(turn.terminal);
+  if (strip.firstElementChild) wrap.appendChild(strip.firstElementChild);
   updateVoiceBtn();
 }
 
@@ -1125,7 +1184,8 @@ function stopStream() {
     const wrap = $("#msgCol .turn:last-child");
     if (wrap) {
       conv._cites = turn.cites; conv._turnIdx = conv.turns.indexOf(turn);
-      wrap.innerHTML = retrievalHtml(turn.retrieval, conv) + `<div class="md">${mdRender(turn.answer, conv)}<p class="shimmer" style="display:inline;font-size:13px">（已停止生成）</p></div>`;
+      turn.terminal = { state: "CANCELLED", detail: "检索阶段取消 · 未产生回答" };
+      wrap.innerHTML = retrievalHtml(turn.retrieval, conv) + `<div class="md">${mdRender(turn.answer, conv)}<p class="shimmer" style="display:inline;font-size:13px">（已停止生成）</p></div>` + terminalStripHtml(turn.terminal);
     }
   }
   updateVoiceBtn();
