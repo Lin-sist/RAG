@@ -812,6 +812,42 @@ const SRC_STATUS = {
   planned: { badge: "proc", label: "W3 规划 · 未接入" },
 };
 
+/* ---------------- 研究任务视图 mock（蓝图 W4 单个 durable investigation task · 规划原型） ----------------
+   单任务 runtime，不做 multi-agent swarm；versioned plan 与 bounded subqueries、
+   checkpoint / resume / cancel、预算（步骤 / token / provider calls / deadline）、
+   claim-evidence 与来源冲突、human input required 均为 W4 规划口径（未实现）。 */
+const RESEARCH_DATA = {
+  task: {
+    id: "rt_7f3a21",
+    title: "调研：rag-eval-dev-v2 检索门禁的阈值该怎么定",
+    planVersion: "v3",
+    planHistory: "v1 展开 5 项 → v2 剪枝为 4 项 → v3 现行（有界）",
+    state: "RUNNING",
+    terminal: null,
+    subqueries: [
+      { id: "sq-1", text: "汇总 recall@3 / recall@5 / MRR 现行阈值的出处", status: "done", note: "3 条 evidence · claim 已挂链" },
+      { id: "sq-2", text: "对比 shadow 运行与 baseline 的同题分数差异", status: "running", note: "checkpoint 已保存" },
+      { id: "sq-3", text: "确认阈值调整应原位修改还是新建 profile 版本", status: "human-input", note: "等待人工输入",
+        question: "阈值变更应原位修改 C10 profile，还是新建 C10b 版本？（既有约定：指标口径不漂移）" },
+      { id: "sq-4", text: "产出阈值建议报告并挂接 claim-evidence", status: "pending", note: "依赖 sq-1 … sq-3" },
+    ],
+    budget: { steps: [3, 6], tokens: [1200, 8000], providerCalls: [2, 5], deadlineMin: 42 },
+    checkpoints: 2,
+    lastCheckpoint: "sq-2 完成召回对比后 · 10 分钟前",
+    report: { claims: 7, evidenceLinked: 6, conflicts: 1, uncertainties: 0,
+      artifacts: ["阈值对比表（草稿 v0）", "引用清单 · 8 条可回溯", "中间笔记 · 可复查"] },
+  },
+  outcomes: { completed: 12, cancelled: 3, recovered: 4, takeover: 1 },
+};
+
+const RSQ_META = {
+  done: { dot: "done", badge: "", label: "done" },
+  running: { dot: "running", badge: "rs-live", label: "running" },
+  pending: { dot: "", badge: "dim", label: "pending" },
+  "human-input": { dot: "human", badge: "proc", label: "human input required" },
+  skipped: { dot: "skipped", badge: "cancel", label: "skipped" },
+};
+
 /* ---------------- 上传任务面板 mock（口径对齐 TaskController / TaskState） ----------------
    TaskState: PENDING/RUNNING/COMPLETED/CANCELLED/FAILED；进度消息对齐
    DocumentIndexingServiceImpl 的真实回调序列（10/30/50/70/85/100）。 */
@@ -831,7 +867,7 @@ const NEW_FILE_POOL = [
 
 /* ---------------- 全局状态 ---------------- */
 const state = {
-  view: "home",            // home | chat | kb | kb-detail | eval | mcp | obs | sources
+  view: "home",            // home | chat | kb | kb-detail | eval | mcp | obs | sources | research
   mode: "chat",            // 聊天 | 工作
   convId: null,
   kbScope: null,           // 输入框选择的知识库范围
@@ -863,10 +899,8 @@ function renderSidebar() {
   $("#navObs").classList.toggle("active", state.view === "obs");
   $("#navSources").innerHTML = `${icon("db")}<span>知识源</span>`;
   $("#navSources").classList.toggle("active", state.view === "sources");
-  const phs = [["dots", "更多"]];
-  $$(".nav-item[data-ph]").forEach((el, i) => {
-    el.innerHTML = `${icon(phs[i][0])}<span>${phs[i][1]}</span>`;
-  });
+  $("#navResearch").innerHTML = `${icon("clock")}<span>研究任务</span>`;
+  $("#navResearch").classList.toggle("active", state.view === "research");
 
   const list = $("#histList");
   list.innerHTML = "";
@@ -916,6 +950,7 @@ function show(view) {
   $("#viewMcp").hidden = view !== "mcp";
   $("#viewObs").hidden = view !== "obs";
   $("#viewSources").hidden = view !== "sources";
+  $("#viewResearch").hidden = view !== "research";
 
   const composer = $("#composerBox").closest(".composer");
   if (view === "home") $("#composerHomeSlot").appendChild(composer);
@@ -930,6 +965,7 @@ function show(view) {
   if (view === "mcp") renderMcp();
   if (view === "obs") renderObs();
   if (view === "sources") renderSources();
+  if (view === "research") renderResearch();
   if (view === "chat") requestAnimationFrame(() => { $("#msgScroll").scrollTop = $("#msgScroll").scrollHeight; });
 }
 
@@ -2181,6 +2217,125 @@ function renderSources() {
     <div class="eval-foot">本页为 W3 规划原型演示 · Registry 契约未实现；规划条目不代表已接入能力</div>`;
 }
 
+/* ---------------- 研究任务视图（蓝图 W4 规划原型） ---------------- */
+function rsqRowHtml(s) {
+  const m = RSQ_META[s.status] || RSQ_META.pending;
+  return `
+    <div class="rsq ${s.status}">
+      <span class="rsq-dot ${m.dot}"></span>
+      <div class="rsq-main">
+        <div class="rsq-text">${esc(s.text)}</div>
+        <div class="rsq-sub"><span class="rsq-id">${esc(s.id)}</span><span>${esc(s.note)}</span></div>
+      </div>
+      <span class="badge tiny ${m.badge}"><i></i>${esc(m.label)}</span>
+    </div>`;
+}
+
+function rsHumanHtml(s) {
+  return `
+    <div class="rs-human">
+      <div class="rs-human-head"><span class="badge tiny proc"><i></i>human input required</span><span class="rs-human-sub">对齐 C21 人类接管 · 演示</span></div>
+      <div class="rs-human-q">${esc(s.question)}</div>
+      <div class="rs-human-actions">
+        <button class="chip sm" data-act="rsq-provide">${icon("check", 13)}<span>提供输入</span></button>
+        <button class="chip sm" data-act="rsq-skip">${icon("chevR", 13)}<span>跳过该项</span></button>
+      </div>
+    </div>`;
+}
+
+function renderResearch() {
+  const t = RESEARCH_DATA.task;
+  const o = RESEARCH_DATA.outcomes;
+  const human = t.subqueries.find(s => s.status === "human-input");
+  const [st, stT] = t.budget.steps;
+  const [tk, tkT] = t.budget.tokens;
+  const [pc, pcT] = t.budget.providerCalls;
+  const fmtK = n => n >= 1000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0) + "k" : String(n);
+  const bcell = (lab, used, total, p) => `
+    <div class="rs-bcell">
+      <b>${esc(used)}${total !== "" ? `<i class="rs-btotal"> / ${esc(total)}</i>` : ""}</b>
+      <span>${esc(lab)}</span>
+      ${p === null ? "" : `<div class="rs-bbar"><i style="width:${p}%"></i></div>`}
+    </div>`;
+  $("#researchInner").innerHTML = `
+    <div class="eval-head eval-rise">
+      <div class="eval-head-meta">
+        <h1 class="eval-title">研究任务</h1>
+        <span class="eval-subline">Durable Research Task · 单个可恢复调查任务 · 蓝图 W4 · 演示数据</span>
+      </div>
+      <div class="eval-head-right">
+        <span class="badge"><i></i>${t.state === "RUNNING" ? "1 个进行中任务（演示）" : "任务已取消 · 可恢复"}</span>
+      </div>
+    </div>
+
+    <div class="eval-gate eval-rise d1 tone-off">
+      <span class="gate-dot"></span>
+      <div class="gate-meta">
+        <div class="gate-state"><b>SINGLE DURABLE TASK</b><span>no multi-agent swarm · W4 · 2027 H1</span></div>
+        <div class="gate-reason">首个 Agent runtime 采用单个 durable investigation task：versioned plan 与 bounded subqueries · checkpoint / resume / cancel / timeout / retry policy · 有界并发、总步骤、token、provider calls、deadline</div>
+        <div class="gate-note">规划原型 · 未实现；任务终态对齐 C21 五态，长期 memory 仅允许 tenant-scoped、可检查、可删除、有 TTL 的任务事实</div>
+      </div>
+    </div>
+
+    <div class="kbd-card eval-rise d2" style="margin-bottom:14px">
+      <div class="kbd-card-head">
+        <span class="kbd-card-title">任务 <em>${esc(t.id)} · plan ${esc(t.planVersion)}</em></span>
+        <span class="badge tiny ${t.state === "RUNNING" ? "rs-live" : "cancel"}"><i></i>${esc(t.state)}</span>
+      </div>
+      <div class="eval-identity-body">
+        <div class="rs-task-title">${esc(t.title)}</div>
+        <div class="rs-plan-history">plan 历史：${esc(t.planHistory)} · 有界：4 subqueries / max ${stT} steps</div>
+        ${t.terminal ? `<div class="rs-strip">${terminalStripHtml(t.terminal)}</div>` : ""}
+        <div class="rs-plan-list">${t.subqueries.map(rsqRowHtml).join("")}</div>
+        ${human ? rsHumanHtml(human) : ""}
+        <div class="rs-sec-label">预算 · bounded（服务端持有，客户端不可覆盖）</div>
+        <div class="rs-budget">
+          ${bcell("步骤", st, stT, Math.round(st / stT * 100))}
+          ${bcell("tokens", fmtK(tk), fmtK(tkT), Math.round(tk / tkT * 100))}
+          ${bcell("provider calls", pc, pcT, Math.round(pc / pcT * 100))}
+          ${bcell("deadline", `剩余 ${t.budget.deadlineMin}m`, "", null)}
+        </div>
+        <div class="rs-sec-label">恢复语义 · checkpoint / resume / cancel</div>
+        <div class="rs-ckpt">${icon("clock", 13)}<span>checkpoint ${t.checkpoints} 个 · 最近：${esc(t.lastCheckpoint)}</span></div>
+        <div class="rs-actions">
+          ${t.state === "RUNNING"
+            ? `<button class="chip sm" data-act="rt-cancel">${icon("x", 13)}<span>模拟中断 / 取消</span></button>`
+            : `<button class="chip sm" data-act="rt-resume">${icon("refresh", 13)}<span>从最近 checkpoint 恢复</span></button>`}
+          <span class="rs-act-note">取消不丢弃中间产物 · 恢复延续同一预算（演示）</span>
+        </div>
+        <div class="m-waiting">文档索引类任务与本案无关：索引走知识库详情页的上传任务面板（TaskState 五态）。</div>
+      </div>
+    </div>
+
+    <div class="eval-grid eval-rise d3">
+      <div class="kbd-card">
+        <div class="kbd-card-head"><span class="kbd-card-title">Report / Artifacts <em>可保存 · 可引用 · 可复查</em></span></div>
+        <div class="eval-identity-body">
+          <div class="meta-row"><span class="meta-lab">claim-evidence</span><span class="meta-val">${t.report.claims} claims · ${t.report.evidenceLinked} 已挂 evidence</span></div>
+          <div class="meta-row"><span class="meta-lab">来源冲突</span><span class="meta-val">${t.report.conflicts} 处已标注 · 并列呈现不融合</span></div>
+          ${t.report.uncertainties ? `<div class="meta-row"><span class="meta-lab">不确定性</span><span class="meta-val">${t.report.uncertainties} 处已标注（含跳过项）</span></div>` : ""}
+          <div class="meta-div"></div>
+          ${t.report.artifacts.map(a => `<div class="rs-artifact">${icon("file", 14)}<span>${esc(a)}</span></div>`).join("")}
+          <div class="m-waiting">任务事实（memory）仅 tenant-scoped · 可检查 · 可删除 · 有 TTL（W4 规划）。</div>
+        </div>
+      </div>
+      <div class="kbd-card">
+        <div class="kbd-card-head"><span class="kbd-card-title">任务终态分布 <em>北极星指标 · 演示</em></span></div>
+        <div class="eval-identity-body">
+          <div class="kbd-kpis rs-kpis">
+            <div class="kbd-kpi"><b class="kpi-n" data-n="${o.completed}">0</b><span>已完成</span></div>
+            <div class="kbd-kpi"><b class="kpi-n" data-n="${o.cancelled}">0</b><span>已取消</span></div>
+            <div class="kbd-kpi"><b class="kpi-n" data-n="${o.recovered}">0</b><span>中断后恢复</span></div>
+            <div class="kbd-kpi"><b class="kpi-n" data-n="${o.takeover}">0</b><span>人工接管 takeover</span></div>
+          </div>
+          <div class="m-waiting">completion / cancel / recovery rate 与 human takeover rate 为规划口径，此处为演示样例，不代表真实测量。</div>
+        </div>
+      </div>
+    </div>
+    <div class="eval-foot">本页为 W4 规划原型演示 · durable task runtime 未实现 · 全部数据为演示样例</div>`;
+  countUpKpis();
+}
+
 /* ---------------- 弹窗与菜单 ---------------- */
 function closeMenu() { $("#menu").hidden = true; }
 function closeCite() { $("#citePop").hidden = true; }
@@ -2338,6 +2493,7 @@ document.addEventListener("click", e => {
     case "open-mcp": show("mcp"); break;
     case "open-obs": show("obs"); break;
     case "open-sources": show("sources"); break;
+    case "open-research": show("research"); break;
     case "obs-grafana": toast("Grafana 为演示占位 · 参考栈地址 http://127.0.0.1:3000（需先启动 deploy/observability）"); break;
     case "adv-menu": {
       const a = state.qaAdv;
@@ -2378,6 +2534,49 @@ document.addEventListener("click", e => {
     case "eval-run": toast("评测运行为演示占位 · 不发起真实评测调用"); break;
     case "src-filter": state.sourcesFilter = target.dataset.v; renderSources(); break;
     case "src-row": target.closest(".src-row").classList.toggle("open"); break;
+    case "rsq-provide": {
+      const t = RESEARCH_DATA.task;
+      const s = t.subqueries.find(x => x.status === "human-input");
+      if (!s) break;
+      s.status = "done";
+      s.note = "人工输入已并入 · claim 已挂 evidence";
+      t.budget.steps[0] = Math.min(t.budget.steps[0] + 1, t.budget.steps[1]);
+      t.report.evidenceLinked = Math.min(t.report.evidenceLinked + 1, t.report.claims);
+      toast("人工输入已并入 · 子查询恢复执行（演示）");
+      renderResearch();
+      break;
+    }
+    case "rsq-skip": {
+      const t = RESEARCH_DATA.task;
+      const s = t.subqueries.find(x => x.status === "human-input");
+      if (!s) break;
+      s.status = "skipped";
+      s.note = "已跳过 · 不确定性记入 report";
+      t.report.uncertainties = (t.report.uncertainties || 0) + 1;
+      toast("已跳过：不确定性将记入任务报告（演示）");
+      renderResearch();
+      break;
+    }
+    case "rt-cancel": {
+      const t = RESEARCH_DATA.task;
+      if (t.state !== "RUNNING") break;
+      t.state = "CANCELLED";
+      t.terminal = { state: "CANCELLED", detail: "可从最近 checkpoint 恢复 · 中间产物与预算记录保留（演示）" };
+      toast("任务已取消（演示）· 可从 checkpoint 恢复");
+      renderResearch();
+      break;
+    }
+    case "rt-resume": {
+      const t = RESEARCH_DATA.task;
+      if (t.state !== "CANCELLED") break;
+      t.state = "RUNNING";
+      t.terminal = null;
+      t.checkpoints += 1;
+      t.lastCheckpoint = "恢复点 · 刚刚";
+      toast("已从最近 checkpoint 恢复 · 预算延续（演示）");
+      renderResearch();
+      break;
+    }
     case "nav-ph": toast(`「${target.dataset.ph}」为演示占位`); break;
     case "open-conv": {
       closeMenu();

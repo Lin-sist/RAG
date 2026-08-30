@@ -1004,7 +1004,7 @@ html[data-theme="light"] .badge.tiny.fail i { background: #d64545; }
 /* ==========================================================================
    知识源联邦视图（蓝图 W3 · 规划原型）
    ========================================================================== */
-.view-sources { overflow-y: auto; }
+.view-sources, .view-research { overflow-y: auto; }
 
 .src-list .src-row { border-top: 1px solid var(--border); }
 .src-list .src-row:first-child { border-top: none; }
@@ -1029,6 +1029,65 @@ html[data-theme="light"] .badge.tiny.fail i { background: #d64545; }
 .src-line2 { margin: 7px 48px 0; font-size: 12px; color: var(--text-3); line-height: 1.6; }
 .src-detail { display: none; margin: 10px 48px 2px; padding-top: 6px; border-top: 1px dashed var(--border); }
 .src-row.open .src-detail { display: block; }
+
+/* ==========================================================================
+   研究任务视图（蓝图 W4 · 规划原型）
+   ========================================================================== */
+.rs-task-title { font-size: 15.5px; font-weight: 600; padding: 2px 0 4px; }
+.rs-plan-history { font-size: 12px; color: var(--text-3); padding-bottom: 10px; }
+.rs-plan-list .rsq { border-top: 1px solid var(--border); }
+.rs-plan-list .rsq:first-child { border-top: none; }
+.rsq { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; }
+.rsq-dot { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border-2); position: relative; margin-top: 2px; }
+.rsq-dot.done { border-color: #34c77b; background: rgba(52, 199, 123, .16); }
+.rsq-dot.done::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 9px; font-weight: 700; line-height: 1; color: #34c77b; }
+html[data-theme="light"] .rsq-dot.done { border-color: #0c8a5f; }
+html[data-theme="light"] .rsq-dot.done::after { color: #0c8a5f; }
+.rsq-dot.running { border-color: var(--blue); animation: pspulse 1s ease-in-out infinite; }
+.rsq-dot.human { border-color: #e8a33d; background: rgba(232, 163, 61, .14); }
+.rsq-dot.human::after { content: "?"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 9.5px; font-weight: 700; line-height: 1; color: #e8a33d; }
+html[data-theme="light"] .rsq-dot.human { border-color: #d68a1a; }
+html[data-theme="light"] .rsq-dot.human::after { color: #d68a1a; }
+.rsq-dot.skipped::after { content: "–"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 10px; font-weight: 700; line-height: 1; color: var(--text-3); }
+.rsq-main { flex: 1 1 auto; min-width: 0; }
+.rsq-text { font-size: 13.5px; }
+.rsq.skipped .rsq-text { color: var(--text-3); text-decoration: line-through; }
+.rsq-sub { display: flex; align-items: center; gap: 9px; margin-top: 3px; font-size: 11.5px; color: var(--text-3); }
+.rsq-id { font-family: var(--mono); }
+.rsq .badge { flex: none; margin-top: 1px; }
+.badge.tiny.rs-live i { background: var(--blue); }
+
+.rs-human {
+  margin: 8px 0 2px 26px;
+  border: 1px solid rgba(232, 163, 61, .32);
+  border-left-width: 3px;
+  border-radius: 12px;
+  background: rgba(232, 163, 61, .06);
+  padding: 11px 13px;
+}
+html[data-theme="light"] .rs-human { border-color: rgba(214, 138, 26, .4); background: rgba(214, 138, 26, .05); }
+.rs-human-head { display: flex; align-items: center; gap: 9px; }
+.rs-human-sub { font-size: 11px; color: var(--text-3); }
+.rs-human-q { margin-top: 8px; font-size: 13px; line-height: 1.6; }
+.rs-human-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+.rs-sec-label { font-size: 11.5px; color: var(--text-3); letter-spacing: .3px; padding: 13px 0 5px; }
+.rs-budget { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.rs-bcell { background: var(--chip-bg); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; }
+.rs-bcell b { font-size: 14.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rs-btotal { font-style: normal; font-size: 12px; color: var(--text-3); font-weight: 400; }
+.rs-bcell > span { display: block; font-size: 11px; color: var(--text-3); margin: 2px 0 7px; }
+.rs-bbar { height: 4px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+.rs-bbar i { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
+.rs-ckpt { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-2); padding: 2px 0; }
+.rs-ckpt .icon-slot { color: var(--text-3); flex: none; }
+.rs-actions { display: flex; align-items: center; gap: 10px; padding: 9px 0 2px; flex-wrap: wrap; }
+.rs-act-note { font-size: 11.5px; color: var(--text-3); }
+.rs-strip { margin: 4px 0 6px; }
+.rs-strip .terminal-strip { margin-top: 0; }
+.rs-artifact { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-2); }
+.rs-artifact .icon-slot { color: var(--text-3); flex: none; }
+.rs-kpis { grid-template-columns: 1fr 1fr; margin-bottom: 6px; }
 
 /* ==========================================================================
    上传任务面板
@@ -1367,4 +1426,5 @@ html[data-theme="light"] .fb-star.on { color: #d68a1a; }
   .suggest-line { grid-template-columns: 1fr; }
   .fb-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .src-badges { max-width: 100%; }
+  .rs-budget { grid-template-columns: repeat(2, 1fr); }
 }
