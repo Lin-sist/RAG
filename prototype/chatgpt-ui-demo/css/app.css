@@ -646,6 +646,46 @@ html[data-theme="light"] .cmp-mismatch .icon-slot { color: #d68a1a; }
 .cmp-claim.is-conflict { color: var(--text); }
 html[data-theme="light"] .cmp-claim.is-conflict .cmp-src-badge { color: #d64545; }
 
+/* high-risk 人工审批卡（蓝图 7.5 / W5 · 原型） */
+.approval-card {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 16px;
+  background: var(--surface);
+  padding: 13px 16px;
+}
+.approval-card.ap-warn { border-left-color: #e8a33d; }
+.approval-card.ap-ok { border-left-color: #34c77b; }
+.approval-card.ap-bad { border-left-color: #ff7a7a; }
+html[data-theme="light"] .approval-card.ap-warn { border-left-color: #d68a1a; }
+html[data-theme="light"] .approval-card.ap-ok { border-left-color: #0c8a5f; }
+html[data-theme="light"] .approval-card.ap-bad { border-left-color: #d64545; }
+.ap-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 11px; }
+.ap-state { font-size: 12px; font-weight: 600; letter-spacing: .4px; color: var(--text-2); }
+.ap-ok .ap-state { color: #34c77b; }
+.ap-bad .ap-state { color: #ff7a7a; }
+.ap-warn .ap-state { color: #e8a33d; }
+html[data-theme="light"] .ap-ok .ap-state { color: #0c8a5f; }
+html[data-theme="light"] .ap-bad .ap-state { color: #d64545; }
+html[data-theme="light"] .ap-warn .ap-state { color: #d68a1a; }
+.ap-preview { border: 1px solid var(--border-2); border-radius: 12px; padding: 10px 12px; }
+.ap-preview-title { font-size: 11px; color: var(--text-3); letter-spacing: .3px; margin-bottom: 5px; }
+.ap-preview-body { font-size: 13.5px; color: var(--text); }
+.ap-scale { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.ap-risks { margin-top: 9px; display: flex; flex-direction: column; gap: 5px; }
+.ap-risk { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; color: var(--text-3); line-height: 1.5; }
+.ap-risk .icon-slot { color: #e8a33d; flex: none; margin-top: 1px; }
+html[data-theme="light"] .ap-risk .icon-slot { color: #d68a1a; }
+.ap-audit { font-size: 11px; color: var(--text-3); margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--border); }
+.ap-actions { display: flex; gap: 8px; margin-top: 11px; }
+.ap-approve { border-color: rgba(52, 199, 123, .4); }
+.ap-approve:hover { background: rgba(52, 199, 123, .1); }
+.ap-reject { border-color: rgba(255, 122, 122, .4); color: #ff7a7a; }
+.ap-reject:hover { background: rgba(255, 122, 122, .1); }
+html[data-theme="light"] .ap-reject { color: #d64545; }
+.ap-result { font-size: 12.5px; color: var(--text-2); margin-top: 10px; line-height: 1.55; }
+
 /* 回到底部 */
 .scroll-bottom {
   position: absolute; left: 50%; transform: translateX(-50%);

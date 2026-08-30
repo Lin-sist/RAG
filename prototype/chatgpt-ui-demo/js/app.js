@@ -391,6 +391,7 @@ function mkVariants(question, n) {
 /* fact-intent-v1 演示判定：仅明确单事实/定义查询进入 closed-world fact 路由 */
 function classifyIntent(question) {
   const q = question.trim();
+  if (/删除|写入|保存到|更新.{0,8}(知识库|库)|保存到知识库/.test(q)) return "highrisk";
   if (/对比.{1,30}(和|与|vs)|比较.{1,30}(和|与|vs)|(和|与|vs)[^？?]{0,24}(区别|差异)/i.test(q)) return "compare";
   return /什么是|是什么[？?！!。]*$|的定义/.test(q) ? "fact" : "normal";
 }
@@ -445,6 +446,46 @@ function terminalStripHtml(t) {
     </div>`;
 }
 
+/* high-risk 人工审批卡（蓝图 7.5 / W5 写操作 · 原型演示） */
+function approvalHtml(a) {
+  if (!a) return "";
+  const stMap = {
+    PENDING_APPROVAL: { cls: "warn", label: "PENDING_APPROVAL" },
+    APPROVED: { cls: "ok", label: "APPROVED" },
+    REJECTED: { cls: "bad", label: "REJECTED" },
+    EXPIRED: { cls: "muted", label: "EXPIRED" },
+    CANCELLED: { cls: "muted", label: "CANCELLED" },
+  };
+  const st = stMap[a.status] || stMap.PENDING_APPROVAL;
+  const pending = a.status === "PENDING_APPROVAL";
+  return `
+    <div class="approval-card ap-${st.cls}">
+      <div class="ap-head">
+        <span class="badge tiny proc">HIGH-RISK · 写操作</span>
+        <span class="ap-state mono">${st.label}</span>
+      </div>
+      <div class="ap-preview">
+        <div class="ap-preview-title">将执行（dry-run 预览）</div>
+        <div class="ap-preview-body">${esc(a.action)}</div>
+        <div class="ap-scale">${esc(a.scale)}</div>
+      </div>
+      <div class="ap-risks">
+        ${a.risks.map(r => `<div class="ap-risk">${icon("shield", 12)}<span>${esc(r)}</span></div>`).join("")}
+      </div>
+      <div class="ap-audit mono">${esc(a.audit)}</div>
+      ${pending
+        ? `<div class="ap-actions">
+            <button class="chip sm ap-approve" data-act="appr-approve">${icon("check", 13)}<span>批准执行</span></button>
+            <button class="chip sm ap-reject" data-act="appr-reject">${icon("x", 13)}<span>明确拒绝</span></button>
+          </div>`
+        : `<div class="ap-result">${a.status === "APPROVED"
+            ? "已批准：索引任务已创建（演示），执行前后状态与结果将记录审计证据"
+            : a.status === "REJECTED"
+              ? "操作已明确拒绝：未发生任何写入，审计证据已记录"
+              : "当前状态：" + a.status}</div>`}
+    </div>`;
+}
+
 /* compare-v1 来源归属对比卡（W2 规划策略 · 原型演示） */
 function compareHtml(c) {
   if (!c) return "";
@@ -484,6 +525,15 @@ function mkPipe(question, chunks, reason, adv) {
   const msRoute = a.router ? jitter(0.02) : 0;
   if (a.router) {
     const kind = classifyIntent(question);
+    if (kind === "highrisk") {
+      /* 蓝图 7.5：high-risk 在 retrieval/provider 前停止，等待人工确认（原型） */
+      return {
+        variants: [], topK: p.topK, rerank: p.rerank,
+        steps: [{ key: "route", name: "查询路由", ms: msRoute, tone: "warn",
+          detail: "fact-intent-v1 → high-risk 前置停止 · 需人工确认（原型演示）" }],
+        total: msRoute, topScore: 0, avgScore: 0, tokens: 0, finalN: 0, highrisk: true,
+      };
+    }
     steps.push({
       key: "route", name: "查询路由", ms: msRoute,
       detail: kind === "fact"
@@ -926,6 +976,14 @@ function retrievalHtml(r, conv, openable = true) {
       <div class="retrieval-body">${pipeHtml(r)}</div>
     </div>`;
   }
+  if (pipe && pipe.highrisk) {
+    return `<div class="retrieval">
+      <button class="retrieval-toggle" ${openable ? 'data-act="retrieval-toggle"' : ""}>
+        ${icon("shield", 15)}<span class="rt-warn">high-risk 前置停止 · 未发生检索与模型调用</span><span class="icon-slot chev">${icon("chevR", 14)}</span>
+      </button>
+      <div class="retrieval-body">${pipeHtml(r)}<div class="pipe-blocked-note">高风险请求在检索与 provider 调用之前停止：不读取知识库、不调用模型，等待人工批准或明确拒绝（蓝图 7.5 · 原型演示）。</div></div>
+    </div>`;
+  }
   const label = `已检索 「${esc(r.kb)}」· ${r.chunks.length} 个片段 · ${r.ms} 秒`;
   const rows = r.chunks.map((c, i) => `
     <div class="rc-row">${icon("file", 14)}
@@ -949,6 +1007,7 @@ function turnHtml(t, conv, idx) {
     ${retrievalHtml(t.retrieval, conv)}
     <div class="md">${mdRender(t.answer, conv)}</div>
     ${compareHtml(t.compare)}
+    ${approvalHtml(t.approval)}
     <div class="msg-actions">
       <button class="ma-btn" data-act="msg-copy" data-tip="复制" data-turn="${idx}">${icon("copy", 16)}</button>
       <button class="ma-btn" data-act="msg-like" data-tip="好评" data-turn="${idx}">${icon("thumbU", 16)}</button>
@@ -1137,6 +1196,22 @@ function startAsk(question) {
     turn.terminal = { state: "UNSUPPORTED", detail: "RAG_SCOPE_FILTER_RESERVED · 请求未进入检索与生成" };
   }
   if (qa.terminal) turn.terminal = qa.terminal;
+  /* high-risk 写操作（原型）：路由开启时前置停止，进入人工审批流 */
+  if (!turn.retrieval.pipe.blocked && state.qaAdv.router && classifyIntent(question) === "highrisk") {
+    const kbName = turn.retrieval.kb || "Test";
+    turn.retrieval.chunks = [];
+    turn.cites = [];
+    turn.answer = `该请求被识别为**高风险写操作**，已在检索与模型调用之前停止。\n\n请人工确认下方预览的写入内容。批准后才会创建索引任务；拒绝将记录审计证据且不做任何变更。`;
+    turn.terminal = null;
+    turn.approval = {
+      status: "PENDING_APPROVAL",
+      action: `向知识库「${kbName}」写入 1 篇文档 daily-summary-0829.md`,
+      scale: "约 2 chunks · 来源：本次会话总结（dry-run 预览）",
+      risks: ["写入后需手动删除才能移除，非自动过期", "idempotency key: idem_" + Math.random().toString(16).slice(2, 8) + " 已生成", "15 分钟未处理将转为 EXPIRED"],
+      audit: `actor admin · tenant legacy · ${nowStr()}`,
+      kb: kbName,
+    };
+  }
   /* compare-v1 路由命中（W2 规划策略 · 原型演示）：仅在查询路由开启时生效 */
   if (!turn.retrieval.pipe.blocked && state.qaAdv.router && classifyIntent(question) === "compare") {
     const c = COMPARE_DEMO;
@@ -1229,7 +1304,7 @@ function finishStream(conv, turn, wrap, md, stopped) {
   if (turn.compare && !stopped) md.insertAdjacentHTML("afterend", compareHtml(turn.compare));
   if (stopped) {
     turn.terminal = { state: "CANCELLED", detail: "partial output 未保存为成功历史" };
-  } else if (!turn.terminal) {
+  } else if (!turn.terminal && !turn.approval) {
     turn.terminal = { state: "ANSWER", detail: `evidence-backed · ${(turn.cites || []).length} 引用 · ${turn.retrieval.ms}s` };
   }
   const acts = document.createElement("div");
@@ -1242,6 +1317,8 @@ function finishStream(conv, turn, wrap, md, stopped) {
     <button class="ma-btn" data-act="msg-regen" data-tip="重新生成" data-turn="${idx}">${icon("refresh", 16)}</button>
     <button class="ma-btn" data-act="msg-share" data-tip="分享" data-turn="${idx}">${icon("share", 16)}</button>`;
   wrap.appendChild(acts);
+  if (turn.compare && !stopped) md.insertAdjacentHTML("afterend", compareHtml(turn.compare));
+  if (turn.approval && !stopped) md.insertAdjacentHTML("afterend", approvalHtml(turn.approval));
   const strip = document.createElement("div");
   strip.innerHTML = terminalStripHtml(turn.terminal);
   if (strip.firstElementChild) wrap.appendChild(strip.firstElementChild);
@@ -2362,6 +2439,29 @@ document.addEventListener("click", e => {
       const conv = CONVS.find(c => c.id === state.convId);
       const t = conv && conv.turns[+target.dataset.turn];
       if (t) copyText(t.answer || t.text);
+      break;
+    }
+    case "appr-approve": case "appr-reject": {
+      const aConv = CONVS.find(c => c.id === state.convId);
+      /* 流式路径的 .turn 无 data-turn，按 PENDING 状态定位，不依赖 DOM index */
+      const aTurn = aConv && aConv.turns.find(t => t.approval && t.approval.status === "PENDING_APPROVAL");
+      if (!aTurn || !aTurn.approval) break;
+      if (act === "appr-approve") {
+        aTurn.approval.status = "APPROVED";
+        aTurn.terminal = { state: "ANSWER", detail: `写操作已批准执行 · idempotency key 已登记（演示）` };
+        toast("已批准：索引任务创建（演示）");
+      } else {
+        aTurn.approval.status = "REJECTED";
+        aTurn.terminal = { state: "CANCELLED", detail: "REJECTED · 操作未发生，审计证据已记录" };
+        toast("已明确拒绝：审计证据已记录（演示）");
+      }
+      /* 先插终态条再替换卡片：outerHTML 替换会摘除旧子树，之后 target 将脱离文档 */
+      const apTurnEl = target.closest(".turn");
+      const oldStrip = apTurnEl.querySelector(".terminal-strip");
+      if (oldStrip) oldStrip.outerHTML = terminalStripHtml(aTurn.terminal);
+      else apTurnEl.insertAdjacentHTML("beforeend", terminalStripHtml(aTurn.terminal));
+      const cardEl = apTurnEl.querySelector(".approval-card");
+      if (cardEl) cardEl.outerHTML = approvalHtml(aTurn.approval);
       break;
     }
     case "msg-like": case "msg-dislike": {
