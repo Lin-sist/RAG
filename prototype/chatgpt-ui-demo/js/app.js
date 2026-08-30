@@ -1431,7 +1431,6 @@ function finishStream(conv, turn, wrap, md, stopped) {
     <button class="ma-btn" data-act="msg-regen" data-tip="重新生成" data-turn="${idx}">${icon("refresh", 16)}</button>
     <button class="ma-btn" data-act="msg-share" data-tip="分享" data-turn="${idx}">${icon("share", 16)}</button>`;
   wrap.appendChild(acts);
-  if (turn.compare && !stopped) md.insertAdjacentHTML("afterend", compareHtml(turn.compare));
   if (turn.approval && !stopped) md.insertAdjacentHTML("afterend", approvalHtml(turn.approval));
   const strip = document.createElement("div");
   strip.innerHTML = terminalStripHtml(turn.terminal);
