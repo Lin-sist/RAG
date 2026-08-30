@@ -739,6 +739,79 @@ const OBS_DATA = {
   ],
 };
 
+/* ---------------- 知识源联邦页 mock（蓝图 W3 权限感知知识源联邦 · 规划原型） ----------------
+   Registry 统一描述但不抹平来源差异；每类来源独立携带 identity / permission /
+   freshness / sensitivity / provenance / failure / cost / cache；tenant、
+   collection、filter、provider、model、timeout、budget 由服务端 policy 推导，
+   客户端不可覆盖。前两类对齐当前代码事实（索引链路与 C15 MCP 配置），其余为
+   W3 规划口径（计划窗口 2027 H1，未实现）。 */
+const SOURCES_DATA = {
+  registryVer: "versioned registry · v0 · 计划窗口 2027 H1",
+  policyNote: "tenant / collection / filter / provider / model / timeout / budget 由服务端 policy 推导，客户端不可覆盖",
+  sources: [
+    { type: "indexed-documents", icon: "doc", name: "已索引文档", status: "live",
+      identity: "Milvus kb_* · dim 2048 + BM25 混合",
+      permission: "tenant legacy · 服务端持有",
+      freshness: "由文档时间戳决定",
+      sensitivity: "私有 · 按库授权",
+      provenance: "chunk → 文档 → 知识库 lineage 可回溯",
+      failure: "dense 不可用时降级仅 BM25 继续（MILVUS_DEGRADED）",
+      cost: "本地向量检索 · 无外部 provider 调用",
+      cache: "qa 响应缓存（默认开启）" },
+    { type: "mcp-resource-tool", icon: "plug", name: "MCP Resource / Tool", status: "off",
+      identity: "rag://knowledge-bases/… 3 模板 · 4 只读工具",
+      permission: "授权范围 · local-only",
+      freshness: "资源读取即时反映知识库状态",
+      sensitivity: "私有 · 与 KB 授权一致",
+      provenance: "URI 回溯 kb / document / chunk",
+      failure: "read 5s · search 30s · ask 120s 有界超时",
+      cost: "只读 · 分页 50/页 · 单结果 128 KB",
+      cache: "rag.mcp.cache-enabled=false" },
+    { type: "sql-business-api", icon: "db", name: "SQL / 业务 API", status: "planned",
+      identity: "versioned schema 绑定（规划）",
+      permission: "行级 · 服务端 policy",
+      freshness: "查询时点数据",
+      sensitivity: "待分级 · 按列/行声明",
+      provenance: "调用记录可回溯（规划）",
+      failure: "超时与预算 fail closed（规划）",
+      cost: "查询预算 · 有界超时（规划）",
+      cache: "按 policy 决定（规划）" },
+    { type: "web", icon: "link", name: "Web / 时效敏感来源", status: "planned",
+      identity: "来源白名单 + 抓取快照（规划）",
+      permission: "公开 · 需可信度评估",
+      freshness: "抓取时间 + TTL",
+      sensitivity: "公开 · 引用标注时点",
+      provenance: "URL + 抓取时间快照（规划）",
+      failure: "抓取失败不阻塞已索引来源（规划）",
+      cost: "抓取配额与频控（规划）",
+      cache: "快照缓存 + TTL（规划）" },
+    { type: "graph", icon: "apps", name: "Graph（GraphRAG）", status: "planned",
+      identity: "实体关系图索引（规划）",
+      permission: "继承底层文档授权",
+      freshness: "随底层文档重建",
+      sensitivity: "不新增敏感面",
+      provenance: "结论回指实体与来源 chunk（规划）",
+      failure: "图构建失败降级普通检索（规划）",
+      cost: "构建与遍历预算（规划）",
+      cache: "图快照版本化（规划）" },
+    { type: "multimodal", icon: "grid", name: "多模态 artifact", status: "planned",
+      identity: "表格 / 图片 OCR / 页面坐标",
+      permission: "继承所属文档授权",
+      freshness: "随文档版本",
+      sensitivity: "与所属文档一致",
+      provenance: "页面坐标 + OCR 片段可引用（规划）",
+      failure: "解析失败标记文档状态（规划）",
+      cost: "OCR / 解析为一次性索引成本",
+      cache: "随向量索引" },
+  ],
+};
+
+const SRC_STATUS = {
+  live: { badge: "", label: "已接入" },
+  off: { badge: "dim-off", label: "已接入 · 默认关闭" },
+  planned: { badge: "proc", label: "W3 规划 · 未接入" },
+};
+
 /* ---------------- 上传任务面板 mock（口径对齐 TaskController / TaskState） ----------------
    TaskState: PENDING/RUNNING/COMPLETED/CANCELLED/FAILED；进度消息对齐
    DocumentIndexingServiceImpl 的真实回调序列（10/30/50/70/85/100）。 */
@@ -758,13 +831,14 @@ const NEW_FILE_POOL = [
 
 /* ---------------- 全局状态 ---------------- */
 const state = {
-  view: "home",            // home | chat | kb | kb-detail | eval
+  view: "home",            // home | chat | kb | kb-detail | eval | mcp | obs | sources
   mode: "chat",            // 聊天 | 工作
   convId: null,
   kbScope: null,           // 输入框选择的知识库范围
   kbCurrent: null,         // 详情页正在查看的知识库
   kbDocQuery: "",          // 详情页文档搜索词
   evalMode: "current",     // 评测看板：current（真实态）| passing（通过态）
+  sourcesFilter: "all",    // 知识源页筛选：all | live | planned
   kbTask: null,            // 上传任务面板当前任务（后台推进）
   qaAdv: { router: false, cache: true, minScore: 0, adversarial: false, milvusDegraded: false }, // 对齐生产默认
   streaming: false,
@@ -787,6 +861,8 @@ function renderSidebar() {
   $("#navMcp").classList.toggle("active", state.view === "mcp");
   $("#navObs").innerHTML = `${icon("pulse")}<span>可观测</span>`;
   $("#navObs").classList.toggle("active", state.view === "obs");
+  $("#navSources").innerHTML = `${icon("db")}<span>知识源</span>`;
+  $("#navSources").classList.toggle("active", state.view === "sources");
   const phs = [["dots", "更多"]];
   $$(".nav-item[data-ph]").forEach((el, i) => {
     el.innerHTML = `${icon(phs[i][0])}<span>${phs[i][1]}</span>`;
@@ -839,6 +915,7 @@ function show(view) {
   $("#viewEval").hidden = view !== "eval";
   $("#viewMcp").hidden = view !== "mcp";
   $("#viewObs").hidden = view !== "obs";
+  $("#viewSources").hidden = view !== "sources";
 
   const composer = $("#composerBox").closest(".composer");
   if (view === "home") $("#composerHomeSlot").appendChild(composer);
@@ -852,6 +929,7 @@ function show(view) {
   if (view === "eval") renderEval();
   if (view === "mcp") renderMcp();
   if (view === "obs") renderObs();
+  if (view === "sources") renderSources();
   if (view === "chat") requestAnimationFrame(() => { $("#msgScroll").scrollTop = $("#msgScroll").scrollHeight; });
 }
 
@@ -2024,6 +2102,85 @@ function renderObs() {
     <div class="eval-foot">本页为配置契约演示 · 对齐 application.yml observability.* 与 deploy/observability 参考栈</div>`;
 }
 
+/* ---------------- 知识源联邦视图（蓝图 W3 规划原型） ---------------- */
+function srcRowHtml(s) {
+  const st = SRC_STATUS[s.status] || SRC_STATUS.planned;
+  return `
+    <div class="src-row" data-act="src-row">
+      <div class="src-line1">
+        <span class="src-icon">${icon(s.icon, 18)}</span>
+        <div class="src-namecol">
+          <div class="src-name">${esc(s.name)}</div>
+          <div class="src-identity">${esc(s.identity)}</div>
+        </div>
+        <div class="src-badges">
+          <span class="badge tiny flat">${esc(s.permission)}</span>
+          <span class="badge tiny flat">${esc(s.freshness)}</span>
+          <span class="badge tiny flat">${esc(s.sensitivity)}</span>
+          <span class="badge tiny ${st.badge}"><i></i>${esc(st.label)}</span>
+        </div>
+        <span class="icon-slot src-chev">${icon("chevR", 14)}</span>
+      </div>
+      <div class="src-line2">失败 ${esc(s.failure)}<span class="dot-sep">·</span>成本 ${esc(s.cost)}<span class="dot-sep">·</span>缓存 ${esc(s.cache)}</div>
+      <div class="src-detail">
+        <div class="meta-row"><span class="meta-lab">provenance</span><span class="meta-val">${esc(s.provenance)}</span></div>
+        <div class="meta-row"><span class="meta-lab">failure</span><span class="meta-val">${esc(s.failure)}</span></div>
+        <div class="meta-row"><span class="meta-lab">cost</span><span class="meta-val">${esc(s.cost)}</span></div>
+        <div class="meta-row"><span class="meta-lab">cache</span><span class="meta-val">${esc(s.cache)}</span></div>
+        <div class="meta-row"><span class="meta-lab">policy</span><span class="meta-val">服务端推导 · 客户端不可覆盖</span></div>
+      </div>
+    </div>`;
+}
+
+function renderSources() {
+  const f = state.sourcesFilter;
+  const all = SOURCES_DATA.sources;
+  const list = all.filter(s => f === "all" || (f === "live" ? s.status !== "planned" : s.status === "planned"));
+  const liveN = all.filter(s => s.status !== "planned").length;
+  $("#sourcesInner").innerHTML = `
+    <div class="eval-head eval-rise">
+      <div class="eval-head-meta">
+        <h1 class="eval-title">知识源</h1>
+        <span class="eval-subline">Knowledge Source Registry · 统一描述但不抹平来源差异 · 蓝图 W3 · 演示数据</span>
+      </div>
+      <div class="eval-head-right">
+        <div class="eval-seg">
+          ${[["all", "全部"], ["live", "已接入"], ["planned", "规划中"]].map(([v, n]) =>
+            `<button class="eval-seg-btn ${f === v ? "on" : ""}" data-act="src-filter" data-v="${v}">${n}</button>`).join("")}
+        </div>
+        <span class="badge"><i></i>${all.length} 类来源 · ${liveN} 已接入</span>
+      </div>
+    </div>
+
+    <div class="eval-gate eval-rise d1 tone-off">
+      <span class="gate-dot"></span>
+      <div class="gate-meta">
+        <div class="gate-state"><b>KNOWLEDGE SOURCE REGISTRY</b><span>${esc(SOURCES_DATA.registryVer)}</span></div>
+        <div class="gate-reason">${esc(SOURCES_DATA.policyNote)}</div>
+        <div class="gate-note">每个来源独立携带 identity / permission / freshness / sensitivity / provenance / failure / cost / cache · "已接入"对齐当前代码事实，"规划"条目未实现</div>
+      </div>
+    </div>
+
+    <div class="kbd-card eval-rise d2" style="margin-bottom:14px">
+      <div class="kbd-card-head">
+        <span class="kbd-card-title">来源注册 <em>${list.length} / ${all.length} 类</em></span>
+        <span class="kbd-card-title em-note">点击行展开完整属性</span>
+      </div>
+      <div class="src-list">${list.map(srcRowHtml).join("")}</div>
+    </div>
+
+    <div class="kbd-card eval-rise d3">
+      <div class="kbd-card-head"><span class="kbd-card-title">能力边界</span></div>
+      <div class="eval-identity-body">
+        <div class="meta-row col"><span class="meta-lab">不抹平差异</span><span class="meta-val">Registry 统一编址与治理，但每类来源保留独立的 permission / freshness / sensitivity / cost / cache policy，不抽象成单一"文档"形态</span></div>
+        <div class="meta-row col"><span class="meta-lab">policy 边界</span><span class="meta-val">${esc(SOURCES_DATA.policyNote)}（与 C13 租户 data-plane 一致）</span></div>
+        <div class="meta-row col"><span class="meta-lab">多模态顺序</span><span class="meta-val">先可引用的表格、图片 / OCR、页面坐标证据，再评估音视频（W3 规划）</span></div>
+        <div class="meta-row col"><span class="meta-lab">Graph 定位</span><span class="meta-val">GraphRAG 仅作为 multi-hop / global 可选结构，不替代既有 hybrid baseline</span></div>
+      </div>
+    </div>
+    <div class="eval-foot">本页为 W3 规划原型演示 · Registry 契约未实现；规划条目不代表已接入能力</div>`;
+}
+
 /* ---------------- 弹窗与菜单 ---------------- */
 function closeMenu() { $("#menu").hidden = true; }
 function closeCite() { $("#citePop").hidden = true; }
@@ -2180,6 +2337,7 @@ document.addEventListener("click", e => {
     case "open-eval": show("eval"); break;
     case "open-mcp": show("mcp"); break;
     case "open-obs": show("obs"); break;
+    case "open-sources": show("sources"); break;
     case "obs-grafana": toast("Grafana 为演示占位 · 参考栈地址 http://127.0.0.1:3000（需先启动 deploy/observability）"); break;
     case "adv-menu": {
       const a = state.qaAdv;
@@ -2218,6 +2376,8 @@ document.addEventListener("click", e => {
       break;
     }
     case "eval-run": toast("评测运行为演示占位 · 不发起真实评测调用"); break;
+    case "src-filter": state.sourcesFilter = target.dataset.v; renderSources(); break;
+    case "src-row": target.closest(".src-row").classList.toggle("open"); break;
     case "nav-ph": toast(`「${target.dataset.ph}」为演示占位`); break;
     case "open-conv": {
       closeMenu();
