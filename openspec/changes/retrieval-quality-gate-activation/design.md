@@ -2,9 +2,9 @@
 
 ## 1. Design Objective
 
-在不改变 retrieval 算法、生产默认或指标公式的前提下，把 C10 的 DRAFT retrieval profile 补成可审计的 evidence-to-policy 闭环：
+在不改变 dataset 内容、chunking、retrieval/rerank 算法、业务 API 或指标公式的前提下，把 C10 的 DRAFT retrieval profile 补成可审计的 evidence-to-policy 闭环。2026-08-31 修订允许先在 C17 fixed evaluation runtime 内替换已废弃 embedding model，并用独立 model-bound collection 重建固定 50 chunks；它不授权本阶段实施，也不扩大到业务 KB 或生产默认 rollout。
 
-`固定执行契约 → 5-case canary → 150×3 raw evidence → strict compiler → 脱敏审阅包 → 用户批准阈值 → ACTIVE profile → locked median reference → 离线重放验证`
+`固定执行契约 → 新模型 synthetic smoke → 固定 50-chunk model-bound rebuild → 5-case canary → 150×3 raw evidence → strict compiler → 脱敏审阅包 → 用户批准阈值 → ACTIVE profile → locked median reference → 离线重放验证`
 
 本 change 的核心不是“跑出一组高分”，而是保证任何 ACTIVE 数值都能回答：数据是谁、运行身份是否一致、失败是否被保留、外调是否在预算内、阈值是谁批准的、reference 如何从三次 evidence 得出。
 
@@ -23,6 +23,8 @@
 - 三次 full details 尚无 strict compiler；手工读取 aggregate 会漏掉 sample/repeat/identity/error/fallback 完整性。
 - C10 evaluator 的 `--reference` 假定已有绑定 ACTIVE profile hash 的 summary，但没有从 DRAFT evidence 到 human-approved ACTIVE reference 的生成流程。
 - 当前 profile target 全为空，无法直接用 evaluator 计算 rule observed；需要复用同一 slice/metric 计算逻辑，而不是复制另一套公式。
+- 原 hosted `nvidia/llama-nemotron-embed-1b-v2` endpoint 已 Deprecated，迁移后的 5-case canary 为 5/5 HTTP 410；现有 50 vectors 虽为 2048 维，但不能与候选模型的新 embedding space 混用。
+- 当前 manifest/metadata 尚未把 embedding model contract 与 vector collection generation 绑定为 reference identity，也没有新模型 smoke、50 passage items 重建、审计与原子切换的独立预算/授权状态。
 
 ## 3. Proposed Architecture
 
@@ -50,16 +52,31 @@ runner 增加独立 C17 manifest 参数，不复用 C7 arm manifest。参数/man
 
 numeric KB id、vector collection 和绝对路径只用于本地 raw validation，不进入 tracked reference。严格 repeat 可通过安全 KB name/marker、document title/content hash/chunk count 与 fixture hash 建立身份。
 
+### 3.2A Embedding Model And Collection Generation Identity
+
+目标 contract 固定：
+
+- provider family=`NVIDIA hosted NIM / OpenAI-compatible embeddings`；model=`nvidia/nemotron-3-embed-1b`；
+- request：`/v1/embeddings`、`input_type=query|passage`、`modality=text`、`embedding_type=float`、`encoding_format=float`、`truncate=NONE`，省略 `dimensions`；官方 contract 禁止 `dimensions` 与 `embedding_type` 同时出现；
+- output：每 item 必须是有限的 2048-dimensional float vector；fallback/retry=0；
+- model-bound identity：model ID、sanitized endpoint host/path、adapter/request contract version、dimension、input type、truncate、embedding type、collection generation、chunk/vector ID set、Git/config hash。
+
+相同 dimension 只表示 schema shape 兼容，不表示向量可比较。旧 collection 保持只读历史 source；新 passage embeddings 只写新的 deterministic collection generation。query embedding 只能搜索与其 model-bound identity 完全匹配的 collection；不匹配时 retrieval fail closed。
+
+固定 rebuild 输入不是重新切块：复用已审计的 3 fixtures、50 deterministic chunks 与 vector IDs。新 collection 必须通过 expected=observed=50、missing/mismatch=0、强读回 ID set=50、dimension/model generation 匹配后，才允许原子切换 evaluation mapping。任何失败都保留旧 mapping/source，不清理未知状态 collection，不自动 retry。
+
 ### 3.3 Plan Preflight Canary And Full State Machine
 
 - `PLAN_VALID`：纯本地 manifest/dataset/command/budget 校验通过，calls=0。
 - `PREFLIGHT_READY`：本机 backend 登录、固定 KB/fixture/document readiness 通过，mutation/retrieval/provider calls=0。
+- `MODEL_SMOKE_CLEAN`：独立授权的 1 个 synthetic query item 验证 endpoint/auth/request/output contract；不含 fixture/业务文本。
+- `MODEL_REBUILD_READY`：独立授权的 50 passage items 已写入新 model-bound collection，50/50 audit/read-back 与原子 mapping switch 完成；旧 source 保留。
 - `CANARY_CLEAN`：固定 5 IDs 各 1 次；status/identity/provider/error/retry 全满足，仅证明环境可进入 full。
 - `REFERENCE_COMPLETE`：三个 run 各 150 observations，strict identity、完整性与 zero-error policy 全通过。
 - `PENDING_THRESHOLD_APPROVAL`：脱敏 pack 已生成，profile 仍 DRAFT。
 - `ACTIVE_REFERENCE_LOCKED`：用户批准数值，profile ACTIVE，median reference 绑定最终 profile hash，三个 source repeats 均离线通过。
 
-任何阶段失败都保留 safe status/reason 并停止；不得自动 retry、重建 KB、删 observation 或越级。
+任何阶段失败都保留 safe status/reason 并停止；不得自动 retry、隐式重建/清理 KB、删 observation 或越级。只有 `MODEL_REBUILD_READY` 对应的显式固定 50-chunk rebuild 可以在独立授权后执行。
 
 ### 3.4 Reference Compiler
 
@@ -98,24 +115,27 @@ median 只承担 reference central value；min/max/spread 继续留在 evidence 
 
 ### 4.1 Approved-later Call Shape
 
+- synthetic model smoke：1 query embedding item；
+- fixed KB rebuild：50 passage embedding items；HTTP batch request 上限必须在实现前由 code audit/plan-only 固定；
 - canary：5 debug retrieval + 最多 5 query embedding；
 - full：450 debug retrieval + 最多 450 query embedding；
-- 两阶段总上限：455 + 455；
+- reference query 阶段总上限：455 debug retrieval + 455 query embedding items；不含前置 smoke/rebuild；
 - external rerank、ask、generation、judge：0；
 - retry：0；任何 429/timeout/provider error 保留并停止。
 
 ### 4.2 Data Egress
 
-debug retrieval 的 query 可能通过 backend 发送到实际 embedding provider。canary 为 5 条 tracked question，full 为 150 条 tracked question ×3。因为复用已有 KB，本 change 不发送 fixture 文档做重新 embedding；heuristic rerank 不把 retrieved passages 发送给外部 reranker；未启用 ask/judge，不发送 contexts 给 LLM/judge。
+synthetic smoke 只发送非业务占位文本。固定 rebuild 会把 3 个 tracked fixtures 形成的 50 个既有 chunk texts 作为 passage items 发送到批准的新 embedding endpoint；不重新上传、切块或扩大到其他 KB。debug retrieval 的 query 可能通过 backend 发送到实际 embedding provider：canary 为 5 条 tracked question，full 为 150 条 tracked question ×3。heuristic rerank 不把 retrieved passages 发送给外部 reranker；未启用 ask/judge，不发送 contexts 给 LLM/judge。
 
 ### 4.3 Runtime Fingerprint Gate
 
 tracked default 不是 runtime proof。canary 前需记录不含 secret 的：
 
 - embedding adapter/provider、model、endpoint host/path；
-- dimension、timeout、fallback disabled/enabled；
+- request contract (`input_type`/`truncate`/`embedding_type`/dimensions)、dimension、timeout、fallback disabled/enabled；
+- collection generation、expected chunk/vector identity/count 与 active mapping；
 - backend Git HEAD、tracked config hashes；
-- 账户费用或零费用依据、速率/并发/配额；
+- Developer Program prototyping 的 NVIDIA API 直接费用=0 官方依据、账户 entitlement、速率/并发/配额；
 - retry=0 与 raw artifact handling。
 
 任何 runtime fingerprint 与批准内容不一致都需要重新授权。
@@ -153,10 +173,13 @@ tracked output 仅含 allowlisted identity/hash/count/status/rule aggregates，�
 2. **Strict compiler RED/GREEN**：450 pair completeness、repeat identity、provider attribution、error/retry、safe status。
 3. **Rule distribution RED/GREEN**：复用 C10 metric calculation，输出 run values/min/median/max/spread，DRAFT 不产生 PASS。
 4. **Safety/compatibility**：raw-vs-tracked boundary、no-overwrite、historical artifacts 不追认、existing C10 tests 回归。
-5. **Plan/preflight**：零外调验证；W0 未关闭或 KB 不 READY 时停止。
-6. **Canary/full evidence**：分别取得授权后执行，不自动重试。
-7. **Threshold review/activation**：用户批准数值后更新 profile、锁定 median reference、离线重放。
-8. **Acceptance/closeout**：全量 Python/static checks，用户验收后 baseline/archive/IDLE。
+5. **Model migration offline contract**：请求/响应、model-bound identity、new collection、audit/switch/fail-closed tests；calls=0。
+6. **Synthetic smoke**：独立授权 1 item，zero retry；失败不进入 rebuild。
+7. **Fixed KB rebuild**：独立授权 50 passage items，new collection audit/atomic switch/source retain；失败不进入 canary。
+8. **Plan/preflight**：零外调验证；W0 未关闭或新 model-bound KB 不 READY 时停止。
+9. **Canary/full evidence**：分别取得授权后执行，不自动重试。
+10. **Threshold review/activation**：用户批准数值后更新 profile、锁定 median reference、离线重放。
+11. **Acceptance/closeout**：全量 Python/static checks，用户验收后 baseline/archive/IDLE。
 
 ## 8. Verification Matrix
 
@@ -167,6 +190,9 @@ tracked output 仅含 allowlisted identity/hash/count/status/rule aggregates，�
 | full Python | `python -B -m unittest discover -s scripts -p 'test_*.py'` | 0 |
 | plan-only | v2/full/repeat/config/call shape | 0 |
 | preflight | local backend + existing KB readiness，无 mutation | 0 provider |
+| model contract | request fields、2048 output、model/collection mismatch fail closed | 0 |
+| synthetic smoke | 1 synthetic item、auth/protocol/output shape、zero retry | 1 embedding item |
+| fixed KB rebuild | 50 deterministic passage items、new collection 50/50 audit/read-back、atomic mapping、source retain | 50 embedding items；HTTP batch 上限需先锁定 |
 | canary | 5 fixed samples、heuristic attribution、zero retry/fallback/model rerank | 最多 5 embedding |
 | full reference | 150×3、全部 observations 与 identity | 最多 450 embedding |
 | activation replay | 三份 existing details + final profile/reference | 0 |
@@ -178,6 +204,8 @@ Java/POM/frontend/runtime/API 无改动时 Maven/frontend build 可记为 `SKIPP
 
 - plan/schema invalid：修复 planning/offline artifact，仍为 0 calls。
 - preflight not ready：停止；不自动建库或上传。
+- synthetic smoke failure：保留 safe error class，calls=1、retry=0；不创建 collection、不进入 rebuild。
+- fixed rebuild partial/failure：新 collection 不得成为 active mapping；保留旧 source/mapping 和已知状态，不自动补跑、清理或复用半成品。新尝试需要新 generation、重新披露和重新授权。
 - canary failure：保留 raw artifact 与安全分类，不进入 full、不自动 retry。
 - full partial/identity drift：reference status 不是 COMPLETE；不得删失败 run/sample 或补跑后拼接成功子集。若要重跑，废弃整个受影响 reference release，使用新 execution id 和重新授权的调用预算。
 - threshold 未批准：profile 保持 DRAFT；evidence pack 可审阅但不可被 evaluator 当 active reference。
@@ -255,3 +283,23 @@ Java/POM/frontend/runtime/API 无改动时 Maven/frontend build 可记为 `SKIPP
 - **面临的选择**：一次激活 retrieval/generation/judge；只激活 retrieval；同时切换默认 reranker/CI required gate。
 - **选了哪个 + 为什么**：选择 retrieval-only，不改生产默认或 CI。generation evidence、judge calibration 和 profile 分别属于 C18–C20，当前没有授权和完整证据。
 - **放弃的代价**：一次扩张会把未校准通道包装成成熟门禁；切默认会让 baseline 不可比较；窄切片的代价是后续仍需独立阶段。
+
+### 决策 15：废弃 endpoint 后选择哪个 embedding 方向
+- **面临的选择**：继续重试已 Deprecated hosted endpoint；自托管旧 `llama-nemotron-embed-1b-v2` NIM；迁移到当前 NVIDIA hosted `nvidia/nemotron-3-embed-1b`；选择已 Deprecated 的 300M hosted model。
+- **选了哪个 + 为什么**：选择 `nvidia/nemotron-3-embed-1b` 作为 C17 目标。NVIDIA 当前模型页提供 Free Endpoint，最新 NIM release/support matrix 明确支持该模型、OpenAI-compatible text embeddings、query/passage 与 native 2048 dimensions；Developer Program prototyping 的 hosted endpoint 直接费用为 0，但实际账户 entitlement、rate limit 与可用性仍需 smoke 证明。
+- **放弃的代价**：继续旧 endpoint 已被 410 和官方 Deprecated 事实否定；自托管旧模型增加 GPU/NIM 运维且仍背负旧生命周期；300M hosted endpoint同样 Deprecated；新模型的代价是必须重建固定 KB、重置 reference identity，且不能承诺 SLA。
+
+### 决策 16：相同 2048 维是否复用现有 vectors
+- **面临的选择**：直接用新 query 搜旧 2048-d vectors；在原 collection 增量覆盖；创建新 model-bound collection 后全量重建固定 50 chunks。
+- **选了哪个 + 为什么**：选择独立新 collection 全量重建。维度只约束 shape，不保证 embedding space、归一化和相似度分布兼容；隔离 generation 才能审计和原子切换。
+- **放弃的代价**：直接复用会产生无意义相似度；原地覆盖会形成新旧混合且无法回滚；新 collection 需要 50 passage embeddings 和额外存储，但保持 source 可恢复。
+
+### 决策 17：如何把 provider 可用性风险挡在 KB 重建之前
+- **面临的选择**：直接发起 50-item rebuild；复用旧 410 canary；先做 1-item synthetic smoke，再独立授权 rebuild。
+- **选了哪个 + 为什么**：选择 synthetic smoke → rebuild 两道授权。它用最小、不含业务数据的调用验证新 model ID、endpoint/auth/request/output，再决定是否让 50 个 tracked passage items 出站。
+- **放弃的代价**：直接 rebuild 可能在协议或账号错误时浪费预算并留下半成品；旧 canary验证的是废弃模型，不能证明新 endpoint；独立 smoke 多一次授权和最多 1 item 调用。
+
+### 决策 18：provider lifecycle 如何进入 reference identity
+- **面临的选择**：只记录 dimension；只记录 model ID；绑定 model、sanitized endpoint、request contract 和 collection generation，并在执行前复核官方 lifecycle/runtime fingerprint。
+- **选了哪个 + 为什么**：选择完整 model-bound identity。这样 hosted endpoint、模型、输入类型或 collection generation 漂移会在 reference 前 fail closed，而不是把 provider 迁移伪装成同一 baseline。
+- **放弃的代价**：只记 dimension 会允许跨空间误用；只记 model ID 会漏掉 endpoint/request contract 漂移；完整 identity 增加 metadata/compiler 字段和每次执行前核验成本。

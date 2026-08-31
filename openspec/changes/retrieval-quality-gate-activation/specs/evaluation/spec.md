@@ -4,9 +4,11 @@
 
 ### Requirement: Versioned Retrieval Reference Plan And External-call Boundary
 
-C17 SHALL define a tracked `c17-retrieval-reference-v1` execution contract that binds the target quality profile、`rag-eval-dev-v2` manifest identity、full 150-sample selection、three measured repeat indexes、retrieval-only run identity、expected heuristic rerank attribution、zero-error/retry policy、raw artifact policy and external-call upper bounds. Contract validation MUST complete before login、backend mutation or any retrieval/provider call.
+C17 SHALL define a tracked `c17-retrieval-reference-v1` execution contract that binds the target quality profile、`rag-eval-dev-v2` manifest identity、full 150-sample selection、three measured repeat indexes、retrieval-only run identity、embedding model/request/collection-generation identity、expected heuristic rerank attribution、zero-error/retry policy、raw artifact policy and external-call upper bounds. Contract validation MUST complete before login、backend mutation or any retrieval/provider call.
 
 Planning、offline implementation、compiler and plan-only validation SHALL make zero backend、embedding、rerank、ask、generation、judge or other provider calls and zero business-data egress. A fixed five-sample/one-repeat canary MAY make at most 5 debug retrieval and 5 query embedding calls; the formal reference MAY make exactly 150×3=450 debug retrieval and at most 450 query embedding calls. External rerank、ask、generation and judge calls SHALL remain 0, and automatic retry SHALL remain disabled. Canary and full execution MUST receive separate authorization after disclosing the sanitized runtime provider/model identity、tracked question egress、cost or zero-cost basis、rate limits/quotas、timeout and raw artifact handling.
+
+When the approved reference model endpoint is deprecated or unavailable, planning MAY select a replacement model but SHALL NOT inherit prior call or migration authorization. The 2026-08-31 amendment selects `nvidia/nemotron-3-embed-1b` as the replacement target. Before reference execution resumes, C17 MUST separately gate: one synthetic embedding item for endpoint/protocol smoke; exactly 50 passage embedding items for rebuilding the fixed three-fixture/50-chunk evaluation KB in a new model-bound collection; a new fixed five-case canary; and the 150×3 full reference. The HTTP batch-request upper bound for rebuild MUST be frozen by offline plan validation before rebuild authorization. Every stage SHALL use zero automatic retry, and failure SHALL stop all later stages.
 
 #### Scenario: Offline plan validates the full budget
 
@@ -22,16 +24,18 @@ Planning、offline implementation、compiler and plan-only validation SHALL make
 - THEN no full 150×3 execution starts without a new authorization
 - AND canary observations do not enter the formal reference aggregate
 
-#### Scenario: Existing evaluation KB is not ready
+#### Scenario: Evaluation KB does not match the approved embedding generation
 
-- GIVEN mutation-free preflight cannot find the matching ready KB、fixture documents or complete indexing state
+- GIVEN mutation-free preflight cannot find a ready KB whose model、request contract、collection generation、three fixtures and 50 deterministic vector IDs match the approved reference identity
 - WHEN C17 prepares canary or full evidence
-- THEN execution stops without creating/deleting a KB、uploading fixtures or triggering indexing embedding
-- AND any rebuild/mutation/call budget requires separate scope and authorization
+- THEN canary/full execution stops without implicitly creating、deleting、uploading、rebuilding or switching a KB
+- AND a synthetic smoke and fixed 50-passage rebuild require their own disclosed budgets and separate authorizations
 
 ### Requirement: Complete Fixed-identity Retrieval Reference Evidence
 
-C17 formal reference evidence SHALL contain all three expected repeats and exactly 150 ordered sample observations per repeat. Each repeat SHALL be `RETRIEVAL_ONLY` with a VALID versioned dataset、matching sample selection and matching dataset/fixture/document/KB、tracked config、Git HEAD、retrieval/metric contract and repeat identity. Every rerank-eligible observation MUST report requested/effective provider=`heuristic`、fallback count=0 and model rerank call count=0.
+C17 formal reference evidence SHALL contain all three expected repeats and exactly 150 ordered sample observations per repeat. Each repeat SHALL be `RETRIEVAL_ONLY` with a VALID versioned dataset、matching sample selection and matching dataset/fixture/document/KB、embedding model/request/collection generation、tracked config、Git HEAD、retrieval/metric contract and repeat identity. Every rerank-eligible observation MUST report requested/effective provider=`heuristic`、fallback count=0 and model rerank call count=0.
+
+Embedding vectors from different model IDs or collection generations MUST NOT be mixed or treated as comparable solely because their dimensions match. The approved replacement model SHALL use a new deterministic collection generation. It MAY become the evaluation mapping only after expected/observed/read-back vector count is exactly 50、the deterministic ID set is complete、missing/mismatch are zero and model-bound identity matches. Any partial or failed rebuild MUST preserve the previous source/mapping, MUST NOT clean an unknown-state collection automatically and MUST require a new generation and authorization before retry.
 
 Missing or unexpected run/sample observations、identity drift、retrieve/rate-limit errors、retry、fallback、model rerank call、non-finite required metric or incompatible Report/channel status MUST prevent a complete reference. The compiler MUST preserve expected and actual counts and safe reasons; it MUST NOT remove failed observations、shrink denominators、fill missing values with zero or calculate reference metrics from a successful subset.
 
@@ -53,7 +57,7 @@ Missing or unexpected run/sample observations、identity drift、retrieve/rate-l
 #### Scenario: Identity or provider attribution drifts
 
 - GIVEN three artifacts are submitted as one formal reference release
-- WHEN Git/config/fixture/KB/run/metric identity differs across reference repeats
+- WHEN Git/config/fixture/KB/embedding-model/request/collection-generation/run/metric identity differs across reference repeats
 - OR any eligible observation is not effective heuristic、has fallback or has a model rerank call
 - THEN reference status is `NOT_COMPARABLE`
 - AND no retrieval quality baseline is inferred from a clean subset
@@ -89,7 +93,7 @@ C17 tooling MUST NOT auto-learn、auto-write or auto-approve hard floors or regr
 
 Before C17 acceptance, each of the three source reference details SHALL be replayed locally against the final ACTIVE profile and locked reference. Every required rule MUST be evaluable and satisfy both its approved hard floor and reference tolerance; any `NOT_EVALUABLE`、`INVALID` or required-rule failure SHALL block acceptance rather than trigger automatic threshold weakening. Future candidate evidence MAY use a different Git HEAD, but it MUST match the locked profile、dataset、selection、run/metric and slice identity and preserve candidate Git provenance.
 
-C17 activation SHALL NOT modify dataset/fixture、retrieval、chunking、embedding、rerank、metric formulas、production QA、default provider、generation、citation、no-answer answer policy、judge or CI platform configuration. Its conclusion SHALL be limited to the approved retrieval-only development gate under the locked identity; it MUST NOT be described as generation/citation/judge quality、production SLA、production multi-tenancy or Agentic RAG readiness. After acceptance, any profile threshold、tolerance、rule or reference change MUST create a new version rather than silently editing the accepted profile/reference.
+C17 activation SHALL NOT modify dataset/fixture content、chunking、retrieval、rerank、metric formulas、production QA、generation、citation、no-answer answer policy、judge or CI platform configuration. The 2026-08-31 provider-recovery amendment MAY change only the C17 runtime embedding target and rebuild the fixed evaluation KB into a new model-bound collection after separate authorization; it SHALL NOT imply a production-wide provider rollout or migration of other KBs. Its conclusion SHALL be limited to the approved retrieval-only development gate under the locked model/collection identity; it MUST NOT be described as generation/citation/judge quality、production SLA、production multi-tenancy or Agentic RAG readiness. After acceptance, any embedding model/collection generation、profile threshold、tolerance、rule or reference change MUST create a new version rather than silently editing the accepted profile/reference.
 
 #### Scenario: Final active reference replays cleanly
 

@@ -51,7 +51,7 @@
 - [x] C7/C8/C9/C10 历史 artifacts 保持原样，不能按文件名或 aggregate 追认为 C17 reference。
 - [x] 当前 DRAFT profile 在阈值批准前继续得到 `NOT_EVALUABLE/4`；existing C10 evaluator/status/exit-code tests 保持兼容。
 - [x] 更新 `docs/eval/RAG_EVAL_GUIDE.md` 的 plan/preflight/canary/full/compiler/review/activation/no-overwrite 与 external-call boundary。
-- [x] 明确 C17 不修改 dataset、retrieval/rerank/embedding/metric 公式、production QA、默认 provider、generation/citation/no-answer answer quality、judge 或 CI 平台配置。
+- [x] 原批准边界明确 C17 不修改 dataset、retrieval/rerank/embedding/metric 公式、production QA、默认 provider、generation/citation/no-answer answer quality、judge 或 CI 平台配置；其中 embedding provider/固定 KB generation 边界已由 2026-08-31 section 7A 修订取代，其余边界继续有效。
 
 ## 6. Offline Verification Before Any Live Call
 
@@ -74,7 +74,26 @@
 - [x] 用户明确批准一次真实 zero-retry shadow migration：source 只读、创建 deterministic tenant-aware shadow、复制/审计 50 vectors、成功后原子切换 mapping/readiness；provider/embedding/rerank/LLM=0、数据不出站、不删除 source、不自动清理。
 - [x] 首次真实执行在 source audit 50/50 后失败并停止：legacy JSON 的等价浮点 `kbId` 被 `MilvusVectorStore` 字符串比较误判为 scope conflict；MySQL=`AUDIT_FAILED`、source mapping 保持 active、source=50、shadow=0，未重试或清理。
 - [x] TDD 修复既有 C13b contract bug：scope marker 使用精确数值等价，接受 `11.0 == 11` 且拒绝 IEEE-754 大整数舍入伪相等；Milvus/shadow 聚焦 tests 与最终全仓 Maven 均通过。
-- [ ] 在披露失败现场、修复证据、现存空 shadow 与 rollback 边界后，由用户重新明确授权一次 migration retry；首次授权不得自动复用。
+- [x] 在披露失败现场、修复证据、现存空 shadow 与 rollback 边界后，用户于 2026-08-31 重新明确授权一次 migration retry；该次 zero-retry 执行成功：`READY`、expected/observed/migrated=`50/50/50`、missing/mismatch=`0/0`，MySQL=`SHADOW_ACTIVE`，source 保留 50，tenant-scoped strong query 与 50 个预期 ID 读回均为 50。
+- [x] migration 后重新启动 backend 并执行 mutation-free preflight：status/vector=`READY/READY`、vector count=`50/50`、fixtures matched/missing/incomplete=`3/0/0`；仅有 localhost 登录/只读 KB 请求，retrieval/provider/embedding/rerank/ask/generation/judge calls=0。
+- [x] 用户独立授权一次 migration 后 fixed 5-case canary；执行前同一 HEAD/config 的 preflight 再次 `READY / 50/50 / fixtures 3/3`，输出使用新的 ignored no-overwrite 路径。
+- [x] 执行并按门禁停止：5/5 debug retrieval 均在 NVIDIA query embedding 得到 HTTP 410 Gone，实际 provider/query embedding calls=5、retrieveErrors=5、rateLimit/retry/fallback/model rerank=0；canary=`FAILED`，未形成质量 evidence、未启动 full。
+- [x] 只读核对 NVIDIA 官方模型页确认 `llama-nemotron-embed-1b-v2` hosted NIM endpoint 已 `Deprecated`；本地 TDD 证明 WebClient 保留 `/v1/embeddings`，因此未错误修改 URI。替代模型与旧向量不兼容，provider 切换/KB 重建超出 C17 原批准范围，等待独立决策与授权。
+
+## 7A. Deprecated Provider Recovery And New Embedding Generation
+
+- [x] 用户授权修订 C17 规划以迁移新 embedding model；本阶段仅允许 proposal/design/tasks/spec delta，provider/backend calls=0、business data outbound=0、KB mutation/rebuild=0，不修改代码、配置、secret、mapping 或 accepted baseline。
+- [x] 只读调研 NVIDIA 官方模型页、Embedding NIM release notes/support matrix/API/pricing contract；用户确认选择 `nvidia/nemotron-3-embed-1b`：当前 Build 页面为 Free Endpoint，NIM 支持 text query/passage、OpenAI-compatible embeddings、native float dimension=2048、validated max sequence length=4096；Developer Program prototyping 的 NVIDIA API 直接费用依据=0。此选择不构成账户 entitlement、无限调用、生产免费、稳定 SLA 或质量收益证明。
+- [x] 排除 `llama-nemotron-embed-1b-v2` 和 `llama-3.2-nemoretriever-300m-embed-v2` hosted endpoint，因为当前官方页面均为 `Deprecated`；自托管旧 model 不纳入 C17，避免增加 GPU/NIM 运维范围。
+- [x] 修订 model-bound identity 和迁移边界：相同 2048 dimensions 不等于同一 embedding space；旧 50-vector collection 只读保留，新模型使用独立 deterministic collection generation，禁止新 query 搜旧 vectors 或新旧 passage vectors 混写。
+- [x] 将未来执行拆为四个独立授权闸门：1 synthetic embedding item smoke；固定 3 fixtures / 50 passage items rebuild；rebuild READY 后的新 fixed 5-case canary；canary clean 后的 full 150×3。所有阶段 retry=0，授权互不继承。
+- [ ] 离线审计当前 provider adapter/indexing pipeline，冻结新模型 request fields、2048 finite-output validation、50 passage items 的 HTTP batch request 上限、new collection naming/generation、audit/read-back/atomic switch 和 fail-closed tests；该步 calls/mutation=0，需用户批准进入 implementation。
+- [ ] 用户单独授权 1-item synthetic endpoint smoke；披露 model、sanitized endpoint、payload、费用/配额/限流、timeout、proxy、retry=0，且不发送 fixture/业务文本。未授权前不得执行。
+- [ ] synthetic smoke clean 后，重新披露并取得固定 KB rebuild 授权：50 passage items、已冻结 HTTP batch 上限、3 个 tracked fixture chunks 出站、费用/配额、new collection、source retain、失败/rollback 语义；旧 migration/canary 授权不得复用。
+- [ ] 在新 generation 执行 zero-retry rebuild；只有 expected/observed/read-back=`50/50/50`、missing/mismatch=`0/0`、deterministic ID set=50、dimension/model identity 匹配且 mapping 原子切换完成，才标记 `MODEL_REBUILD_READY`。失败保留旧 source/mapping，不自动补跑或清理未知 collection。
+- [ ] rebuild 后运行 mutation-free preflight，确认新 model/request/collection generation、fixtures=`3/3`、vectors=`50/50`；provider calls=0。
+- [ ] 用户重新授权新模型 fixed 5-case canary；最多 5 debug retrieval + 5 query embedding、external rerank/ask/generation/judge=0、retry=0。只有 clean canary 才进入 section 8。
+- [ ] 将旧模型 410 canary 保留为 deprecated-provider failure evidence；不得混入新 generation reference aggregate、阈值或质量结论。
 
 ## 8. Full Reference Authorization And Execution
 
