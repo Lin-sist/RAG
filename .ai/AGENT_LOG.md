@@ -2112,3 +2112,7 @@
 ### C17 新模型离线审计验证补录
 
 - `git diff --check`=`PASS`；手工 OpenSpec structure/freeze-token/task-gate 检查=`PASS`。本机未安装 `openspec` CLI，`openspec validate <change> --strict`=`SKIPPED (CLI_NOT_FOUND)`；未以该跳过项冒充严格 CLI 验证。最终确认 provider/backend calls=0、KB mutations=0。
+
+## 2026-09-05｜C17 新模型离线审计提交补录
+
+- 上一执行提交：`1bcaf0a`（`docs(eval): 完成C17新模型离线审计`）。该提交只包含 C17 OpenSpec proposal/design/tasks、活动任务状态和 C17 执行/审计证据；未包含工作区中未提交的 frontend demo、Logo 或其日志记录。push/PR/deploy 未执行。
