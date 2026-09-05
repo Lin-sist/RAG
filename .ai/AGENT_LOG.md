@@ -2125,3 +2125,7 @@
 - 跳过项：未运行 backend、Flyway against real MySQL、synthetic provider smoke、50-item rebuild、5-case canary、full reference、frontend build；前两类会产生真实 schema/business mutation，后续 provider/rebuild 阶段均需独立授权，frontend 未在本轮修改。
 - 剩余风险：新 hosted endpoint 的账户 entitlement/实际协议/限流与稳定性仍 unknown，必须由独立 1-item smoke 验证；V13 尚未应用到真实 DB，现有 READY row 在 identity 为空时会按设计 fail closed；固定 50-item rebuild 尚未执行，旧 source 保留且不能与新 query space 混用。
 - Commit：`pending`；提交责任为 Agent 本地提交，建议 `feat(eval): 完成C17新嵌入模型离线迁移实现`；push/PR/deploy 未授权。
+
+## 2026-09-05｜C17 Model Migration Offline Implementation 提交补录
+
+- 上一执行提交：`f8d69c0`（`feat(eval): 完成C17新嵌入模型离线迁移实现`）。该提交只包含 C17 计划内 adapter/cache/config、V13、model rebuild、query/preflight/compiler/tests/tasks/active 与本轮日志证据；未包含工作区中未提交的 frontend demo、Logo 或其历史日志。push/PR/deploy 未执行。
