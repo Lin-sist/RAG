@@ -32,6 +32,33 @@
     "fallbackCountMax": 0,
     "modelCallCountMax": 0
   },
+  "embeddingGeneration": {
+    "identity": {
+      "providerFamily": "openai-compatible",
+      "model": "nvidia/nemotron-3-embed-1b",
+      "endpointIdentity": "https://integrate.api.nvidia.com/v1/embeddings",
+      "requestContractVersion": "nvidia-openai-embedding-v1",
+      "dimension": 2048,
+      "generation": "c17g1"
+    },
+    "requestContract": {
+      "queryInputType": "query",
+      "passageInputType": "passage",
+      "modality": "text",
+      "embeddingType": "float",
+      "encodingFormat": "float",
+      "truncate": "NONE",
+      "dimensionsOmitted": true,
+      "maxRetries": 0
+    },
+    "fixedRebuild": {
+      "expectedItems": 50,
+      "documentChunkCounts": [11, 14, 25],
+      "maxItemsPerRequest": 5,
+      "maxHttpRequests": 11,
+      "cacheHits": 0
+    }
+  },
   "errorPolicy": {
     "retrieveErrorsMax": 0,
     "rateLimitErrorsMax": 0,

@@ -30,6 +30,11 @@ public interface EmbeddingService {
      */
     List<float[]> embedBatch(long tenantId, List<String> texts);
 
+    /** Maintenance-only path that never reads or writes embedding cache and never falls back. */
+    default List<float[]> embedBatchUncached(long tenantId, List<String> texts) {
+        throw new UnsupportedOperationException("Uncached embedding is not supported");
+    }
+
     /** @deprecated Tenant scope is required for embedding cache isolation. */
     @Deprecated(since = "C13b", forRemoval = false)
     default List<float[]> embedBatch(List<String> texts) {
@@ -49,6 +54,14 @@ public interface EmbeddingService {
      * @return 提供者名称
      */
     String getActiveProviderName();
+
+    default EmbeddingModelIdentity getActiveModelIdentity() {
+        throw new UnsupportedOperationException("Embedding identity is not available");
+    }
+
+    default int getMaxBatchSize() {
+        return 1;
+    }
 
     /**
      * 清除指定文本的缓存

@@ -21,6 +21,13 @@ public class KnowledgeBaseDTO {
     private String description;
     private Long ownerId;
     private String vectorCollection;
+    private String vectorProviderFamily;
+    private String vectorModel;
+    private String vectorEndpointIdentity;
+    private String vectorRequestContract;
+    private Integer vectorDimension;
+    private String vectorGeneration;
+    private String vectorIdentityFingerprint;
     private Integer documentCount;
     private Boolean isPublic;
     private LocalDateTime createdAt;

@@ -104,6 +104,11 @@ proxy:
 
 # RAG Configuration
 rag:
+  # C17 new embedding-space rebuild. Non-REST and default-off; live use needs a separate gate.
+  vector-model-rebuild:
+    enabled: ${RAG_VECTOR_MODEL_REBUILD_ENABLED:false}
+    expected-count: 50
+    max-http-requests: 11
   # C16 bounded query router. Default-off preserves the legacy ask path.
   router:
     enabled: ${RAG_ROUTER_ENABLED:false}
@@ -167,8 +172,9 @@ rag:
       enabled: true
       api-key: ${NVIDIA_API_KEY:}
       base-url: ${NVIDIA_BASE_URL:https://integrate.api.nvidia.com/v1}
-      model: ${NVIDIA_EMBED_MODEL:nvidia/llama-nemotron-embed-1b-v2}
+      model: ${NVIDIA_EMBED_MODEL:nvidia/nemotron-3-embed-1b}
       dimension: ${NVIDIA_EMBED_DIMENSION:2048}
+      max-retries: ${NVIDIA_EMBED_MAX_RETRIES:0}
       timeout-ms: 60000
 
   # ===== 向量数据库配置（Milvus） =====

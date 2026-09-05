@@ -51,6 +51,27 @@ public class KnowledgeBase extends BaseEntity {
     private Long vectorMismatchCount;
     private String vectorLastErrorCategory;
 
+    private String vectorProviderFamily;
+    private String vectorModel;
+    private String vectorEndpointIdentity;
+    private String vectorRequestContract;
+    private Integer vectorDimension;
+    private String vectorGeneration;
+
+    private String vectorSourceProviderFamily;
+    private String vectorSourceModel;
+    private String vectorSourceEndpointIdentity;
+    private String vectorSourceRequestContract;
+    private Integer vectorSourceDimension;
+    private String vectorSourceGeneration;
+
+    private String vectorShadowProviderFamily;
+    private String vectorShadowModel;
+    private String vectorShadowEndpointIdentity;
+    private String vectorShadowRequestContract;
+    private Integer vectorShadowDimension;
+    private String vectorShadowGeneration;
+
     /**
      * 文档数量
      */

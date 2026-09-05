@@ -280,6 +280,7 @@ public class MilvusVectorStore implements VectorStore, LegacyVectorSourceReader 
         if (documents == null || documents.isEmpty()) {
             return;
         }
+        validateVectorBatch(documents);
 
         log.debug("Upserting {} documents to Milvus", documents.size());
 
@@ -331,6 +332,7 @@ public class MilvusVectorStore implements VectorStore, LegacyVectorSourceReader 
         if (documents == null || documents.isEmpty()) {
             return;
         }
+        validateVectorBatch(documents);
         List<VectorDocument> scopedDocuments = documents.stream()
                 .map(document -> withServerScope(scope, document))
                 .toList();
@@ -357,6 +359,20 @@ public class MilvusVectorStore implements VectorStore, LegacyVectorSourceReader 
                 .build();
         R<MutationResult> response = mutationCall("upsert", () -> milvusClient.insert(insertParam));
         handleResponse(response, "upsert");
+    }
+
+    private void validateVectorBatch(List<VectorDocument> documents) {
+        int dimension = -1;
+        for (VectorDocument document : documents) {
+            if (document == null || !document.isValid()) {
+                throw new IllegalArgumentException("Vector document is invalid");
+            }
+            if (dimension < 0) {
+                dimension = document.vector().length;
+            } else if (document.vector().length != dimension) {
+                throw new IllegalArgumentException("Vector dimensions are inconsistent");
+            }
+        }
     }
 
     private VectorDocument withServerScope(TenantVectorScope scope, VectorDocument document) {

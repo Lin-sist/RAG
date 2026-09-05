@@ -12,6 +12,7 @@
     "targetProfile",
     "execution",
     "providerPolicy",
+    "embeddingGeneration",
     "errorPolicy",
     "canary",
     "full",
@@ -26,6 +27,7 @@
     "targetProfile": {"$ref": "#/$defs/targetProfile"},
     "execution": {"$ref": "#/$defs/execution"},
     "providerPolicy": {"$ref": "#/$defs/providerPolicy"},
+    "embeddingGeneration": {"$ref": "#/$defs/embeddingGeneration"},
     "errorPolicy": {"$ref": "#/$defs/errorPolicy"},
     "canary": {"$ref": "#/$defs/canary"},
     "full": {"$ref": "#/$defs/full"},
@@ -92,6 +94,53 @@
         "effectiveProvider": {"const": "heuristic"},
         "fallbackCountMax": {"const": 0},
         "modelCallCountMax": {"const": 0}
+      }
+    },
+    "embeddingGeneration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "requestContract", "fixedRebuild"],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["providerFamily", "model", "endpointIdentity", "requestContractVersion", "dimension", "generation"],
+          "properties": {
+            "providerFamily": {"const": "openai-compatible"},
+            "model": {"const": "nvidia/nemotron-3-embed-1b"},
+            "endpointIdentity": {"const": "https://integrate.api.nvidia.com/v1/embeddings"},
+            "requestContractVersion": {"const": "nvidia-openai-embedding-v1"},
+            "dimension": {"const": 2048},
+            "generation": {"const": "c17g1"}
+          }
+        },
+        "requestContract": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["queryInputType", "passageInputType", "modality", "embeddingType", "encodingFormat", "truncate", "dimensionsOmitted", "maxRetries"],
+          "properties": {
+            "queryInputType": {"const": "query"},
+            "passageInputType": {"const": "passage"},
+            "modality": {"const": "text"},
+            "embeddingType": {"const": "float"},
+            "encodingFormat": {"const": "float"},
+            "truncate": {"const": "NONE"},
+            "dimensionsOmitted": {"const": true},
+            "maxRetries": {"const": 0}
+          }
+        },
+        "fixedRebuild": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expectedItems", "documentChunkCounts", "maxItemsPerRequest", "maxHttpRequests", "cacheHits"],
+          "properties": {
+            "expectedItems": {"const": 50},
+            "documentChunkCounts": {"const": [11, 14, 25]},
+            "maxItemsPerRequest": {"const": 5},
+            "maxHttpRequests": {"const": 11},
+            "cacheHits": {"const": 0}
+          }
+        }
       }
     },
     "errorPolicy": {

@@ -29,6 +29,62 @@ class EmbeddingServicePropertyTest {
     private static final long TEST_TENANT_ID = 11L;
 
     @Example
+    void cacheIdentityIncludesModelContractAndDimension() {
+        RedisUtil redisUtil = createMockRedisUtil();
+        Set<String> writtenKeys = new HashSet<>();
+        doAnswer(invocation -> {
+            writtenKeys.add(invocation.getArgument(0));
+            return null;
+        }).when(redisUtil).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+        EmbeddingProvider first = createMockProvider(TEST_DIMENSION);
+        when(first.getModelName()).thenReturn("same-model");
+        when(first.getRequestContractVersion()).thenReturn("contract-v1");
+        EmbeddingProvider second = createMockProvider(TEST_DIMENSION + 1);
+        when(second.getModelName()).thenReturn("same-model");
+        when(second.getRequestContractVersion()).thenReturn("contract-v2");
+
+        new EmbeddingServiceImpl(List.of(first), redisUtil, new ObjectMapper(), false, CACHE_TTL)
+                .embed(TEST_TENANT_ID, "same content");
+        new EmbeddingServiceImpl(List.of(second), redisUtil, new ObjectMapper(), false, CACHE_TTL)
+                .embed(TEST_TENANT_ID, "same content");
+
+        assertThat(writtenKeys.size() == 2)
+                .as("Embedding cache keys must differ across model contracts and dimensions")
+                .isTrue();
+    }
+
+    @Example
+    void uncachedMaintenanceBatchBypassesRedisAndValidatesProviderOutput() {
+        EmbeddingProvider provider = createMockProviderForBatch(TEST_DIMENSION);
+        RedisUtil redisUtil = createMockRedisUtil();
+        EmbeddingService service = new EmbeddingServiceImpl(
+                List.of(provider), redisUtil, new ObjectMapper(), false, CACHE_TTL);
+
+        List<float[]> result = service.embedBatchUncached(
+                TEST_TENANT_ID, List.of("first", "second"));
+
+        assertThat(result.size() == 2).as("Uncached batch should preserve exact count").isTrue();
+        verify(redisUtil, never()).getString(anyString());
+        verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+    }
+
+    @Example
+    void uncachedMaintenanceBatchRejectsCountMismatch() {
+        EmbeddingProvider provider = createMockProvider(TEST_DIMENSION);
+        when(provider.getEmbeddings(anyList())).thenReturn(List.of(generateValidEmbedding(TEST_DIMENSION)));
+        EmbeddingService service = new EmbeddingServiceImpl(
+                List.of(provider), createMockRedisUtil(), new ObjectMapper(), false, CACHE_TTL);
+
+        boolean failed = false;
+        try {
+            service.embedBatchUncached(TEST_TENANT_ID, List.of("first", "second"));
+        } catch (EmbeddingException expected) {
+            failed = true;
+        }
+        assertThat(failed).as("Count mismatch must fail closed").isTrue();
+    }
+
+    @Example
     void embeddingCacheShouldBeTenantScoped() {
         EmbeddingProvider provider = createMockProvider(TEST_DIMENSION);
         RedisUtil redisUtil = createMockRedisUtil();

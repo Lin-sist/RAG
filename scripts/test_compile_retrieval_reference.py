@@ -233,13 +233,17 @@ class CompileRetrievalReferenceTest(unittest.TestCase):
                 "description": "codex reproducible retrieval-only eval fixture",
                 "vectorCollection": "kb-test-vector",
                 "documentCount": 3,
-                "chunkCount": 60,
+                "chunkCount": 50,
+                "embeddingGeneration": {
+                    **self.reference_manifest["embeddingGeneration"]["identity"],
+                    "fingerprint": "d" * 64,
+                },
                 "documents": [
                     {
                         "id": index,
                         "title": Path(item["path"]).name,
                         "status": "COMPLETED",
-                        "chunkCount": 20,
+                        "chunkCount": [11, 14, 25][index - 1],
                         "contentHash": item["sha256"],
                     }
                     for index, item in enumerate(fixture_entries, start=1)

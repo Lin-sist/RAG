@@ -10,6 +10,7 @@ import com.enterprise.rag.admin.kb.service.impl.KnowledgeBaseServiceImpl;
 import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.embedding.EmbeddingModelIdentity;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.core.vectorstore.TenantVectorScope;
@@ -63,6 +64,7 @@ class KnowledgeBaseServiceImplTest {
                 redisTemplate);
 
         when(documentService.countByKnowledgeBaseId(anyLong())).thenReturn(0);
+        when(embeddingService.getActiveModelIdentity()).thenReturn(modelIdentity());
         doAnswer(invocation -> {
             KnowledgeBase kb = invocation.getArgument(0);
             kb.setId(1L);
@@ -206,11 +208,7 @@ class KnowledgeBaseServiceImplTest {
 
     @Test
     void statisticsShouldFailInsteadOfReportingFakeZeroWhenVectorCountIsUnavailable() {
-        KnowledgeBase kb = new KnowledgeBase();
-        kb.setId(7L);
-        kb.setTenantId(901L);
-        kb.setVectorCollection("kb_vectors");
-        kb.setVectorReadiness("READY");
+        KnowledgeBase kb = readyKnowledgeBase();
         when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
         when(documentService.countByKnowledgeBaseId(901L, 7L)).thenReturn(0);
         when(vectorStore.count(any(TenantVectorScope.class)))
@@ -225,11 +223,7 @@ class KnowledgeBaseServiceImplTest {
 
     @Test
     void deleteShouldFailClosedWhenCollectionDropOutcomeIsUnknown() {
-        KnowledgeBase kb = new KnowledgeBase();
-        kb.setId(7L);
-        kb.setTenantId(901L);
-        kb.setVectorCollection("kb_vectors");
-        kb.setVectorReadiness("READY");
+        KnowledgeBase kb = readyKnowledgeBase();
         when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
         doThrow(VectorDependencyException.outcomeUnknown("drop", new IllegalStateException("raw-marker")))
                 .when(vectorStore).dropCollection(any(TenantVectorScope.class));
@@ -256,5 +250,42 @@ class KnowledgeBaseServiceImplTest {
 
         assertEquals(VectorDependencyException.ERROR_CODE_INDEX_NOT_READY, exception.getErrorCode());
         verify(vectorStore, never()).hasCollection(any(TenantVectorScope.class));
+    }
+
+    @Test
+    void readyMappingWithDifferentEmbeddingModelShouldFailClosedBeforeVectorAccess() {
+        KnowledgeBase kb = readyKnowledgeBase();
+        kb.setVectorModel("nvidia/old-model");
+        when(knowledgeBaseMapper.selectByTenantAndId(901L, 7L)).thenReturn(kb);
+
+        VectorDependencyException exception = assertThrows(VectorDependencyException.class,
+                () -> service.requireReadyVectorScope(901L, 7L));
+
+        assertEquals(VectorDependencyException.ERROR_CODE_INDEX_NOT_READY, exception.getErrorCode());
+        verify(vectorStore, never()).hasCollection(any(TenantVectorScope.class));
+    }
+
+    private KnowledgeBase readyKnowledgeBase() {
+        KnowledgeBase kb = new KnowledgeBase();
+        kb.setId(7L);
+        kb.setTenantId(901L);
+        kb.setVectorCollection("kb_vectors");
+        kb.setVectorReadiness("READY");
+        kb.setVectorProviderFamily("openai-compatible");
+        kb.setVectorModel("nvidia/nemotron-3-embed-1b");
+        kb.setVectorEndpointIdentity("https://integrate.api.nvidia.com/v1/embeddings");
+        kb.setVectorRequestContract("nvidia-openai-embedding-v1");
+        kb.setVectorDimension(2048);
+        kb.setVectorGeneration("c17g1");
+        return kb;
+    }
+
+    private EmbeddingModelIdentity modelIdentity() {
+        return new EmbeddingModelIdentity(
+                "openai-compatible",
+                "nvidia/nemotron-3-embed-1b",
+                "https://integrate.api.nvidia.com/v1/embeddings",
+                "nvidia-openai-embedding-v1",
+                2048);
     }
 }

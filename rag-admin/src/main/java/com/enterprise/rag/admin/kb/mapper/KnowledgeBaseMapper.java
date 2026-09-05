@@ -150,4 +150,112 @@ public interface KnowledgeBaseMapper extends BaseMapper<KnowledgeBase> {
             @Param("missingCount") long missingCount,
             @Param("mismatchCount") long mismatchCount,
             @Param("errorCategory") String errorCategory);
+
+    @Update("""
+            UPDATE knowledge_base
+               SET vector_source_collection = vector_collection,
+                   vector_source_provider_family = vector_provider_family,
+                   vector_source_model = vector_model,
+                   vector_source_endpoint_identity = vector_endpoint_identity,
+                   vector_source_request_contract = vector_request_contract,
+                   vector_source_dimension = vector_dimension,
+                   vector_source_generation = vector_generation,
+                   vector_shadow_collection = #{shadowCollection},
+                   vector_shadow_provider_family = #{providerFamily},
+                   vector_shadow_model = #{model},
+                   vector_shadow_endpoint_identity = #{endpointIdentity},
+                   vector_shadow_request_contract = #{requestContract},
+                   vector_shadow_dimension = #{dimension},
+                   vector_shadow_generation = #{generation},
+                   vector_readiness = 'MODEL_REBUILDING',
+                   vector_expected_count = #{expectedCount},
+                   vector_observed_count = 0,
+                   vector_migrated_count = 0,
+                   vector_missing_count = 0,
+                   vector_mismatch_count = 0,
+                   vector_last_error_category = NULL,
+                   updated_at = CURRENT_TIMESTAMP,
+                   version = version + 1
+             WHERE tenant_id = #{tenantId}
+               AND id = #{kbId}
+               AND deleted = 0
+               AND vector_collection = #{sourceCollection}
+               AND (vector_model <=> #{sourceModel})
+               AND (vector_request_contract <=> #{sourceRequestContract})
+               AND (vector_generation <=> #{sourceGeneration})
+               AND vector_readiness IN ('READY', 'MODEL_REBUILD_FAILED')
+               AND (vector_shadow_generation IS NULL OR vector_shadow_generation <> #{generation})
+            """)
+    int beginVectorModelRebuild(@Param("tenantId") long tenantId,
+            @Param("kbId") long kbId,
+            @Param("sourceCollection") String sourceCollection,
+            @Param("sourceModel") String sourceModel,
+            @Param("sourceRequestContract") String sourceRequestContract,
+            @Param("sourceGeneration") String sourceGeneration,
+            @Param("shadowCollection") String shadowCollection,
+            @Param("providerFamily") String providerFamily,
+            @Param("model") String model,
+            @Param("endpointIdentity") String endpointIdentity,
+            @Param("requestContract") String requestContract,
+            @Param("dimension") int dimension,
+            @Param("generation") String generation,
+            @Param("expectedCount") long expectedCount);
+
+    @Update("""
+            UPDATE knowledge_base
+               SET vector_collection = #{shadowCollection},
+                   vector_provider_family = vector_shadow_provider_family,
+                   vector_model = vector_shadow_model,
+                   vector_endpoint_identity = vector_shadow_endpoint_identity,
+                   vector_request_contract = vector_shadow_request_contract,
+                   vector_dimension = vector_shadow_dimension,
+                   vector_generation = vector_shadow_generation,
+                   vector_readiness = 'READY',
+                   vector_observed_count = #{observedCount},
+                   vector_migrated_count = #{migratedCount},
+                   vector_missing_count = 0,
+                   vector_mismatch_count = 0,
+                   vector_last_error_category = NULL,
+                   updated_at = CURRENT_TIMESTAMP,
+                   version = version + 1
+             WHERE tenant_id = #{tenantId}
+               AND id = #{kbId}
+               AND deleted = 0
+               AND vector_collection = #{sourceCollection}
+               AND vector_shadow_collection = #{shadowCollection}
+               AND vector_shadow_generation = #{generation}
+               AND vector_readiness = 'MODEL_REBUILDING'
+            """)
+    int completeVectorModelRebuild(@Param("tenantId") long tenantId,
+            @Param("kbId") long kbId,
+            @Param("sourceCollection") String sourceCollection,
+            @Param("shadowCollection") String shadowCollection,
+            @Param("generation") String generation,
+            @Param("observedCount") long observedCount,
+            @Param("migratedCount") long migratedCount);
+
+    @Update("""
+            UPDATE knowledge_base
+               SET vector_readiness = 'MODEL_REBUILD_FAILED',
+                   vector_observed_count = #{observedCount},
+                   vector_migrated_count = #{migratedCount},
+                   vector_missing_count = #{missingCount},
+                   vector_mismatch_count = #{mismatchCount},
+                   vector_last_error_category = #{errorCategory},
+                   updated_at = CURRENT_TIMESTAMP,
+                   version = version + 1
+             WHERE tenant_id = #{tenantId}
+               AND id = #{kbId}
+               AND deleted = 0
+               AND vector_shadow_generation = #{generation}
+               AND vector_readiness = 'MODEL_REBUILDING'
+            """)
+    int failVectorModelRebuild(@Param("tenantId") long tenantId,
+            @Param("kbId") long kbId,
+            @Param("generation") String generation,
+            @Param("observedCount") long observedCount,
+            @Param("migratedCount") long migratedCount,
+            @Param("missingCount") long missingCount,
+            @Param("mismatchCount") long mismatchCount,
+            @Param("errorCategory") String errorCategory);
 }

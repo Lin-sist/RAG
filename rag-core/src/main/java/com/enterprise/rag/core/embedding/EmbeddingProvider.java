@@ -48,6 +48,28 @@ public interface EmbeddingProvider {
      */
     String getModelName();
 
+    default String getProviderFamily() {
+        return getClass().getSimpleName();
+    }
+
+    default String getEndpointIdentity() {
+        return "local";
+    }
+
+    default String getRequestContractVersion() {
+        return "legacy-v1";
+    }
+
+    default int getMaxBatchSize() {
+        return 1;
+    }
+
+    default EmbeddingModelIdentity getModelIdentity() {
+        return new EmbeddingModelIdentity(
+                getProviderFamily(), getModelName(), getEndpointIdentity(),
+                getRequestContractVersion(), getDimension());
+    }
+
     /**
      * 检查提供者是否可用
      *

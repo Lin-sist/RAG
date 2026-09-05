@@ -69,6 +69,7 @@ C17_REFERENCE_MANIFEST_FIELDS = {
     "execution",
     "providerPolicy",
     "errorPolicy",
+    "embeddingGeneration",
     "canary",
     "full",
     "rawArtifactPolicy",
@@ -499,6 +500,20 @@ def build_preflight(
     ):
         checked_vector_readiness["status"] = "BLOCKED"
         checked_vector_readiness["reason"] = "VECTOR_COUNT_MISMATCH"
+    reference_manifest = getattr(args, "reference_manifest_data", None)
+    if isinstance(reference_manifest, dict):
+        expected_embedding = reference_manifest["embeddingGeneration"]["identity"]
+        actual_embedding = {
+            "providerFamily": kb.get("vectorProviderFamily"),
+            "model": kb.get("vectorModel"),
+            "endpointIdentity": kb.get("vectorEndpointIdentity"),
+            "requestContractVersion": kb.get("vectorRequestContract"),
+            "dimension": kb.get("vectorDimension"),
+            "generation": kb.get("vectorGeneration"),
+        }
+        if actual_embedding != expected_embedding:
+            checked_vector_readiness["status"] = "BLOCKED"
+            checked_vector_readiness["reason"] = "VECTOR_MODEL_IDENTITY_MISMATCH"
     ready = (
         not missing
         and not incomplete
@@ -512,6 +527,15 @@ def build_preflight(
             "id": kb.get("id"),
             "name": kb.get("name"),
             "vectorCollection": kb.get("vectorCollection"),
+            "embeddingGeneration": {
+                "providerFamily": kb.get("vectorProviderFamily"),
+                "model": kb.get("vectorModel"),
+                "endpointIdentity": kb.get("vectorEndpointIdentity"),
+                "requestContractVersion": kb.get("vectorRequestContract"),
+                "dimension": kb.get("vectorDimension"),
+                "generation": kb.get("vectorGeneration"),
+                "fingerprint": kb.get("vectorIdentityFingerprint"),
+            },
         },
         "vectorReadiness": checked_vector_readiness,
         "fixtures": {
@@ -734,6 +758,47 @@ def load_reference_manifest(path: Path) -> dict[str, Any]:
     }:
         raise ApiError("c17_provider_policy_invalid")
 
+    embedding_generation = _require_exact_fields(
+        manifest.get("embeddingGeneration"),
+        {"identity", "requestContract", "fixedRebuild"},
+        "c17_embedding_generation_invalid",
+    )
+    identity = _require_exact_fields(
+        embedding_generation.get("identity"),
+        {"providerFamily", "model", "endpointIdentity", "requestContractVersion", "dimension", "generation"},
+        "c17_embedding_generation_invalid",
+    )
+    if identity != {
+        "providerFamily": "openai-compatible",
+        "model": "nvidia/nemotron-3-embed-1b",
+        "endpointIdentity": "https://integrate.api.nvidia.com/v1/embeddings",
+        "requestContractVersion": "nvidia-openai-embedding-v1",
+        "dimension": 2048,
+        "generation": "c17g1",
+    }:
+        raise ApiError("c17_embedding_generation_invalid")
+    request_contract = _require_exact_fields(
+        embedding_generation.get("requestContract"),
+        {"queryInputType", "passageInputType", "modality", "embeddingType", "encodingFormat", "truncate", "dimensionsOmitted", "maxRetries"},
+        "c17_embedding_generation_invalid",
+    )
+    if request_contract != {
+        "queryInputType": "query", "passageInputType": "passage", "modality": "text",
+        "embeddingType": "float", "encodingFormat": "float", "truncate": "NONE",
+        "dimensionsOmitted": True, "maxRetries": 0,
+    }:
+        raise ApiError("c17_embedding_generation_invalid")
+    fixed_rebuild = _require_exact_fields(
+        embedding_generation.get("fixedRebuild"),
+        {"expectedItems", "documentChunkCounts", "maxItemsPerRequest", "maxHttpRequests", "cacheHits"},
+        "c17_embedding_generation_invalid",
+    )
+    if fixed_rebuild != {
+        "expectedItems": 50, "documentChunkCounts": [11, 14, 25], "maxItemsPerRequest": 5,
+        "maxHttpRequests": 11, "cacheHits": 0,
+    }:
+        raise ApiError("c17_embedding_generation_invalid")
+
     error_policy = _require_exact_fields(
         manifest.get("errorPolicy"),
         {
@@ -942,6 +1007,15 @@ def build_metadata(
             "name": kb.get("name"),
             "description": kb.get("description"),
             "vectorCollection": kb.get("vectorCollection"),
+            "embeddingGeneration": {
+                "providerFamily": kb.get("vectorProviderFamily"),
+                "model": kb.get("vectorModel"),
+                "endpointIdentity": kb.get("vectorEndpointIdentity"),
+                "requestContractVersion": kb.get("vectorRequestContract"),
+                "dimension": kb.get("vectorDimension"),
+                "generation": kb.get("vectorGeneration"),
+                "fingerprint": kb.get("vectorIdentityFingerprint"),
+            },
             "documentCount": len(docs),
             "chunkCount": chunk_count,
             "documents": [
@@ -1328,6 +1402,7 @@ def build_plan(
         plan["referenceId"] = reference_manifest.get("referenceId")
         plan["referenceManifestSha256"] = reference_manifest.get("sha256")
         plan["referenceMode"] = getattr(args, "reference_mode", "full")
+        plan["embeddingGeneration"] = reference_manifest.get("embeddingGeneration")
     dataset_identity = getattr(args, "dataset_release_identity", None)
     if isinstance(dataset_identity, dict):
         plan["datasetReleaseIdentity"] = dataset_identity

@@ -601,6 +601,35 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual("VECTOR_COUNT_MISMATCH", result["vectorReadiness"]["reason"])
         self.assertEqual(2, result["vectorReadiness"]["expectedVectorCount"])
 
+    def test_build_preflight_blocks_model_identity_drift_before_eval(self) -> None:
+        args = self.eval_command_args(include_ask=False)
+        args.reference_manifest_data = runner.load_reference_manifest(
+            Path("docs/eval/config/c17-retrieval-reference-v1.json")
+        )
+        identity = args.reference_manifest_data["embeddingGeneration"]["identity"]
+        kb = {
+            "id": 15,
+            "name": "codex-stage1-repro-eval",
+            "vectorCollection": "kb_test",
+            "vectorProviderFamily": identity["providerFamily"],
+            "vectorModel": "nvidia/old-model",
+            "vectorEndpointIdentity": identity["endpointIdentity"],
+            "vectorRequestContract": identity["requestContractVersion"],
+            "vectorDimension": identity["dimension"],
+            "vectorGeneration": identity["generation"],
+        }
+
+        result = runner.build_preflight(
+            args,
+            kb,
+            [{"title": "springboot-basics.md", "status": "COMPLETED", "chunkCount": 1}],
+            [Path("test-data/springboot-basics.md")],
+            {"status": "READY", "vectorCount": 1},
+        )
+
+        self.assertEqual("BLOCKED", result["status"])
+        self.assertEqual("VECTOR_MODEL_IDENTITY_MISMATCH", result["vectorReadiness"]["reason"])
+
     def test_preflight_display_omits_numeric_kb_id_and_vector_collection(self) -> None:
         display = runner.redact_preflight_for_display({
             "status": "READY",

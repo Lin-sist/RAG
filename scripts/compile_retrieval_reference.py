@@ -90,6 +90,7 @@ def _safe_document_identity(metadata: dict[str, Any]) -> dict[str, Any]:
             "description": knowledge_base.get("description"),
             "documentCount": knowledge_base.get("documentCount"),
             "chunkCount": knowledge_base.get("chunkCount"),
+            "embeddingGeneration": knowledge_base.get("embeddingGeneration"),
             "documents": sorted(
                 [
                     {
@@ -212,6 +213,8 @@ def _metadata_matches_release(
         and knowledge_base.get("documentCount") == len(expected_document_names)
         and knowledge_base.get("chunkCount")
         == sum(document["chunkCount"] for document in actual_documents.values())
+        and sorted(document["chunkCount"] for document in actual_documents.values())
+        == manifest["embeddingGeneration"]["fixedRebuild"]["documentChunkCounts"]
         and actual_fixtures == expected_fixtures
         and isinstance(git_head, str)
         and bool(git_head)
@@ -223,6 +226,13 @@ def _metadata_matches_release(
             "mode": "full",
         }
         and metadata.get("warmup") == {"calls": 0}
+        and knowledge_base.get("embeddingGeneration")
+        == {
+            **manifest["embeddingGeneration"]["identity"],
+            "fingerprint": knowledge_base.get("embeddingGeneration", {}).get("fingerprint"),
+        }
+        and isinstance(knowledge_base.get("embeddingGeneration", {}).get("fingerprint"), str)
+        and len(knowledge_base["embeddingGeneration"]["fingerprint"]) == 64
     )
 
 

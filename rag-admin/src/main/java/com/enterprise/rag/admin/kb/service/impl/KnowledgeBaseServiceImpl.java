@@ -16,6 +16,7 @@ import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.common.exception.RedisDependencyException;
 import com.enterprise.rag.common.idempotency.Idempotent;
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.embedding.EmbeddingModelIdentity;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import com.enterprise.rag.core.vectorstore.VectorDependencyException;
 import com.enterprise.rag.core.vectorstore.TenantVectorScope;
@@ -77,8 +78,11 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         // 创建向量集合（使用当前 Embedding 模型的实际维度）
         try {
-            int dimension = embeddingService.getDimension();
+            EmbeddingModelIdentity modelIdentity = embeddingService.getActiveModelIdentity();
+            int dimension = modelIdentity.dimension();
             vectorStore.createCollection(vectorScope, dimension);
+            bindActiveModelIdentity(kb, modelIdentity,
+                    "initial-" + collectionName.substring(collectionName.length() - 12));
             kb.setVectorReadiness(VECTOR_READY);
             kb.setVectorSourceCollection(null);
             kb.setVectorShadowCollection(null);
@@ -121,7 +125,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             throw new BusinessException("KB_001", "知识库不存在", HttpStatus.NOT_FOUND);
         }
         if (!VECTOR_READY.equals(kb.getVectorReadiness())
-                || kb.getVectorCollection() == null || kb.getVectorCollection().isBlank()) {
+                || kb.getVectorCollection() == null || kb.getVectorCollection().isBlank()
+                || !activeIdentityMatches(kb, embeddingService.getActiveModelIdentity())) {
             throw VectorDependencyException.indexNotReady("resolve_scope");
         }
         return new TenantVectorScope(tenantId, id, kb.getVectorCollection());
@@ -368,10 +373,52 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 .description(kb.getDescription())
                 .ownerId(kb.getOwnerId())
                 .vectorCollection(kb.getVectorCollection())
+                .vectorProviderFamily(kb.getVectorProviderFamily())
+                .vectorModel(kb.getVectorModel())
+                .vectorEndpointIdentity(kb.getVectorEndpointIdentity())
+                .vectorRequestContract(kb.getVectorRequestContract())
+                .vectorDimension(kb.getVectorDimension())
+                .vectorGeneration(kb.getVectorGeneration())
+                .vectorIdentityFingerprint(activeIdentityFingerprint(kb))
                 .documentCount(realDocumentCount)
                 .isPublic(kb.getIsPublic())
                 .createdAt(kb.getCreatedAt())
                 .updatedAt(kb.getUpdatedAt())
                 .build();
+    }
+
+    private void bindActiveModelIdentity(KnowledgeBase kb,
+            EmbeddingModelIdentity identity,
+            String generation) {
+        kb.setVectorProviderFamily(identity.providerFamily());
+        kb.setVectorModel(identity.model());
+        kb.setVectorEndpointIdentity(identity.endpoint());
+        kb.setVectorRequestContract(identity.requestContractVersion());
+        kb.setVectorDimension(identity.dimension());
+        kb.setVectorGeneration(generation);
+    }
+
+    private boolean activeIdentityMatches(KnowledgeBase kb, EmbeddingModelIdentity runtime) {
+        return runtime != null
+                && java.util.Objects.equals(kb.getVectorProviderFamily(), runtime.providerFamily())
+                && java.util.Objects.equals(kb.getVectorModel(), runtime.model())
+                && java.util.Objects.equals(kb.getVectorEndpointIdentity(), runtime.endpoint())
+                && java.util.Objects.equals(kb.getVectorRequestContract(), runtime.requestContractVersion())
+                && java.util.Objects.equals(kb.getVectorDimension(), runtime.dimension())
+                && kb.getVectorGeneration() != null
+                && !kb.getVectorGeneration().isBlank();
+    }
+
+    private String activeIdentityFingerprint(KnowledgeBase kb) {
+        if (kb.getVectorDimension() == null) {
+            return null;
+        }
+        try {
+            return new EmbeddingModelIdentity(
+                    kb.getVectorProviderFamily(), kb.getVectorModel(), kb.getVectorEndpointIdentity(),
+                    kb.getVectorRequestContract(), kb.getVectorDimension()).fingerprint();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

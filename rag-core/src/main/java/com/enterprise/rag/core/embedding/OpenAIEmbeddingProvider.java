@@ -12,8 +12,12 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * OpenAI Embedding Provider
@@ -22,7 +26,7 @@ import java.util.List;
 public class OpenAIEmbeddingProvider implements EmbeddingProvider {
 
     private static final Logger log = LoggerFactory.getLogger(OpenAIEmbeddingProvider.class);
-    private static final String MODEL_NAME = "openai";
+    private static final String PROVIDER_NAME = "openai-compatible";
 
     private final WebClient webClient;
     private final EmbeddingProperties.OpenAI config;
@@ -47,7 +51,7 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
     @Override
     public float[] getEmbedding(String text) {
         if (text == null || text.isBlank()) {
-            throw new EmbeddingException("Input text cannot be null or empty", MODEL_NAME, false);
+            throw new EmbeddingException("Input text cannot be null or empty", PROVIDER_NAME, false);
         }
 
         try {
@@ -62,21 +66,19 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
                             .filter(this::isRetryableError)
                             .onRetryExhaustedThrow(
                                     (spec, signal) -> new EmbeddingException("Max retries exceeded for OpenAI API",
-                                            signal.failure(), MODEL_NAME, false)))
+                                            signal.failure(), PROVIDER_NAME, false)))
                     .timeout(Duration.ofMillis(config.getTimeoutMs()))
                     .block();
 
             if (response == null || response.data() == null || response.data().isEmpty()) {
-                throw new EmbeddingException("Empty response from OpenAI API", MODEL_NAME, true);
+                throw new EmbeddingException("Empty response from OpenAI API", PROVIDER_NAME, true);
             }
-
-            List<Float> embedding = response.data().get(0).embedding();
-            return toFloatArray(embedding);
+            return validateAndOrder(response, 1).get(0);
 
         } catch (WebClientResponseException e) {
             log.error("OpenAI API error: status={}, errorType={}",
                     e.getStatusCode(), e.getClass().getSimpleName());
-            throw new EmbeddingException("OpenAI API error: " + e.getMessage(), e, MODEL_NAME,
+            throw new EmbeddingException("OpenAI API error: " + e.getMessage(), e, PROVIDER_NAME,
                     isRetryableStatusCode(e.getStatusCode().value()));
         } catch (EmbeddingException e) {
             throw e;
@@ -84,14 +86,14 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
             log.error("Unexpected error calling OpenAI API: errorType={}",
                     e.getClass().getSimpleName());
             throw new EmbeddingException("Failed to get embedding from OpenAI: " + e.getMessage(),
-                    e, MODEL_NAME, true);
+                    e, PROVIDER_NAME, true);
         }
     }
 
     @Override
     public List<float[]> getEmbeddings(List<String> texts) {
         if (texts == null || texts.isEmpty()) {
-            throw new EmbeddingException("Input texts cannot be null or empty", MODEL_NAME, false);
+            throw new EmbeddingException("Input texts cannot be null or empty", PROVIDER_NAME, false);
         }
 
         // 分批处理：避免单次请求返回的 JSON 过大（每个 2048 维 embedding ≈ 40KB）
@@ -126,17 +128,14 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
                             .filter(this::isRetryableError)
                             .onRetryExhaustedThrow(
                                     (spec, signal) -> new EmbeddingException("Max retries exceeded for OpenAI API",
-                                            signal.failure(), MODEL_NAME, false)))
+                                            signal.failure(), PROVIDER_NAME, false)))
                     .timeout(Duration.ofMillis(config.getTimeoutMs()))
                     .block();
 
             if (response == null || response.data() == null) {
-                throw new EmbeddingException("Empty response from OpenAI API", MODEL_NAME, true);
+                throw new EmbeddingException("Empty response from OpenAI API", PROVIDER_NAME, true);
             }
-
-            return response.data().stream()
-                    .map(d -> toFloatArray(d.embedding()))
-                    .toList();
+            return validateAndOrder(response, texts.size());
 
         } catch (EmbeddingException e) {
             throw e;
@@ -144,7 +143,7 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
             log.error("Unexpected error calling OpenAI API for batch: size={}, errorType={}",
                     texts.size(), e.getClass().getSimpleName());
             throw new EmbeddingException("Failed to get batch embeddings from OpenAI: " + e.getMessage(),
-                    e, MODEL_NAME, true);
+                    e, PROVIDER_NAME, true);
         }
     }
 
@@ -155,7 +154,29 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
 
     @Override
     public String getModelName() {
-        return MODEL_NAME;
+        return config.getModel();
+    }
+
+    @Override
+    public String getProviderFamily() {
+        return "openai-compatible";
+    }
+
+    @Override
+    public String getEndpointIdentity() {
+        URI uri = URI.create(config.getBaseUrl());
+        String path = uri.getPath() == null ? "" : uri.getPath().replaceAll("/+$", "");
+        return uri.getScheme() + "://" + uri.getHost() + path + "/embeddings";
+    }
+
+    @Override
+    public String getRequestContractVersion() {
+        return "nvidia-openai-embedding-v1";
+    }
+
+    @Override
+    public int getMaxBatchSize() {
+        return BATCH_CHUNK_SIZE;
     }
 
     @Override
@@ -179,10 +200,37 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
         return statusCode == 429 || statusCode >= 500;
     }
 
+    private List<float[]> validateAndOrder(EmbeddingResponse response, int expectedCount) {
+        if (!config.getModel().equals(response.model())) {
+            throw new EmbeddingException("Embedding response model mismatch", PROVIDER_NAME, false);
+        }
+        if (response.data().size() != expectedCount) {
+            throw new EmbeddingException("Embedding response count mismatch", PROVIDER_NAME, false);
+        }
+        Set<Integer> indexes = new HashSet<>();
+        for (EmbeddingData data : response.data()) {
+            if (data == null || data.index() < 0 || data.index() >= expectedCount
+                    || !indexes.add(data.index())) {
+                throw new EmbeddingException("Embedding response index mismatch", PROVIDER_NAME, false);
+            }
+        }
+        return response.data().stream()
+                .sorted(Comparator.comparingInt(EmbeddingData::index))
+                .map(data -> toFloatArray(data.embedding()))
+                .toList();
+    }
+
     private float[] toFloatArray(List<Float> list) {
+        if (list == null || list.size() != config.getDimension()) {
+            throw new EmbeddingException("Embedding response dimension mismatch", PROVIDER_NAME, false);
+        }
         float[] array = new float[list.size()];
         for (int i = 0; i < list.size(); i++) {
-            array[i] = list.get(i);
+            Float value = list.get(i);
+            if (value == null || !Float.isFinite(value)) {
+                throw new EmbeddingException("Embedding response contains non-finite value", PROVIDER_NAME, false);
+            }
+            array[i] = value;
         }
         return array;
     }
@@ -192,9 +240,12 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
             String input,
             String model,
             @JsonProperty("input_type") String inputType,
-            @JsonProperty("encoding_format") String encodingFormat) {
+            String modality,
+            @JsonProperty("embedding_type") String embeddingType,
+            @JsonProperty("encoding_format") String encodingFormat,
+            String truncate) {
         EmbeddingRequest(String input, String model) {
-            this(input, model, "query", "float");
+            this(input, model, "query", "text", "float", "float", "NONE");
         }
     }
 
@@ -202,9 +253,12 @@ public class OpenAIEmbeddingProvider implements EmbeddingProvider {
             List<String> input,
             String model,
             @JsonProperty("input_type") String inputType,
-            @JsonProperty("encoding_format") String encodingFormat) {
+            String modality,
+            @JsonProperty("embedding_type") String embeddingType,
+            @JsonProperty("encoding_format") String encodingFormat,
+            String truncate) {
         BatchEmbeddingRequest(List<String> input, String model) {
-            this(input, model, "passage", "float");
+            this(input, model, "passage", "text", "float", "float", "NONE");
         }
     }
 

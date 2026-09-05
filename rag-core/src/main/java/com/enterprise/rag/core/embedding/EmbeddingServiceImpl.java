@@ -65,9 +65,13 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
         // Get embedding from provider with fallback
         float[] embedding = getEmbeddingWithFallback(text);
+        EmbeddingProvider effectiveProvider = getActiveProvider();
+        if (!isValidVector(embedding, effectiveProvider.getDimension())) {
+            throw new EmbeddingException("Embedding vector contract mismatch",
+                    effectiveProvider.getModelName(), false);
+        }
         
         // Cache the result
-        EmbeddingProvider effectiveProvider = getActiveProvider();
         saveToCache(getCacheKey(tenantId, text, effectiveProvider),
                 tenantId, effectiveProvider, embedding);
         
@@ -102,7 +106,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
         // Get embeddings for uncached texts
         if (!uncachedTexts.isEmpty()) {
-            List<float[]> newEmbeddings = getEmbeddingsBatchWithFallback(uncachedTexts);
+            List<float[]> newEmbeddings = validateBatch(
+                    getEmbeddingsBatchWithFallback(uncachedTexts), uncachedTexts.size(), getActiveProvider());
             
             // Cache new embeddings
             for (int i = 0; i < uncachedTexts.size(); i++) {
@@ -122,6 +127,16 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     }
 
     @Override
+    public List<float[]> embedBatchUncached(long tenantId, List<String> texts) {
+        requireTenantId(tenantId);
+        if (texts == null || texts.isEmpty() || texts.stream().anyMatch(text -> text == null || text.isBlank())) {
+            throw new EmbeddingException("Input texts cannot be null, empty, or blank");
+        }
+        EmbeddingProvider provider = getActiveProvider();
+        return validateBatch(provider.getEmbeddings(List.copyOf(texts)), texts.size(), provider);
+    }
+
+    @Override
     public int getDimension() {
         EmbeddingProvider provider = getActiveProvider();
         return provider.getDimension();
@@ -131,6 +146,16 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     public String getActiveProviderName() {
         EmbeddingProvider provider = activeProvider;
         return provider != null ? provider.getModelName() : "none";
+    }
+
+    @Override
+    public EmbeddingModelIdentity getActiveModelIdentity() {
+        return resolveModelIdentity(getActiveProvider());
+    }
+
+    @Override
+    public int getMaxBatchSize() {
+        return getActiveProvider().getMaxBatchSize();
     }
 
     @Override
@@ -259,8 +284,9 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
     private String getCacheKey(long tenantId, String text, EmbeddingProvider provider) {
         String hash = computeHash(text);
+        EmbeddingModelIdentity identity = resolveModelIdentity(provider);
         return RedisKeyConstants.embeddingCacheV2Key(
-                requireTenantId(tenantId), providerName(provider), provider.getModelName(), hash);
+                requireTenantId(tenantId), identity.providerFamily(), identity.fingerprint(), hash);
     }
 
     private long requireTenantId(long tenantId) {
@@ -294,8 +320,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             if (json != null) {
                 TenantCachedEmbedding cached = objectMapper.readValue(json, TenantCachedEmbedding.class);
                 if (cached.tenantId() == tenantId
-                        && providerName(provider).equals(cached.provider())
-                        && provider.getModelName().equals(cached.model())) {
+                        && resolveModelIdentity(provider).fingerprint().equals(cached.identityFingerprint())
+                        && isValidVector(cached.embedding(), provider.getDimension())) {
                     return cached.embedding();
                 }
             }
@@ -313,7 +339,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             float[] embedding) {
         try {
             String json = objectMapper.writeValueAsString(new TenantCachedEmbedding(
-                    tenantId, providerName(provider), provider.getModelName(), embedding));
+                    tenantId, resolveModelIdentity(provider).fingerprint(), embedding));
             redisUtil.setString(cacheKey, json, cacheTtlSeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.warn("Embedding cache write degraded: dependency=redis, subsystem=embedding_cache, "
@@ -322,15 +348,50 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         }
     }
 
-    private String providerName(EmbeddingProvider provider) {
-        String name = provider.getClass().getSimpleName();
-        return name == null || name.isBlank() ? "provider" : name;
+    private List<float[]> validateBatch(List<float[]> embeddings, int expectedCount, EmbeddingProvider provider) {
+        if (embeddings == null || embeddings.size() != expectedCount) {
+            throw new EmbeddingException("Embedding batch count mismatch", provider.getModelName(), false);
+        }
+        for (float[] embedding : embeddings) {
+            if (!isValidVector(embedding, provider.getDimension())) {
+                throw new EmbeddingException("Embedding vector contract mismatch", provider.getModelName(), false);
+            }
+        }
+        return List.copyOf(embeddings);
+    }
+
+    private boolean isValidVector(float[] embedding, int dimension) {
+        if (embedding == null || embedding.length != dimension) {
+            return false;
+        }
+        for (float value : embedding) {
+            if (!Float.isFinite(value)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private EmbeddingModelIdentity resolveModelIdentity(EmbeddingProvider provider) {
+        EmbeddingModelIdentity identity = provider.getModelIdentity();
+        if (identity != null) {
+            return identity;
+        }
+        return new EmbeddingModelIdentity(
+                defaultIfBlank(provider.getProviderFamily(), provider.getClass().getSimpleName()),
+                defaultIfBlank(provider.getModelName(), "unknown-model"),
+                defaultIfBlank(provider.getEndpointIdentity(), "local"),
+                defaultIfBlank(provider.getRequestContractVersion(), "legacy-v1"),
+                provider.getDimension());
+    }
+
+    private String defaultIfBlank(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private record TenantCachedEmbedding(
             long tenantId,
-            String provider,
-            String model,
+            String identityFingerprint,
             float[] embedding) {
     }
 }

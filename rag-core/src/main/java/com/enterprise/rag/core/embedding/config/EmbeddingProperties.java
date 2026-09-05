@@ -19,7 +19,7 @@ public class EmbeddingProperties {
         private String baseUrl = "https://api.openai.com/v1";
         private String model = "text-embedding-ada-002";
         private int dimension = 1536;
-        private int maxRetries = 3;
+        private int maxRetries = 0;
         private long retryDelayMs = 1000;
         private long timeoutMs = 30000;
         private boolean enabled = true;

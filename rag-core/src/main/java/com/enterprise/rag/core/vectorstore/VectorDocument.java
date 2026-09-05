@@ -30,6 +30,16 @@ public record VectorDocument(
     public boolean isValid() {
         return id != null && !id.isBlank()
                 && vector != null && vector.length > 0
+                && allFinite(vector)
                 && content != null;
+    }
+
+    private boolean allFinite(float[] values) {
+        for (float value : values) {
+            if (!Float.isFinite(value)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

@@ -2116,3 +2116,12 @@
 ## 2026-09-05｜C17 新模型离线审计提交补录
 
 - 上一执行提交：`1bcaf0a`（`docs(eval): 完成C17新模型离线审计`）。该提交只包含 C17 OpenSpec proposal/design/tasks、活动任务状态和 C17 执行/审计证据；未包含工作区中未提交的 frontend demo、Logo 或其日志记录。push/PR/deploy 未执行。
+
+## 2026-09-05｜C17 Model Migration Offline Implementation
+
+- 授权与范围：用户明确批准并要求完成 `model-migration offline implementation`；本轮允许修改 C17 计划内 Java adapter/cache/config、schema、model rebuild workflow、query/preflight/compiler/tests/docs。真实 backend/embedding/rerank/ask/generation/judge/provider calls=0、business data outbound=false、KB/Milvus/SQL mutation=0；未运行 smoke、rebuild、canary/full，未修改 `.env.local` 或用户未提交的 frontend/logo 文件。
+- 实现：OpenAI-compatible embedding 请求冻结 `query|passage/text/float/float/NONE` 且省略 dimensions；响应验证实际 model、count/index/order、exact 2048 与 finite。provider/cache identity 绑定 family/model/sanitized endpoint/request contract/dimension，新增 maintenance no-cache batch，默认及 tracked retry=0，tracked model 切为 `nvidia/nemotron-3-embed-1b`。Milvus upsert 增加 finite/同维防线。V13 与 KB mapping 增加 active/source/shadow model identity；READY 查询在 embedding 前严格匹配 runtime identity，否则 `VECTOR_INDEX_NOT_READY`。独立 default-off rebuild 固定 3 documents/50 chunks、5 items/request、11 HTTP upper bound、新 generation collection、50/50 强读回、model metadata audit 与 CAS switch，失败不清理、不重试、不复用 generation。C17 manifest/preflight/compiler 同步绑定 `c17g1` identity 并对漂移 fail closed。
+- 验证：TDD RED 已分别证明旧 adapter 缺字段/顺序/模型校验与 cache/no-cache contract 缺失；修复后 Java 聚焦回归（adapter/cache/Milvus/KB/rebuild）=`PASS`。`python -B -m unittest discover -s scripts -p 'test_*.py'`=`236 tests, OK`。`mvn -q test`=`631 tests, 0 failures, 0 errors, 21 skipped`（只统计本轮新写 surefire XML，排除 2026-07-30 的 stale IT report）。`git diff --check`=`PASS`（仅 CRLF/LF warning）。
+- 跳过项：未运行 backend、Flyway against real MySQL、synthetic provider smoke、50-item rebuild、5-case canary、full reference、frontend build；前两类会产生真实 schema/business mutation，后续 provider/rebuild 阶段均需独立授权，frontend 未在本轮修改。
+- 剩余风险：新 hosted endpoint 的账户 entitlement/实际协议/限流与稳定性仍 unknown，必须由独立 1-item smoke 验证；V13 尚未应用到真实 DB，现有 READY row 在 identity 为空时会按设计 fail closed；固定 50-item rebuild 尚未执行，旧 source 保留且不能与新 query space 混用。
+- Commit：`pending`；提交责任为 Agent 本地提交，建议 `feat(eval): 完成C17新嵌入模型离线迁移实现`；push/PR/deploy 未授权。

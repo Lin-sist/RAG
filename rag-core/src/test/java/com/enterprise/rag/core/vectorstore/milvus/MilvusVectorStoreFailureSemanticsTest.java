@@ -149,6 +149,19 @@ class MilvusVectorStoreFailureSemanticsTest {
     }
 
     @Test
+    void upsertShouldRejectNonFiniteOrMixedDimensionVectorsBeforeMilvusMutation() {
+        TenantVectorScope scope = new TenantVectorScope(11L, 31L, "tenant_11_kb_31_v2");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> vectorStore.upsert(scope, List.of(
+                        new VectorDocument("doc-1", new float[] {0.1f, Float.NaN}, "one", Map.of()),
+                        new VectorDocument("doc-2", new float[] {0.1f}, "two", Map.of()))));
+
+        verify(milvusClient, never()).insert(any(InsertParam.class));
+        verify(milvusClient, never()).delete(any(DeleteParam.class));
+    }
+
+    @Test
     void scopedUpsertShouldAcceptNumericallyEquivalentLegacyScopeMetadata() {
         when(milvusClient.delete(any(DeleteParam.class))).thenReturn(R.success());
         when(milvusClient.insert(any(InsertParam.class))).thenReturn(R.success());
