@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`MODEL_MIGRATION_OFFLINE_IMPLEMENTATION_COMPLETE_AWAITING_SYNTHETIC_SMOKE_AUTHORIZATION`
+- 阶段：`MODEL_SMOKE_CLEAN_AWAITING_FIXED_REBUILD_AUTHORIZATION`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -25,5 +25,6 @@
 - 2026-08-31 只读核对 NVIDIA 官方模型页确认 `llama-nemotron-embed-1b-v2` 与其 hosted NIM endpoint 已标记 `Deprecated`；本地路径 TDD 证明请求实际为正确的 `/v1/embeddings`，因此未修改 provider 代码。替代模型即使同为 2048 维也属于不同 embedding 空间，不能复用现有 50 条向量。
 - 用户已确认迁移到 `nvidia/nemotron-3-embed-1b` 并批准 doc-only 规划修订；对应提交为 `288a0f8`。本轮零外调 adapter/indexing 审计已完成：冻结 50 passage items、每 HTTP request 最多 5 items、request upper bound=11、retry=0，并确认 adapter request/response validation、actual-model cache、model-bound persistence/query fail-closed、独立 rebuild workflow 与 compiler identity 尚需实现。
 - model-migration offline implementation 已完成：adapter/cache/config、V13 model-bound persistence、query/preflight/compiler fail-closed、default-off 独立 rebuild workflow 均已落地并通过离线 tests；本阶段 provider/backend calls=0、KB/Milvus/SQL mutation=0。
-- 下一步需单独授权 1-item synthetic smoke：仅 1 个非业务 synthetic embedding item、retry=0、无 KB mutation。smoke clean 后才可另行申请固定 50 passage items model-bound rebuild；5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
+- 用户于 2026-09-05 单独授权并完成 1-item synthetic smoke：唯一 NVIDIA 请求 HTTP 200，model 精确匹配 `nvidia/nemotron-3-embed-1b`，item/index=`1/0`、dimension=2048、all finite、latency=30472ms、attempts=1、retry=0；仅发送非业务 synthetic 文本，KB/Milvus/SQL mutation=0。本次授权已消耗，不得复用。
+- 下一步需单独授权固定 50 passage items model-bound rebuild：3 个 tracked fixtures 的既有 50 chunks 会出站，最多 11 个 HTTP requests、每次最多 5 items、retry=0；将应用 V13、创建新 `c17g1` collection generation、强读回后 CAS 切换，失败保留 source/mapping 且不自动清理或补跑。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。

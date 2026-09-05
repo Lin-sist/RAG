@@ -2129,3 +2129,11 @@
 ## 2026-09-05｜C17 Model Migration Offline Implementation 提交补录
 
 - 上一执行提交：`f8d69c0`（`feat(eval): 完成C17新嵌入模型离线迁移实现`）。该提交只包含 C17 计划内 adapter/cache/config、V13、model rebuild、query/preflight/compiler/tests/tasks/active 与本轮日志证据；未包含工作区中未提交的 frontend demo、Logo 或其历史日志。push/PR/deploy 未执行。
+
+## 2026-09-05｜C17 新模型 1-item Synthetic Smoke
+
+- 授权与边界：用户明确授权一次 `1-item synthetic smoke`。执行前披露 runtime fingerprint：OpenAI-compatible NVIDIA hosted NIM、model=`nvidia/nemotron-3-embed-1b`、endpoint=`integrate.api.nvidia.com/v1/embeddings`、dimension=2048、timeout=60000ms、fallback=false、proxy=`127.0.0.1:7897` reachable、retry=0、Git=`7f34326`、tracked config SHA-256=`9bd6029d...b30a7`。NVIDIA Developer Program prototyping 的 API 直接费用依据为 0，但账户账单、动态 quota/rate-limit 与 SLA 不由本次响应证明。
+- 唯一调用：payload 仅含非业务文本 `C17 synthetic embedding protocol smoke.`，request contract=`query/text/float/float/NONE` 且省略 dimensions。首次命令在 HTTP 前因误先读取 `.env.example` 空 key 停止，provider attempts=0；修正本地凭据选择后执行唯一请求。结果 HTTP 200、response model 精确匹配、item count=1、index=0、dimension=2048、all finite、latency=30472ms、attempts=1、retries=0。
+- 范围安全：未输出或写入 API key、向量、provider body；business/fixture data outbound=false；backend/debug retrieval/rerank/ask/generation/judge calls=0；KB/Milvus/SQL mutation=0；未应用 V13、未创建 collection、未运行 rebuild/canary/full。用户本轮一次 smoke 授权已消耗，未自动重复。
+- 结论与剩余风险：状态=`MODEL_SMOKE_CLEAN`，仅证明当前 endpoint/auth/request/output contract 对一个 synthetic query item 可用，不证明 passage rebuild、质量、稳定 SLA、无限配额或生产免费。下一步必须单独授权固定 50 passage items / 最多 11 HTTP requests 的 model-bound rebuild。
+- Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17新模型synthetic smoke通过`；push/PR/deploy 未授权。
