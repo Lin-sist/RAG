@@ -2137,3 +2137,7 @@
 - 范围安全：未输出或写入 API key、向量、provider body；business/fixture data outbound=false；backend/debug retrieval/rerank/ask/generation/judge calls=0；KB/Milvus/SQL mutation=0；未应用 V13、未创建 collection、未运行 rebuild/canary/full。用户本轮一次 smoke 授权已消耗，未自动重复。
 - 结论与剩余风险：状态=`MODEL_SMOKE_CLEAN`，仅证明当前 endpoint/auth/request/output contract 对一个 synthetic query item 可用，不证明 passage rebuild、质量、稳定 SLA、无限配额或生产免费。下一步必须单独授权固定 50 passage items / 最多 11 HTTP requests 的 model-bound rebuild。
 - Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17新模型synthetic smoke通过`；push/PR/deploy 未授权。
+
+## 2026-09-05｜C17 Synthetic Smoke 提交补录
+
+- 上一执行提交：`7439b83`（`docs(eval): 记录C17新模型synthetic smoke通过`）。该提交只包含 C17 smoke 的脱敏日志、tasks 与 active stage；未包含凭据、向量、provider body、frontend demo、Logo 或其历史日志。push/PR/deploy 未执行。
