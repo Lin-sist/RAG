@@ -87,7 +87,9 @@
 - [x] 排除 `llama-nemotron-embed-1b-v2` 和 `llama-3.2-nemoretriever-300m-embed-v2` hosted endpoint，因为当前官方页面均为 `Deprecated`；自托管旧 model 不纳入 C17，避免增加 GPU/NIM 运维范围。
 - [x] 修订 model-bound identity 和迁移边界：相同 2048 dimensions 不等于同一 embedding space；旧 50-vector collection 只读保留，新模型使用独立 deterministic collection generation，禁止新 query 搜旧 vectors 或新旧 passage vectors 混写。
 - [x] 将未来执行拆为四个独立授权闸门：1 synthetic embedding item smoke；固定 3 fixtures / 50 passage items rebuild；rebuild READY 后的新 fixed 5-case canary；canary clean 后的 full 150×3。所有阶段 retry=0，授权互不继承。
-- [ ] 离线审计当前 provider adapter/indexing pipeline，冻结新模型 request fields、2048 finite-output validation、50 passage items 的 HTTP batch request 上限、new collection naming/generation、audit/read-back/atomic switch 和 fail-closed tests；该步 calls/mutation=0，需用户批准进入 implementation。
+- [x] 零外调审计当前 provider adapter/indexing pipeline：确认 request fields、response count/index/model/2048-finite validation、actual-model cache identity、zero-retry config、model-bound mapping/query fail-closed、new-generation rebuild 与 manifest/compiler identity 均存在实现缺口；backend/provider calls=0、KB/collection mutation=0。
+- [x] 冻结 rebuild 预算与迁移 contract：固定 3 documents 的 chunk counts=`11/14/25`、exact passage items=50、adapter batch items<=5、HTTP request upper bound=11、retry=0；新 generation 独立命名，失败不复用；50/50/50 强读回与旧 identity CAS 原子切换后才 READY。
+- [ ] 用户批准 C17 model-migration offline implementation 后，按 design 3.2B 用 TDD 修改 adapter/cache/config、独立 model-rebuild workflow、model-bound persistence/preflight/query/compiler；该实现阶段仍 provider/backend calls=0、KB mutation=0，未批准前不得修改代码或 schema。
 - [ ] 用户单独授权 1-item synthetic endpoint smoke；披露 model、sanitized endpoint、payload、费用/配额/限流、timeout、proxy、retry=0，且不发送 fixture/业务文本。未授权前不得执行。
 - [ ] synthetic smoke clean 后，重新披露并取得固定 KB rebuild 授权：50 passage items、已冻结 HTTP batch 上限、3 个 tracked fixture chunks 出站、费用/配额、new collection、source retain、失败/rollback 语义；旧 migration/canary 授权不得复用。
 - [ ] 在新 generation 执行 zero-retry rebuild；只有 expected/observed/read-back=`50/50/50`、missing/mismatch=`0/0`、deterministic ID set=50、dimension/model identity 匹配且 mapping 原子切换完成，才标记 `MODEL_REBUILD_READY`。失败保留旧 source/mapping，不自动补跑或清理未知 collection。

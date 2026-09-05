@@ -65,6 +65,31 @@ numeric KB id、vector collection 和绝对路径只用于本地 raw validation�
 
 固定 rebuild 输入不是重新切块：复用已审计的 3 fixtures、50 deterministic chunks 与 vector IDs。新 collection 必须通过 expected=observed=50、missing/mismatch=0、强读回 ID set=50、dimension/model generation 匹配后，才允许原子切换 evaluation mapping。任何失败都保留旧 mapping/source，不清理未知状态 collection，不自动 retry。
 
+### 3.2B 2026-08-31 Adapter/Indexing Offline Audit Freeze
+
+本节冻结零外调代码审计结果；它只定义后续 implementation contract，不表示 adapter 已兼容或 KB 可重建。审计期间 backend/provider/embedding calls=0、KB/collection mutation=0。
+
+当前实现存在以下阻断项，全部关闭前不得申请 synthetic smoke：
+
+- `OpenAIEmbeddingProvider` 当前只发送 `input`、`model`、`input_type`、`encoding_format`，尚未发送已批准 contract 的 `modality=text`、`embedding_type=float`、`truncate=NONE`；
+- response 只取返回顺序，未验证 response model、item count、index 唯一/连续/重排、每 item 非空、exact 2048 dimensions 与全部 float finite；`VectorDocument`/Milvus upsert 也没有补足 finite/dimension 防线；
+- provider `getModelName()` 固定返回 `openai`，embedding cache identity 因而无法区分旧 `llama-nemotron` 与新 `nemotron-3`，存在跨模型复用旧 cache 的风险；
+- embedding adapter 的默认 `maxRetries=3`，tracked embedding config 未覆盖为 0；这与 C17 zero-retry contract 冲突；
+- 普通 indexing 在构造 `vectors.get(i)` 前不验证 batch result count/order；固定 KB 的三个 document chunk counts 为 11/14/25，adapter 每个 HTTP batch 最多 5 items，沿用 document grouping 时请求数为 `ceil(11/5)+ceil(14/5)+ceil(25/5)=11`；因此 C17 rebuild 冻结为 exactly 50 passage items、HTTP request upper bound=11、每 request items<=5、automatic retry=0；实现即使安全合并批次也不得把 plan-only 上限写低于 11；
+- 既有 `VectorShadowMigrationService` 复制旧 vectors、对 READY KB 直接返回、collection 名固定 `shadow_v1`，且 mapper 只接受 legacy/audit-failed 状态；它不能被当作新 embedding generation rebuild；
+- `KnowledgeBase`/V12 mapping 仅记录 collection/readiness/count，没有 model、request contract hash 或 generation；查询侧只检查 READY/collection，无法阻止新 query 搜旧 collection；
+- C17 manifest/compiler 当前也尚未持久化 embedding model/request/collection generation identity，不能证明 reference repeats 使用同一向量空间。
+
+后续离线 implementation 必须采用独立 model-rebuild workflow（可复用既有 tenant-scope、read-back 和 CAS switch helper，但不得复用“复制旧 vector”的业务语义）：
+
+1. 冻结 adapter contract version；query/passage DTO 精确序列化已批准 fields，禁止同时发送 `dimensions`；响应按 `index` 校验并恢复输入顺序，要求 response model 匹配、count 精确、每向量 exact 2048 且全部 finite。
+2. provider identity 返回实际 model ID；cache key/payload 绑定 provider family + exact model + request contract version + dimension。固定 rebuild 走显式 no-cache 路径，cache hit 必须为 0，保证 50 items 都由目标模型生成。
+3. C17 runtime 将 embedding automatic retry 显式锁为 0，并输出安全 attempt/retry counts；任一 4xx/429/5xx/timeout/invalid response 立即停止，不继续后续 batch。
+4. 新 collection 名由预先冻结的 model slug、contract hash 和显式 generation 组成，例如 `tenant_{tenantId}_kb_{kbId}_emb_nemotron3_{contract12}_g{generation}`；失败 generation 永不复用，retry 必须新 generation、新披露、新授权。
+5. rebuild 从既有 50 deterministic chunks/IDs 建立不可变 expected snapshot，生成 passage embeddings 后只写新 collection；强读回校验 exact ID set、count=50、content/tenant/kb/document metadata、dimension、finite 和 model-bound generation。
+6. SQL mapping 增加 active/source/shadow 的 model/request/generation identity，并使用旧 active collection+identity 的 compare-and-set 原子切换；只有 50/50/50、missing/mismatch=0 才进入 `MODEL_REBUILD_READY`。失败保持旧 mapping/source，不删除或自动补跑新 collection。
+7. preflight/query/compiler 必须要求 runtime query contract、active collection identity 与 reference manifest 完全相同；任一缺失或漂移均在 query embedding 前 fail closed。
+
 ### 3.3 Plan Preflight Canary And Full State Machine
 
 - `PLAN_VALID`：纯本地 manifest/dataset/command/budget 校验通过，calls=0。
@@ -116,7 +141,7 @@ median 只承担 reference central value；min/max/spread 继续留在 evidence 
 ### 4.1 Approved-later Call Shape
 
 - synthetic model smoke：1 query embedding item；
-- fixed KB rebuild：50 passage embedding items；HTTP batch request 上限必须在实现前由 code audit/plan-only 固定；
+- fixed KB rebuild：50 passage embedding items；离线审计已冻结 HTTP batch request upper bound=11、每 request items<=5、automatic retry=0；
 - canary：5 debug retrieval + 最多 5 query embedding；
 - full：450 debug retrieval + 最多 450 query embedding；
 - reference query 阶段总上限：455 debug retrieval + 455 query embedding items；不含前置 smoke/rebuild；
@@ -192,7 +217,7 @@ tracked output 仅含 allowlisted identity/hash/count/status/rule aggregates，�
 | preflight | local backend + existing KB readiness，无 mutation | 0 provider |
 | model contract | request fields、2048 output、model/collection mismatch fail closed | 0 |
 | synthetic smoke | 1 synthetic item、auth/protocol/output shape、zero retry | 1 embedding item |
-| fixed KB rebuild | 50 deterministic passage items、new collection 50/50 audit/read-back、atomic mapping、source retain | 50 embedding items；HTTP batch 上限需先锁定 |
+| fixed KB rebuild | 50 deterministic passage items、new collection 50/50 audit/read-back、atomic mapping、source retain | 50 embedding items；最多 11 HTTP requests、每次最多 5 items、retry=0 |
 | canary | 5 fixed samples、heuristic attribution、zero retry/fallback/model rerank | 最多 5 embedding |
 | full reference | 150×3、全部 observations 与 identity | 最多 450 embedding |
 | activation replay | 三份 existing details + final profile/reference | 0 |
@@ -303,3 +328,18 @@ Java/POM/frontend/runtime/API 无改动时 Maven/frontend build 可记为 `SKIPP
 - **面临的选择**：只记录 dimension；只记录 model ID；绑定 model、sanitized endpoint、request contract 和 collection generation，并在执行前复核官方 lifecycle/runtime fingerprint。
 - **选了哪个 + 为什么**：选择完整 model-bound identity。这样 hosted endpoint、模型、输入类型或 collection generation 漂移会在 reference 前 fail closed，而不是把 provider 迁移伪装成同一 baseline。
 - **放弃的代价**：只记 dimension 会允许跨空间误用；只记 model ID 会漏掉 endpoint/request contract 漂移；完整 identity 增加 metadata/compiler 字段和每次执行前核验成本。
+
+### 决策 19：50 items 的 batch 上限如何冻结
+- **面临的选择**：把 50 items 合为 10 个五项请求；沿用三个 document 的 11/14/25 分组并保守冻结 11 个请求；逐 item 发 50 个请求。
+- **选了哪个 + 为什么**：选择 HTTP request upper bound=11、每次最多 5 items。它与当前 document-level indexing 语义一致，也允许 implementation 在保持完整性验证时安全合并为更少请求，但授权预算不会被低估。
+- **放弃的代价**：直接写死 10 会让实现一旦保留 document boundary 就超预算；逐 item 50 次放大限流和部分失败面；保守 11 的代价是预算比理论最少值多 1 次。
+
+### 决策 20：新模型 rebuild 是否复用既有 shadow-copy service
+- **面临的选择**：直接复用并修改旧 vector-copy service；普通文档 indexing 原地重建；新增独立 model-rebuild workflow，并只复用 tenant/read-back/CAS helper。
+- **选了哪个 + 为什么**：选择独立 workflow。旧 service 的职责是把同一 embedding space 的 legacy vectors 复制到 tenant-aware collection，而新流程必须真实生成 50 个新模型 vectors、绑定 generation 并从 READY mapping 做原子代际切换。
+- **放弃的代价**：直接改旧 service 容易混淆 copy 与 re-embed 状态；普通 indexing 会改文档终态并可能原地混写；独立 workflow 增加少量代码和 schema，但能保持旧 migration 行为稳定。
+
+### 决策 21：embedding cache 如何跨模型隔离
+- **面临的选择**：继续用 provider family=`openai` 做 key；只加 model ID；绑定 model+request contract+dimension，且 rebuild 显式 bypass cache。
+- **选了哪个 + 为什么**：选择完整 contract key，并让 fixed rebuild 零 cache hit。模型相同但 input/truncate/output contract 不同也可能不可比较；重建必须证明 exactly 50 items 来自目标 provider generation。
+- **放弃的代价**：family-only 会直接复用旧空间；model-only 漏掉协议漂移；完整 key/bypass 会降低本次重建缓存收益，但换来可审计身份。

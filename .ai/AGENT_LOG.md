@@ -2079,3 +2079,36 @@
 - 范围与修改文件：仅 `prototype/chatgpt-ui-demo/` 内 3 个文件。`index.html` 删除右缘悬浮分享按钮节点；`js/app.js` 将 `initComposer()`（模板克隆）调整到 `initStaticIcons()`（`data-icon` 水合）之前，修复 `#plusBtn`/`#micBtn` 图标不显示（根因：水合时模板节点尚未入 DOM）；同步移除 `floatShare` 相关 JS（图标 map、`show()` 显隐、`float-share` 菜单 case）；`css/app.css` 删除 `.float-share` 样式块及媒体查询引用。
 - 验证：`node --check js/app.js`=PASS；`grep` 确认无 `float-share/floatShare` 残留；浏览器重载后检查 `plusSvg=true`、`micSvg=true`、`floatGone=true`，截图确认输入框左侧 `+`、右侧听写图标正常渲染、右缘无悬浮按钮；顶栏「分享/更多」菜单（copy-link/export-md）未受影响。
 - 跳过项与剩余风险：无新增；其余边界同上一条 Demo 记录。Commit：`pending`；提交责任为用户手动提交，建议并入 `demo(frontend): 新增高仿ChatGPT界面静态原型`；push/PR/deploy 未授权。
+
+## 2026-08-31｜C17 Shadow Migration Retry 成功与迁移后 Preflight
+
+- 授权与范围：用户明确回复“授权执行一次 C17 shadow migration retry”。本次授权仅允许恢复本地 Docker 依赖、只读 source、复用 deterministic 空 shadow、复制并审计 50 vectors、成功后原子切换 MySQL mapping/readiness；provider/embedding/rerank/ask/generation/judge/LLM calls=0、business data outbound=false，不删除 source、不自动清理或第二次重试。提交责任沿用 C17 的 `Agent 提交`；push/PR/deploy 未授权。
+- 事前门禁：当前 HEAD=`46bd90a` 且包含 scope fix commit `a0c4e1f`；重新构建当前后端 jar 成功，embedded `rag-core` 与模块 jar SHA-256 一致。后端 8080 未监听；MySQL=`AUDIT_FAILED / SOURCE_ACTIVE`、expected/observed/migrated/missing/mismatch=`50/50/0/0/0`、source=`50×2048`、现存 shadow=0。前端 demo 与本日志已有未提交改动均原样保留，未混入迁移代码。
+- 唯一一次 retry：无 Web、无调度器、禁用 Flyway 的最小 MyBatis 上下文调用既有 `VectorShadowMigrationService`；结果=`READY`、expected/observed/migrated=`50/50/50`、missing/mismatch=`0/0`。MySQL 事后=`READY / SHADOW_ACTIVE / SOURCE_RETAINED`，error category=`NONE`。
+- 事后核验：source exists/count=`true/50`；Milvus collection statistics 对新 shadow 一度返回 0，但迁移使用的 tenant-scoped STRONG query、50 个预期 vector ID 读回均为 50，dimension=2048。随后启动真实本地 backend，startup BM25 按 active shadow 重建 50 chunks；mutation-free C17 preflight=`READY`、vector readiness=`READY`、vector count=`50/50`、fixtures matched/missing/incomplete=`3/0/0`。因此不把 eventually-consistent collection statistics 单次 0 误判为数据丢失。
+- 构建与验证：沙箱内 Maven 首次因 parent POM 访问权限失败；按仓库既有授权在本机执行 `mvn -q -pl rag-admin -am package -DskipTests`=`PASS`。后端启动时 Flyway 验证 12 migrations、schema v12 无待执行 migration；未运行新的全仓测试，因为本轮未修改 Java/Python 实现，使用既有 fix 的 619-test 证据并补充真实 migration/preflight 证据。
+- 剩余门禁：本次 retry 授权已消耗。fixed 5-case canary 仍需重新披露并取得独立授权；当前 runtime 为 OpenAI-compatible NVIDIA embedding、`nvidia/llama-nemotron-embed-1b-v2`、`integrate.api.nvidia.com/v1/embeddings`、dimension=2048、timeout=60000ms、fallback=false、proxy=false、retry=0。full 450/450、compiler、阈值批准、ACTIVE replay、baseline acceptance/archive 继续未授权。
+- Commit：`pending`；建议 `docs(eval): 记录C17迁移就绪与预检通过`。
+
+## 2026-08-31｜C17 Migration 后 Canary 失败：NVIDIA Hosted Endpoint 已弃用
+
+- 授权与调用边界：用户明确回复“授权执行一次 C17 fixed 5-case canary”。执行前同一 HEAD=`46bd90a`、tracked config SHA-256=`d66479a5...a6575`、runtime provider/model/endpoint/dimension/timeout/fallback/proxy/retry=`OpenAI-compatible NVIDIA / nvidia/llama-nemotron-embed-1b-v2 / integrate.api.nvidia.com/v1/embeddings / 2048 / 60000ms / false / false / 0`；mutation-free preflight 再次 `READY`、vector count=`50/50`、fixtures=`3/3`。
+- 实际结果：固定 5 条 tracked question 各执行一次 localhost debug retrieval，并分别进入一次 NVIDIA query embedding；5/5 provider response 均为 HTTP 410 Gone。runner=`FAILED`、retrieveErrors=5、rateLimitErrors=0、retry=0、fallback/model rerank=0，ask/generation/judge/external rerank=0。raw artifacts 写入 ignored `tmp/eval/c17/canary-retry-20260831*` 且 no-overwrite；canary 授权已消耗，未自动重试、未进入 aggregate、未启动 full。
+- 根因核对：使用 agent-reach 的 Exa + Jina Reader 读取 NVIDIA 官方模型页；页面于 2026-08-31 明确标记该模型 `Deprecated`，并写明 “This NIM Endpoint has been deprecated”。本地新增临时 HTTP-path test 证明现有 WebClient 对 base URL `/v1` 与 `uri("/embeddings")` 的实际路径仍为 `/v1/embeddings`，路径假设被推翻；临时测试随后删除，Java 生产/测试代码最终 diff=0。
+- 边界判断：官方候选 `nemotron-3-embed-1b` 同为 2048 维，但不同模型产生不同 embedding 空间；仅维度相同不能让现有 50 条旧向量与新 query vector 可比较。C17 proposal/non-goal 明确排除默认 embedding/provider 切换、KB rebuild/indexing embedding，因此本轮不修改 `.env.local`、provider config、dataset/profile/metric，不重建 KB，也不申请 full。
+- 验证与跳过：本地 URI 聚焦 test=`PASS`（用于否定错误路径假设，文件已删除）；官方模型页读取=`PASS`；`agent-reach check-update` 因与当前诊断无关且网络副作用未获授权而被审批拒绝，按要求 `SKIPPED`，未绕过。后端已停止；Docker 本地依赖保持运行。
+- 剩余风险与决策门：若要继续 C17，需独立选择并批准其一：A) 自托管 deprecated 旧模型 NIM，保留向量空间但引入 GPU/容器/容量依赖；B) 选择当前 hosted 新模型，重建固定 KB 的 50 chunks 并重置 provider/KB/reference identity。两者都超出当前 C17 原边界，不能由本次 canary 授权推导。
+- Commit：`pending`；建议 `docs(eval): 记录C17 provider端点弃用阻断`。
+
+## 2026-08-31｜C17 新模型 Adapter/Indexing 零外调审计
+
+- 授权与范围：用户要求“先完成零外调的 adapter/indexing 离线审计”。本轮只读取当前 Java/config/schema/tests、C17 OpenSpec 与 ignored C17 safe metadata counts，并更新 C17 design/tasks/active pointer/append-only log；backend/provider/embedding/rerank/ask/generation/judge calls=0、business data outbound=false、KB/collection/SQL mutation=0，未修改 `.env.local`、Java、schema、runtime config、dataset/profile/reference 或前端文件。
+- 审计结论：当前实现尚不可进入 synthetic smoke。阻断包括：adapter 缺 `modality/embedding_type/truncate`；未验证 response model/count/index/order/exact-2048/finite；`getModelName()` 固定为 `openai` 导致新旧模型 cache identity 冲突；embedding 默认 `maxRetries=3` 与 C17 retry=0 冲突；普通 indexing 未检查 batch result count/order；既有 shadow service 只复制旧 vectors、READY 时直接返回且固定 `shadow_v1`；KB mapping/query/preflight/manifest/compiler 均未持久化并强制 model/request/collection generation identity。
+- 冻结 contract：目标仍为 `nvidia/nemotron-3-embed-1b`；固定 KB 三文档 chunk counts=`11/14/25`，exact passage items=50；adapter 每 HTTP batch items<=5，沿用 document grouping 的保守 HTTP request upper bound=`3+3+5=11`，automatic retry=0。新模型需独立 model-rebuild workflow、actual-model+request+dimension cache identity且 rebuild bypass cache、显式新 generation collection、50/50/50 强读回、missing/mismatch=0，以及旧 collection+identity CAS 原子切换；失败保留旧 mapping/source 且不自动补跑/清理/复用 generation。
+- 验证：纯静态 `rg/Get-Content` 交叉核对 adapter、embedding cache、indexing、Milvus、shadow mapper/service、application config、C17 manifest/compiler 与既有 tests；`git diff --check` 待本轮文档完成后执行。未运行 Maven/Python/frontend build：本轮未修改代码或 executable tooling，且审计目标是冻结 implementation 前 RED gaps。
+- 剩余门禁：需用户另行批准 model-migration offline implementation；该阶段仍为零外调/零 KB mutation。实现与离线 contract tests clean 后才可重新披露并申请 1-item synthetic smoke；旧 retry/canary 授权均已消耗且不得复用。
+- Commit：`pending`；本轮未收到新的提交指令，建议 `docs(eval): 完成C17新模型离线审计`；push/PR/deploy 未授权。
+
+### C17 新模型离线审计验证补录
+
+- `git diff --check`=`PASS`；手工 OpenSpec structure/freeze-token/task-gate 检查=`PASS`。本机未安装 `openspec` CLI，`openspec validate <change> --strict`=`SKIPPED (CLI_NOT_FOUND)`；未以该跳过项冒充严格 CLI 验证。最终确认 provider/backend calls=0、KB mutations=0。

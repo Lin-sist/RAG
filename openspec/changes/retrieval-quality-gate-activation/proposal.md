@@ -34,7 +34,7 @@
 - `planned`：C17 reference manifest/schema、调用预算 fail-fast、三次 strict-identity compiler、脱敏 evidence pack、人工阈值闸门、ACTIVE profile 与 median reference lock。
 - `planned`：将 C17 runtime embedding target 改为 `nvidia/nemotron-3-embed-1b`；用新 model-bound collection 对固定 3 fixtures / 50 chunks 做一次可审计重建；保持旧 collection 只读保留且禁止跨模型混写；重置 reference execution identity 后重新走 canary/full。
 - `out_of_scope`：修改 dataset/fixture 内容、chunking、retrieval/rerank/metric 公式；切换默认 reranker；generation/citation/no-answer answer quality、judge calibration/profile；CI 平台配置；生产 SLA；全量业务 KB 迁移、自托管 NIM 部署或其他 adapter 迁移。
-- `unknown`：本账户对新 hosted endpoint 的实际 entitlement、动态限流/配额与生命周期承诺；当前 provider request 对新模型的协议兼容性；50 个 passage embedding 的实际 HTTP batch request 数。Developer Program prototyping 的 NVIDIA API 直接费用依据已确认，但不能推断为生产免费、无限吞吐或永久免费。
+- `unknown`：本账户对新 hosted endpoint 的实际 entitlement、动态限流/配额与生命周期承诺；当前 provider request 对新模型的真实协议兼容性，仍需在离线实现通过后由独立 1-item smoke 核验。离线审计已把固定 rebuild 冻结为 exactly 50 passage items、每 HTTP request 最多 5 items、request upper bound=11、automatic retry=0。Developer Program prototyping 的 NVIDIA API 直接费用依据已确认，但不能推断为生产免费、无限吞吐或永久免费。
 
 ## Goals
 
@@ -77,8 +77,8 @@
 
 - 目标 model 固定为 `nvidia/nemotron-3-embed-1b`，OpenAI-compatible `/v1/embeddings`，`input_type=query|passage`、`modality=text`、`embedding_type=float`、`encoding_format=float`、`truncate=NONE`，省略 `dimensions` 并校验 native output=2048。官方 API 禁止同时发送 `dimensions` 与 `embedding_type`；正式 implementation 前必须用离线 contract test 锁定实际字段，runtime endpoint host/path 仍由后续 fingerprint 和独立授权决定。
 - 旧 `nvidia/llama-nemotron-embed-1b-v2` collection 只作为历史/source evidence 保留。即使维度同为 2048，也不得与新模型 query/passage embedding 混用、增量覆盖或作为新 reference identity。
-- 未来 rebuild 只处理固定 C17 KB 的既有 3 fixtures / 50 deterministic chunks，在新的 deterministic model-bound collection 中生成 50 个 passage embeddings；先完成 expected IDs/count/read-back/model identity audit，再原子切换 evaluation mapping。失败保持旧 mapping/source，不清理未知状态 collection，不自动重试。
-- 重建前先单独授权 1 次纯合成 endpoint smoke；clean 后再披露并授权 50 个 passage embedding items 的 rebuild。HTTP batch request 上限必须由实现前代码审计/plan-only 固定，未固定时不得执行。
+- 未来 rebuild 只处理固定 C17 KB 的既有 3 fixtures / 50 deterministic chunks，在新的 deterministic model-bound collection 中生成 50 个 passage embeddings；离线审计已冻结每 HTTP request 最多 5 items、request upper bound=11、automatic retry=0。先完成 expected IDs/count/read-back/model identity audit，再原子切换 evaluation mapping。失败保持旧 mapping/source，不清理未知状态 collection，不自动重试。
+- 重建前先单独授权 1 次纯合成 endpoint smoke；clean 后再披露并授权 exactly 50 个 passage embedding items 的 rebuild。plan-only 必须显示并强制上述 11-request 上限，drift 时在 provider call 前停止。
 - rebuild READY 后重新执行 mutation-free preflight，再单独授权新的 fixed 5-case canary；旧模型 410 canary 只保留为失败证据，不进入新 reference aggregate。新的 canary clean 后才可进入原有 full authorization gate。
 - model ID、endpoint host/path、dimension、input type、truncate、embedding type、adapter contract、collection generation、chunk/vector identity、Git/config hash 必须进入新 reference generation identity；任何一项漂移都使旧 evidence 不可比较。
 
@@ -111,7 +111,7 @@
 | plan-only | 0 | 0 | 0 | 0 | 纯本地 manifest/命令形状检查 |
 | preflight-only + keep-existing | 0 | 0 | 0 | 0 | 只访问用户本机 backend；不创建/上传/删除 KB |
 | 新模型 synthetic endpoint smoke | 0 | 1 synthetic item | 0 | 0 | 不含业务/fixture 文本；zero retry；需单独授权 |
-| 固定 C17 KB 新空间 rebuild | 0 | 50 passage items | 0 | 0 | 3 个 tracked fixtures 的 50 chunks 出站；HTTP batch request 上限先由 plan-only 固定；需独立授权 |
+| 固定 C17 KB 新空间 rebuild | 0 | 50 passage items（最多 11 HTTP requests；每次最多 5；retry=0） | 0 | 0 | 3 个 tracked fixtures 的 50 chunks 出站；plan-only 强制预算；需独立授权 |
 | fixed 5-case canary | 5 | 5 | 0 | 0 | 5 条 tracked question 可能发送到实际 embedding provider；需单独授权 |
 | full reference 150×3 | 450 | 450 | 0 | 0 | 150 条 tracked question 重复 3 次可能发送到实际 embedding provider；需 canary 后再次授权 |
 | 其他 KB rebuild / fixture upload | 0 | 0 | 0 | 0 | 不在 C17；不得把固定 50-chunk rebuild 扩展到业务 KB |
