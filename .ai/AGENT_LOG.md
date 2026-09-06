@@ -2150,3 +2150,12 @@
 - 停止语义：按一次性 zero-retry 授权规则，本次授权在执行失败后视为已消耗；未修正命令后重跑、未清理或修改 source/mapping。临时执行入口已删除，计划内 Java 最终 diff=0；用户 frontend demo/Logo 及其历史日志未触碰。
 - 剩余门禁：需用户重新明确授权同一 fixed rebuild 后才可用修正过的 Maven 参数继续；成功并完成 mutation-free preflight 后，仍需单独授权新模型 fixed 5-case canary。
 - Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17 fixed rebuild未启动`；push/PR/deploy 未授权。
+
+## 2026-09-06｜C17 Fixed KB Rebuild 第二次未启动与 Classpath 修复
+
+- 失败解释与重新授权：第一次失败是嵌套 PowerShell 双引号错误展开 `$surefire`，不是 provider/基础设施/实现错误。用户要求避免在同一处反复尝试，并重新授权相同 fixed rebuild；本次改为直接调用 `mvn.cmd` 与逐项字面量参数数组，Maven 参数解析成功、测试 JVM 正常启动。
+- 第二次执行结果：为避免重新编译而直接运行 `surefire:test` 时，Maven 从本机仓库加载了旧版 `rag-core`；执行入口在 `VectorModelRebuildService.plan()` 首次解析 `EmbeddingService.getActiveModelIdentity()` 时触发 `NoSuchMethodError`。该失败发生在 plan、Flyway、provider 与 rebuild 前，真实 NVIDIA requests/items=`0/0`，V13/MySQL KB/Milvus mutations=`0/0/0`；事后 Flyway 仍为 V12，旧 mapping=`tenant_1_kb_15_shadow_v1 / READY / 50/50/50`。
+- 停止与准备：第二次授权按 zero-retry 规则消耗，未第三次调用。随后仅执行零外调环境修复：当前 reactor 以 `maven.test.skip=true install` 成功写入本机 Maven cache；安装后 `rag-core` SHA-256=`09838C3E...02F87`，`javap` 确认存在 `embedBatchUncached/getActiveModelIdentity/getMaxBatchSize`；纯 mock `VectorModelRebuildServiceTest`=`PASS`，不再出现 classpath linkage error。
+- 范围安全：临时执行源码不存在，provider/body/vector/secret 未输出或写入；用户 frontend demo/Logo 及其历史日志未触碰。5-case canary/full/push/PR/deploy 未执行。
+- 剩余门禁：执行环境已针对两次启动层错误完成离线修复，但 fixed rebuild 仍未发生；需用户再次明确授权后才可执行同一 50-item/11-request/V13/c17g1/CAS 合同。
+- Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17 rebuild classpath阻断`；push/PR/deploy 未授权。

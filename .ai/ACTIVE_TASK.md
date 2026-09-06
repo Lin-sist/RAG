@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`FIXED_REBUILD_NOT_STARTED_AWAITING_FRESH_AUTHORIZATION`
+- 阶段：`FIXED_REBUILD_NOT_STARTED_CLASSPATH_REPAIRED_AWAITING_FRESH_AUTHORIZATION`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -27,5 +27,7 @@
 - model-migration offline implementation 已完成：adapter/cache/config、V13 model-bound persistence、query/preflight/compiler fail-closed、default-off 独立 rebuild workflow 均已落地并通过离线 tests；本阶段 provider/backend calls=0、KB/Milvus/SQL mutation=0。
 - 用户于 2026-09-05 单独授权并完成 1-item synthetic smoke：唯一 NVIDIA 请求 HTTP 200，model 精确匹配 `nvidia/nemotron-3-embed-1b`，item/index=`1/0`、dimension=2048、all finite、latency=30472ms、attempts=1、retry=0；仅发送非业务 synthetic 文本，KB/Milvus/SQL mutation=0。本次授权已消耗，不得复用。
 - 用户于 2026-09-06 明确授权固定 50 passage items model-bound rebuild 及 tracked fixture chunks 向 NVIDIA NIM 出站；最终执行命令在 Maven 参数解析阶段因 PowerShell 展开 `$surefire` 而以 `Unknown lifecycle phase` 退出，测试 JVM 未启动。V13/provider/KB/Milvus mutations=`0/0/0/0`，Flyway 仍为 V12，旧 KB mapping 仍为 `READY / 50/50/50`。按一次性 zero-retry 规则，本次授权已消耗，未修正后重跑。
+- 用户随后重新授权相同范围；本次改用字面量参数数组后测试 JVM 正常启动，但直接 `surefire:test` 解析到本机 Maven 仓库中的旧 `rag-core`，在任何 plan/Flyway/provider/rebuild 操作前以 `NoSuchMethodError: EmbeddingService.getActiveModelIdentity()` 停止。V13/provider/KB/Milvus mutations 仍为 `0/0/0/0`，本次授权同样已消耗，未重跑。
+- 已在零外调范围内执行当前 reactor `maven.test.skip=true install`，并以 `javap` 确认安装后的 `rag-core` 含 `getActiveModelIdentity/getMaxBatchSize/embedBatchUncached`；纯 mock `VectorModelRebuildServiceTest` 已通过，classpath 阻断已消除。
 - 下一步仍需重新明确授权同一固定 rebuild；范围保持 3 fixtures/50 chunks、最多 11 HTTP requests、每次最多 5 items、retry=0、V13、新 `c17g1` collection、50/50/50 强读回与 CAS 切换。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。
