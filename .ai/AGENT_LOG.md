@@ -2080,6 +2080,66 @@
 - 验证：`node --check js/app.js`=PASS；`grep` 确认无 `float-share/floatShare` 残留；浏览器重载后检查 `plusSvg=true`、`micSvg=true`、`floatGone=true`，截图确认输入框左侧 `+`、右侧听写图标正常渲染、右缘无悬浮按钮；顶栏「分享/更多」菜单（copy-link/export-md）未受影响。
 - 跳过项与剩余风险：无新增；其余边界同上一条 Demo 记录。Commit：`pending`；提交责任为用户手动提交，建议并入 `demo(frontend): 新增高仿ChatGPT界面静态原型`；push/PR/deploy 未授权。
 
+## 2026-08-30｜登录界面设计调研与 Anthropic 风格登录演示页（独立原型）
+
+- 任务类型：前端演示原型（用户明确要求的 design 探索；未触碰 `rag-frontend` 生产代码与 C17 active change；`.ai/ACTIVE_TASK.md` 未改动）。
+- 范围与修改文件：仅 `prototype/chatgpt-ui-demo/` 内新增 `login.html`、`css/login.css`、`js/login.js`，`README.md` 增加一行入口说明；追加本日志。设计参考：用户指定的 anthropic.com/institute/recursive-self-improvement（米白点阵底 + 衬线大标题 + 陶土色像素方块无限变形 hero）；补充调研 awwwards minimal/white/typography 收录趋势（经 Exa/Jina/内置搜索，Exa 免费额度限流后已降级路径完成）。
+- 已确认事实与关键决策：零依赖离线（系统字体、无 CDN、无网络请求），双击或静态服务可开；像素动画为原生 canvas 16×16 格五态无限循环（星芒→文档→放大镜→对话→∞），由中心向外错峰变形 + 边缘散点光斑 + 静止期呼吸微动，`prefers-reduced-motion` 时静帧展示；表单字段与 `rag-frontend/src/views/login/LoginView.vue` 现状一致（用户名/密码 + 必填校验文案），演示提交 900ms 后进入成功态并提示"真实实现请接入 rag-auth"；词标 RAG\智能问答 呼应参考页 ANTHROP\C。
+- 验证：`node --check js/login.js`=PASS；`git diff --check`=PASS；本地 `http.server` + 内置浏览器截图验证 1600×900 首屏、变形动画中间帧、空表单校验（两条红色提示正常）、填写后成功态（按钮 ✓ 已进入演示 + 提示更新）、820px 窄屏响应式（动画置顶、单列堆叠）。
+- 跳过项：未运行 `rag-frontend` 的 vue-tsc build（未改任何前端源码，demo 不在其构建体系内）；awwwards/inspora 逐站点截图级调研未做（inspora 有 Vercel 反爬拦截、awwwards 页面 JS 渲染重），以搜索摘要与用户指定参考页为准。
+- 剩余风险：该风格为亮色米白系，与主演示的 ChatGPT 深色皮肤并存，后续若落地到 `rag-frontend` 需按 `docs/roadmap/frontend-ux-iteration.md` 定级并立 OpenSpec change；动画每帧全格重绘在低性能设备上的开销未做性能档位（格子数固定 256，风险低）。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获 Agent 提交授权），建议 `demo(前端): 新增 Anthropic 风格登录页设计演示原型`；push/PR/deploy 未授权。
+
+## 2026-08-30｜登录演示页新增黑白单色版（inspora 风格参考）
+
+- 任务类型：前端演示原型第二轮（用户反馈迭代：保留米白版，向 inspora.design/posts/1-50 黑白参考图靠近；未触碰 `rag-frontend` 生产代码与 C17 active change；`.ai/ACTIVE_TASK.md` 未改动）。
+- 范围与修改文件：`prototype/chatgpt-ui-demo/` 内新增 `login-dark.html`、`css/login-dark.css`；`js/login.js` 将硬编码调色板重构为 `PALETTES` 映射并新增 `data-palette`/`data-shape` 读取（默认 clay/square 不变，黑白版传 mono/dot 圆点形态）；`login.html` 顶栏加"黑白版 →"入口；`README.md` 增加一行；追加本日志。
+- 已确认事实与关键决策：黑白版为居中卡片构图（区别于米白版左右分栏）：近黑底 #0a0a0a + 整页细点阵 + 两处角落半调点簇（CSS radial-gradient + mask）+ 卡内单色圆点动画 + 白色主按钮 + 底部 caption 角标（@RAG · 设计演示 / LOGIN / DARK-MONO VIEW）；标题改无衬线以贴合参考图；错误色用功能性红 #e5484d（Vercel 式黑白体系惯例），未引入品牌陶土色；两页共用同一动画引擎与表单逻辑，仅靠 data 属性切换主题。
+- 验证：`node --check js/login.js`=PASS；`git diff --check`=PASS；浏览器截图验证黑白版 1600×900 首屏（与参考图构图/质感一致）、空表单校验（! 前缀红色提示）、填写提交成功态（反白按钮 ✓ 已进入演示）、星芒与文档两图形的单色圆点渲染；米白版回归：DOM 快照确认标题与黑白版入口存在，画布位图采样确认 33,768 个陶土色像素（clay 默认路径无回归）。
+- 跳过项：米白版本轮未再截整页图（内置浏览器渲染面被遮挡导致 rAF 节流、截图管道超时，已有位图采样证据替代）；窄屏响应式仅做了 ≤640px 的 CSS 适配未逐机型截图。
+- 剩余风险：黑白版错误态边框用白色与 focus 态区分度有限（有 ! 前缀提示兜底）；两主题各自独立 CSS，后续若有第三主题建议抽公共变量层。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获 Agent 提交授权），建议 `demo(前端): 登录演示新增黑白单色版并抽离动画主题参数`；push/PR/deploy 未授权。
+
+## 2026-08-30｜黑白版登录页重构为米白版同构布局（用户澄清迭代）
+
+- 任务类型：前端演示原型第三轮（用户澄清：非居中卡片构图，而是"米白版布局不变、仅换黑白配色"；未触碰 `rag-frontend` 生产代码与 C17 active change；`.ai/ACTIVE_TASK.md` 未改动）。
+- 范围与修改文件：`prototype/chatgpt-ui-demo/` 内重写 `login-dark.html`（与 `login.html` 结构逐节点同构：topbar+hero 双栏+同 class 命名，仅 `<canvas data-palette="mono">` 不同）与 `css/login-dark.css`（布局参数逐项复制 `login.css`：68px 顶栏、1280px 双栏 grid、clamp 衬线标题、400px 表单、48px 输入框、980px 断点；仅 ：root 色板换为近黑/白/灰体系）；`README.md` 黑白版行描述更新；追加本日志。上一轮的居中卡片构图、角落半调点簇、caption 角标全部移除。
+- 已确认事实与关键决策：本次零 JS 改动（`js/login.js` 的 data-palette/data-shape 机制沿用，黑白版不传 data-shape 即默认方块格形）；黑白版视觉 = 米白版深色反转：白色衬线大标题、白/灰方块像素动画、白底黑字主按钮（成功态反转为深底白字）、错误色保持功能性红 #e5484d。
+- 验证：`git diff --check`=PASS；浏览器截图验证 1600×900 首屏（与米白版布局逐项对位）、空表单校验（红色边框+提示）、填写提交成功态、820px 窄屏单列堆叠（动画置顶，行为与米白版一致）。
+- 跳过项：JS 无改动未重复 `node --check`（上一轮已 PASS）；米白版本轮未动、无需回归。
+- 剩余风险：黑白版错误态边框红色与"纯黑白"原则的取舍已获用户上一轮认可（"配色方面还可以"）；若后续要第三配色只需新增 data-palette 值与一份同构 CSS。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获 Agent 提交授权），建议 `demo(前端): 黑白版登录页重构为米白版同构布局`；push/PR/deploy 未授权。
+
+## 2026-08-30｜安装 logo-designer skill 并产出 RAG logo 10 方向对比页
+
+- 任务类型：设计探索原型（用户明确要求安装 neonwatty/logo-designer-skill 并为其 RAG 系统设计抽象 mark；未触碰生产代码与 C17 active change；`.ai/ACTIVE_TASK.md` 未改动）。
+- 范围与修改文件：skill 安装到用户级 `C:\Users\Lin\.agents\skills\logo-designer\`（git clone，仓库外）；仓库内新增 `prototype/logo-designer/logos/concepts/concept-1..10.svg` 与 `logos/preview.html`；追加本日志。
+- 已确认事实与关键决策：按 skill 流程执行 Interview（AskUserQuestion 确认：纯单色无强调 / 方向力两类各半 / 线段为主块面点缀）；10 个互斥方向 = 5 向内收（收束谱线/断环聚合/调谐交点/向心螺线/层线归点）+ 5 向外抽（抽丝/梳齿命中/裂隙漏光/格点逃逸/引证括弧），全部遵守用户 brief：抽象 mark 非 字标、单色 currentColor、3-6 path（多段合并为单 path 元素）、无渐变阴影双线、隐喻为"碎片噪声↔精确信号"动作、微不对称；预览页内联 SVG 使 currentColor 随明暗主题切换，每卡含 128/32/16px 实读尺寸条。
+- 执行备注：并行 Task 生成 10 概念时 7 个因并发限额失败，改由主流程按同一几何规格直接编写（concept-2/3/5/6/7/8 手写、concept-4 螺线用脚本参数化生成，修复了一次路径拼接丢坐标 bug）；`preview.html` 首次构建内嵌了修复前的坏路径，已重建。
+- 验证：`python` XML/viewBox/单色断言 10/10 PASS；浏览器实测对比页深色与浅色双底渲染、明暗切换、128/32/16px 尺寸条全部正常；10 个 mark 在 16px 均可辨认。
+- 跳过项：PNG 导出（skill Phase 4 需用户选定方向后执行，本机 SVG 光栅化工具未验证）；登录页 mark 替换与"从命中格向外检索扩散"动画（用户 brief 明确"先定静态 mark，再谈动画"）。
+- 剩余风险：concept-3 命中点与线条交叉在 16px 融合、concept-8 裂缝被信号线填满导致负形不明显，均为 refine 阶段候选调整项；对比页为内联单文件，双击即可离线打开。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获 Agent 提交授权），建议 `design(logo): 新增 RAG 抽象 logo 10 方向概念稿与对比页`；push/PR/deploy 未授权。
+
+## 2026-08-30｜RAG logo 定稿落地（用户自优化的 concept-9 箭刃方案）
+
+- 任务类型：前端演示原型品牌替换（用户否决全部 10 个概念稿并给出自优化定稿图：双刃箭头 + 渐缩方块 + 金色命中尖；未触碰生产代码与 C17 active change；`.ai/ACTIVE_TASK.md` 未改动）。
+- 范围与修改文件：`prototype/logo-designer/logos/` 新增 `iterations/iteration-1.svg` 与 `export/logo.svg`（完整 mark）、`export/icon.svg`（纯箭刃方版）；`prototype/chatgpt-ui-demo/` 新增 `favicon.svg`（icon 副本），`login.html`/`login-dark.html`/`index.html` 三页替换 favicon 链接并在词标前内联箭刃 mark（currentColor 自适应明暗 + 金尖 #C9A15A，viewBox 125 120 355 275 紧包围）；`js/login.js` GLYPHS 新增 logo 格点帧（16×16 格收敛方块大→中→小 + 双刃，26 格）并设为开场帧，循环改为 logo→星芒→文档→放大镜→对话→∞；`README.md` 品牌行；追加本日志。
+- 已确认事实与关键决策：用户定稿为 concept-9（格点逃逸）的自优化变体，隐喻「方块渐缩收束进箭刃一点」；mark 双色调（currentColor + 唯一强调金色 = 命中点，符合 brief "最多一个可解释强调色"）；词标处用紧包围 viewBox 的纯箭刃（完整 mark 在 20px 下方块不可见）；画布格点帧用 26 格近似还原 mark 布局，金尖不在 canvas 呈现（画布保持自身调色板体系）。
+- 验证：`node --check js/login.js`=PASS；`git diff --check`=PASS；明暗双底检查页确认完整 mark/icon 在浅色（墨色）与深色（白色）下渲染正确、icon 128/32/16 可认；米白版与黑白版浏览器截图确认词标 mark、开场 logo 帧（收敛方块+双刃）及后续变形流转正常；主演示词标/favicon 经 DOM 断言确认（截图通道间歇性被遮挡，已有同构页视觉证据 + DOM 断言兜底）。
+- 跳过项：PNG 导出（skill export.sh 报无 resvg/inkscape/librsvg 转换器，按 skill 指引报告用户、未擅自安装）；`.ico` 格式未生成（现代浏览器 favicon.svg 已覆盖）；预览页未按 skill Phase 3 重建（用户已直接定稿，无迭代对比需求）。
+- 剩余风险：词标 mark 为三页内联复制，后续改 mark 需同步三处（源文件唯一定位在 `prototype/logo-designer/logos/export/`）；16px favicon 下金尖占比很小（刃形仍可认）；logo 格点帧与原五帧共用随机调色板，单帧内颜色为陶土/白灰系随机分布而非纯色，若要"纯色 logo 帧"需引擎支持按帧锁定颜色。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获 Agent 提交授权），建议 `demo(前端): 落地 RAG 箭刃 logo 并接入登录动画开场帧`；push/PR/deploy 未授权。
+
+## 2026-08-30｜chatgpt-ui-demo 对接真实后端调研报告
+
+- 任务类型：Type A 只读调研（用户要求深度调研后端功能与前端契约、对照 demo 实现、产出对接调研文档；未立 OpenSpec change、未改 `.ai/ACTIVE_TASK.md`，C17 active change 未触碰）。
+- 范围与修改文件：新增 `prototype/chatgpt-ui-demo/docs/backend-integration-research.md`（约 300 行）；追加本日志。未修改 `rag-frontend`、后端代码与 demo 运行文件；demo `README.md`/`index.html`/`.ai/AGENT_LOG.md` 已有用户未提交改动，为不混入用户工作区，未再改 README。
+- 已确认事实与关键决策：后端 5 个 Controller 约 25 端点全部挂 8080 无 context-path（auth `/auth/**`、业务 `/api/**`）；统一响应双信封（ApiResponse vs ErrorResponse）且 Security 401/403 body `code` 恒 500，判定须用 HTTP status；SSE 为 POST + fetch 流（不能 EventSource）、纯文本 delta、`data:` 后无空格须 `slice(5)`、`[DONE]`/`[ERROR]` 文本终态、120s 超时、流式 citations 恒空；refresh rotate + Redis 会话一致性校验须单飞；无注册 API、bootstrap 默认关；三个架构性差距：会话实体不存在（历史为扁平单轮记录）、答案无行内引用标记（引用为事后归因数组）、流式无结构化终态（依赖 P1.4）；demo 9 视图中 5 个（评测/MCP/可观测/知识源/研究任务）无 REST 支撑；CORS `allowedOriginPatterns("*")` 支持静态服务直连或同源反代。关键决策：文档将对接定性为 Type C（须先立 OpenSpec change），给出 P0-P4 分期（认证→问答→知识库/文档→历史反馈→检索可视化）与字段映射附录。
+- 验证：契约字段经两路交叉核实（并行探索代理 + 主流程对 QAController/QAResponse metadata 键、DOC_001..006、上传 202/201 状态码、GET /api/qa/ask、GlobalExceptionHandler 的直接 grep 核验）；`git diff --check`=PASS；文档内引用路径与 HEAD `46bd90a` 文件实存核对=PASS。
+- 跳过项：未启动后端、未发起任何 provider/embedding/LLM 真实调用（按仓库规则此类调用需单独授权）；流式客户端中断是否落历史、上传幂等键实际行为标注为"联调实测"项。
+- 剩余风险：契约以静态阅读为准，异常分支（429 body 形态、503 REDIS_DEPENDENCY_UNAVAILABLE、no_result 语义）的实际表现需联调复核；demo 迷你 Markdown 渲染器对真实 LLM 输出（表格/链接）覆盖不足，是否引入 markdown-it 待用户决策；历史 historyId 反查方案（点赞/点踩）可靠性弱，建议推动 QAResponse 回传 historyId。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获 Agent 提交授权），建议 `docs(前端): 新增 chatgpt-ui-demo 对接真实后端调研报告`；push/PR/deploy 未授权。
 ## 2026-08-31｜C17 Shadow Migration Retry 成功与迁移后 Preflight
 
 - 授权与范围：用户明确回复“授权执行一次 C17 shadow migration retry”。本次授权仅允许恢复本地 Docker 依赖、只读 source、复用 deterministic 空 shadow、复制并审计 50 vectors、成功后原子切换 MySQL mapping/readiness；provider/embedding/rerank/ask/generation/judge/LLM calls=0、business data outbound=false，不删除 source、不自动清理或第二次重试。提交责任沿用 C17 的 `Agent 提交`；push/PR/deploy 未授权。
@@ -2177,3 +2237,12 @@
 - 修复与验证：计数器改为按 adapter batch size 计算 `ceil(documentItems/5)`，继续强制 total requests<=11、items<=50；新 generation=`c17g2` 重新编译并执行 execute=false 预演=`READY`，target model/dimension、50 items、11-request bound 与目标 collection absence 均通过。临时源码已删除，ignored 编译产物留待明确授权后使用。
 - 剩余门禁：V13 已完成，但 KB 尚未迁移至新 embedding space。`c17g2` 是新 generation，真实 50-item rebuild 仍需独立授权；成功后才可运行 mutation-free preflight，再申请 fixed 5-case canary。canary/full/push/PR/deploy 未执行。
 - Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17 c17g1失败与c17g2预演`；push/PR/deploy 未授权。
+
+## 2026-09-06｜前端 Demo 与 RAG Logo 原型基线保护性提交补录
+
+- 用户授权与目的：用户明确授权将现有前端 Demo、Logo 及其日志按自然边界创建本地中文提交；本次提交只为固化日后真实前后端对接前的可恢复基线并恢复 clean working tree，不代表 Demo 已接入后端，也不授权 push、PR、部署或 C17 provider/rebuild 操作。
+- 提交边界：`e6b1532`（`design(logo): 保存RAG品牌标志设计资产`）仅包含 `prototype/logo-designer/` 的 10 个概念稿、定稿/图标导出、迭代稿和离线预览页；`1cf4d6a`（`demo(前端): 保存登录原型与RAG品牌接入基线`）仅包含 `prototype/chatgpt-ui-demo/` 的两套登录页、对应 CSS/JS、favicon、主演示品牌接入和 README。后端对接调研文档与此前未提交的六条原型执行日志随本补录提交，不混入 C17、后端模块或 `rag-frontend` 生产源码。
+- 验证：`node --check prototype/chatgpt-ui-demo/js/app.js` 与 `node --check prototype/chatgpt-ui-demo/js/login.js`=PASS；全部 Logo/Favicon SVG XML 解析=PASS；静态引用存在性=PASS；本地 `python -m http.server` 下主演示、米白/黑白登录页、两份 CSS、登录 JS、favicon 和对接调研文档均 HTTP 200；`git diff --check`=PASS。网络/敏感文本扫描命中仅为 localhost 演示地址、SVG namespace、说明性 `Authorization: Bearer <token>` 占位符和对接文档示例，未发现真实凭据或新增运行时后端请求。
+- 跳过项及原因：未运行 `rag-frontend` 的 `vue-tsc` production build，因为本轮没有修改 `rag-frontend` 且静态原型不在其构建体系内；未重新执行完整浏览器截图矩阵，既有日志已保存各页面/状态/响应式截图级验证，本轮补做静态服务可达性与资源完整性检查。
+- 范围安全与剩余风险：`.ai/ACTIVE_TASK.md`、C17 change、后端代码、配置、`.env.local`、`application-dev.yml` 均未改动；README 的登录动画表格仍称原五态，当前脚本另有 Logo 开场帧，实际合计六态，属于后续可校准文案，不影响运行或真实对接。对接文档仍是静态契约调研，真实异常分支和 SSE 中断语义需在后续 Type C 联调 change 中验证。
+- Commit：前两条提交如上；本条与后端对接调研/历史原型日志将由独立本地文档提交承载。push/PR/deploy 未执行。
