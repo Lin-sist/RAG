@@ -2141,3 +2141,12 @@
 ## 2026-09-05｜C17 Synthetic Smoke 提交补录
 
 - 上一执行提交：`7439b83`（`docs(eval): 记录C17新模型synthetic smoke通过`）。该提交只包含 C17 smoke 的脱敏日志、tasks 与 active stage；未包含凭据、向量、provider body、frontend demo、Logo 或其历史日志。push/PR/deploy 未执行。
+
+## 2026-09-06｜C17 Fixed KB Rebuild 未启动并停止
+
+- 授权与边界：用户明确授权将 C17 三个 tracked fixtures 的 50 个 passage chunks 发送至 NVIDIA NIM `nvidia/nemotron-3-embed-1b`，最多 11 requests、每 request 最多 5 items、retry=0，并授权应用 V13、创建 `c17g1` collection 与通过审计后的 CAS 切换。5-case canary、full、push/PR/deploy 均未授权。
+- 事前预检：Docker MySQL/Milvus/etcd/MinIO/Redis 均 healthy；Flyway=`V12`；固定目标为 tenant=1/KB=15，旧 mapping=`tenant_1_kb_15_shadow_v1 / READY`，expected/observed/migrated/missing/mismatch=`50/50/50/0/0`；三个 document chunks=`25/11/14`，总数/唯一 vector IDs/空 ID/空 content=`50/50/0/0`。一次性无 Web/无调度器执行入口离线编译=`PASS`。
+- 执行结果：最终 Maven 命令在参数解析阶段将 `-Dsurefire.failIfNoSpecifiedTests=false` 中的 `$surefire` 被 PowerShell 展开为空，报 `Unknown lifecycle phase .failIfNoSpecifiedTests=false`，测试 JVM 未启动。真实 provider requests/items=`0/0`，V13/MySQL KB/Milvus mutations=`0/0/0`，未创建或切换 `c17g1`。事后只读核验 Flyway 仍为 V12，旧 mapping/readiness/counts 完全未变。
+- 停止语义：按一次性 zero-retry 授权规则，本次授权在执行失败后视为已消耗；未修正命令后重跑、未清理或修改 source/mapping。临时执行入口已删除，计划内 Java 最终 diff=0；用户 frontend demo/Logo 及其历史日志未触碰。
+- 剩余门禁：需用户重新明确授权同一 fixed rebuild 后才可用修正过的 Maven 参数继续；成功并完成 mutation-free preflight 后，仍需单独授权新模型 fixed 5-case canary。
+- Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17 fixed rebuild未启动`；push/PR/deploy 未授权。

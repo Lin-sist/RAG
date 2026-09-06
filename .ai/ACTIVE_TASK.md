@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`MODEL_SMOKE_CLEAN_AWAITING_FIXED_REBUILD_AUTHORIZATION`
+- 阶段：`FIXED_REBUILD_NOT_STARTED_AWAITING_FRESH_AUTHORIZATION`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -26,5 +26,6 @@
 - 用户已确认迁移到 `nvidia/nemotron-3-embed-1b` 并批准 doc-only 规划修订；对应提交为 `288a0f8`。本轮零外调 adapter/indexing 审计已完成：冻结 50 passage items、每 HTTP request 最多 5 items、request upper bound=11、retry=0，并确认 adapter request/response validation、actual-model cache、model-bound persistence/query fail-closed、独立 rebuild workflow 与 compiler identity 尚需实现。
 - model-migration offline implementation 已完成：adapter/cache/config、V13 model-bound persistence、query/preflight/compiler fail-closed、default-off 独立 rebuild workflow 均已落地并通过离线 tests；本阶段 provider/backend calls=0、KB/Milvus/SQL mutation=0。
 - 用户于 2026-09-05 单独授权并完成 1-item synthetic smoke：唯一 NVIDIA 请求 HTTP 200，model 精确匹配 `nvidia/nemotron-3-embed-1b`，item/index=`1/0`、dimension=2048、all finite、latency=30472ms、attempts=1、retry=0；仅发送非业务 synthetic 文本，KB/Milvus/SQL mutation=0。本次授权已消耗，不得复用。
-- 下一步需单独授权固定 50 passage items model-bound rebuild：3 个 tracked fixtures 的既有 50 chunks 会出站，最多 11 个 HTTP requests、每次最多 5 items、retry=0；将应用 V13、创建新 `c17g1` collection generation、强读回后 CAS 切换，失败保留 source/mapping 且不自动清理或补跑。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
+- 用户于 2026-09-06 明确授权固定 50 passage items model-bound rebuild 及 tracked fixture chunks 向 NVIDIA NIM 出站；最终执行命令在 Maven 参数解析阶段因 PowerShell 展开 `$surefire` 而以 `Unknown lifecycle phase` 退出，测试 JVM 未启动。V13/provider/KB/Milvus mutations=`0/0/0/0`，Flyway 仍为 V12，旧 KB mapping 仍为 `READY / 50/50/50`。按一次性 zero-retry 规则，本次授权已消耗，未修正后重跑。
+- 下一步仍需重新明确授权同一固定 rebuild；范围保持 3 fixtures/50 chunks、最多 11 HTTP requests、每次最多 5 items、retry=0、V13、新 `c17g1` collection、50/50/50 强读回与 CAS 切换。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。
