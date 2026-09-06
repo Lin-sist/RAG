@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <g id="mark" stroke="currentColor" fill="none" stroke-width="42" stroke-linecap="round">
+    <path d="M256 222 A34 34 0 1 0 256 290 A34 34 0 1 0 256 222 Z" fill="currentColor" stroke="none"/>
+    <path d="M109.28 287.19 A150 150 0 0 1 212.14 112.55"/>
+    <path d="M399.45 212.14 A150 150 0 0 1 398.25 303.60"/>
+    <path d="M375 347.31 A150 150 0 0 1 299.86 399.45"/>
+  </g>
+</svg>
