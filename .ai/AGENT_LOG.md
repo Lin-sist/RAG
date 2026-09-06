@@ -2246,3 +2246,7 @@
 - 跳过项及原因：未运行 `rag-frontend` 的 `vue-tsc` production build，因为本轮没有修改 `rag-frontend` 且静态原型不在其构建体系内；未重新执行完整浏览器截图矩阵，既有日志已保存各页面/状态/响应式截图级验证，本轮补做静态服务可达性与资源完整性检查。
 - 范围安全与剩余风险：`.ai/ACTIVE_TASK.md`、C17 change、后端代码、配置、`.env.local`、`application-dev.yml` 均未改动；README 的登录动画表格仍称原五态，当前脚本另有 Logo 开场帧，实际合计六态，属于后续可校准文案，不影响运行或真实对接。对接文档仍是静态契约调研，真实异常分支和 SSE 中断语义需在后续 Type C 联调 change 中验证。
 - Commit：前两条提交如上；本条与后端对接调研/历史原型日志将由独立本地文档提交承载。push/PR/deploy 未执行。
+
+## 2026-09-06｜前端 Demo 对接调研与原型日志提交补录
+
+- 上一执行提交：`266ad54`（`docs(前端): 记录Demo对接调研与原型提交`）。该提交只包含 `prototype/chatgpt-ui-demo/docs/backend-integration-research.md` 与此前未提交的前端原型日志/本轮保护性提交记录；未包含 C17、后端代码、`rag-frontend` 生产源码、配置或凭据。push/PR/deploy 未执行。
