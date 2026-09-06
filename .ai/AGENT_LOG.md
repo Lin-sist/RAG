@@ -2159,3 +2159,12 @@
 - 范围安全：临时执行源码不存在，provider/body/vector/secret 未输出或写入；用户 frontend demo/Logo 及其历史日志未触碰。5-case canary/full/push/PR/deploy 未执行。
 - 剩余门禁：执行环境已针对两次启动层错误完成离线修复，但 fixed rebuild 仍未发生；需用户再次明确授权后才可执行同一 50-item/11-request/V13/c17g1/CAS 合同。
 - Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17 rebuild classpath阻断`；push/PR/deploy 未授权。
+
+## 2026-09-06｜C17 Fixed Rebuild 两阶段预演就绪
+
+- 用户指令与范围：用户要求遇到问题直接修复直至解决；该指令授权持续排除内部执行问题，但权限闸门不将其解释为新一次 50 chunks 数据出站/V13/Milvus 写入授权，实际 rebuild 仍需明确重新授权。
+- 修复：将执行路径改为同一编译产物的两阶段入口，默认 `execute=false` 只做 classpath、MySQL source、50-chunk plan、provider identity 与 Milvus target-existence 检查；只有精确环境开关才进入 Flyway/provider/rebuild。当前完整 reactor `test-compile`=`PASS`。
+- 零外调预演：真实 MySQL/Milvus 上返回 `C17_FIXED_REBUILD_PREFLIGHT status=READY`；expected=50、maxRequests=11、model=`nvidia/nemotron-3-embed-1b`，目标 collection=`tenant_1_kb_15_emb_nemotron3_83acf73b5765_gc17g1` 且不存在，execute=false。该阶段 provider requests/items=0，V13/KB/Milvus mutation=0。
+- 真实执行闸门：切换 execute 开关的命令在进程创建前被权限审查拒绝，理由为前两次一次性授权已耗尽，而“直接修复直至解决”未明确重授本次 50 chunks 外发和 V13/collection/CAS 写入；未绕过、未调用、未写入。临时源码已删除，编译产物保留在 ignored target 供明确授权后的同一已验证路径使用。
+- 剩余门禁：执行环境与两阶段预演均已 READY；仅等待用户明确授权本次真实 fixed rebuild。canary/full/push/PR/deploy 仍未授权。
+- Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17 rebuild预演就绪`；push/PR/deploy 未授权。
