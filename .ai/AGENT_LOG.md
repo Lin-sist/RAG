@@ -2168,3 +2168,12 @@
 - 真实执行闸门：切换 execute 开关的命令在进程创建前被权限审查拒绝，理由为前两次一次性授权已耗尽，而“直接修复直至解决”未明确重授本次 50 chunks 外发和 V13/collection/CAS 写入；未绕过、未调用、未写入。临时源码已删除，编译产物保留在 ignored target 供明确授权后的同一已验证路径使用。
 - 剩余门禁：执行环境与两阶段预演均已 READY；仅等待用户明确授权本次真实 fixed rebuild。canary/full/push/PR/deploy 仍未授权。
 - Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17 rebuild预演就绪`；push/PR/deploy 未授权。
+
+## 2026-09-06｜C17 c17g1 Fail-closed 与 c17g2 预演就绪
+
+- 授权与执行：用户明确重新授权 `c17g1` fixed rebuild 的 50 chunks 出站、最多 11 requests、retry=0、V13/new collection/CAS。当前 reactor 现场编译与 execute=false 预演先通过；切换真实开关后 Flyway validate 13 migrations，并成功从 V12 应用 V13。
+- 失败根因：临时 `CountingProvider` 包在 adapter 外层，却错误要求每次外层 `getEmbeddings(texts)` 的 items<=5；rebuild 首个 document 有 25 chunks，实际 adapter 原本会在内部拆成 5 个 HTTP batches，但计数器在 delegate/NVIDIA 前提前抛出 `MODEL_REBUILD_HTTP_BUDGET_EXCEEDED`。控制台的 logical requests/items=`1/25` 不是实际 HTTP；真实 NVIDIA HTTP requests/items=`0/0`。
+- Fail-closed 状态：MySQL=`MODEL_REBUILD_FAILED`，active/source mapping 仍为 `tenant_1_kb_15_shadow_v1`，shadow generation=`c17g1`，expected/observed/migrated/missing/mismatch=`50/0/0/50/0`，error category=`MODEL_REBUILD_HTTP_BUDGET_EXCEEDED`；目标 Milvus collection 在 create 前未建立。未重试、未清理、未复用 `c17g1`。
+- 修复与验证：计数器改为按 adapter batch size 计算 `ceil(documentItems/5)`，继续强制 total requests<=11、items<=50；新 generation=`c17g2` 重新编译并执行 execute=false 预演=`READY`，target model/dimension、50 items、11-request bound 与目标 collection absence 均通过。临时源码已删除，ignored 编译产物留待明确授权后使用。
+- 剩余门禁：V13 已完成，但 KB 尚未迁移至新 embedding space。`c17g2` 是新 generation，真实 50-item rebuild 仍需独立授权；成功后才可运行 mutation-free preflight，再申请 fixed 5-case canary。canary/full/push/PR/deploy 未执行。
+- Commit：`pending`；提交责任沿用 C17 `Agent 提交`，建议 `docs(eval): 记录C17 c17g1失败与c17g2预演`；push/PR/deploy 未授权。

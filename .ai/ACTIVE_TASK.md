@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`FIXED_REBUILD_PREFLIGHT_READY_AWAITING_EXPLICIT_REAUTHORIZATION`
+- 阶段：`V13_APPLIED_C17G1_FAILED_C17G2_PREFLIGHT_READY_AWAITING_AUTHORIZATION`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -30,5 +30,7 @@
 - 用户随后重新授权相同范围；本次改用字面量参数数组后测试 JVM 正常启动，但直接 `surefire:test` 解析到本机 Maven 仓库中的旧 `rag-core`，在任何 plan/Flyway/provider/rebuild 操作前以 `NoSuchMethodError: EmbeddingService.getActiveModelIdentity()` 停止。V13/provider/KB/Milvus mutations 仍为 `0/0/0/0`，本次授权同样已消耗，未重跑。
 - 已在零外调范围内执行当前 reactor `maven.test.skip=true install`，并以 `javap` 确认安装后的 `rag-core` 含 `getActiveModelIdentity/getMaxBatchSize/embedBatchUncached`；纯 mock `VectorModelRebuildServiceTest` 已通过，classpath 阻断已消除。
 - 已将执行改为两阶段入口并用当前 reactor 重新编译；零外调预演已在真实 MySQL/Milvus 上通过：provider identity=`nvidia/nemotron-3-embed-1b`、expected=50、maxRequests=11、目标 `tenant_1_kb_15_emb_nemotron3_83acf73b5765_gc17g1` 不存在、execute=false。随后真实执行因缺少本次 50 chunks 数据出站的明确重新授权而在进程创建前被权限闸门拒绝，calls/mutations=0。
+- 用户明确重新授权 `c17g1` 后，真实执行成功应用 V13，但临时预算计数器在 adapter 内部拆批前错误地把首个 25-item document batch 当作单个 HTTP request，因而在 NVIDIA 请求前抛出 `MODEL_REBUILD_HTTP_BUDGET_EXCEEDED`。实际 provider HTTP requests/items=`0/0`；MySQL=`MODEL_REBUILD_FAILED`、shadow generation=`c17g1`、observed/migrated/missing/mismatch=`0/0/50/0`，旧 active/source mapping 保留，Milvus target 未创建。
+- 已修正计数器按 `ceil(documentItems/5)` 统计 adapter HTTP batches，并用新 generation `c17g2` 完成零外调预演：expected=50、maxRequests=11、model/dimension 匹配、目标 `tenant_1_kb_15_emb_nemotron3_83acf73b5765_gc17g2` 不存在、execute=false。失败 generation `c17g1` 不复用；`c17g2` 真实执行等待独立授权。
 - 下一步仍需重新明确授权同一固定 rebuild；范围保持 3 fixtures/50 chunks、最多 11 HTTP requests、每次最多 5 items、retry=0、V13、新 `c17g1` collection、50/50/50 强读回与 CAS 切换。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。
