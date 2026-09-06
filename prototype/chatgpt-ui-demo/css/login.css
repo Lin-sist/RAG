@@ -1,0 +1,223 @@
+/* =========================================================
+   登录页设计演示 · Anthropic Institute 风格探索
+   米白点阵底 / 衬线大标题 / 陶土色像素无限循环
+   零依赖 · 系统字体 · 离线可用
+   ========================================================= */
+
+:root {
+  --ivory: #f2efe7;        /* 页面底色 */
+  --paper: #faf8f2;        /* 输入框底色 */
+  --ink: #1a1915;          /* 近黑主文字 */
+  --ink-soft: #3e3b33;     /* 标签 */
+  --muted: #75705f;        /* 次要文字 */
+  --line: #d9d3c3;         /* 描边 */
+  --clay: #d97757;         /* 陶土主色 */
+  --clay-deep: #b4552d;    /* 陶土深 */
+  --danger: #b23a16;       /* 错误 */
+  --serif: Georgia, "Times New Roman", "Songti SC", "STSong", "SimSun", serif;
+  --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  color: var(--ink);
+  background-color: var(--ivory);
+  /* 点阵网格背景，呼应参考页 */
+  background-image: radial-gradient(rgba(26, 25, 21, 0.13) 1.1px, transparent 1.5px);
+  background-size: 32px 32px;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(217, 119, 87, 0.35); }
+
+/* ---------------- 顶栏 ---------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 44px;
+  height: 68px;
+}
+
+.wordmark {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.wm-mark { color: var(--clay); padding: 0 1px; }
+
+.topbar-nav { display: flex; align-items: center; gap: 18px; }
+
+.env-pill {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--clay-deep);
+  border: 1px solid rgba(180, 85, 45, 0.4);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: rgba(217, 119, 87, 0.08);
+}
+
+.topbar-link {
+  font-size: 13.5px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.topbar-link:hover { color: var(--ink); }
+
+/* ---------------- 主区 ---------------- */
+
+.hero {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 40px 44px 64px;
+  display: grid;
+  grid-template-columns: 1.04fr 0.96fr;
+  gap: 56px;
+  align-items: center;
+  min-height: calc(100vh - 68px);
+}
+
+/* ---- 左列：标题 + 表单 ---- */
+
+.headline {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(46px, 5.4vw, 82px);
+  line-height: 1.1;
+  letter-spacing: 0.015em;
+  margin: 0 0 20px;
+}
+
+.subline {
+  font-size: 15.5px;
+  color: var(--muted);
+  margin: 0 0 8px;
+  letter-spacing: 0.02em;
+}
+
+.login-form {
+  margin-top: 42px;
+  width: min(400px, 100%);
+  display: grid;
+  gap: 18px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+.field input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  font-size: 15px;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field input::placeholder { color: #a49e8d; }
+
+.field input:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.16);
+}
+
+.field.is-error input { border-color: var(--danger); }
+
+.field-err {
+  font-size: 12.5px;
+  color: var(--danger);
+  margin: 6px 2px 0;
+}
+
+.pwd-wrap { position: relative; }
+
+.pwd-wrap input { padding-right: 66px; }
+
+.pwd-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.pwd-toggle:hover { color: var(--ink); }
+
+.submit {
+  height: 50px;
+  border: none;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #f6f3ea;
+  font-size: 15.5px;
+  font-family: var(--sans);
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.06s, opacity 0.18s;
+}
+.submit:hover { background: var(--clay-deep); }
+.submit:active { transform: scale(0.99); }
+.submit:disabled { opacity: 0.65; cursor: default; }
+.submit.is-done { background: var(--clay); color: #fff; }
+
+.form-hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  margin: 2px 2px 0;
+}
+
+/* ---- 右列：像素循环动画 ---- */
+
+.art {
+  display: grid;
+  place-items: center;
+}
+
+#pixelCanvas {
+  width: min(560px, 100%);
+  aspect-ratio: 1 / 1;
+  display: block;
+}
+
+/* ---------------- 响应式 ---------------- */
+
+@media (max-width: 980px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    padding: 24px 24px 56px;
+    min-height: 0;
+  }
+  .topbar { padding: 0 24px; }
+  .art { order: -1; }
+  #pixelCanvas { width: min(340px, 82vw); }
+  .login-form { margin-top: 30px; }
+}

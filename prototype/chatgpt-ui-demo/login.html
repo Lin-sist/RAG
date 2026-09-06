@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · RAG 智能问答（设计演示）</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="index.html"><svg viewBox="125 120 355 275" width="26" height="20" style="vertical-align:-4px;margin-right:5px" aria-hidden="true"><path d="M141 133 C252 170 372 222 465 268 C372 236 250 184 141 133 Z" fill="currentColor"/><path d="M226 380 C310 372 396 326 465 268 C398 340 302 388 226 380 Z" fill="currentColor"/><path d="M412 238 Q447 252 465 268 Q447 284 412 298 Q427 283 427 268 Q427 253 412 238 Z" fill="#C9A15A"/></svg>RAG<span class="wm-mark">\</span>智能问答</a>
+  <nav class="topbar-nav">
+    <span class="env-pill">设计演示</span>
+    <a class="topbar-link" href="login-dark.html">黑白版 →</a>
+    <a class="topbar-link" href="index.html">返回主演示 →</a>
+  </nav>
+</header>
+
+<main class="hero">
+
+  <section class="intro">
+    <h1 class="headline">让每个回答<br>都有出处</h1>
+    <p class="subline">企业级检索增强问答系统 · 登录界面风格探索</p>
+
+    <form class="login-form" id="loginForm" novalidate>
+      <div class="field" id="fieldUsername">
+        <label for="username">用户名</label>
+        <input id="username" name="username" type="text" autocomplete="username" placeholder="请输入用户名" />
+        <p class="field-err" id="usernameErr" hidden>请输入用户名</p>
+      </div>
+
+      <div class="field" id="fieldPassword">
+        <label for="password">密码</label>
+        <div class="pwd-wrap">
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" />
+          <button type="button" class="pwd-toggle" id="pwdToggle" aria-label="显示或隐藏密码">显示</button>
+        </div>
+        <p class="field-err" id="passwordErr" hidden>请输入密码</p>
+      </div>
+
+      <button class="submit" id="loginBtn" type="submit">登&nbsp;&nbsp;录</button>
+      <p class="form-hint" id="formHint">设计原型 · 不发起任何网络请求 · 全部为演示数据</p>
+    </form>
+  </section>
+
+  <section class="art" aria-hidden="true">
+    <canvas id="pixelCanvas"></canvas>
+  </section>
+
+</main>
+
+<script src="js/login.js"></script>
+</body>
+</html>

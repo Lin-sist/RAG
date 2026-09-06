@@ -26,8 +26,12 @@ python -m http.server 8765 --directory prototype/chatgpt-ui-demo
 | 搜索弹窗 | `chatgpt-search.png` | `Ctrl+K` 呼出，搜历史对话 + 知识库，知识库可一键设为提问范围 |
 | 设置弹窗 | `chatgpt-settings.png` | 常规页可用：外观（深/浅/系统）与强调色真实生效，其余为占位 |
 | 用户菜单 | `chatgpt-user.png` | 左下角头像菜单，入口齐全 |
+| 登录页设计演示（独立页 `login.html`） | Anthropic Institute 风格参考（2026-08 调研） | 米白点阵底、衬线大标题、陶土色像素方块无限循环动画（原生 canvas，星芒→文档→放大镜→对话→∞ 五态变形）；表单字段与 `rag-frontend` 现登录一致（用户名/密码），纯演示不接后端 |
+| 登录页黑白版（独立页 `login-dark.html`） | inspora.design/posts/1-50 配色参考（2026-08-30） | 与米白版完全同构布局（顶栏 + 左侧衬线标题/表单 + 右侧动画），仅配色替换为黑白体系：近黑底白点阵、白色衬线大标题、白/灰方块像素循环动画、白色主按钮；与米白版共用 `js/login.js`，经 `data-palette` 切换配色（`data-shape` 可扩展圆点形态） |
 
 RAG 特色交互（区别于纯皮肤）：
+
+- 品牌：RAG 箭刃 mark（2026-08-30 定稿，源文件见 `../logo-designer/logos/export/`）已用于三页 favicon（`favicon.svg`）与词标；登录动画开场帧即 logo 的格点形态。
 
 - 输入框 `+` 菜单可选**知识库范围**，选中后输入框上方出现范围 chip；
 - 回答前模拟检索状态，`已检索`行展开可看命中片段与相似度条；
