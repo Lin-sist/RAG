@@ -12,6 +12,7 @@ import com.enterprise.rag.core.vectorstore.VectorStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -141,9 +142,11 @@ public class VectorModelRebuildService {
             EmbeddingModelIdentity identity,
             String generation) {
         Map<String, VectorDocument> byId = new HashMap<>();
+        Set<String> expectedIds = new LinkedHashSet<>(expected.stream().map(VectorDocument::id).toList());
         if (actual != null) {
             for (VectorDocument vector : actual) {
-                if (vector != null && byId.put(vector.id(), vector) != null) {
+                if (vector == null || !expectedIds.contains(vector.id())
+                        || byId.put(vector.id(), vector) != null) {
                     return new Audit(expected.size(), 1);
                 }
             }
@@ -157,6 +160,7 @@ public class VectorModelRebuildService {
                 continue;
             }
             if (!got.isValid()
+                    || got.metadata() == null
                     || got.vector().length != identity.dimension()
                     || !wanted.content().equals(got.content())
                     || !sameMetadata(wanted.metadata(), got.metadata(), "tenantId")
@@ -172,7 +176,16 @@ public class VectorModelRebuildService {
     }
 
     private boolean sameMetadata(Map<String, Object> left, Map<String, Object> right, String key) {
-        return String.valueOf(left.get(key)).equals(String.valueOf(right.get(key)));
+        Object leftValue = left.get(key);
+        Object rightValue = right.get(key);
+        if (leftValue instanceof Number leftNumber && rightValue instanceof Number rightNumber) {
+            try {
+                return new BigDecimal(leftNumber.toString()).compareTo(new BigDecimal(rightNumber.toString())) == 0;
+            } catch (NumberFormatException ignored) {
+                return false;
+            }
+        }
+        return String.valueOf(leftValue).equals(String.valueOf(rightValue));
     }
 
     private List<DocumentChunk> fixedSnapshot(long tenantId, long kbId) {

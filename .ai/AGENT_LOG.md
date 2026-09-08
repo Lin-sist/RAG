@@ -2250,3 +2250,13 @@
 ## 2026-09-06｜前端 Demo 对接调研与原型日志提交补录
 
 - 上一执行提交：`266ad54`（`docs(前端): 记录Demo对接调研与原型提交`）。该提交只包含 `prototype/chatgpt-ui-demo/docs/backend-integration-research.md` 与此前未提交的前端原型日志/本轮保护性提交记录；未包含 C17、后端代码、`rag-frontend` 生产源码、配置或凭据。push/PR/deploy 未执行。
+
+## 2026-09-08｜C17 rebuild 读回审计收口
+
+- 授权与范围：用户要求依据迭代文档/OpenSpec 继续开发，并明确要求阶段性简短中文 commit，提交责任为 Agent 本地提交。核对 HEAD=4129dc2、唯一 active C17；接续工作区已有四个相关 Java 改动，不覆盖其内容，未触碰前端/Logo。修改 VectorModelRebuildService、VectorModelRebuildServiceTest、C5RecoveryMySqlTest、TenantDataPlaneMigrationMySqlTest 和 C17 tasks。
+- 已确认事实：已有数值比较修复兼容 Milvus JSON 整数浮点表示；新增负向测试确认额外 ID/空读回条目会错误到达 CAS，空 metadata 抛出 NPE。补强 exact ID set 和 metadata 空值检查后统一 fail closed；大整数精度丢失、错误 scope、模型/协议/代际漂移、缺失/重复向量及 NaN 均阻止切换。两处迁移测试的最新版本断言从 V12 同步为 V13。
+- 验证：Preflight 确认 Java/Maven/Python 可用。受限 Maven 首次解析 parent POM 被权限阻断，按已有验证授权以正常依赖访问权限重跑。聚焦 RED=18 tests/3 failures；修复后 GREEN=18/18。全仓 `mvn -q test`=646 tests、0 failures、0 errors、21 skipped（仅统计本次 full 日志创建后更新的 126 份 XML）；`git diff --check`=PASS。
+- 跳过项：Docker 不可用，两个相关 MySQL/Testcontainers suites 共 13 项跳过，包含于全仓 21 skipped；不将其称为真实 MySQL V13 验证。未改前端，frontend build 跳过；真实 fixed rebuild/canary/full 仍需独立授权，本轮未执行。
+- 范围安全：真实业务 backend/provider/embedding/rerank/ask/judge calls=0，业务数据出站=0，业务 KB/MySQL/Milvus mutation=0；测试仅使用 mocks/本地测试服务。未改配置、secret、dataset、baseline 或 archive，未 push/PR/deploy。
+- 剩余风险：本轮只证明离线读回防线；运行时 fixed KB 是否 READY 尚未重新核验。runner/manifest 仍绑定失败代际 c17g1，下一离线切片同步计划代际 c17g2 后才可准备真实授权。
+- Commit: pending；建议中文提交信息：`fix(eval): 加固C17重建读回审计`。

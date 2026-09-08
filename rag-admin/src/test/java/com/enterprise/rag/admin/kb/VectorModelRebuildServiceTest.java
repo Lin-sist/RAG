@@ -13,6 +13,8 @@ import com.enterprise.rag.core.vectorstore.VectorDocument;
 import com.enterprise.rag.core.vectorstore.VectorStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayList;
@@ -82,7 +84,7 @@ class VectorModelRebuildServiceTest {
         ArgumentCaptor<List<VectorDocument>> documents = ArgumentCaptor.forClass(List.class);
         org.mockito.Mockito.doNothing().when(vectorStore).upsert(any(TenantVectorScope.class), documents.capture());
         when(vectorStore.getByIds(any(TenantVectorScope.class), anyList()))
-                .thenAnswer(ignored -> documents.getValue());
+                .thenAnswer(ignored -> documents.getValue().stream().map(this::asMilvusJsonReadBack).toList());
         when(vectorStore.count(any(TenantVectorScope.class))).thenReturn(50L);
 
         VectorModelRebuildService.RebuildResult result = service.rebuild(901L, 7L, "c17g1");
@@ -91,6 +93,79 @@ class VectorModelRebuildServiceTest {
         assertEquals(50, documents.getValue().size());
         assertEquals("c17g1", documents.getValue().get(0).metadata().get("embeddingGeneration"));
         verify(embeddingService, org.mockito.Mockito.times(3)).embedBatchUncached(eq(901L), anyList());
+    }
+
+    private VectorDocument asMilvusJsonReadBack(VectorDocument document) {
+        var metadata = new java.util.HashMap<>(document.metadata());
+        metadata.put("tenantId", ((Number) metadata.get("tenantId")).doubleValue());
+        metadata.put("kbId", ((Number) metadata.get("kbId")).doubleValue());
+        metadata.put("documentId", ((Number) metadata.get("documentId")).doubleValue());
+        return new VectorDocument(document.id(), document.vector(), document.content(), metadata);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"tenantId", "kbId", "documentId", "roundedDocumentId", "nanId",
+            "missingId", "nullMetadata", "embeddingModel", "embeddingContract", "embeddingGeneration",
+            "extraId", "nullEntry", "duplicateId", "missingVector", "nonFiniteVector"})
+    void invalidReadBackPreservesSourceAndNeverSwitches(String corruption) {
+        arrangeSnapshot();
+        if ("roundedDocumentId".equals(corruption)) {
+            List<DocumentChunk> snapshot = chunks();
+            snapshot.stream().filter(chunk -> chunk.getDocumentId() == 100L)
+                    .forEach(chunk -> chunk.setDocumentId(9007199254740993L));
+            when(chunkMapper.selectByTenantAndKnowledgeBaseId(901L, 7L)).thenReturn(snapshot);
+        }
+        properties.setEnabled(true);
+        when(kbMapper.beginVectorModelRebuild(
+                eq(901L), eq(7L), eq("legacy_vectors"), any(), any(), any(), any(), any(), any(), any(), any(),
+                eq(2048), eq("c17g1"), eq(50L))).thenReturn(1);
+        when(embeddingService.embedBatchUncached(eq(901L), anyList()))
+                .thenAnswer(invocation -> vectors(invocation.<List<String>>getArgument(1).size()));
+        ArgumentCaptor<List<VectorDocument>> documents = ArgumentCaptor.forClass(List.class);
+        org.mockito.Mockito.doNothing().when(vectorStore).upsert(any(TenantVectorScope.class), documents.capture());
+        when(vectorStore.count(any(TenantVectorScope.class))).thenReturn(50L);
+        when(vectorStore.getByIds(any(TenantVectorScope.class), anyList())).thenAnswer(ignored -> {
+            List<VectorDocument> readBack = new ArrayList<>(documents.getValue().stream()
+                    .map(this::asMilvusJsonReadBack).toList());
+            VectorDocument first = readBack.get(0);
+            var metadata = new java.util.HashMap<>(first.metadata());
+            switch (corruption) {
+                case "extraId" -> readBack.add(new VectorDocument("unexpected", first.vector(), first.content(), metadata));
+                case "nullEntry" -> readBack.add(null);
+                case "duplicateId" -> readBack.add(first);
+                case "missingVector" -> readBack.remove(0);
+                case "roundedDocumentId" -> { /* JSON double conversion above loses the original integer. */ }
+                case "nonFiniteVector" -> {
+                    float[] vector = first.vector().clone();
+                    vector[0] = Float.NaN;
+                    readBack.set(0, new VectorDocument(first.id(), vector, first.content(), metadata));
+                }
+                case "nullMetadata" -> readBack.set(0,
+                        new VectorDocument(first.id(), first.vector(), first.content(), null));
+                default -> {
+                    if ("nanId".equals(corruption)) {
+                        metadata.put("documentId", Double.NaN);
+                    } else if ("missingId".equals(corruption)) {
+                        metadata.remove("documentId");
+                    } else {
+                        metadata.put(corruption, corruption.startsWith("embedding") ? "wrong" : -1L);
+                    }
+                    readBack.set(0, new VectorDocument(first.id(), first.vector(), first.content(), metadata));
+                }
+            }
+            return readBack;
+        });
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> service.rebuild(901L, 7L, "c17g1"));
+
+        assertEquals("MODEL_REBUILD_READBACK_MISMATCH", error.getMessage());
+        verify(kbMapper, never()).completeVectorModelRebuild(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(),
+                any(), any(), any(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong());
+        verify(kbMapper).failVectorModelRebuild(eq(901L), eq(7L), eq("c17g1"), eq(50L), eq(50L),
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(),
+                eq("MODEL_REBUILD_READBACK_MISMATCH"));
     }
 
     private void arrangeSnapshot() {
