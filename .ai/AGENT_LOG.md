@@ -2391,3 +2391,17 @@
 - 安全：KB/凭据/受保护文件无修改，未push/PR/deploy。full1/full2结果不拼接、不作为正式reference。
 - 剩余风险：full3待执行，具体阈值未批准，profile仍DRAFT；Docker仅恢复，复发根因未闭环。
 - Commit: pending
+
+## 2026-09-08 C17提交补录
+- 上一执行提交：082b03037fbe38122e72b1f8e5bb6493643da522（fix(eval): 保留公开指标契约的序列化身份）。上轮git diff --check通过。
+
+## 2026-09-08 full3正式reference与阈值审阅
+- 范围：正式review JSON、full execution summary、中文threshold review、eval guide、roadmap/technical-debt、ACTIVE_TASK/tasks/本日志。
+- full3使用HEAD=082b030、c17g3、新模型2048维、heuristic、topK5/minScore0.3、delay1.2秒，三轮150/150、450/450，errors/rateLimit/retry/fallback/model rerank0；ask/generation/judge未执行。三轮strict identity一致、details与独立metadata完全一致。
+- 新增provider0，复用热embedding缓存但全部450次真实retrieval均执行；本进程累计432请求均HTTP200，来自失败full1。每次full后预算归零；未清理缓存或KB，不能声称冷缓存性能。
+- compiler=COMPLETE/PENDING_THRESHOLD_APPROVAL，expected/actual450，12条规则spread均0；总体Recall@5=0.474402730375、MRR=0.526153846154、Top1=0.923076923077。只支持固定开发retrieval基线，不支持生产质量、generation/citation/no-answer回答/judge结论。
+- 验证：244 Python tests先前通过；真实三轮、compiler、evidence JSON schema、隐私字段/本地绝对路径扫描、3个审阅链接和git diff --check通过；DRAFT对真实三轮均为NOT_EVALUABLE/4。首次路径扫描将https中的s:/误判为盘符，修正边界后通过，未修改证据规避检查。无Java/frontend变更，不重复Maven/build。
+- 已向用户提交包含12项具体target/tolerance的审阅方案；尚未收到数值批准，不激活canonical profile、不生成已批准locked reference、不归档。
+- 安全：raw保留ignored不回填、不拼接；未写凭据/保护路径，无push/PR/deploy。Docker run备份保留，Windows MySQL80已恢复原Stopped。
+- 剩余风险：阈值/activation replay/最终验收未完成；Docker socket深层复发原因未证实。
+- Commit: pending

@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "c17-full-execution-audit-v1",
+  "status": "FULL_COMPLETE",
+  "generation": "c17g3",
+  "model": "nvidia/nemotron-3-embed-1b",
+  "endpointIdentity": "https://integrate.api.nvidia.com/v1/embeddings",
+  "timeoutMs": 60000,
+  "retry": 0,
+  "fallback": 0,
+  "debugRetrievalCalls": 450,
+  "queryEmbeddingColdCacheUpperBound": 1353,
+  "providerCounterBefore": 432,
+  "providerCounterAfter": 432,
+  "newProviderRequests": 0,
+  "newProviderHttp200": 0,
+  "externalRerank": 0,
+  "ask": 0,
+  "generationCalls": 0,
+  "judge": 0,
+  "budgetAfterRun": 0,
+  "cacheBoundary": "Warm embedding cache retained; all 450 retrievals executed; not a cold-cache latency benchmark.",
+  "directCost": 0,
+  "costBasis": "USER_DECLARED_FREE_NIM_ACCOUNT_NO_PAYMENT_METHOD",
+  "compilerStatus": "COMPLETE",
+  "activationStatus": "PENDING_THRESHOLD_APPROVAL",
+  "runs": [
+    {
+      "runIndex": 1,
+      "reportStatus": "RETRIEVAL_ONLY",
+      "sampleCount": 150,
+      "runCounts": {
+        "askErrors": 0,
+        "retrieveErrors": 0,
+        "skippedAsk": 150,
+        "judgeErrors": 0,
+        "skippedJudge": 150,
+        "rateLimitErrors": 0,
+        "retryCount": 0
+      },
+      "gitHead": "082b03037fbe38122e72b1f8e5bb6493643da522",
+      "retrievalDelaySeconds": 1.2,
+      "artifacts": [
+        {
+          "name": "g3-20260908-full3-full-details-run1.json",
+          "sha256": "81d369e7e77f26f01b5794662d21b36ddc7f5a814f089119bbd9a9efba3cc499"
+        },
+        {
+          "name": "g3-20260908-full3-full-metadata-run1.json",
+          "sha256": "41d0343224db516864b26fa7a4c2b1af8b9c5d13629fc7cb218ad9a1bf578a9e"
+        }
+      ]
+    },
+    {
+      "runIndex": 2,
+      "reportStatus": "RETRIEVAL_ONLY",
+      "sampleCount": 150,
+      "runCounts": {
+        "askErrors": 0,
+        "retrieveErrors": 0,
+        "skippedAsk": 150,
+        "judgeErrors": 0,
+        "skippedJudge": 150,
+        "rateLimitErrors": 0,
+        "retryCount": 0
+      },
+      "gitHead": "082b03037fbe38122e72b1f8e5bb6493643da522",
+      "retrievalDelaySeconds": 1.2,
+      "artifacts": [
+        {
+          "name": "g3-20260908-full3-full-details-run2.json",
+          "sha256": "40f268926cbbfeed8f9a36720d3a56ee41c431bd50b89aebe37fc92978c5dcc5"
+        },
+        {
+          "name": "g3-20260908-full3-full-metadata-run2.json",
+          "sha256": "e229f59e29d54da645a9f47898316d7e439cc353df53d572e101f7d116002169"
+        }
+      ]
+    },
+    {
+      "runIndex": 3,
+      "reportStatus": "RETRIEVAL_ONLY",
+      "sampleCount": 150,
+      "runCounts": {
+        "askErrors": 0,
+        "retrieveErrors": 0,
+        "skippedAsk": 150,
+        "judgeErrors": 0,
+        "skippedJudge": 150,
+        "rateLimitErrors": 0,
+        "retryCount": 0
+      },
+      "gitHead": "082b03037fbe38122e72b1f8e5bb6493643da522",
+      "retrievalDelaySeconds": 1.2,
+      "artifacts": [
+        {
+          "name": "g3-20260908-full3-full-details-run3.json",
+          "sha256": "5bbf766eb7f067de61485a71ae8711ec2e388a39d011ef69322bda5df2f234c2"
+        },
+        {
+          "name": "g3-20260908-full3-full-metadata-run3.json",
+          "sha256": "64a1525befe72c170f0cbfa6cc6f40be907a4bc99be28f13afafe495a645b268"
+        }
+      ]
+    }
+  ]
+}

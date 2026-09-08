@@ -102,21 +102,21 @@
 - [x] 保留旧 source=50 和失败 target=50；依既定失败代际不复用规则，将待执行 manifest/runner 同步为 c17g3，并完成当前源码 reactor/install/classpath/javac 与真实只读预演：V13、3 fixtures/50 chunks/source vectors、target absent、11 requests upper bound、batch<=5、retry=0。Python 238 tests/OK、canary/full plan-only=5/5 与 450/450；真实 c17g3 执行待重新授权。
 - [x] 用户独立授权后，于 2026-09-08 在 c17g3 执行唯一一次 zero-retry rebuild：11/11 HTTP 200、50 passage items validated，expected/observed/read-back=`50/50/50`、missing/mismatch=`0/0`、exact ID set=50、finite 2048-d/model/request/generation 匹配，CAS 切换后 `MODEL_REBUILD_READY / SQL READY`。旧 source=50，未清理失败 c17g2；授权已消耗，未重跑。
 - [x] 独立只读维护 verify 确认 SQL/Milvus 的新 model/request/endpoint/generation、fixtures=`3/3`、vectors/expected-ID read-back=`50/50`、旧 source=50，provider calls=0；证据保存在脱敏 c17-model-rebuild-c17g3-summary.json。
-- [ ] rebuild 后通过应用 HTTP 的 --preflight-only --keep-existing 完成 mutation-free preflight 和 runtime fingerprint，确认新 model/request/collection generation、fixtures=`3/3`、vectors=`50/50`；provider calls=0。本轮 backend HTTP 未启动，独立维护 verify 不替代此项。
-- [ ] 用户重新授权新模型 fixed 5-case canary；最多 5 debug retrieval + 5 query embedding、external rerank/ask/generation/judge=0、retry=0。只有 clean canary 才进入 section 8。
-- [ ] 将旧模型 410 canary 保留为 deprecated-provider failure evidence；不得混入新 generation reference aggregate、阈值或质量结论。
+- [x] rebuild后已通过应用HTTP preflight/runtime fingerprint，新模型身份、fixtures3/3、vectors50/50，provider0。
+- [x] 用户授权修订预算后的新模型canary，5 retrieval/11 embedding上限；r2 clean后进入section8，其他外部通道0、retry0。
+- [x] 旧模型410 canary作为失败证据保留，未混入新generation reference或质量结论。
 
 ## 8. Full Reference Authorization And Execution
 
-- [ ] canary clean 后重新披露 full：450 debug retrieval、最多 450 query embedding、external rerank/ask/generation/judge=0、retry=0、数据出站与 raw artifact 策略。
-- [ ] 用户单独授权 full reference calls；canary 授权不得自动扩展为 full。
-- [ ] 使用同一 clean HEAD/config/KB/fixture identity 执行 150×3，并为每个 run 使用独立 no-overwrite output。
-- [ ] compiler 验证 exact 450 observations、3 run indexes、150 sample IDs/order、zero errors/retries/fallback/model rerank calls。
-- [ ] 生成 `REFERENCE_COMPLETE / PENDING_THRESHOLD_APPROVAL` 脱敏 evidence pack；若非 COMPLETE，保持 DRAFT 并停止。
+- [x] canary clean 后披露修订full预算：450 debug retrieval、最多1353 query embedding、external rerank/ask/generation/judge=0、retry=0、数据出站与raw策略。
+- [x] 用户明确授权full问题/变体向指定NVIDIA endpoint出站，并授予本阶段执行权限。
+- [x] full3使用同一clean HEAD=082b030/config/KB/fixture identity执行150×3，各run独立no-overwrite output。
+- [x] compiler验证exact450、3 run indexes、150 sample IDs/order、zero errors/retries/fallback/model rerank；details/metadata身份完全一致。
+- [x] 生成COMPLETE/PENDING_THRESHOLD_APPROVAL脱敏evidence pack，schema通过；profile保持DRAFT待具体数值批准。
 
 ## 9. Threshold Review And Activation
 
-- [ ] 向用户提交 12 条 rules 的 denominator、三次 observed、min/median/max/spread 与适用边界，不预先填值。
+- [x] 向用户提交12条rules的denominator、三次observed、min/median/max/spread、适用边界及具体候选阈值；canonical profile未预填。
 - [ ] 用户批准每条 hard floor 与 `maxAbsoluteRegression`；若拒绝或证据不足，profile 继续 DRAFT。
 - [ ] 将 canonical profile 显式从 `v1-draft / DRAFT / PENDING_REFERENCE_EVIDENCE` 提升为 `v1 / ACTIVE / APPROVED`，写入批准数值。
 - [ ] 生成绑定最终 profile hash 的 locked median reference，并离线重放三个 source repeats。
@@ -136,7 +136,7 @@
 - [x] 应用 HTTP preflight READY：fixtures3、vectors50/50、model/request/generation匹配；provider0，调度器/Flyway/bootstrap关闭。
 - [x] 用户授权后执行唯一canary：5 retrieval、5 provider HTTP200、retrieveErrors3、retry/fallback/model rerank/ask/generation/judge0；FAILED，不进入full。
 - [x] 离线实际QueryEngine核算：5 IDs变体数1/2/5/2/1，canary/full冷缓存embedding上限11/1353；原5/450预算存在gap。
-- [ ] 修订查询变体预算契约并验证、披露变体文本出站和新上限、取得新执行授权；不得靠改检索算法或假设缓存命中绕过预算。
+- [x] 已修订查询变体11/1353预算、披露出站并取得明确授权；未改检索算法或以缓存缩减预算。
 
 ## 2026-09-08 查询变体预算修订（用户批准）
 
@@ -146,7 +146,7 @@
 
 - [x] 修订预算及query源码漂移门禁，239 Python tests/OK，提交9080b92。
 - [x] r2 HTTP preflight READY、CANARY_CLEAN：5/5检索成功、6次新增provider HTTP200、缓存5、errors/retry/fallback/model rerank0。
-- [ ] full新1353上限获授权后执行；canary不进入质量reference。
+- [x] full新1353上限获授权并执行；canary未进入质量reference。
 
 ## 2026-09-08 归档前 full 执行准备
 
@@ -154,17 +154,22 @@
 - [x] HEAD=04c8b88 的 full plan-only 通过：150×3、450 retrieval、1353 query embedding upper bound、其他外部通道0、retry0、keep-existing/no-overwrite。
 - [x] HTTP preflight 刷新为 READY，fixtures=3/3、vectors=50/50；本轮新增 provider calls=0。
 - [x] 记录 full 命令在进程创建前被自动审批拒绝；counter保持11、预算0、未产生full artifacts，未绕过或重试。
-- [ ] 补充固定开发问题及确定性查询变体向 NVIDIA NIM endpoint 出站的明确授权，刷新执行身份后运行唯一 full；继续按第8–10节完成 evidence、人工阈值、activation replay 与最终验收。
+- [x] 已收到具体数据向NVIDIA出站的明确授权并推进full；后续证据/阈值/激活/验收状态以第8–10节为准。
 
 ## 2026-09-08 full1失败与新执行准备
 - [x] 用户明确确认数据/目的地出站并授予本阶段执行权限；后续不重复请求同一范围授权。
 - [x] Docker/run两个失效socket目录保留备份后恢复五个healthy容器；Windows MySQL80本轮误启动造成3306冲突，已恢复Stopped并恢复原Docker MySQL映射，未修改数据库。
 - [x] full1：run1完整150、run2本地HTTP429错误96、run3未运行；provider432/432 HTTP200，内部retry0，预算0，失败raw artifacts保留。
 - [x] TDD修复检索前显式delay与retrieval429计数，242 Python tests通过；delay进入metadata/strict identity，不计入检索延迟，默认0兼容既有调用。
-- [ ] 新full2固定delay=1.2秒，在新clean HEAD上重新执行150×3；不关闭服务端限流，不拼接成功子集、不复用旧full为reference。
+- [x] full2固定delay1.2秒完整执行150×3；因序列化身份问题未被compiler接受，保留原证据，不拼接。
 
 ## 2026-09-08 full2序列化身份缺口
 - [x] full2完整450/450，三轮RETRIEVAL_ONLY、errors/rateLimit/retry/fallback0，新增provider0；compiler拒绝公开claimMetricConfig误脱敏造成的details/metadata不一致。
 - [x] 原始三轮证据及NOT_COMPARABLE输出保留；脱敏器仅为完整精确匹配的公开canonical descriptor保留值，任意同名凭据仍遮蔽。
 - [x] serializer→compiler离线回归RED→GREEN，全量244 tests通过；未降低compiler身份校验或回填旧raw。
-- [ ] full3在新clean HEAD上重新完整150×3，delay1.2秒、no-overwrite、retry0，完成后生成正式review pack。
+- [x] full3在新clean HEAD完整150×3、delay1.2秒、no-overwrite、retry0，正式review pack=COMPLETE。
+
+## 2026-09-08 full3正式reference完成
+- [x] full3在HEAD=082b030完成450/450，三轮零错误，公开descriptor及全部metadata一致；compiler=COMPLETE，schema通过。
+- [x] 正式脱敏review JSON/execution summary/中文12项阈值审阅文档保存；三轮spread全0，新增provider0（热缓存）、预算0。
+- [ ] 12项候选target/tolerance尚待具体批准；之后完成profile激活、locked reference、3次离线replay与最终验收。C17尚未归档。

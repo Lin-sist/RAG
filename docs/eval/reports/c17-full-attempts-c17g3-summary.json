@@ -8,15 +8,51 @@
       "gitHead": "271b5be1110fcbaf1bf929c1ef834a0364da2c90",
       "status": "FAILED",
       "runs": [
-        {"runIndex": 1, "sampleCount": 150, "reportStatus": "RETRIEVAL_ONLY", "retrieveErrors": 0},
-        {"runIndex": 2, "sampleCount": 150, "reportStatus": "FAILED", "retrieveErrors": 96, "auditedLocalHttp429": 96},
-        {"runIndex": 3, "status": "NOT_RUN"}
+        {
+          "runIndex": 1,
+          "sampleCount": 150,
+          "reportStatus": "RETRIEVAL_ONLY",
+          "retrieveErrors": 0
+        },
+        {
+          "runIndex": 2,
+          "sampleCount": 150,
+          "reportStatus": "FAILED",
+          "retrieveErrors": 96,
+          "auditedLocalHttp429": 96
+        },
+        {
+          "runIndex": 3,
+          "status": "NOT_RUN"
+        }
       ],
       "newProviderRequests": 432,
       "providerHttp200": 432,
       "retry": 0,
       "reason": "LOCAL_USER_RATE_LIMIT_AFTER_CACHE_HITS",
-      "errorCountCaveat": "Original rateLimitErrors omitted retrieval HTTP429; raw reports preserved unchanged."
+      "errorCountCaveat": "Original rateLimitErrors omitted retrieval HTTP429; raw reports preserved unchanged.",
+      "artifacts": [
+        {
+          "name": "g3-20260908-full1-full-details-run1.json",
+          "sha256": "8784235a8e1a0319d3534e7f243fc80c1381a06648938c02e43217dcb74f41be",
+          "bytes": 2835451
+        },
+        {
+          "name": "g3-20260908-full1-full-details-run2.json",
+          "sha256": "1830a2965e765b1416538b2512b13f6fce749c1f045915e28d4af2b748b77dd9",
+          "bytes": 1393936
+        },
+        {
+          "name": "g3-20260908-full1-full-metadata-run1.json",
+          "sha256": "0c82f9f0097f655f35452148cc188bd20228fe8f9de3db6743dd927a2f449fce",
+          "bytes": 12980
+        },
+        {
+          "name": "g3-20260908-full1-full-metadata-run2.json",
+          "sha256": "c0b6d732bc97e3623ff1bbd40f43c9868c68fcae48c7aceb10cd145b40b9cbb4",
+          "bytes": 12980
+        }
+      ]
     },
     {
       "executionId": "g3-20260908-full2",
@@ -31,8 +67,43 @@
       "retry": 0,
       "newProviderRequests": 0,
       "retrievalDelaySeconds": 1.2,
-      "reasonCodes": ["evidence_contract_mismatch", "repeat_identity_drift"],
-      "rootCause": "Serializer redacted public claimMetricConfig tokenizerVersion/minClaimTokens while parent metadata retained canonical values. Compiler correctly rejected mismatch."
+      "reasonCodes": [
+        "evidence_contract_mismatch",
+        "repeat_identity_drift"
+      ],
+      "rootCause": "Serializer redacted public claimMetricConfig tokenizerVersion/minClaimTokens while parent metadata retained canonical values. Compiler correctly rejected mismatch.",
+      "artifacts": [
+        {
+          "name": "g3-20260908-full2-full-details-run1.json",
+          "sha256": "8fcca600039c71a3daa5adfd9f028bf69ceb9865a899e8bc9b1247421e0eacf3",
+          "bytes": 2835479
+        },
+        {
+          "name": "g3-20260908-full2-full-details-run2.json",
+          "sha256": "a80ec184cab5083407ce380d4156ae0c2f46d37c30141f8891461508c7c7d042",
+          "bytes": 2835481
+        },
+        {
+          "name": "g3-20260908-full2-full-details-run3.json",
+          "sha256": "371a3f49ab718066a4d7ee65d7b173a53c92bf97b841e51bf3a6326dfee420d4",
+          "bytes": 2835479
+        },
+        {
+          "name": "g3-20260908-full2-full-metadata-run1.json",
+          "sha256": "18969336000178cc95d3c5a15537ae82c664ad49226d6b335595b0699f5af3e1",
+          "bytes": 13013
+        },
+        {
+          "name": "g3-20260908-full2-full-metadata-run2.json",
+          "sha256": "f3ec9afd2bc7aa0651872212d51e333d854d13fb20de6f3cf0dc3379fbbbce51",
+          "bytes": 13013
+        },
+        {
+          "name": "g3-20260908-full2-full-metadata-run3.json",
+          "sha256": "e0cb6744920aa113b1a0a52dae28dfd45525bb14d0f523efa5ee64c13ce6a40d",
+          "bytes": 13013
+        }
+      ]
     }
   ],
   "budgetAfterEachAttempt": 0,

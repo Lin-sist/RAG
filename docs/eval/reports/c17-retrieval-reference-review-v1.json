@@ -1,0 +1,435 @@
+{
+  "schemaVersion": "c17-retrieval-reference-evidence-v1",
+  "status": "COMPLETE",
+  "activationStatus": "PENDING_THRESHOLD_APPROVAL",
+  "reasonCodes": [],
+  "compiler": {
+    "version": "c17-retrieval-reference-compiler-v1"
+  },
+  "manifest": {
+    "referenceId": "rag-eval-dev-v2-retrieval-reference-v1",
+    "sha256": "6b37504243a37283b9f21b4f03da3688f5f3b59e5766c4f72f1a5055ac3edebb"
+  },
+  "profile": {
+    "id": "rag-eval-dev-v2-retrieval-regression",
+    "version": "v1-draft",
+    "status": "DRAFT",
+    "thresholdStatus": "PENDING_REFERENCE_EVIDENCE",
+    "sha256": "36e87d2248a77942179a8aa825d4fc112b2350188118d4d67b2798d02ae4d879"
+  },
+  "dataset": {
+    "releaseVersion": "rag-eval-dev-v2",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87"
+  },
+  "runIdentity": {
+    "mode": "retrieval-only",
+    "topK": 5,
+    "minScore": 0.3,
+    "enableRerank": true
+  },
+  "expected": {
+    "repeatCount": 3,
+    "runIndexes": [
+      1,
+      2,
+      3
+    ],
+    "samplesPerRepeat": 150,
+    "observationCount": 450
+  },
+  "actual": {
+    "repeatCount": 3,
+    "runIndexes": [
+      1,
+      2,
+      3
+    ],
+    "samplesPerRepeat": [
+      150,
+      150,
+      150
+    ],
+    "observationCount": 450
+  },
+  "identity": {
+    "strictIdentitySha256": "1b73c3d7c00f69b9e838911d412760455e69d666cf95a9a7e062d6ce0c9214e1",
+    "gitHead": "082b03037fbe38122e72b1f8e5bb6493643da522"
+  },
+  "providerAttribution": {
+    "status": "MATCHED",
+    "requestedProvider": "heuristic",
+    "effectiveProvider": "heuristic",
+    "fallbackCount": 0,
+    "modelCallCount": 0
+  },
+  "callFacts": {
+    "basis": "manifest_upper_bounds",
+    "debugRetrieve": 450,
+    "queryEmbeddingUpperBound": 1353,
+    "externalRerank": 0,
+    "ask": 0,
+    "generation": 0,
+    "llmJudge": 0
+  },
+  "artifacts": [
+    {
+      "runIndex": 1,
+      "detailsSha256": "81d369e7e77f26f01b5794662d21b36ddc7f5a814f089119bbd9a9efba3cc499",
+      "detailsBytes": 2835172,
+      "metadataSha256": "41d0343224db516864b26fa7a4c2b1af8b9c5d13629fc7cb218ad9a1bf578a9e",
+      "metadataBytes": 13013
+    },
+    {
+      "runIndex": 2,
+      "detailsSha256": "40f268926cbbfeed8f9a36720d3a56ee41c431bd50b89aebe37fc92978c5dcc5",
+      "detailsBytes": 2835174,
+      "metadataSha256": "e229f59e29d54da645a9f47898316d7e439cc353df53d572e101f7d116002169",
+      "metadataBytes": 13013
+    },
+    {
+      "runIndex": 3,
+      "detailsSha256": "5bbf766eb7f067de61485a71ae8711ec2e388a39d011ef69322bda5df2f234c2",
+      "detailsBytes": 2835175,
+      "metadataSha256": "64a1525befe72c170f0cbfa6cc6f40be907a4bc99be28f13afafe495a645b268",
+      "metadataBytes": 13013
+    }
+  ],
+  "rules": [
+    {
+      "id": "overall-recall5",
+      "channel": "retrieval",
+      "slice": "overall",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 293,
+          "observed": 0.474402730375
+        },
+        {
+          "runIndex": 2,
+          "denominator": 293,
+          "observed": 0.474402730375
+        },
+        {
+          "runIndex": 3,
+          "denominator": 293,
+          "observed": 0.474402730375
+        }
+      ],
+      "minimum": 0.474402730375,
+      "median": 0.474402730375,
+      "maximum": 0.474402730375,
+      "spread": 0.0
+    },
+    {
+      "id": "overall-mrr",
+      "channel": "retrieval",
+      "slice": "overall",
+      "metric": "mrr",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 130,
+          "observed": 0.526153846154
+        },
+        {
+          "runIndex": 2,
+          "denominator": 130,
+          "observed": 0.526153846154
+        },
+        {
+          "runIndex": 3,
+          "denominator": 130,
+          "observed": 0.526153846154
+        }
+      ],
+      "minimum": 0.526153846154,
+      "median": 0.526153846154,
+      "maximum": 0.526153846154,
+      "spread": 0.0
+    },
+    {
+      "id": "overall-top1",
+      "channel": "retrieval",
+      "slice": "overall",
+      "metric": "top1_source_accuracy",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 130,
+          "observed": 0.923076923077
+        },
+        {
+          "runIndex": 2,
+          "denominator": 130,
+          "observed": 0.923076923077
+        },
+        {
+          "runIndex": 3,
+          "denominator": 130,
+          "observed": 0.923076923077
+        }
+      ],
+      "minimum": 0.923076923077,
+      "median": 0.923076923077,
+      "maximum": 0.923076923077,
+      "spread": 0.0
+    },
+    {
+      "id": "fact-recall5",
+      "channel": "retrieval",
+      "slice": "type-fact",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 76,
+          "observed": 0.394736842105
+        },
+        {
+          "runIndex": 2,
+          "denominator": 76,
+          "observed": 0.394736842105
+        },
+        {
+          "runIndex": 3,
+          "denominator": 76,
+          "observed": 0.394736842105
+        }
+      ],
+      "minimum": 0.394736842105,
+      "median": 0.394736842105,
+      "maximum": 0.394736842105,
+      "spread": 0.0
+    },
+    {
+      "id": "definition-recall5",
+      "channel": "retrieval",
+      "slice": "type-definition",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 45,
+          "observed": 0.644444444444
+        },
+        {
+          "runIndex": 2,
+          "denominator": 45,
+          "observed": 0.644444444444
+        },
+        {
+          "runIndex": 3,
+          "denominator": 45,
+          "observed": 0.644444444444
+        }
+      ],
+      "minimum": 0.644444444444,
+      "median": 0.644444444444,
+      "maximum": 0.644444444444,
+      "spread": 0.0
+    },
+    {
+      "id": "reasoning-recall5",
+      "channel": "retrieval",
+      "slice": "type-reasoning",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 88,
+          "observed": 0.534090909091
+        },
+        {
+          "runIndex": 2,
+          "denominator": 88,
+          "observed": 0.534090909091
+        },
+        {
+          "runIndex": 3,
+          "denominator": 88,
+          "observed": 0.534090909091
+        }
+      ],
+      "minimum": 0.534090909091,
+      "median": 0.534090909091,
+      "maximum": 0.534090909091,
+      "spread": 0.0
+    },
+    {
+      "id": "multi-hop-recall5",
+      "channel": "retrieval",
+      "slice": "type-multi-hop",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 84,
+          "observed": 0.392857142857
+        },
+        {
+          "runIndex": 2,
+          "denominator": 84,
+          "observed": 0.392857142857
+        },
+        {
+          "runIndex": 3,
+          "denominator": 84,
+          "observed": 0.392857142857
+        }
+      ],
+      "minimum": 0.392857142857,
+      "median": 0.392857142857,
+      "maximum": 0.392857142857,
+      "spread": 0.0
+    },
+    {
+      "id": "no-answer-retrieve-success",
+      "channel": "retrieval",
+      "slice": "type-no-answer",
+      "metric": "retrieve_success_rate",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 20,
+          "observed": 1.0
+        },
+        {
+          "runIndex": 2,
+          "denominator": 20,
+          "observed": 1.0
+        },
+        {
+          "runIndex": 3,
+          "denominator": 20,
+          "observed": 1.0
+        }
+      ],
+      "minimum": 1.0,
+      "median": 1.0,
+      "maximum": 1.0,
+      "spread": 0.0
+    },
+    {
+      "id": "easy-recall5",
+      "channel": "retrieval",
+      "slice": "difficulty-easy",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 76,
+          "observed": 0.5
+        },
+        {
+          "runIndex": 2,
+          "denominator": 76,
+          "observed": 0.5
+        },
+        {
+          "runIndex": 3,
+          "denominator": 76,
+          "observed": 0.5
+        }
+      ],
+      "minimum": 0.5,
+      "median": 0.5,
+      "maximum": 0.5,
+      "spread": 0.0
+    },
+    {
+      "id": "medium-recall5",
+      "channel": "retrieval",
+      "slice": "difficulty-medium",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 133,
+          "observed": 0.488721804511
+        },
+        {
+          "runIndex": 2,
+          "denominator": 133,
+          "observed": 0.488721804511
+        },
+        {
+          "runIndex": 3,
+          "denominator": 133,
+          "observed": 0.488721804511
+        }
+      ],
+      "minimum": 0.488721804511,
+      "median": 0.488721804511,
+      "maximum": 0.488721804511,
+      "spread": 0.0
+    },
+    {
+      "id": "hard-recall5",
+      "channel": "retrieval",
+      "slice": "difficulty-hard",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 84,
+          "observed": 0.428571428571
+        },
+        {
+          "runIndex": 2,
+          "denominator": 84,
+          "observed": 0.428571428571
+        },
+        {
+          "runIndex": 3,
+          "denominator": 84,
+          "observed": 0.428571428571
+        }
+      ],
+      "minimum": 0.428571428571,
+      "median": 0.428571428571,
+      "maximum": 0.428571428571,
+      "spread": 0.0
+    },
+    {
+      "id": "answerable-recall5",
+      "channel": "retrieval",
+      "slice": "answerable",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "runs": [
+        {
+          "runIndex": 1,
+          "denominator": 293,
+          "observed": 0.474402730375
+        },
+        {
+          "runIndex": 2,
+          "denominator": 293,
+          "observed": 0.474402730375
+        },
+        {
+          "runIndex": 3,
+          "denominator": 293,
+          "observed": 0.474402730375
+        }
+      ],
+      "minimum": 0.474402730375,
+      "median": 0.474402730375,
+      "maximum": 0.474402730375,
+      "spread": 0.0
+    }
+  ]
+}

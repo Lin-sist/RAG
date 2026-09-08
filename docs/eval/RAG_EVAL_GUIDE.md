@@ -500,13 +500,14 @@ C17 使用独立的 `docs/eval/config/c17-retrieval-reference-v1.json`，不复�
 
 当前已完成固定重建的代际为 `c17g3`；失败的 `c17g1/c17g2` 仅保留历史证据，不复用或直接恢复其 CAS。2026-09-08 用户独立授权后，c17g3 的 11/11 HTTP requests 均 200，50 passage items 经 finite 2048-d/model contract 校验，exact 50-ID 强读回通过并完成 CAS，SQL 为 READY；独立只读维护 verify 再次确认新代际与旧 source 保留50。脱敏证据见 [c17g3 重建摘要](reports/c17-model-rebuild-c17g3-summary.json)。manifest 与 runner 同时锁定 c17g3，拒绝旧代际证据。重建授权已消耗；下一步仍须应用 HTTP preflight/runtime fingerprint 和独立 5-case canary 授权，维护 verify 不能替代应用端到端 readiness 或 retrieval 质量结论。
 
-以下 full plan-only 是纯本地检查，实际调用量为 0；其计划上限必须是 debug retrieval=450、query embedding=450，其余 external rerank/ask/generation/judge=0：
+以下 full plan-only 是纯本地检查，实际调用量为 0；按2026-09-08查询变体修订，其计划上限必须是 debug retrieval=450、query embedding=1353，其余 external rerank/ask/generation/judge=0：
 
 ```powershell
 python -B scripts\run_reproducible_rag_eval.py `
   --plan-only `
   --reference-manifest docs\eval\config\c17-retrieval-reference-v1.json `
   --reference-mode full --keep-existing --repeat 3 `
+  --retrieval-delay-seconds 1.2 `
   --max-ask-retries 0 --no-retry-ask-timeouts --judge-mode off `
   --report tmp\eval\c17\reference.md `
   --details-json tmp\eval\c17\reference-details.json `
@@ -531,7 +532,9 @@ python -B scripts\run_reproducible_rag_eval.py `
   --no-overwrite
 ```
 
-live 前必须先完成独立 W0 closeout，再用相同参数改为 `--preflight-only` 并显式提供本地凭据。preflight 只登录、检查已有 KB、三份 document/index 状态，并通过只读 statistics 验证 vector readiness/count 与预期 chunk 总数一致；任一状态不可读或数量不一致都返回 `BLOCKED`。它不创建、上传或运行 retrieval/provider，显示输出也不包含数字 KB ID 或 vector collection。canary 需要单独授权最多 5 次 debug retrieval/5 次 query embedding；只有 canary clean 后，full 450/450 才能再次单独申请授权。两阶段都不自动 retry，不调用 external reranker、ask、generation 或 judge；C17 child report 非 `RETRIEVAL_ONLY`、error/retry 非零、样本或 heuristic attribution 漂移时，父 runner 必须非零退出。
+live 前必须先完成独立 W0 closeout，再用相同参数改为 `--preflight-only` 并显式提供本地凭据。preflight 只登录、检查已有 KB、三份 document/index 状态，并通过只读 statistics 验证 vector readiness/count 与预期 chunk 总数一致；任一状态不可读或数量不一致都返回 `BLOCKED`。它不创建、上传或运行 retrieval/provider，显示输出也不包含数字 KB ID 或 vector collection。canary上限为5次debug retrieval/11次query embedding；canary clean后full上限为450次retrieval/1353次query embedding，按具体数据出站授权执行。两阶段都不自动retry，不调用external reranker、ask、generation或judge；C17 child report非RETRIEVAL_ONLY、error/retry非零、样本或heuristic attribution漂移时，父runner必须非零退出。正式full固定`--retrieval-delay-seconds 1.2`，在每次检索前等待，保持既有60次/60秒用户限流；该等待写入metadata/strict identity并排除在单次检索延迟之外。
+
+2026-09-08 full3已获得450/450、三轮zero-error、strict identity一致的COMPLETE evidence，使用c17g3热embedding缓存；当前profile仍DRAFT，具体阈值待批准。见[阈值审阅与证据边界](reports/c17-threshold-review-v1.md)。此前失败尝试保留，不拼接或回填。
 
 三份 full details/metadata 都存在后，用 compiler 做纯本地严格聚合：
 

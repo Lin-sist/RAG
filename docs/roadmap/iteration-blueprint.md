@@ -129,7 +129,7 @@
 - `rag-eval-dev-v2` full 150 条；
 - 3 个 fixed-identity measured repeats；
 - `topK=5`、`minScore=0.3`、rerank enabled 且默认 heuristic；
-- 最多 450 次 debug retrieval、最多 450 次 query embedding；
+- 最多450次debug retrieval、最多1353次query embedding（2026-09-08按全部查询变体修订）；
 - heuristic 条件下 external rerank、ask、generation、judge 为 0；
 - 三次 run 的 sample、KB/fixture、Git/config、provider attribution 或 repeat identity 任一漂移即不可比较。
 

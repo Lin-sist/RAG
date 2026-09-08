@@ -4,13 +4,13 @@
 > 本文只登记当前未完成或仍需独立证据的债务，不是活动任务计划。重大改动必须进入独立 OpenSpec change；完成状态以 accepted spec、代码、正式 evidence 和 archive 为准。
 > 长期顺序见 `docs/roadmap/iteration-blueprint.md` v6。
 
-## P0：进入 C17 前
+## P0：C17 激活前
 
 ### 1. C17 retrieval profile reference readiness
 
 - 当前 `rag-eval-dev-v2-retrieval-regression-v1` 仍为 `DRAFT / PENDING_REFERENCE_EVIDENCE`，12 条 target 均为 `null`。
-- 正式 evidence 计划为固定身份 v2/150 × 3 repeats；最多 450 次 debug retrieval、450 次 query embedding。
-- provider/model、KB/fixture、Git/config、数据出站、费用/零费用依据、限流、timeout/retry 与 raw artifact 策略尚未在新的执行闸门确认。
+- 2026-09-08 full3已完成固定身份v2/150×3、450/450 observation，compiler=COMPLETE；预算为450 retrieval/1353 query embedding上限，实际新增provider0（热缓存）。
+- provider/model/KB/fixture/Git/config与zero-error身份均已核验；使用1.2秒检索节奏，失败full1/full2独立保留。详见[完整证据与阈值审阅](../eval/reports/c17-threshold-review-v1.md)。
 - 具体 hard floors 与 regression tolerances 必须在完整 evidence 产生后由用户审阅，不得提前猜测。
 
 ### 2. 开发态 JWT fallback 治理
