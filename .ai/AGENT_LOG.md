@@ -2350,3 +2350,17 @@
 - 跳过：full新1353上限未授权，未激活profile；无Java业务代码变更，不重复Maven。
 - 剩余风险：canary仅证明环境，缓存不缩减冷缓存预算，full/阈值/验收未完成。
 - Commit: pending
+
+## 2026-09-08 C17提交补录
+- 上一执行提交：04c8b88f2e9bcb6092639ce08c4069b26025c1d9（docs(eval): 记录新预算canary通过）。
+
+## 2026-09-08 C17 full准备与出站审批阻断
+- 范围：ACTIVE_TASK、C17 tasks、本日志；ignored tmp 中准备 full1 执行入口、plan与预检输出。
+- 已确认：用户授权完成归档前任务；计划内 Agent 本地提交继续有效。HEAD=04c8b88、工作区原本干净，full plan-only=450 retrieval/1353 embedding上限，HTTP preflight=READY、fixtures3/3、vectors50/50。
+- 执行：最初 sandbox 拒绝写 ignored tmp，提权后完成；两次本地plan因缺少no-overwrite/专用输出路径被校验拒绝，补全参数后通过，均无外调。新后端启动因8080端口占用退出，原canary进程仍在；Java业务源码相对bdf346d无变化。
+- 阻断：full执行命令在进程创建前被自动审批拒绝，理由为缺少明确的数据向NVIDIA出站授权；未绕过、未重试。累计provider counter仍11，预算文件0，本轮新增provider calls0、full artifacts0。
+- 验证：plan-only与HTTP preflight通过；git diff --check通过，相关任务/报告路径存在，diff仅3个计划内治理文件。
+- 跳过：full/compiler/阈值/activation因无full evidence无法推进；仅治理记录改动，未重复Maven/Python/frontend测试。
+- 安全：无KB重建/清理、无profile/baseline修改、无凭据/前端/受保护本地内容改动、无push/PR/deploy。
+- 剩余风险：需明确固定开发问题及变体向指定NVIDIA endpoint出站授权；执行前须刷新clean HEAD与preflight，不能把canary当质量reference。
+- Commit: pending

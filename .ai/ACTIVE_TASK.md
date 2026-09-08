@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`C17G3_CANARY_CLEAN_AWAITING_REVISED_FULL_BUDGET_AUTHORIZATION`
+- 阶段：`C17G3_FULL_PREFLIGHT_READY_AWAITING_EXPLICIT_EGRESS_APPROVAL`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -44,3 +44,5 @@
 - 2026-09-08 最新执行覆盖此前待授权状态：用户明确授权 HTTP preflight/canary/full。应用 HTTP preflight READY（fixtures3、vectors50/50、新模型身份匹配），provider0。唯一 canary 5 retrieval、5 provider HTTP200、retrieveErrors3；预算护栏拒绝超额请求。离线当前代码核算 variants=1/2/5/2/1，canary/full冷缓存embedding上限11/1353，原5/450契约低估。full因canary失败和预算漂移未启动；须修订预算并重新授权，不改检索算法绕过，不复用失败canary。profile仍DRAFT。
 
 - 最新：2026-09-08用户批准预算修订并验证canary直至通过，声明NIM免费且无支付方式。9080b92修订11/1353冷缓存上限；Python239 tests/OK。r2 HTTP preflight READY，canary5/5成功、RETRIEVAL_ONLY、errors/retry/fallback/model rerank0；provider新增6次HTTP200、缓存5。原进程复用且Java源码未变；新进程端口占用退出，预算已归零。证据c17-canary-c17g3-r2-summary.json。full新1353上限待授权，profile仍DRAFT。
+
+- 2026-09-08 用户授权完成归档前任务后，在 HEAD=04c8b88 刷新 full plan-only（450 retrieval / 1353 query embedding upper bound）及 HTTP preflight（READY、fixtures=3/3、vectors=50/50）。新启动后端因端口占用退出，原 canary 进程仍在且业务源码未变。本轮 full 命令在进程创建前被自动审批拒绝：要求明确授权固定开发问题及查询变体向 NVIDIA 出站。实际新增 provider calls=0，累计 counter 保持11、预算文件=0，无 full artifacts；未执行重试。等待具体数据/目的地出站授权，随后刷新 clean HEAD/preflight 再执行；profile 保持 DRAFT，阈值审阅与归档未完成。

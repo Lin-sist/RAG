@@ -147,3 +147,11 @@
 - [x] 修订预算及query源码漂移门禁，239 Python tests/OK，提交9080b92。
 - [x] r2 HTTP preflight READY、CANARY_CLEAN：5/5检索成功、6次新增provider HTTP200、缓存5、errors/retry/fallback/model rerank0。
 - [ ] full新1353上限获授权后执行；canary不进入质量reference。
+
+## 2026-09-08 归档前 full 执行准备
+
+- [x] 用户授权完成 C17 归档前任务；提交责任沿用计划内 Agent 本地提交。
+- [x] HEAD=04c8b88 的 full plan-only 通过：150×3、450 retrieval、1353 query embedding upper bound、其他外部通道0、retry0、keep-existing/no-overwrite。
+- [x] HTTP preflight 刷新为 READY，fixtures=3/3、vectors=50/50；本轮新增 provider calls=0。
+- [x] 记录 full 命令在进程创建前被自动审批拒绝；counter保持11、预算0、未产生full artifacts，未绕过或重试。
+- [ ] 补充固定开发问题及确定性查询变体向 NVIDIA NIM endpoint 出站的明确授权，刷新执行身份后运行唯一 full；继续按第8–10节完成 evidence、人工阈值、activation replay 与最终验收。
