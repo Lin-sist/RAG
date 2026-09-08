@@ -100,8 +100,9 @@
 - [x] 2026-09-08 将 runner/manifest 的待执行 generation 同步为 c17g2，拒绝旧 c17g1 manifest、KB preflight identity 与整组三次 reference evidence；Python 238 tests 通过，canary/full plan-only 分别为 5/5 与 450/450，其他业务外调通道=0。此次为离线计划同步，未重跑真实 MySQL/Milvus preflight，未执行 rebuild。
 - [x] 用户随后明确同意一次 c17g2 fixed rebuild；恢复 Docker 后真实只读预检发现 c17g2 target 已存在，SQL 的历史状态为 MODEL_REBUILD_FAILED/shadowGeneration=c17g2/50-50-50-0-50，错误类别 MODEL_REBUILD_READBACK_MISMATCH；本轮执行前停止，provider requests/items=0/0，未切换或清理失败代际。该真实状态取代此前未刷新的 target-absence 记录。
 - [x] 保留旧 source=50 和失败 target=50；依既定失败代际不复用规则，将待执行 manifest/runner 同步为 c17g3，并完成当前源码 reactor/install/classpath/javac 与真实只读预演：V13、3 fixtures/50 chunks/source vectors、target absent、11 requests upper bound、batch<=5、retry=0。Python 238 tests/OK、canary/full plan-only=5/5 与 450/450；真实 c17g3 执行待重新授权。
-- [ ] 在新 generation 执行 zero-retry rebuild；只有 expected/observed/read-back=`50/50/50`、missing/mismatch=`0/0`、deterministic ID set=50、dimension/model identity 匹配且 mapping 原子切换完成，才标记 `MODEL_REBUILD_READY`。失败保留旧 source/mapping，不自动补跑或清理未知 collection。
-- [ ] rebuild 后运行 mutation-free preflight，确认新 model/request/collection generation、fixtures=`3/3`、vectors=`50/50`；provider calls=0。
+- [x] 用户独立授权后，于 2026-09-08 在 c17g3 执行唯一一次 zero-retry rebuild：11/11 HTTP 200、50 passage items validated，expected/observed/read-back=`50/50/50`、missing/mismatch=`0/0`、exact ID set=50、finite 2048-d/model/request/generation 匹配，CAS 切换后 `MODEL_REBUILD_READY / SQL READY`。旧 source=50，未清理失败 c17g2；授权已消耗，未重跑。
+- [x] 独立只读维护 verify 确认 SQL/Milvus 的新 model/request/endpoint/generation、fixtures=`3/3`、vectors/expected-ID read-back=`50/50`、旧 source=50，provider calls=0；证据保存在脱敏 c17-model-rebuild-c17g3-summary.json。
+- [ ] rebuild 后通过应用 HTTP 的 --preflight-only --keep-existing 完成 mutation-free preflight 和 runtime fingerprint，确认新 model/request/collection generation、fixtures=`3/3`、vectors=`50/50`；provider calls=0。本轮 backend HTTP 未启动，独立维护 verify 不替代此项。
 - [ ] 用户重新授权新模型 fixed 5-case canary；最多 5 debug retrieval + 5 query embedding、external rerank/ask/generation/judge=0、retry=0。只有 clean canary 才进入 section 8。
 - [ ] 将旧模型 410 canary 保留为 deprecated-provider failure evidence；不得混入新 generation reference aggregate、阈值或质量结论。
 

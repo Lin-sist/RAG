@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`C17G2_FAILED_C17G3_PREFLIGHT_READY_AWAITING_AUTHORIZATION`
+- 阶段：`C17G3_MODEL_REBUILD_READY_AWAITING_HTTP_PREFLIGHT_AND_CANARY_AUTHORIZATION`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -36,5 +36,7 @@
 - 2026-09-08 用户同意一次 c17g2 rebuild 后，Docker 因遗留 dockerInference runtime socket 报 Error 1920 而无法启动；仅备份 Docker/run（两个 0 字节 socket）并重建该运行目录后恢复，原有五个容器均 healthy，未清理容器/镜像/卷或修改 WSL 数据盘。
 - 当前真实盘点取代此前目标不存在的旧记录：SQL 自 `2026-09-06T15:18:46` 即为 `MODEL_REBUILD_FAILED / shadowGeneration=c17g2 / MODEL_REBUILD_READBACK_MISMATCH`，expected/observed/migrated/missing/mismatch=`50/50/50/0/50`。旧 source active 且强读回=50；c17g2 target 已存在且 count/expected IDs/new-model-content match=`50/50/50`。此事实不表示 CAS 已切换或质量验收通过。本轮在 provider/SQL 写入前停止，实际 HTTP attempts/items=0/0，未复用/覆盖/删除或切换失败 generation。
 - 依照失败 generation 不复用契约，已将 runner/manifest 的待执行身份同步为 c17g3，并完成当前源码重新编译及真实 MySQL/Milvus 只读预演：V13、fixtures=3、chunks/source vectors=50、target absent、max requests=11、max batch=5、timeout=60000ms、retry=0；provider calls=0。Python 238 tests 与 canary/full plan-only 通过。维护源码与默认只读 PowerShell 入口保留在 ignored tmp/eval/c17，供后续从当前源码重新编译验证。
-- 下一步需明确授权一次 c17g3 fixed rebuild：固定 3 fixtures/50 chunks 出站到 NVIDIA NIM nvidia/nemotron-3-embed-1b、最多 11 HTTP requests、每次最多 5 items、retry=0、新 c17g3 collection、50/50/50 强读回后 CAS 切换；保留旧 source 和失败 c17g2 target。V13 已应用，不重复迁移。用户此次 c17g2 授权未进入 execute 阶段，不能自动扩大到新 c17g3 generation。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
+- 用户随后明确授权一次 c17g3 fixed rebuild；2026-09-08 在 HEAD=c5dd7b3 刷新 reactor/javac 和真实只读 preflight 后完成唯一一次执行：NVIDIA nvidia/nemotron-3-embed-1b 的 11/11 HTTP requests 均 200、passage items=50/50、query/rerank/ask/generation/judge=0、retry/fallback=0。SQL 已 CAS 切换为 READY/activeGeneration=c17g3，expected/observed/migrated/read-back=50/50/50/50、missing/mismatch=0/0，旧 source 保留50，未清理失败 c17g2。V13 本轮只验证、不重复迁移；该次真实重建授权已消耗。
+- 独立无出站 verify 进程再次确认 SQL READY、model/request/endpoint/dimension/generation 匹配、3 fixtures/50 chunks、强读回 exact ID set=50、finite 2048-d vectors、source=50；provider HTTP attempts/items=0/0。脱敏重建证据见 docs/eval/reports/c17-model-rebuild-c17g3-summary.json。此为维护入口 SQL/Milvus postflight，不冒充应用 HTTP preflight 或 retrieval 质量 evidence。
+- 下一步：先完成本机应用 backend 的 --preflight-only --keep-existing 和 runtime fingerprint 核验，再单独授权新模型 fixed 5-case canary。当前未启动 backend HTTP 服务，不能用维护入口 verify 代替端到端 HTTP readiness。full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。

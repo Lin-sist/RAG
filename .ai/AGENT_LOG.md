@@ -2291,3 +2291,18 @@
 - 跳过与剩余风险：本轮未改 tracked Java，未重复全仓 Maven tests；当前 reactor 构建与真实只读 V13 检查不能替代此前跳过的 MySQL 集成 suite。前端未改，build 跳过；OpenSpec CLI 不可用，以静态检查代替并保留该边界。真实 c17g3 rebuild/canary/full、阈值与验收均未执行；c17g2 授权未进入 execute，但不能自动扩大到新 generation，需要明确 c17g3 授权。Docker 临时 socket 备份保留，若再次非正常退出仍可能复发。
 - 可复用准备：ignored tmp/eval/c17/C17FixedRebuild.java 与 run-fixed-rebuild.ps1、当前 classpath/编译结果及 no-overwrite 预检日志已保留；下一次先检查 source/manifest/helper identity，从当前源码重编译并运行默认 preflight，禁止仅依赖历史 target-absence。日志只包含身份、计数、状态，未输出业务正文、向量或 provider body。
 - Commit: pending；建议中文提交信息：`fix(eval): 核实失败代际并准备C17重建`。
+
+## 2026-09-08｜C17 失败代际核验提交补录
+
+- 上一执行提交：`c5dd7b3`（`fix(eval): 核实失败代际并准备C17重建`），包含九个 C17 runner/manifest/tests/文档记录文件；本任务未执行 push/PR/deploy。
+
+## 2026-09-08｜C17 c17g3 固定重建成功
+
+- 授权与范围：用户明确授权本次 c17g3 fixed rebuild；执行身份 HEAD=c5dd7b338cb54dbfc40f73f583fe39bdd35df002，启动时 working tree clean。固定 3 fixtures/50 chunks 出站至 NVIDIA NIM nvidia/nemotron-3-embed-1b；最多 11 requests、batch<=5、timeoutMs=60000、retry=0、fallback=0；新 collection 强读回通过后 CAS 切换，保留 source 与失败 c17g2。canary/full/push/PR/deploy 未授权。
+- 事前验证：原有五个 Docker 容器均 healthy；当前 reactor `mvn -q -DskipTests test-compile` 和 ignored 维护入口 javac 均通过。新 no-overwrite preflight 再次 READY：V13、fixtures=3、chunks/source vectors=50、target absent、generation=c17g3、provider HTTP attempts/items=0/0。
+- 唯一真实执行：固定 endpoint /v1/embeddings 的 11 次请求全部 HTTP 200；submitted/validated passage items=50/50，adapter 精确 model/count/index/2048-finite contract 全通过；query/rerank/ask/generation/judge=0、retry/fallback=0。独占 attempt 标记已创建，未重复 execute。结果 MODEL_REBUILD_READY，expected/observed/migrated/read-back=50/50/50/50、missing/mismatch=0/0，SQL CAS 切换为 READY/activeGeneration=c17g3，source 保留50；未修改或清理失败 c17g2，未重复应用 V13。
+- 独立复核：另一个 provider-disabled verify 进程只读核对 SQL active model/request/endpoint/dimension/generation、3 fixtures/50 chunks、exact ID set 强读回50、finite vectors、source50，再次 PASS；该进程 HTTP attempts/items=0/0。日志审计确认 attempt indexes 精确1..11、11个200、50 validated、独立复核零外调。
+- 修改文件：新增 docs/eval/reports/c17-model-rebuild-c17g3-summary.json 脱敏摘要；更新 ACTIVE_TASK、C17 tasks 和 eval guide，保留 C17 ACTIVE 与 HTTP preflight/canary/full/阈值/验收未完成项。摘要绑定实际执行 Git HEAD、维护源码/launcher/执行与复核日志 hash，不含数字 KB ID、collection 名、凭据、正文、向量或 provider body。
+- 验证与跳过：提交前校验摘要 JSON/计数/hash、文档链接、OpenSpec结构、敏感增量与 git diff --check。本轮未改生产 Java/Python/frontend，实现测试沿用已通过结果，不重复 full Maven/Python/frontend build。后端 HTTP 服务未运行，因此 --preflight-only --keep-existing 尚未执行；维护 SQL/Milvus verify 不冒充应用端到端 readiness。未执行 canary/full，不能形成 retrieval/generation/judge 质量结论。
+- 剩余风险与下一步：固定重建已完成且本次授权已消耗，禁止复用该授权再次 embedding 或重建；先完成应用 HTTP preflight/runtime fingerprint，再单独授权5-case canary。账户费用/动态限流和持续可用性不由本次11个200证明；失败 g1/g2 与原 source 不自动清理。
+- Commit: pending；建议中文提交信息：`docs(eval): 记录C17固定重建成功`。
