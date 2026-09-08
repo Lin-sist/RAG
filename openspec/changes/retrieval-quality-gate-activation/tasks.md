@@ -162,3 +162,9 @@
 - [x] full1：run1完整150、run2本地HTTP429错误96、run3未运行；provider432/432 HTTP200，内部retry0，预算0，失败raw artifacts保留。
 - [x] TDD修复检索前显式delay与retrieval429计数，242 Python tests通过；delay进入metadata/strict identity，不计入检索延迟，默认0兼容既有调用。
 - [ ] 新full2固定delay=1.2秒，在新clean HEAD上重新执行150×3；不关闭服务端限流，不拼接成功子集、不复用旧full为reference。
+
+## 2026-09-08 full2序列化身份缺口
+- [x] full2完整450/450，三轮RETRIEVAL_ONLY、errors/rateLimit/retry/fallback0，新增provider0；compiler拒绝公开claimMetricConfig误脱敏造成的details/metadata不一致。
+- [x] 原始三轮证据及NOT_COMPARABLE输出保留；脱敏器仅为完整精确匹配的公开canonical descriptor保留值，任意同名凭据仍遮蔽。
+- [x] serializer→compiler离线回归RED→GREEN，全量244 tests通过；未降低compiler身份校验或回填旧raw。
+- [ ] full3在新clean HEAD上重新完整150×3，delay1.2秒、no-overwrite、retry0，完成后生成正式review pack。

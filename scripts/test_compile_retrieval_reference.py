@@ -10,9 +10,31 @@ from pathlib import Path
 import compile_retrieval_reference as compiler
 import eval_dataset_contract
 import run_reproducible_rag_eval as runner
+import run_rag_eval as direct
 
 
 class CompileRetrievalReferenceTest(unittest.TestCase):
+    def test_serialized_public_metric_identity_remains_compilable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            details_paths, metadata_paths = self.write_reference_runs(Path(tmp_dir))
+            for dp, mp in zip(details_paths, metadata_paths):
+                metadata = json.loads(mp.read_text())
+                metadata['claimMetricConfig'] = dict(direct.CLAIM_METRIC_CONFIG)
+                mp.write_text(json.dumps(metadata), encoding='utf-8')
+                details = self.complete_details(metadata)
+                dp.write_text(json.dumps(direct.sanitize_sensitive(details)), encoding='utf-8')
+            result = compiler.compile_reference(self.repo_root, self.manifest_path,
+                self.profile_path, details_paths, metadata_paths)
+        self.assertEqual('COMPLETE', result['status'])
+        self.assertEqual(450, result['actual']['observationCount'])
+
+    def test_metric_descriptor_exception_does_not_expose_arbitrary_tokens(self) -> None:
+        altered = dict(direct.CLAIM_METRIC_CONFIG, tokenizerVersion='private-value')
+        payload = {'claimMetricConfig': altered, 'accessToken': 'private-value',
+                   'nested': {'minClaimTokens': 'private-value', 'apiKey': 'private-value'}}
+        sanitized = direct.sanitize_sensitive(payload)
+        self.assertNotIn('private-value', json.dumps(sanitized))
+
     def setUp(self) -> None:
         self.repo_root = Path(__file__).resolve().parents[1]
         self.manifest_path = self.repo_root / "docs/eval/config/c17-retrieval-reference-v1.json"

@@ -2123,6 +2123,11 @@ SENSITIVE_KEY_PATTERN = re.compile(r"(token|password|secret|api[_-]?key|authoriz
 
 def sanitize_sensitive(value: Any) -> Any:
     if isinstance(value, dict):
+        # This exact public, versioned descriptor contains tokenizer/count fields,
+        # not credentials. Only the canonical values qualify; arbitrary fields
+        # with these names must still be redacted.
+        if value == CLAIM_METRIC_CONFIG:
+            return dict(value)
         sanitized: dict[str, Any] = {}
         for key, item in value.items():
             key_text = str(key)

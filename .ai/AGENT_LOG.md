@@ -2378,3 +2378,16 @@
 - 安全：无业务KB写入/清理、无凭据/保护路径修改、无push/PR/deploy。full2使用新no-overwrite身份重新完整150×3，内部retry0、delay1.2秒，旧失败run不拼接。
 - 剩余风险：full2及完整compiler evidence尚未产生，profile仍DRAFT；Docker恢复为局部缓解，socket复发的更深层原因未证实。
 - Commit: pending
+
+## 2026-09-08 C17提交补录
+- 上一执行提交：73566c94865ef8d7f2432ab9bb2d130fd83f293b（fix(eval): 控制检索请求节奏并补齐限流计数）。
+
+## 2026-09-08 full2完整执行与序列化身份修复
+- 范围：run_rag_eval.py、test_compile_retrieval_reference.py、full attempts脱敏摘要、ACTIVE_TASK/tasks/本日志。
+- full2在HEAD=73566c9完成三轮450/450，RETRIEVAL_ONLY、retrieve/rateLimit/retry/fallback0、新增provider0，预算自动归零。每次检索前等待1.2秒，三轮raw metadata strict identity一致。
+- compiler=NOT_COMPARABLE，reasonCodes=evidence_contract_mismatch/repeat_identity_drift。定位为sanitize_sensitive按token子串遮蔽公开指标descriptor的tokenizerVersion/minClaimTokens，details.runMetadata与未遮蔽的parent metadata不相等；不是实际Git/KB/config漂移。
+- 原始full2及compiler拒绝结果保持不变，不回填字段或放宽compiler。修复只允许完全等于公开CLAIM_METRIC_CONFIG的descriptor保留，任意改值/secret字段继续脱敏；新增serializer→compiler完整450 synthetic回归及泄露负例。
+- 验证：RED=compiler NOT_COMPARABLE；GREEN=244 Python tests/OK。待diff安全检查。无Java/frontend变更，不重复Maven/build。
+- 安全：KB/凭据/受保护文件无修改，未push/PR/deploy。full1/full2结果不拼接、不作为正式reference。
+- 剩余风险：full3待执行，具体阈值未批准，profile仍DRAFT；Docker仅恢复，复发根因未闭环。
+- Commit: pending

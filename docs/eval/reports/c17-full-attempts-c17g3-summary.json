@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "c17-full-attempt-audit-v1",
+  "generation": "c17g3",
+  "model": "nvidia/nemotron-3-embed-1b",
+  "attempts": [
+    {
+      "executionId": "g3-20260908-full1",
+      "gitHead": "271b5be1110fcbaf1bf929c1ef834a0364da2c90",
+      "status": "FAILED",
+      "runs": [
+        {"runIndex": 1, "sampleCount": 150, "reportStatus": "RETRIEVAL_ONLY", "retrieveErrors": 0},
+        {"runIndex": 2, "sampleCount": 150, "reportStatus": "FAILED", "retrieveErrors": 96, "auditedLocalHttp429": 96},
+        {"runIndex": 3, "status": "NOT_RUN"}
+      ],
+      "newProviderRequests": 432,
+      "providerHttp200": 432,
+      "retry": 0,
+      "reason": "LOCAL_USER_RATE_LIMIT_AFTER_CACHE_HITS",
+      "errorCountCaveat": "Original rateLimitErrors omitted retrieval HTTP429; raw reports preserved unchanged."
+    },
+    {
+      "executionId": "g3-20260908-full2",
+      "gitHead": "73566c94865ef8d7f2432ab9bb2d130fd83f293b",
+      "status": "NOT_COMPARABLE",
+      "runCount": 3,
+      "sampleCountPerRun": 150,
+      "observationCount": 450,
+      "allReportStatus": "RETRIEVAL_ONLY",
+      "retrieveErrors": 0,
+      "rateLimitErrors": 0,
+      "retry": 0,
+      "newProviderRequests": 0,
+      "retrievalDelaySeconds": 1.2,
+      "reasonCodes": ["evidence_contract_mismatch", "repeat_identity_drift"],
+      "rootCause": "Serializer redacted public claimMetricConfig tokenizerVersion/minClaimTokens while parent metadata retained canonical values. Compiler correctly rejected mismatch."
+    }
+  ],
+  "budgetAfterEachAttempt": 0,
+  "fallback": 0,
+  "externalRerank": 0,
+  "ask": 0,
+  "generationCalls": 0,
+  "judge": 0,
+  "rawArtifactPolicy": "Original ignored artifacts retained; no backfilling, overwriting or successful-subset aggregation.",
+  "qualityGateConclusion": "NONE"
+}
