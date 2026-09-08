@@ -345,3 +345,14 @@ Java/POM/frontend/runtime/API 无改动时 Maven/frontend build 可记为 `SKIPP
 - **面临的选择**：继续用 provider family=`openai` 做 key；只加 model ID；绑定 model+request contract+dimension，且 rebuild 显式 bypass cache。
 - **选了哪个 + 为什么**：选择完整 contract key，并让 fixed rebuild 零 cache hit。模型相同但 input/truncate/output contract 不同也可能不可比较；重建必须证明 exactly 50 items 来自目标 provider generation。
 - **放弃的代价**：family-only 会直接复用旧空间；model-only 漏掉协议漂移；完整 key/bypass 会降低本次重建缓存收益，但换来可审计身份。
+
+## 2026-09-08 查询变体预算修订（用户批准）
+
+本节覆盖此前按每样本一次embedding的5/450预算。保留当前检索算法，按当前QueryEngine离线生成的全部query variants计算冷缓存上限：canary固定5个debug retrieval、最多11次query embedding（各样本1/2/5/2/1）；full固定450个debug retrieval、最多1353次query embedding（每repeat451）。缓存命中可减少实际调用，但不得缩减授权上限。tracked问题及其确定性变体发送至既定NVIDIA NIM endpoint；external rerank/ask/generation/judge仍为0。
+
+用户明确说明当前NVIDIA NIM账户免费且未绑定支付方式；本任务按用户账户声明记录直接费用0，不再将费用作为反复请示原因，仍记录限流、超时及实际请求数。用户明确授权修订契约并持续诊断/修复、以新no-overwrite执行身份验证canary直至通过；每轮内部retry=0，失败保留完整证据，诊断后才能开始下一轮。该授权不扩大至KB重建/清理、baseline批准或发布。full仍须canary clean；此前full授权不自行扩大至1353新上限，本轮只推进canary。
+
+### 决策：查询变体预算
+- **面临的选择**：禁用查询扩展；保留算法并按全部变体冻结冷缓存上限；按当前缓存命中估算。
+- **选了哪个 + 为什么**：保留算法，冻结11/1353上限并绑定查询代码哈希，保证既有检索语义和调用预算均可核验。
+- **放弃的代价**：禁用扩展改变可比基线；依赖缓存会在缓存过期后再次低估出站调用。

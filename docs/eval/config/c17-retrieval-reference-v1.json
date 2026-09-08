@@ -17,7 +17,11 @@
   },
   "execution": {
     "measuredRepeats": 3,
-    "runIndexes": [1, 2, 3],
+    "runIndexes": [
+      1,
+      2,
+      3
+    ],
     "keepExisting": true,
     "runIdentity": {
       "mode": "retrieval-only",
@@ -53,7 +57,11 @@
     },
     "fixedRebuild": {
       "expectedItems": 50,
-      "documentChunkCounts": [11, 14, 25],
+      "documentChunkCounts": [
+        11,
+        14,
+        25
+      ],
       "maxItemsPerRequest": 5,
       "maxHttpRequests": 11,
       "cacheHits": 0
@@ -77,7 +85,7 @@
     "measuredRepeats": 1,
     "callBudget": {
       "debugRetrieve": 5,
-      "queryEmbeddingUpperBound": 5,
+      "queryEmbeddingUpperBound": 11,
       "externalRerank": 0,
       "ask": 0,
       "generation": 0,
@@ -89,7 +97,7 @@
     "measuredRepeats": 3,
     "callBudget": {
       "debugRetrieve": 450,
-      "queryEmbeddingUpperBound": 450,
+      "queryEmbeddingUpperBound": 1353,
       "externalRerank": 0,
       "ask": 0,
       "generation": 0,

@@ -2322,3 +2322,17 @@
 - 安全：未修改凭据、前端、数据集、检索算法；未重建/清理KB或向量。临时运行时出站预算已归零。
 - 剩余风险：预算契约需修订并重新授权；失败证据不能作为质量参考，profile仍DRAFT。
 - Commit: pending
+
+
+## 2026-09-08 C17提交补录
+- 上一执行提交：d060f83（docs(eval): 记录预检及查询变体预算缺口）。
+
+## 2026-09-08 查询变体预算修订
+- 用户批准修订并诊断验证canary直至通过，轮内retry0；用户声明NIM免费且未绑定支付方式。
+- 范围：active change四份文件、manifest、runner、测试；11/1353冷缓存上限，query源码哈希漂移fail closed；不改检索算法。
+- 验证：Python全量测试待执行；live canary待执行。
+- 安全：provider0、KB mutation0，未修改凭据/前端；full新预算本轮未执行。
+- 剩余风险：真实canary仍待验证，profile保持DRAFT。
+- Commit: pending
+
+- 验证补充：Python 239 tests/OK（含query源码漂移拒绝）；git diff --check PASS。

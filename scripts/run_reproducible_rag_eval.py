@@ -831,7 +831,7 @@ def load_reference_manifest(path: Path) -> dict[str, Any]:
         canary.get("callBudget"),
         {
             "debugRetrieve": 5,
-            "queryEmbeddingUpperBound": 5,
+            "queryEmbeddingUpperBound": 11,
             "externalRerank": 0,
             "ask": 0,
             "generation": 0,
@@ -850,7 +850,7 @@ def load_reference_manifest(path: Path) -> dict[str, Any]:
         full.get("callBudget"),
         {
             "debugRetrieve": 450,
-            "queryEmbeddingUpperBound": 450,
+            "queryEmbeddingUpperBound": 1353,
             "externalRerank": 0,
             "ask": 0,
             "generation": 0,
@@ -873,6 +873,13 @@ def load_reference_manifest(path: Path) -> dict[str, Any]:
     allowlist = manifest.get("trackedOutputAllowlist")
     if allowlist != C17_TRACKED_OUTPUT_ALLOWLIST:
         raise ApiError("c17_output_allowlist_invalid")
+
+    # Frozen cold-cache variant audit: 11 canary items; 451 per full repeat.
+    # A query implementation change requires a fresh offline budget audit.
+    query_source = Path(__file__).resolve().parents[1] / "rag-core/src/main/java/com/enterprise/rag/core/rag/query/QueryEngineImpl.java"
+    query_hash = hashlib.sha256(query_source.read_text(encoding="utf-8").encode("utf-8")).hexdigest()
+    if query_hash != "7f50f032cff8e98c56c2e87f838a09c2e01931678b02b2a7c7d2b9e5bb334a5f":
+        raise ApiError("c17_query_variant_budget_source_drift")
 
     canonical = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return {**manifest, "sha256": hashlib.sha256(canonical).hexdigest()}

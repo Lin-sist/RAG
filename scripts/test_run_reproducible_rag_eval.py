@@ -12,6 +12,15 @@ import run_reproducible_rag_eval as runner
 
 
 class ReproducibleRagEvalTest(unittest.TestCase):
+    def test_c17_rejects_query_source_drift_before_live_calls(self) -> None:
+        original = Path.read_text
+        def changed(path, *args, **kwargs):
+            text = original(path, *args, **kwargs)
+            return text + "\n// drift" if path.name == "QueryEngineImpl.java" else text
+        with mock.patch.object(Path, "read_text", changed):
+            with self.assertRaisesRegex(runner.ApiError, "c17_query_variant_budget_source_drift"):
+                runner.load_reference_manifest(self.repo_root() / "docs/eval/config/c17-retrieval-reference-v1.json")
+
     def test_require_credentials_rejects_missing_values(self) -> None:
         args = argparse.Namespace(username="", password="")
 
@@ -246,7 +255,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual(
             {
                 "debugRetrieve": 450,
-                "queryEmbeddingUpperBound": 450,
+                "queryEmbeddingUpperBound": 1353,
                 "externalRerank": 0,
                 "ask": 0,
                 "generation": 0,
@@ -258,7 +267,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual([1, 2, 3], full_plan["runIndexes"])
         self.assertEqual(5, canary_plan["selectedSampleCount"])
         self.assertEqual(5, canary_plan["estimatedLiveCalls"]["debugRetrieve"])
-        self.assertEqual(5, canary_plan["estimatedLiveCalls"]["queryEmbeddingUpperBound"])
+        self.assertEqual(11, canary_plan["estimatedLiveCalls"]["queryEmbeddingUpperBound"])
         self.assertTrue(all(
             canary_plan["estimatedLiveCalls"][field] == 0
             for field in ("externalRerank", "ask", "generation", "llmJudge")

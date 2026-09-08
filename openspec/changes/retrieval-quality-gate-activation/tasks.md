@@ -137,3 +137,9 @@
 - [x] 用户授权后执行唯一canary：5 retrieval、5 provider HTTP200、retrieveErrors3、retry/fallback/model rerank/ask/generation/judge0；FAILED，不进入full。
 - [x] 离线实际QueryEngine核算：5 IDs变体数1/2/5/2/1，canary/full冷缓存embedding上限11/1353；原5/450预算存在gap。
 - [ ] 修订查询变体预算契约并验证、披露变体文本出站和新上限、取得新执行授权；不得靠改检索算法或假设缓存命中绕过预算。
+
+## 2026-09-08 查询变体预算修订（用户批准）
+
+本节覆盖此前按每样本一次embedding的5/450预算。保留当前检索算法，按当前QueryEngine离线生成的全部query variants计算冷缓存上限：canary固定5个debug retrieval、最多11次query embedding（各样本1/2/5/2/1）；full固定450个debug retrieval、最多1353次query embedding（每repeat451）。缓存命中可减少实际调用，但不得缩减授权上限。tracked问题及其确定性变体发送至既定NVIDIA NIM endpoint；external rerank/ask/generation/judge仍为0。
+
+用户明确说明当前NVIDIA NIM账户免费且未绑定支付方式；本任务按用户账户声明记录直接费用0，不再将费用作为反复请示原因，仍记录限流、超时及实际请求数。用户明确授权修订契约并持续诊断/修复、以新no-overwrite执行身份验证canary直至通过；每轮内部retry=0，失败保留完整证据，诊断后才能开始下一轮。该授权不扩大至KB重建/清理、baseline批准或发布。full仍须canary clean；此前full授权不自行扩大至1353新上限，本轮只推进canary。
