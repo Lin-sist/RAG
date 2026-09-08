@@ -2364,3 +2364,17 @@
 - 安全：无KB重建/清理、无profile/baseline修改、无凭据/前端/受保护本地内容改动、无push/PR/deploy。
 - 剩余风险：需明确固定开发问题及变体向指定NVIDIA endpoint出站授权；执行前须刷新clean HEAD与preflight，不能把canary当质量reference。
 - Commit: pending
+
+## 2026-09-08 C17提交补录
+- 上一执行提交：271b5be1110fcbaf1bf929c1ef834a0364da2c90（docs(eval): 记录C17全量预检及出站审批阻断）。
+
+## 2026-09-08 Docker恢复、full1失败与pacing修复
+- 范围：direct/reproducible runner、compiler strict identity、test_retrieval_pacing.py、C17 design/tasks/ACTIVE_TASK与本日志。
+- 用户明确确认具体NVIDIA出站授权并授予阶段权限。Docker截图及日志确认run/dockerInference无法访问复发；仅核验两个0字节socket后将run改名run.stale-20260908-1735并重建空run。五个原容器恢复healthy；未factory reset/prune/删除容器镜像卷或改WSL数据盘。
+- 本轮先启动Windows MySQL80，随后定位它抢占Docker MySQL的3306端口、后端误连导致认证/SQL异常；已撤销该启动恢复Stopped，重启原rag-mysql恢复端口映射并重启C17后端。正确Docker schema=V13，HTTP preflight=READY/3 fixtures/50 vectors。错误实例未运行retrieval或provider、未迁移数据库。
+- HEAD=271b5be的full1：run1=RETRIEVAL_ONLY/150/errors0；run2=FAILED/150/retrieveErrors96（全部HTTP429）；run3未启动。provider432次全部200、retry0、预算归零。旧rateLimitErrors=0是retrieval429漏计，不能称限流0。失败raw文件未改写。
+- TDD RED：缺少pacing转发/请求前sleep；GREEN：新增有限非负retrieval delay、等待排除请求计时、retrieval429计数一次；delay进入metadata/strict identity。默认0，生产API/限流/检索/指标公式均不变。
+- 验证：Python242 tests/OK，新增3项聚焦测试复核通过；git diff --check通过，相关路径存在。无Java/frontend变更，不重复Maven/build。
+- 安全：无业务KB写入/清理、无凭据/保护路径修改、无push/PR/deploy。full2使用新no-overwrite身份重新完整150×3，内部retry0、delay1.2秒，旧失败run不拼接。
+- 剩余风险：full2及完整compiler evidence尚未产生，profile仍DRAFT；Docker恢复为局部缓解，socket复发的更深层原因未证实。
+- Commit: pending

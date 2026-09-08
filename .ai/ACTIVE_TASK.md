@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`C17G3_FULL_PREFLIGHT_READY_AWAITING_EXPLICIT_EGRESS_APPROVAL`
+- 阶段：`C17G3_FULL_R2_READY_AFTER_LOCAL_RATE_LIMIT_FIX`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -46,3 +46,5 @@
 - 最新：2026-09-08用户批准预算修订并验证canary直至通过，声明NIM免费且无支付方式。9080b92修订11/1353冷缓存上限；Python239 tests/OK。r2 HTTP preflight READY，canary5/5成功、RETRIEVAL_ONLY、errors/retry/fallback/model rerank0；provider新增6次HTTP200、缓存5。原进程复用且Java源码未变；新进程端口占用退出，预算已归零。证据c17-canary-c17g3-r2-summary.json。full新1353上限待授权，profile仍DRAFT。
 
 - 2026-09-08 用户授权完成归档前任务后，在 HEAD=04c8b88 刷新 full plan-only（450 retrieval / 1353 query embedding upper bound）及 HTTP preflight（READY、fixtures=3/3、vectors=50/50）。新启动后端因端口占用退出，原 canary 进程仍在且业务源码未变。本轮 full 命令在进程创建前被自动审批拒绝：要求明确授权固定开发问题及查询变体向 NVIDIA 出站。实际新增 provider calls=0，累计 counter 保持11、预算文件=0，无 full artifacts；未执行重试。等待具体数据/目的地出站授权，随后刷新 clean HEAD/preflight 再执行；profile 保持 DRAFT，阈值审阅与归档未完成。
+
+- 最新：用户已明确确认上述NVIDIA问题/变体出站授权，并授予本阶段执行权限、不必重复请示。恢复Docker重复socket故障后，在HEAD=271b5be执行full1：run1=150/150、RETRIEVAL_ONLY、errors0；run2=FAILED、retrieveErrors96，全部为本地HTTP429；run3未启动。provider432/432 HTTP200、retry0、预算归零；旧runner的rateLimitErrors漏计retrieval429，不据此声称限流0。已离线修复显式retrieval pacing和429计数，242 tests通过；新full2固定每次检索前等待1.2秒，保留60次/60秒限流及所有检索公式，重新完整执行150×3，不拼接旧结果。profile仍DRAFT，禁止以失败full推断质量门禁通过。

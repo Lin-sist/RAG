@@ -155,3 +155,10 @@
 - [x] HTTP preflight 刷新为 READY，fixtures=3/3、vectors=50/50；本轮新增 provider calls=0。
 - [x] 记录 full 命令在进程创建前被自动审批拒绝；counter保持11、预算0、未产生full artifacts，未绕过或重试。
 - [ ] 补充固定开发问题及确定性查询变体向 NVIDIA NIM endpoint 出站的明确授权，刷新执行身份后运行唯一 full；继续按第8–10节完成 evidence、人工阈值、activation replay 与最终验收。
+
+## 2026-09-08 full1失败与新执行准备
+- [x] 用户明确确认数据/目的地出站并授予本阶段执行权限；后续不重复请求同一范围授权。
+- [x] Docker/run两个失效socket目录保留备份后恢复五个healthy容器；Windows MySQL80本轮误启动造成3306冲突，已恢复Stopped并恢复原Docker MySQL映射，未修改数据库。
+- [x] full1：run1完整150、run2本地HTTP429错误96、run3未运行；provider432/432 HTTP200，内部retry0，预算0，失败raw artifacts保留。
+- [x] TDD修复检索前显式delay与retrieval429计数，242 Python tests通过；delay进入metadata/strict identity，不计入检索延迟，默认0兼容既有调用。
+- [ ] 新full2固定delay=1.2秒，在新clean HEAD上重新执行150×3；不关闭服务端限流，不拼接成功子集、不复用旧full为reference。

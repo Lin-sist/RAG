@@ -140,6 +140,7 @@ def _strict_identity(metadata: dict[str, Any]) -> dict[str, Any]:
         "judgeContractConfig": metadata.get("judgeContractConfig"),
         "referenceManifest": metadata.get("referenceManifest"),
         "repeatTotal": repeat.get("total"),
+        "retrievalDelaySeconds": metadata.get("retrievalDelaySeconds", 0.0),
         "warmup": metadata.get("warmup"),
     }
 

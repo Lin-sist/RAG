@@ -142,6 +142,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--include-ask", action="store_true", help="Also call /api/qa/ask for generation/citation metrics. Default remains retrieval-only.")
     parser.add_argument("--ask-timeout", type=float, default=parse_float_env("RAG_EVAL_ASK_TIMEOUT"), help="Timeout for child /api/qa/ask calls. Defaults to --timeout.")
     parser.add_argument("--ask-delay-seconds", type=float, default=float(os.getenv("RAG_EVAL_ASK_DELAY_SECONDS", "0")))
+    parser.add_argument("--retrieval-delay-seconds", type=eval_runner.nonnegative_seconds, default=0.0)
     parser.add_argument("--max-ask-retries", type=int, default=int(os.getenv("RAG_EVAL_MAX_ASK_RETRIES", "0")))
     parser.add_argument("--retry-backoff-seconds", type=float, default=float(os.getenv("RAG_EVAL_RETRY_BACKOFF_SECONDS", "0")))
     parser.add_argument("--retry-ask-timeouts", action=argparse.BooleanOptionalAction, default=parse_bool_env("RAG_EVAL_RETRY_ASK_TIMEOUTS", True), help="Retry /api/qa/ask timeout errors when --max-ask-retries is positive.")
@@ -1064,6 +1065,7 @@ def build_metadata(
             else None
         ),
         "repeat": {"index": run_index, "total": repeat_total},
+        "retrievalDelaySeconds": getattr(args, "retrieval_delay_seconds", 0.0),
         "warmup": {"calls": int((arm_manifest or {}).get("warmupCalls", 0))},
     }
     dataset_identity = getattr(args, "dataset_release_identity", None)
@@ -1182,6 +1184,8 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
         str(details),
         "--run-metadata-json",
         str(metadata),
+        "--retrieval-delay-seconds",
+        str(getattr(args, "retrieval_delay_seconds", 0.0)),
     ]
     if args.include_ask:
         command.extend([
@@ -1389,6 +1393,8 @@ def build_plan(
         "judgeMode": args.judge_mode,
         "askTimeout": args.ask_timeout,
         "retryAskTimeouts": args.retry_ask_timeouts,
+        "retrievalDelaySeconds": getattr(args, "retrieval_delay_seconds", 0.0),
+        "retrievalDelaySeconds": getattr(args, "retrieval_delay_seconds", 0.0),
         "repeat": args.repeat,
         "runIndexes": run_indexes,
         "estimatedLiveCalls": estimate_live_calls(args, selected_samples, execution_count),

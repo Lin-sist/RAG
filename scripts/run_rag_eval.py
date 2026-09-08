@@ -130,6 +130,13 @@ class JudgeContractIdentityError(ValueError):
     pass
 
 
+def nonnegative_seconds(value: str) -> float:
+    seconds = float(value)
+    if not math.isfinite(seconds) or seconds < 0:
+        raise argparse.ArgumentTypeError('delay must be finite and nonnegative')
+    return seconds
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run RAG eval baseline.")
     parser.add_argument("--base-url", default=os.getenv("RAG_BASE_URL", DEFAULT_BASE_URL))
@@ -156,6 +163,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-ask", action="store_true", help="Only run debug retrieve metrics.")
     parser.add_argument("--ask-timeout", type=float, default=parse_float_env("RAG_EVAL_ASK_TIMEOUT"), help="Timeout for /api/qa/ask calls. Defaults to --timeout.")
     parser.add_argument("--ask-delay-seconds", type=float, default=float(os.getenv("RAG_EVAL_ASK_DELAY_SECONDS", "0")))
+    parser.add_argument("--retrieval-delay-seconds", type=nonnegative_seconds, default=0.0,
+                        help="Delay before every debug retrieval, outside measured request latency; no retries.")
     parser.add_argument("--max-ask-retries", type=int, default=int(os.getenv("RAG_EVAL_MAX_ASK_RETRIES", "0")))
     parser.add_argument("--retry-backoff-seconds", type=float, default=float(os.getenv("RAG_EVAL_RETRY_BACKOFF_SECONDS", "0")))
     parser.add_argument("--retry-ask-timeouts", action=argparse.BooleanOptionalAction, default=parse_bool_env("RAG_EVAL_RETRY_ASK_TIMEOUTS", True), help="Retry /api/qa/ask timeout errors when --max-ask-retries is positive.")
@@ -489,6 +498,8 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
     relevance_score = None
     judge_pass = None
 
+    if getattr(args, "retrieval_delay_seconds", 0.0) > 0:
+        time.sleep(args.retrieval_delay_seconds)
     retrieval_started_at = time.monotonic()
     try:
         debug_response = api_data(call_json(
@@ -506,6 +517,8 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
         ))
     except Exception as exc:  # noqa: BLE001 - keep runner resilient per sample
         retrieval_error = str(exc)
+        if isinstance(exc, ApiCallError) and exc.http_status == 429:
+            rate_limit_errors += 1
     retrieve_latency_millis = max(0.0, (time.monotonic() - retrieval_started_at) * 1000.0)
 
     if not args.skip_ask:
@@ -513,13 +526,13 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             ask_response, ask_meta = call_ask_with_retries(question, args, token)
             ask_attempts = ask_meta["attempts"]
             ask_retry_count = ask_meta["retries"]
-            rate_limit_errors = ask_meta["rateLimitErrors"]
+            rate_limit_errors += ask_meta["rateLimitErrors"]
         except Exception as exc:  # noqa: BLE001
             ask_error = str(exc)
             if isinstance(exc, AskRetryError):
                 ask_attempts = exc.attempts
                 ask_retry_count = exc.retries
-                rate_limit_errors = exc.rate_limit_errors
+                rate_limit_errors += exc.rate_limit_errors
             if isinstance(exc, ApiCallError) and exc.http_status == 429:
                 rate_limit_errors += 1
             if "HTTP 429" in ask_error and not isinstance(exc, AskRetryError):
@@ -2170,6 +2183,7 @@ def write_details_json(
             "maxContextChars": args.judge_max_context_chars,
         },
         "askDelaySeconds": args.ask_delay_seconds,
+        "retrievalDelaySeconds": getattr(args, "retrieval_delay_seconds", 0.0),
         "maxAskRetries": args.max_ask_retries,
         "retryBackoffSeconds": args.retry_backoff_seconds,
         "retryAskTimeouts": args.retry_ask_timeouts,
