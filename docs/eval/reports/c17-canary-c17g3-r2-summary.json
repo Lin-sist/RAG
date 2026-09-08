@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "c17-canary-audit-v1",
+  "status": "CANARY_CLEAN",
+  "reportStatus": "RETRIEVAL_ONLY",
+  "gitHead": "9080b9278a8f582b43a1fbe889d5790df56bc4ec",
+  "referenceManifest": {
+    "referenceId": "rag-eval-dev-v2-retrieval-reference-v1",
+    "sha256": "6b37504243a37283b9f21b4f03da3688f5f3b59e5766c4f72f1a5055ac3edebb",
+    "mode": "canary"
+  },
+  "embeddingGeneration": {
+    "providerFamily": "openai-compatible",
+    "model": "nvidia/nemotron-3-embed-1b",
+    "endpointIdentity": "https://integrate.api.nvidia.com/v1/embeddings",
+    "requestContractVersion": "nvidia-openai-embedding-v1",
+    "dimension": 2048,
+    "generation": "c17g3",
+    "fingerprint": "83acf73b5765747c3074f8a45b16791d4f1067c9573d83b8ab7b96fbd449d220"
+  },
+  "httpPreflight": {
+    "status": "READY",
+    "fixtures": 3,
+    "vectorCount": 50,
+    "providerCalls": 0
+  },
+  "callFacts": {
+    "debugRetrieve": 5,
+    "queryEmbeddingColdCacheUpperBound": 11,
+    "actualProviderRequests": 6,
+    "providerHttp200": 6,
+    "embeddingCacheHits": 5,
+    "retry": 0,
+    "fallback": 0,
+    "externalRerank": 0,
+    "ask": 0,
+    "generation": 0,
+    "judge": 0
+  },
+  "runCounts": {
+    "askErrors": 0,
+    "retrieveErrors": 0,
+    "skippedAsk": 5,
+    "judgeErrors": 0,
+    "skippedJudge": 5,
+    "rateLimitErrors": 0,
+    "retryCount": 0
+  },
+  "runtime": {
+    "sourceRevision": "bdf346d",
+    "sourceUnchangedThroughEvalHead": true,
+    "reusedExistingProcess": true,
+    "additionalStartup": "PORT_IN_USE_NO_PROVIDER_CALLS",
+    "timeoutMs": 60000,
+    "schedulersEnabled": false,
+    "flywayEnabled": false,
+    "counterBefore": 5,
+    "counterAfter": 11,
+    "outboundBudgetAfterRun": 0
+  },
+  "cost": {
+    "directCost": 0,
+    "basis": "USER_DECLARED_FREE_NIM_ACCOUNT_NO_PAYMENT_METHOD"
+  },
+  "full": {
+    "status": "NOT_RUN",
+    "coldCacheEmbeddingUpperBound": 1353,
+    "reason": "NEW_FULL_BUDGET_NOT_AUTHORIZED"
+  },
+  "qualityConclusion": "CANARY_IS_ENVIRONMENT_CHECK_ONLY",
+  "artifacts": [
+    {
+      "name": "g3-20260908-r2-canary-details.json",
+      "sha256": "dc6e34b76e4c3213dbed7eb59202ffb61529d07d1d9a72f453d44ff63c68395a"
+    },
+    {
+      "name": "g3-20260908-r2-canary-metadata.json",
+      "sha256": "0204b03b89bab2a7f4d84572e0060e7e0669f4c10ec5f933835a62f48c941c67"
+    },
+    {
+      "name": "C17HttpRuntime.java",
+      "sha256": "8c6e29f87e9c2d60b41f78c63324614326eeb13915e9d3f05cf260b436951395"
+    },
+    {
+      "name": "C17VariantAudit.java",
+      "sha256": "b678a6aed59a93f68a7a61e240779e68db51a0a5e460b257e948c5e42e14f394"
+    }
+  ]
+}

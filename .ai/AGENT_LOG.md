@@ -2336,3 +2336,17 @@
 - Commit: pending
 
 - 验证补充：Python 239 tests/OK（含query源码漂移拒绝）；git diff --check PASS。
+
+
+## 2026-09-08 C17提交补录
+- 上一执行提交：9080b9278a8f582b43a1fbe889d5790df56bc4ec（fix(eval): 按查询变体修订调用预算）。
+
+## 2026-09-08 canary r2通过
+- 范围：ACTIVE_TASK、tasks、脱敏r2 summary；原始数据在ignored tmp。
+- 应用HTTP preflight READY，fixtures3/vectors50，模型身份匹配；canary5/5成功、RETRIEVAL_ONLY、errors/retry/fallback/model rerank0；新增provider6次HTTP200、缓存5。
+- 运行事实：新进程端口占用退出，实际复用原C17HttpRuntime，Java/配置自bdf346d至9080b92无diff；累计HTTP计数5->11，本轮新增6。预算归零。
+- 验证：239 Python tests/OK；结构化5IDs/归因/HEAD/HTTP计数断言PASS；首次数值审计因未按UTF16读取PowerShell日志失败，纠正解码后通过，未重跑provider。git diff --check PASS。
+- 安全：未改检索算法/凭据/前端，无KB重建/清理，无push；按用户要求保存免费账户背景记忆。
+- 跳过：full新1353上限未授权，未激活profile；无Java业务代码变更，不重复Maven。
+- 剩余风险：canary仅证明环境，缓存不缩减冷缓存预算，full/阈值/验收未完成。
+- Commit: pending

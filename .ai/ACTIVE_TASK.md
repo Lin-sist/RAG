@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`C17G3_CANARY_FAILED_QUERY_VARIANT_BUDGET_GAP`
+- 阶段：`C17G3_CANARY_CLEAN_AWAITING_REVISED_FULL_BUDGET_AUTHORIZATION`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -42,3 +42,5 @@
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。
 
 - 2026-09-08 最新执行覆盖此前待授权状态：用户明确授权 HTTP preflight/canary/full。应用 HTTP preflight READY（fixtures3、vectors50/50、新模型身份匹配），provider0。唯一 canary 5 retrieval、5 provider HTTP200、retrieveErrors3；预算护栏拒绝超额请求。离线当前代码核算 variants=1/2/5/2/1，canary/full冷缓存embedding上限11/1353，原5/450契约低估。full因canary失败和预算漂移未启动；须修订预算并重新授权，不改检索算法绕过，不复用失败canary。profile仍DRAFT。
+
+- 最新：2026-09-08用户批准预算修订并验证canary直至通过，声明NIM免费且无支付方式。9080b92修订11/1353冷缓存上限；Python239 tests/OK。r2 HTTP preflight READY，canary5/5成功、RETRIEVAL_ONLY、errors/retry/fallback/model rerank0；provider新增6次HTTP200、缓存5。原进程复用且Java源码未变；新进程端口占用退出，预算已归零。证据c17-canary-c17g3-r2-summary.json。full新1353上限待授权，profile仍DRAFT。
