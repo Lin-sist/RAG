@@ -39,7 +39,7 @@
       "endpointIdentity": "https://integrate.api.nvidia.com/v1/embeddings",
       "requestContractVersion": "nvidia-openai-embedding-v1",
       "dimension": 2048,
-      "generation": "c17g1"
+      "generation": "c17g2"
     },
     "requestContract": {
       "queryInputType": "query",

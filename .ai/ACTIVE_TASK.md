@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`V13_APPLIED_C17G1_FAILED_C17G2_PREFLIGHT_READY_AWAITING_AUTHORIZATION`
+- 阶段：`C17G2_OFFLINE_HARDENED_AWAITING_REBUILD_AUTHORIZATION`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -32,5 +32,6 @@
 - 已将执行改为两阶段入口并用当前 reactor 重新编译；零外调预演已在真实 MySQL/Milvus 上通过：provider identity=`nvidia/nemotron-3-embed-1b`、expected=50、maxRequests=11、目标 `tenant_1_kb_15_emb_nemotron3_83acf73b5765_gc17g1` 不存在、execute=false。随后真实执行因缺少本次 50 chunks 数据出站的明确重新授权而在进程创建前被权限闸门拒绝，calls/mutations=0。
 - 用户明确重新授权 `c17g1` 后，真实执行成功应用 V13，但临时预算计数器在 adapter 内部拆批前错误地把首个 25-item document batch 当作单个 HTTP request，因而在 NVIDIA 请求前抛出 `MODEL_REBUILD_HTTP_BUDGET_EXCEEDED`。实际 provider HTTP requests/items=`0/0`；MySQL=`MODEL_REBUILD_FAILED`、shadow generation=`c17g1`、observed/migrated/missing/mismatch=`0/0/50/0`，旧 active/source mapping 保留，Milvus target 未创建。
 - 已修正计数器按 `ceil(documentItems/5)` 统计 adapter HTTP batches，并用新 generation `c17g2` 完成零外调预演：expected=50、maxRequests=11、model/dimension 匹配、目标 `tenant_1_kb_15_emb_nemotron3_83acf73b5765_gc17g2` 不存在、execute=false。失败 generation `c17g1` 不复用；`c17g2` 真实执行等待独立授权。
-- 下一步仍需重新明确授权同一固定 rebuild；范围保持 3 fixtures/50 chunks、最多 11 HTTP requests、每次最多 5 items、retry=0、V13、新 `c17g1` collection、50/50/50 强读回与 CAS 切换。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
+- 2026-09-08 已离线补强 rebuild exact ID set/metadata 数值审计；聚焦 18/18、全仓 646 tests/0 failures/0 errors/21 skipped，相关 MySQL/Testcontainers 因 Docker 不可用跳过。runner 与 tracked manifest 已同步为计划代际 `c17g2`，旧 `c17g1` 不可再作为新 reference identity。本轮未重新运行真实基础设施预演，既有预演状态需在真实执行前刷新。
+- 下一步仍需重新明确授权固定 rebuild；范围保持 3 fixtures/50 chunks、最多 11 HTTP requests、每次最多 5 items、retry=0、新 `c17g2` collection、50/50/50 强读回与 CAS 切换。V13 已由此前执行应用，本轮不重复迁移；执行前必须确认 schema/旧 source mapping/target absence。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。

@@ -110,6 +110,25 @@ class CompileRetrievalReferenceTest(unittest.TestCase):
         self.assertIn("repeat_identity_drift", result["reasonCodes"])
         self.assertEqual([], result["rules"])
 
+    def test_retired_generation_cannot_be_compiled_as_new_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            details_paths, metadata_paths = self.write_reference_runs(Path(tmp_dir))
+            for details_path, metadata_path in zip(details_paths, metadata_paths):
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                metadata["knowledgeBase"]["embeddingGeneration"]["generation"] = "c17g1"
+                metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+                details = json.loads(details_path.read_text(encoding="utf-8"))
+                details["runMetadata"] = metadata
+                details_path.write_text(json.dumps(details), encoding="utf-8")
+
+            result = compiler.compile_reference(
+                self.repo_root, self.manifest_path, self.profile_path, details_paths, metadata_paths,
+            )
+
+        self.assertEqual("NOT_COMPARABLE", result["status"])
+        self.assertEqual([], result["rules"])
+        self.assertNotIn("lockedReference", result)
+
     def test_provider_fallback_is_not_comparable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             details_paths, metadata_paths = self.write_reference_runs(Path(tmp_dir))

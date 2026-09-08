@@ -774,7 +774,7 @@ def load_reference_manifest(path: Path) -> dict[str, Any]:
         "endpointIdentity": "https://integrate.api.nvidia.com/v1/embeddings",
         "requestContractVersion": "nvidia-openai-embedding-v1",
         "dimension": 2048,
-        "generation": "c17g1",
+        "generation": "c17g2",
     }:
         raise ApiError("c17_embedding_generation_invalid")
     request_contract = _require_exact_fields(

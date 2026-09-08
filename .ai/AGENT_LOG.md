@@ -2260,3 +2260,17 @@
 - 范围安全：真实业务 backend/provider/embedding/rerank/ask/judge calls=0，业务数据出站=0，业务 KB/MySQL/Milvus mutation=0；测试仅使用 mocks/本地测试服务。未改配置、secret、dataset、baseline 或 archive，未 push/PR/deploy。
 - 剩余风险：本轮只证明离线读回防线；运行时 fixed KB 是否 READY 尚未重新核验。runner/manifest 仍绑定失败代际 c17g1，下一离线切片同步计划代际 c17g2 后才可准备真实授权。
 - Commit: pending；建议中文提交信息：`fix(eval): 加固C17重建读回审计`。
+
+## 2026-09-08｜C17 读回审计提交补录
+
+- 上一执行提交：`0376a3e`（`fix(eval): 加固C17重建读回审计`），仅包含六个计划内 Java/tests/tasks/log 文件；push/PR/deploy 未执行。
+
+## 2026-09-08｜C17 c17g2 执行身份同步
+
+- 范围与事实：沿用 C17 已批准的失败代际不可复用契约，同步 scripts/run_reproducible_rag_eval.py、tracked reference manifest 为 c17g2；补充 runner/preflight/compiler tests，更新 eval guide、design/tasks、ACTIVE_TASK。修正 ACTIVE_TASK 下一步仍写新 c17g1 collection 的过期表述，并明确历史真实预演不代表当前运行时 readiness。
+- 验证：runner RED=44 tests/2 failures（仍接受旧 c17g1、canonical generation 不匹配）；同步后 `python -B -m unittest discover -s scripts -p 'test_*.py'`=238 tests/OK。新增覆盖旧 generation manifest 拒绝、KB identity 拒绝、三份同为旧 generation 的完整 synthetic evidence 不可比较且不输出 rules/reference。
+- 纯本地计划：canary selected/repeat=5/1，debug/query embedding upper bound=5/5；full=150/3，debug/query upper bound=450/450；willUploadFixtures=false，external rerank/ask/generation/judge=0。均为 plan-only，实际 backend/provider calls=0。
+- 验证与跳过：沿用上一切片 Java 全仓通过结果，本切片未改 Java，不重复 Maven；frontend 未改，build 跳过。OpenSpec CLI 不可用，使用 structure/requirement/scenario、引用存在性、旧代际用途与新增敏感文本静态检查，`git diff --check` 在提交前执行。未运行真实 backend/MySQL/Milvus preflight、rebuild、canary/full；它们不能由 synthetic tests 或计划预算代替。
+- 范围安全：业务外调/数据出站/业务 KB/MySQL/Milvus mutation=0；未更改 dataset/fixture、numeric profile、accepted baseline/archive、secret、本地受保护配置、前端/Logo；未 push/PR/deploy。C17 保持 ACTIVE，不能越过真实 evidence 和用户阈值门禁进入后续完成声明。
+- 剩余风险：真实执行前需要用当前源码重新编译入口，刷新 schema/source/target absence 与预算预演；旧 ignored 临时编译产物不能当作本次已验证版本。固定 50-item rebuild 仍需新一次明确授权，之后的 canary/full、阈值与验收保持独立。
+- Commit: pending；建议中文提交信息：`fix(eval): 同步C17新代际执行身份`。

@@ -97,6 +97,7 @@
 - [x] 用户明确重新授权后执行 `c17g1`：V13 成功应用；临时计数器在 adapter 内部拆批前误把 25 items 当作单 HTTP request，真实 provider calls/items=0，rebuild 以 `MODEL_REBUILD_HTTP_BUDGET_EXCEEDED` fail closed。旧 mapping/source 保留、target collection 未创建；`c17g1` 不复用。
 - [x] 修正执行护栏为按 `ceil(documentItems/5)` 计算 HTTP batches；新 generation `c17g2` 零外调预演=`READY`，target identity/50 items/11-request bound/collection absence 均通过，等待独立授权。
 - [x] 2026-09-08 离线补强 rebuild 读回审计：精确数值比较兼容 JSON 浮点 ID，同时拒绝精度丢失/错误 scope、额外/重复/缺失 ID、空条目、空 metadata、非有限向量及 model/contract/generation 漂移；聚焦 18 tests 通过，全仓 646 tests、0 failures/errors、21 skipped。V13 迁移测试断言已同步，真实 MySQL/Testcontainers 验证因 Docker 不可用跳过，不作为真实 rebuild 证据。
+- [x] 2026-09-08 将 runner/manifest 的待执行 generation 同步为 c17g2，拒绝旧 c17g1 manifest、KB preflight identity 与整组三次 reference evidence；Python 238 tests 通过，canary/full plan-only 分别为 5/5 与 450/450，其他业务外调通道=0。此次为离线计划同步，未重跑真实 MySQL/Milvus preflight，未执行 rebuild。
 - [ ] 在新 generation 执行 zero-retry rebuild；只有 expected/observed/read-back=`50/50/50`、missing/mismatch=`0/0`、deterministic ID set=50、dimension/model identity 匹配且 mapping 原子切换完成，才标记 `MODEL_REBUILD_READY`。失败保留旧 source/mapping，不自动补跑或清理未知 collection。
 - [ ] rebuild 后运行 mutation-free preflight，确认新 model/request/collection generation、fixtures=`3/3`、vectors=`50/50`；provider calls=0。
 - [ ] 用户重新授权新模型 fixed 5-case canary；最多 5 debug retrieval + 5 query embedding、external rerank/ask/generation/judge=0、retry=0。只有 clean canary 才进入 section 8。
