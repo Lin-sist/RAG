@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "c17-canary-audit-v1",
+  "status": "FAILED",
+  "reasonCodes": [
+    "QUERY_VARIANT_EMBEDDING_BUDGET_UNDERCOUNT"
+  ],
+  "gitHead": "bdf346d1635729da3140cb8a282ca627998596fa",
+  "httpPreflight": {
+    "status": "READY",
+    "mutationFree": true,
+    "fixtures": 3,
+    "vectors": 50,
+    "providerCalls": 0
+  },
+  "runtime": {
+    "model": "nvidia/nemotron-3-embed-1b",
+    "endpoint": "https://integrate.api.nvidia.com/v1/embeddings",
+    "dimension": 2048,
+    "generation": "c17g3",
+    "timeoutMs": 60000,
+    "automaticRetries": 0,
+    "fallback": false,
+    "schedulersEnabled": false,
+    "flywayEnabled": false
+  },
+  "canary": {
+    "debugRetrievalCalls": 5,
+    "providerHttpAttempts": 5,
+    "providerHttp200": 5,
+    "runCounts": {
+      "askErrors": 0,
+      "retrieveErrors": 3,
+      "skippedAsk": 5,
+      "judgeErrors": 0,
+      "skippedJudge": 5,
+      "rateLimitErrors": 0,
+      "retryCount": 0
+    },
+    "externalRerank": 0,
+    "ask": 0,
+    "generation": 0,
+    "judge": 0
+  },
+  "offlineVariantAudit": {
+    "canaryPerSample": [
+      1,
+      2,
+      5,
+      2,
+      1
+    ],
+    "canaryColdCacheUpperBound": 11,
+    "fullColdCacheUpperBound": 1353,
+    "providerCalls": 0
+  },
+  "full": {
+    "status": "NOT_RUN",
+    "reason": "CANARY_FAILED_AND_BUDGET_DRIFT"
+  },
+  "artifacts": [
+    {
+      "name": "g3-20260908-canary-details.json",
+      "sha256": "15c9c37cd2627a68c6f9b02448be43ae5b6379cc75e82e2765acb92434333f83"
+    },
+    {
+      "name": "g3-20260908-canary-metadata.json",
+      "sha256": "50511cbd93f27eb6c70c5a3edf80a1f4a16763229ba2943ac1ac87819ab3da41"
+    },
+    {
+      "name": "C17HttpRuntime.java",
+      "sha256": "8c6e29f87e9c2d60b41f78c63324614326eeb13915e9d3f05cf260b436951395"
+    },
+    {
+      "name": "run-http-runtime.ps1",
+      "sha256": "37b705aff2e267e69895277c1757317c3f8935f0545cfe4883f0d63a19b43146"
+    },
+    {
+      "name": "C17VariantAudit.java",
+      "sha256": "b678a6aed59a93f68a7a61e240779e68db51a0a5e460b257e948c5e42e14f394"
+    }
+  ]
+}

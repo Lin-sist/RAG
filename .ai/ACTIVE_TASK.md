@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`C17G3_MODEL_REBUILD_READY_AWAITING_HTTP_PREFLIGHT_AND_CANARY_AUTHORIZATION`
+- 阶段：`C17G3_CANARY_FAILED_QUERY_VARIANT_BUDGET_GAP`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -40,3 +40,5 @@
 - 独立无出站 verify 进程再次确认 SQL READY、model/request/endpoint/dimension/generation 匹配、3 fixtures/50 chunks、强读回 exact ID set=50、finite 2048-d vectors、source=50；provider HTTP attempts/items=0/0。脱敏重建证据见 docs/eval/reports/c17-model-rebuild-c17g3-summary.json。此为维护入口 SQL/Milvus postflight，不冒充应用 HTTP preflight 或 retrieval 质量 evidence。
 - 下一步：先完成本机应用 backend 的 --preflight-only --keep-existing 和 runtime fingerprint 核验，再单独授权新模型 fixed 5-case canary。当前未启动 backend HTTP 服务，不能用维护入口 verify 代替端到端 HTTP readiness。full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。
+
+- 2026-09-08 最新执行覆盖此前待授权状态：用户明确授权 HTTP preflight/canary/full。应用 HTTP preflight READY（fixtures3、vectors50/50、新模型身份匹配），provider0。唯一 canary 5 retrieval、5 provider HTTP200、retrieveErrors3；预算护栏拒绝超额请求。离线当前代码核算 variants=1/2/5/2/1，canary/full冷缓存embedding上限11/1353，原5/450契约低估。full因canary失败和预算漂移未启动；须修订预算并重新授权，不改检索算法绕过，不复用失败canary。profile仍DRAFT。

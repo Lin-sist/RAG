@@ -2306,3 +2306,19 @@
 - 验证与跳过：提交前校验摘要 JSON/计数/hash、文档链接、OpenSpec结构、敏感增量与 git diff --check。本轮未改生产 Java/Python/frontend，实现测试沿用已通过结果，不重复 full Maven/Python/frontend build。后端 HTTP 服务未运行，因此 --preflight-only --keep-existing 尚未执行；维护 SQL/Milvus verify 不冒充应用端到端 readiness。未执行 canary/full，不能形成 retrieval/generation/judge 质量结论。
 - 剩余风险与下一步：固定重建已完成且本次授权已消耗，禁止复用该授权再次 embedding 或重建；先完成应用 HTTP preflight/runtime fingerprint，再单独授权5-case canary。账户费用/动态限流和持续可用性不由本次11个200证明；失败 g1/g2 与原 source 不自动清理。
 - Commit: pending；建议中文提交信息：`docs(eval): 记录C17固定重建成功`。
+
+## 2026-09-08 C17提交补录
+
+- 上一执行提交：bdf346d1635729da3140cb8a282ca627998596fa （docs(eval): 记录C17固定重建成功）。
+
+## 2026-09-08 C17 HTTP preflight与canary预算审计
+
+- 范围：ACTIVE_TASK、tasks、脱敏c17-canary-c17g3-summary.json；ignored tmp保留真实应用启动护栏、原始证据及离线审计。
+- 用户明确授权HTTP preflight/canary/full，本地Agent提交；无push/PR/deploy。
+- 验证：HTTP preflight READY，fixtures3/vectors50；唯一canary FAILED，5 retrieval、5 provider HTTP200、retrieveErrors3，retry/fallback/外部rerank/ask/generation/judge0。
+- 已确认：QueryEngine为每个variant单独embedding；实际代码离线核算canary11/full1353冷缓存上限，原5/450预算低估；护栏拒绝第6次及后续请求，实际未超额。
+- 离线C17VariantAudit javac/java PASS、provider0；git diff --check PASS。
+- 跳过：full因canary失败与预算漂移未执行；无生产代码修改，不重复全仓测试。
+- 安全：未修改凭据、前端、数据集、检索算法；未重建/清理KB或向量。临时运行时出站预算已归零。
+- 剩余风险：预算契约需修订并重新授权；失败证据不能作为质量参考，profile仍DRAFT。
+- Commit: pending

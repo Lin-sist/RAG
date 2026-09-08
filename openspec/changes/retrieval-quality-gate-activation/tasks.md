@@ -130,3 +130,10 @@
 - [ ] 同步 project/architecture/roadmap/optimization/eval guide 与 append-only `.ai/AGENT_LOG.md`。
 - [ ] 将 change 归档到 `openspec/changes/archive/<date>-retrieval-quality-gate-activation/` 并恢复 `.ai/ACTIVE_TASK.md=IDLE`。
 - [ ] 提交责任为本 change 计划内 `Agent 提交`；baseline acceptance、archive、push、PR、deploy 均不从实现或外调授权自动继承。
+
+## 2026-09-08 HTTP/canary 最新执行补充
+
+- [x] 应用 HTTP preflight READY：fixtures3、vectors50/50、model/request/generation匹配；provider0，调度器/Flyway/bootstrap关闭。
+- [x] 用户授权后执行唯一canary：5 retrieval、5 provider HTTP200、retrieveErrors3、retry/fallback/model rerank/ask/generation/judge0；FAILED，不进入full。
+- [x] 离线实际QueryEngine核算：5 IDs变体数1/2/5/2/1，canary/full冷缓存embedding上限11/1353；原5/450预算存在gap。
+- [ ] 修订查询变体预算契约并验证、披露变体文本出站和新上限、取得新执行授权；不得靠改检索算法或假设缓存命中绕过预算。
