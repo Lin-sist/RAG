@@ -8,7 +8,7 @@
 
 - Change ID：`retrieval-quality-gate-activation`
 - 路径：`openspec/changes/retrieval-quality-gate-activation/`
-- 阶段：`C17G2_OFFLINE_HARDENED_AWAITING_REBUILD_AUTHORIZATION`
+- 阶段：`C17G2_FAILED_C17G3_PREFLIGHT_READY_AWAITING_AUTHORIZATION`
 - 目标：以固定 `rag-eval-dev-v2` 150×3 retrieval reference、严格身份/完整性 compiler、用户阈值审阅和 locked median reference，把首个 C10 retrieval profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进到可验收的 `ACTIVE / APPROVED`。
 
 ## Current Boundary
@@ -33,5 +33,8 @@
 - 用户明确重新授权 `c17g1` 后，真实执行成功应用 V13，但临时预算计数器在 adapter 内部拆批前错误地把首个 25-item document batch 当作单个 HTTP request，因而在 NVIDIA 请求前抛出 `MODEL_REBUILD_HTTP_BUDGET_EXCEEDED`。实际 provider HTTP requests/items=`0/0`；MySQL=`MODEL_REBUILD_FAILED`、shadow generation=`c17g1`、observed/migrated/missing/mismatch=`0/0/50/0`，旧 active/source mapping 保留，Milvus target 未创建。
 - 已修正计数器按 `ceil(documentItems/5)` 统计 adapter HTTP batches，并用新 generation `c17g2` 完成零外调预演：expected=50、maxRequests=11、model/dimension 匹配、目标 `tenant_1_kb_15_emb_nemotron3_83acf73b5765_gc17g2` 不存在、execute=false。失败 generation `c17g1` 不复用；`c17g2` 真实执行等待独立授权。
 - 2026-09-08 已离线补强 rebuild exact ID set/metadata 数值审计；聚焦 18/18、全仓 646 tests/0 failures/0 errors/21 skipped，相关 MySQL/Testcontainers 因 Docker 不可用跳过。runner 与 tracked manifest 已同步为计划代际 `c17g2`，旧 `c17g1` 不可再作为新 reference identity。本轮未重新运行真实基础设施预演，既有预演状态需在真实执行前刷新。
-- 下一步仍需重新明确授权固定 rebuild；范围保持 3 fixtures/50 chunks、最多 11 HTTP requests、每次最多 5 items、retry=0、新 `c17g2` collection、50/50/50 强读回与 CAS 切换。V13 已由此前执行应用，本轮不重复迁移；执行前必须确认 schema/旧 source mapping/target absence。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
+- 2026-09-08 用户同意一次 c17g2 rebuild 后，Docker 因遗留 dockerInference runtime socket 报 Error 1920 而无法启动；仅备份 Docker/run（两个 0 字节 socket）并重建该运行目录后恢复，原有五个容器均 healthy，未清理容器/镜像/卷或修改 WSL 数据盘。
+- 当前真实盘点取代此前目标不存在的旧记录：SQL 自 `2026-09-06T15:18:46` 即为 `MODEL_REBUILD_FAILED / shadowGeneration=c17g2 / MODEL_REBUILD_READBACK_MISMATCH`，expected/observed/migrated/missing/mismatch=`50/50/50/0/50`。旧 source active 且强读回=50；c17g2 target 已存在且 count/expected IDs/new-model-content match=`50/50/50`。此事实不表示 CAS 已切换或质量验收通过。本轮在 provider/SQL 写入前停止，实际 HTTP attempts/items=0/0，未复用/覆盖/删除或切换失败 generation。
+- 依照失败 generation 不复用契约，已将 runner/manifest 的待执行身份同步为 c17g3，并完成当前源码重新编译及真实 MySQL/Milvus 只读预演：V13、fixtures=3、chunks/source vectors=50、target absent、max requests=11、max batch=5、timeout=60000ms、retry=0；provider calls=0。Python 238 tests 与 canary/full plan-only 通过。维护源码与默认只读 PowerShell 入口保留在 ignored tmp/eval/c17，供后续从当前源码重新编译验证。
+- 下一步需明确授权一次 c17g3 fixed rebuild：固定 3 fixtures/50 chunks 出站到 NVIDIA NIM nvidia/nemotron-3-embed-1b、最多 11 HTTP requests、每次最多 5 items、retry=0、新 c17g3 collection、50/50/50 强读回后 CAS 切换；保留旧 source 和失败 c17g2 target。V13 已应用，不重复迁移。用户此次 c17g2 授权未进入 execute 阶段，不能自动扩大到新 c17g3 generation。5-case canary、full 450/450、阈值批准、baseline acceptance/archive、push、PR、deploy 仍未授权。
 - 提交责任：`Agent 提交`（仅本地计划内 commit）；push、PR、deploy 未授权。

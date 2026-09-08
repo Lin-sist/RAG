@@ -98,6 +98,8 @@
 - [x] 修正执行护栏为按 `ceil(documentItems/5)` 计算 HTTP batches；新 generation `c17g2` 零外调预演=`READY`，target identity/50 items/11-request bound/collection absence 均通过，等待独立授权。
 - [x] 2026-09-08 离线补强 rebuild 读回审计：精确数值比较兼容 JSON 浮点 ID，同时拒绝精度丢失/错误 scope、额外/重复/缺失 ID、空条目、空 metadata、非有限向量及 model/contract/generation 漂移；聚焦 18 tests 通过，全仓 646 tests、0 failures/errors、21 skipped。V13 迁移测试断言已同步，真实 MySQL/Testcontainers 验证因 Docker 不可用跳过，不作为真实 rebuild 证据。
 - [x] 2026-09-08 将 runner/manifest 的待执行 generation 同步为 c17g2，拒绝旧 c17g1 manifest、KB preflight identity 与整组三次 reference evidence；Python 238 tests 通过，canary/full plan-only 分别为 5/5 与 450/450，其他业务外调通道=0。此次为离线计划同步，未重跑真实 MySQL/Milvus preflight，未执行 rebuild。
+- [x] 用户随后明确同意一次 c17g2 fixed rebuild；恢复 Docker 后真实只读预检发现 c17g2 target 已存在，SQL 的历史状态为 MODEL_REBUILD_FAILED/shadowGeneration=c17g2/50-50-50-0-50，错误类别 MODEL_REBUILD_READBACK_MISMATCH；本轮执行前停止，provider requests/items=0/0，未切换或清理失败代际。该真实状态取代此前未刷新的 target-absence 记录。
+- [x] 保留旧 source=50 和失败 target=50；依既定失败代际不复用规则，将待执行 manifest/runner 同步为 c17g3，并完成当前源码 reactor/install/classpath/javac 与真实只读预演：V13、3 fixtures/50 chunks/source vectors、target absent、11 requests upper bound、batch<=5、retry=0。Python 238 tests/OK、canary/full plan-only=5/5 与 450/450；真实 c17g3 执行待重新授权。
 - [ ] 在新 generation 执行 zero-retry rebuild；只有 expected/observed/read-back=`50/50/50`、missing/mismatch=`0/0`、deterministic ID set=50、dimension/model identity 匹配且 mapping 原子切换完成，才标记 `MODEL_REBUILD_READY`。失败保留旧 source/mapping，不自动补跑或清理未知 collection。
 - [ ] rebuild 后运行 mutation-free preflight，确认新 model/request/collection generation、fixtures=`3/3`、vectors=`50/50`；provider calls=0。
 - [ ] 用户重新授权新模型 fixed 5-case canary；最多 5 debug retrieval + 5 query embedding、external rerank/ask/generation/judge=0、retry=0。只有 clean canary 才进入 section 8。

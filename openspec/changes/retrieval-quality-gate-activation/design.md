@@ -65,7 +65,7 @@ numeric KB id、vector collection 和绝对路径只用于本地 raw validation�
 
 固定 rebuild 输入不是重新切块：复用已审计的 3 fixtures、50 deterministic chunks 与 vector IDs。新 collection 必须通过 expected=observed=50、missing/mismatch=0、强读回 ID set=50、dimension/model generation 匹配后，才允许原子切换 evaluation mapping。任何失败都保留旧 mapping/source，不清理未知状态 collection，不自动 retry。
 
-2026-09-08 执行身份同步：依照失败 generation 不复用的既定规则，runner 与 manifest 当前锁定待执行的 `c17g2`。`c17g1` 仅保留失败历史，不接受其 manifest、KB identity 或 reference evidence；该离线同步不代表重建成功，也不授予真实 rebuild/provider 调用权限。后续再次更换 generation 时仍须同步固定身份并重新披露授权，不提供任意 generation 绕过入口。
+2026-09-08 执行身份同步：真实只读盘点发现 c17g2 已处于失败状态且 target 存在，依照失败 generation 不复用的既定规则，runner 与 manifest 当前锁定待执行的 `c17g3`。`c17g1/c17g2` 仅保留失败历史，不接受其 manifest、KB identity 或 reference evidence；不因 c17g2 读回数量和新模型内容匹配而直接恢复其 CAS。该离线同步不代表重建成功，也不授予真实 rebuild/provider 调用权限。后续再次更换 generation 时仍须同步固定身份并重新披露授权，不提供任意 generation 绕过入口。
 
 ### 3.2B 2026-08-31 Adapter/Indexing Offline Audit Freeze
 

@@ -498,7 +498,7 @@ python -B scripts\evaluate_quality_gate.py `
 
 C17 使用独立的 `docs/eval/config/c17-retrieval-reference-v1.json`，不复用 C7 双 arm manifest。它固定五类各一条的 canary、full 150×3、existing KB、heuristic attribution、zero retry/error/fallback/model rerank，以及 raw output 只能写入 ignored `tmp/eval/c17/` 并开启 `--no-overwrite`。C17 与 `--arm-manifest` 不能同时使用，任何 selection、repeat、run identity、输出目录或调用预算漂移都会在 login 前失败。
 
-当前待执行代际为 `c17g2`；失败的 `c17g1` 仅保留历史证据。manifest 与 runner 同时锁定 `c17g2`，不接受旧代际 manifest、KB identity 或 reference evidence。此同步仅是离线执行准备，不证明新 collection 已重建；真实 rebuild 仍需独立授权，执行前重新核验 schema、source mapping 和 target 不存在。不得把此前临时入口的旧编译产物当成本次修复后的可执行版本。
+当前待执行代际为 `c17g3`；失败的 `c17g1/c17g2` 仅保留历史证据。2026-09-08 真实只读盘点发现 c17g2 已有 50 vectors，但 SQL 仍为 `MODEL_REBUILD_FAILED / MODEL_REBUILD_READBACK_MISMATCH`、旧 source active；不能凭向量数相等复用该代际或直接切换。manifest 与 runner 同时锁定 `c17g3`，不接受旧代际 manifest、KB identity 或 reference evidence。真实 MySQL/Milvus 预演确认 c17g3 target 不存在、固定 3 fixtures/50 chunks 和 11-request 上限匹配，但这不是重建成功，也不继承 c17g2 授权。执行前仍需用当前源码重编译、刷新只读预检并取得 c17g3 的独立授权。
 
 以下 full plan-only 是纯本地检查，实际调用量为 0；其计划上限必须是 debug retrieval=450、query embedding=450，其余 external rerank/ask/generation/judge=0：
 

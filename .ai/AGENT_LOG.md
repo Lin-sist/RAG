@@ -2274,3 +2274,20 @@
 - 范围安全：业务外调/数据出站/业务 KB/MySQL/Milvus mutation=0；未更改 dataset/fixture、numeric profile、accepted baseline/archive、secret、本地受保护配置、前端/Logo；未 push/PR/deploy。C17 保持 ACTIVE，不能越过真实 evidence 和用户阈值门禁进入后续完成声明。
 - 剩余风险：真实执行前需要用当前源码重新编译入口，刷新 schema/source/target absence 与预算预演；旧 ignored 临时编译产物不能当作本次已验证版本。固定 50-item rebuild 仍需新一次明确授权，之后的 canary/full、阈值与验收保持独立。
 - Commit: pending；建议中文提交信息：`fix(eval): 同步C17新代际执行身份`。
+
+## 2026-09-08｜C17 新代际执行身份提交补录
+
+- 上一执行提交：`f905d37`（`fix(eval): 同步C17新代际执行身份`），包含 runner/manifest/tests 与 OpenSpec/guide/执行记录的九个计划内文件；push/PR/deploy 未执行。
+
+## 2026-09-08｜Docker runtime socket 修复与 C17 真实状态纠偏
+
+- 授权：用户同意本轮一次 c17g2 fixed rebuild，范围为固定 3 fixtures/50 chunks、NVIDIA NIM nvidia/nemotron-3-embed-1b、最多 11 HTTP requests、batch<=5、retry=0、强读回通过后 CAS 切换/source retain；随后报告 Docker 启动错误。canary/full/push/PR/deploy 不在授权内。
+- Docker 诊断：Docker daemon 初始不可达，Desktop 启动在 Inference manager 的 dockerInference socket 上报 Error 1920/123。目标是 0 字节 ReparsePoint，目录 ACL 正常；停止 Desktop/backend 后，fsutil/lstat/单文件改名仍报系统无法访问。与 Docker 官方仓库 desktop-feedback issue 460/625 的同类故障相符（用户问题报告，不当作官方已修复声明）。
+- 最小修复：正常 desktop stop 挂起后只终止 Desktop/backend 进程；精确核验 Docker/run 仅有 dockerInference 和 userAnalyticsOtlpHttp.sock 两个 0 字节文件，把整个运行目录改名为 run.stale-20260908-0908 保留，再创建空 run。未做 factory reset、prune、卷/镜像/容器删除、设置改写或 WSL 磁盘操作。恢复后原有 rag-mysql/rag-redis/rag-milvus/rag-minio/rag-etcd 均 healthy，Docker CLI 可查询。
+- 当前执行准备：当前 reactor `mvn -q -DskipTests install`、rag-admin dependency:build-classpath 和 ignored 维护入口 javac 均通过。入口无 Web/Spring 上下文/调度器/Flyway/cache，默认 preflight 禁止 provider；execute 才有固定总量护栏、实际 HTTP 尝试计数及独占 attempt 标记。本机 .env.local 不含 DB_PASSWORD，修正为只读 application-dev.yml datasource 密码；未输出/改写凭据。该准备不构成真实 rebuild 尝试。
+- 实际只读盘点：c17g2 preflight 在 target existence 检查被阻止。SQL updatedAt=2026-09-06T15:18:46，readiness=MODEL_REBUILD_FAILED、shadowGeneration=c17g2、error=MODEL_REBUILD_READBACK_MISMATCH、expected/observed/migrated/missing/mismatch=50/50/50/0/50；旧 mapping/source 保留，强读回 expected IDs=50。已有 c17g2 target count/expected-ID read-back/new-model-content match=50/50/50。此历史失败未在原 ACTIVE_TASK 记录，不能据旧文档再次创建/写入同一 generation，也不能仅凭匹配计数恢复 CAS。
+- 后续离线切片：按既定失败 generation 不复用合同，同步 runner/manifest/tests、design/tasks、ACTIVE_TASK 和 eval guide 为待执行 c17g3。新 generation 的真实只读预演 READY：V13、fixtures=3、chunks=50、source vectors=50、target absent、model fingerprint 匹配、maxHttp=11、maxBatch=5、timeoutMs=60000、retry=0；未进入 execute，provider HTTP attempts/items=0/0、业务 SQL/Milvus mutation=0。已有 source 与失败 c17g2 target 均保留。
+- 验证：`python -B -m unittest discover -s scripts -p 'test_*.py'`=238 tests/OK，拒绝 c17g1/c17g2 manifest、c17g2 KB identity 和旧代际整组三次 evidence；canary/full plan-only 分别 selected/repeat=5/1、150/3，debug/query upper bound=5/5、450/450，其他外部通道=0。提交前执行 OpenSpec structure/scenario/links、敏感增量检查及 git diff --check。
+- 跳过与剩余风险：本轮未改 tracked Java，未重复全仓 Maven tests；当前 reactor 构建与真实只读 V13 检查不能替代此前跳过的 MySQL 集成 suite。前端未改，build 跳过；OpenSpec CLI 不可用，以静态检查代替并保留该边界。真实 c17g3 rebuild/canary/full、阈值与验收均未执行；c17g2 授权未进入 execute，但不能自动扩大到新 generation，需要明确 c17g3 授权。Docker 临时 socket 备份保留，若再次非正常退出仍可能复发。
+- 可复用准备：ignored tmp/eval/c17/C17FixedRebuild.java 与 run-fixed-rebuild.ps1、当前 classpath/编译结果及 no-overwrite 预检日志已保留；下一次先检查 source/manifest/helper identity，从当前源码重编译并运行默认 preflight，禁止仅依赖历史 target-absence。日志只包含身份、计数、状态，未输出业务正文、向量或 provider body。
+- Commit: pending；建议中文提交信息：`fix(eval): 核实失败代际并准备C17重建`。

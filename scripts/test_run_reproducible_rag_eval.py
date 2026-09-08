@@ -161,18 +161,20 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual(runner.C17_REFERENCE_SCHEMA, manifest["schemaVersion"])
         self.assertEqual(150, manifest["full"]["expectedSampleCount"])
         self.assertEqual(3, manifest["full"]["measuredRepeats"])
-        self.assertEqual("c17g2", manifest["embeddingGeneration"]["identity"]["generation"])
+        self.assertEqual("c17g3", manifest["embeddingGeneration"]["identity"]["generation"])
         self.assertRegex(manifest["sha256"], r"^[0-9a-f]{64}$")
 
     def test_c17_manifest_rejects_retired_generation(self) -> None:
         source = self.repo_root() / "docs/eval/config/c17-retrieval-reference-v1.json"
         payload = json.loads(source.read_text(encoding="utf-8"))
-        payload["embeddingGeneration"]["identity"]["generation"] = "c17g1"
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = Path(tmp_dir) / "retired-c17.json"
-            path.write_text(json.dumps(payload), encoding="utf-8")
-            with self.assertRaisesRegex(runner.ApiError, "c17_embedding_generation_invalid"):
-                runner.load_reference_manifest(path)
+            for generation in ("c17g1", "c17g2"):
+                with self.subTest(generation=generation):
+                    payload["embeddingGeneration"]["identity"]["generation"] = generation
+                    path.write_text(json.dumps(payload), encoding="utf-8")
+                    with self.assertRaisesRegex(runner.ApiError, "c17_embedding_generation_invalid"):
+                        runner.load_reference_manifest(path)
 
     def test_load_c17_reference_manifest_rejects_unknown_secret_field(self) -> None:
         source = self.repo_root() / "docs/eval/config/c17-retrieval-reference-v1.json"
@@ -642,7 +644,7 @@ class ReproducibleRagEvalTest(unittest.TestCase):
         self.assertEqual("VECTOR_MODEL_IDENTITY_MISMATCH", result["vectorReadiness"]["reason"])
 
         kb["vectorModel"] = identity["model"]
-        kb["vectorGeneration"] = "c17g1"
+        kb["vectorGeneration"] = "c17g2"
         result = runner.build_preflight(
             args,
             kb,

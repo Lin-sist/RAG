@@ -115,7 +115,7 @@ class CompileRetrievalReferenceTest(unittest.TestCase):
             details_paths, metadata_paths = self.write_reference_runs(Path(tmp_dir))
             for details_path, metadata_path in zip(details_paths, metadata_paths):
                 metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-                metadata["knowledgeBase"]["embeddingGeneration"]["generation"] = "c17g1"
+                metadata["knowledgeBase"]["embeddingGeneration"]["generation"] = "c17g2"
                 metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
                 details = json.loads(details_path.read_text(encoding="utf-8"))
                 details["runMetadata"] = metadata
