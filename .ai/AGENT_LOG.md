@@ -2405,3 +2405,21 @@
 - 安全：raw保留ignored不回填、不拼接；未写凭据/保护路径，无push/PR/deploy。Docker run备份保留，Windows MySQL80已恢复原Stopped。
 - 剩余风险：阈值/activation replay/最终验收未完成；Docker socket深层复发原因未证实。
 - Commit: pending
+
+## 2026-09-09 Ubuntu开发环境跨平台适配与本地配置
+- 范围：.env.local（本地忽略）、start_backend.sh、scripts/compare_reranker_ab.py、scripts/test_judge_calibration.py 与本日志。
+- 确认事实与决策：
+  1. 用户自 Windows 迁移至 Ubuntu 26.04，宿主机已存在占用 3306 的 dev-mysql（MySQL 8.4）与占用 6379 的 dev-redis；决策采用本地 .env.local 端口隔离方案（映射至 3307 与 6380），解耦宿主机现有容器并由 docker-compose 一键自举完整的 rag-mysql/redis/etcd/minio/milvus 基础设施。
+  2. Windows 下 start_backend.sh 缺少 Unix 执行权限（100644），已补充 chmod +x 为 100755。
+  3. 系统自带 Python 3.14.4 针对 argparse.BooleanOptionalAction 实行严格校验，禁止传含 --no- 的参数名；compare_reranker_ab.py 改用标准的 store_true / store_false，保留 --no-overwrite 默认生效与 --overwrite 覆盖能力。
+  4. test_judge_calibration.py 的绝对路径拒绝用例原硬编码 Windows 盘符 C:/，在 Linux 下识别为相对路径导致断言失败；已调整为跨平台适配。
+- 验证命令与结果：
+  1. `mvn test-compile`：全模块 Reactor 构建 SUCCESS。
+  2. `npm --prefix rag-frontend run build`：vue-tsc -b 与 vite build 验证 SUCCESS。
+  3. `python3 -B -m unittest discover -s scripts -p 'test_*.py'`：244/244 全部 PASS（0 failures, 0 errors）。
+  4. `python3 scripts/check_sensitive_logs.py --root .`：375 个源码文件 PASS。
+  5. `git diff --check`：PASS（无空白符与格式异常）。
+- 跳过项及原因：未启动完整端到端后端 HTTP 运行时与真实外调（避免未经独立授权产生调用与环境副作用）。
+- 剩余风险：.env.local 为本地文件，尚未执行 `docker compose --env-file .env.local up -d` 启动全部容器；若宿主机代理 7897 端口后续离线，需显式设置 PROXY_ENABLED=false。
+- Commit: pending
+
