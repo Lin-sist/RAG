@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "rag-quality-gate-reference-v1",
+  "profile": {
+    "id": "rag-eval-dev-v2-retrieval-regression",
+    "version": "v1",
+    "sha256": "a1b12489a9d2d8ed5551f34d686b6071b79ede4484c1fa02c63754500e4886a9"
+  },
+  "dataset": {
+    "releaseVersion": "rag-eval-dev-v2",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87"
+  },
+  "runIdentity": {
+    "mode": "retrieval-only",
+    "topK": 5,
+    "minScore": 0.3,
+    "enableRerank": true
+  },
+  "rules": [
+    {
+      "id": "overall-recall5",
+      "channel": "retrieval",
+      "slice": "overall",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.474402730375
+    },
+    {
+      "id": "overall-mrr",
+      "channel": "retrieval",
+      "slice": "overall",
+      "metric": "mrr",
+      "operator": "minInclusive",
+      "observed": 0.526153846154
+    },
+    {
+      "id": "overall-top1",
+      "channel": "retrieval",
+      "slice": "overall",
+      "metric": "top1_source_accuracy",
+      "operator": "minInclusive",
+      "observed": 0.923076923077
+    },
+    {
+      "id": "fact-recall5",
+      "channel": "retrieval",
+      "slice": "type-fact",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.394736842105
+    },
+    {
+      "id": "definition-recall5",
+      "channel": "retrieval",
+      "slice": "type-definition",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.644444444444
+    },
+    {
+      "id": "reasoning-recall5",
+      "channel": "retrieval",
+      "slice": "type-reasoning",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.534090909091
+    },
+    {
+      "id": "multi-hop-recall5",
+      "channel": "retrieval",
+      "slice": "type-multi-hop",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.392857142857
+    },
+    {
+      "id": "no-answer-retrieve-success",
+      "channel": "retrieval",
+      "slice": "type-no-answer",
+      "metric": "retrieve_success_rate",
+      "operator": "minInclusive",
+      "observed": 1.0
+    },
+    {
+      "id": "easy-recall5",
+      "channel": "retrieval",
+      "slice": "difficulty-easy",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.5
+    },
+    {
+      "id": "medium-recall5",
+      "channel": "retrieval",
+      "slice": "difficulty-medium",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.488721804511
+    },
+    {
+      "id": "hard-recall5",
+      "channel": "retrieval",
+      "slice": "difficulty-hard",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.428571428571
+    },
+    {
+      "id": "answerable-recall5",
+      "channel": "retrieval",
+      "slice": "answerable",
+      "metric": "recall_at_5",
+      "operator": "minInclusive",
+      "observed": 0.474402730375
+    }
+  ]
+}

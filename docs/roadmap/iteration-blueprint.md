@@ -120,7 +120,7 @@
 
 ## 6. W1：真实质量证据与门禁
 
-### C17. `retrieval-quality-gate-activation`
+### C17. `retrieval-quality-gate-activation`（2026-09-10 已验收归档）
 
 **目标**：把首个 `rag-eval-dev-v2` retrieval-only profile 从 `DRAFT / PENDING_REFERENCE_EVIDENCE` 推进为有完整 evidence、具体阈值和用户批准的 `ACTIVE` profile。
 
@@ -132,6 +132,8 @@
 - 最多450次debug retrieval、最多1353次query embedding（2026-09-08按全部查询变体修订）；
 - heuristic 条件下 external rerank、ask、generation、judge 为 0；
 - 三次 run 的 sample、KB/fixture、Git/config、provider attribution 或 repeat identity 任一漂移即不可比较。
+
+2026-09-10 已完成阈值批准、ACTIVE profile和locked reference，原始三轮各12/12规则离线PASS；仅固定开发态retrieval回归。
 
 小规模 canary 只用于发现环境错误，不能替代正式 evidence。完整 reference 产生后才能提出 hard floors 和 regression tolerances；具体数值仍需用户在 C17 中间闸门审阅，未批准前 profile 保持 DRAFT。
 

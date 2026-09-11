@@ -534,7 +534,7 @@ python -B scripts\run_reproducible_rag_eval.py `
 
 live 前必须先完成独立 W0 closeout，再用相同参数改为 `--preflight-only` 并显式提供本地凭据。preflight 只登录、检查已有 KB、三份 document/index 状态，并通过只读 statistics 验证 vector readiness/count 与预期 chunk 总数一致；任一状态不可读或数量不一致都返回 `BLOCKED`。它不创建、上传或运行 retrieval/provider，显示输出也不包含数字 KB ID 或 vector collection。canary上限为5次debug retrieval/11次query embedding；canary clean后full上限为450次retrieval/1353次query embedding，按具体数据出站授权执行。两阶段都不自动retry，不调用external reranker、ask、generation或judge；C17 child report非RETRIEVAL_ONLY、error/retry非零、样本或heuristic attribution漂移时，父runner必须非零退出。正式full固定`--retrieval-delay-seconds 1.2`，在每次检索前等待，保持既有60次/60秒用户限流；该等待写入metadata/strict identity并排除在单次检索延迟之外。
 
-2026-09-08 full3已获得450/450、三轮zero-error、strict identity一致的COMPLETE evidence，使用c17g3热embedding缓存；当前profile仍DRAFT，具体阈值待批准。见[阈值审阅与证据边界](reports/c17-threshold-review-v1.md)。此前失败尝试保留，不拼接或回填。
+2026-09-08 full3已获得450/450、三轮zero-error、strict identity一致的COMPLETE evidence，使用c17g3热embedding缓存；当时profile为DRAFT；2026-09-10阈值已批准并完成ACTIVE激活。见[阈值审阅与证据边界](reports/c17-threshold-review-v1.md)。此前失败尝试保留，不拼接或回填。
 
 三份 full details/metadata 都存在后，用 compiler 做纯本地严格聚合：
 
@@ -550,7 +550,7 @@ python -B scripts\compile_retrieval_reference.py `
   --no-overwrite
 ```
 
-compiler 只返回 `COMPLETE / INCOMPLETE / NOT_COMPARABLE / INVALID`。只有 exact 450 observations、三次 strict identity、RETRIEVAL_ONLY、zero error/retry 和 heuristic attribution 全部成立时，才输出 12 条规则的三次 denominator/observed 与 min/median/max/spread。输出不复制 question、expected/retrieved context、provider body、numeric KB id、vector collection、凭据或绝对路径。当前 canonical profile 仍为 `DRAFT / PENDING_REFERENCE_EVIDENCE`，所以 COMPLETE 也只进入人工阈值审阅，不能产生 gate PASS 或 locked reference；用户批准全部 target/tolerance 并形成最终 ACTIVE profile hash 后，才允许生成 median locked reference 和离线重放。
+compiler 只返回 `COMPLETE / INCOMPLETE / NOT_COMPARABLE / INVALID`。只有 exact 450 observations、三次 strict identity、RETRIEVAL_ONLY、zero error/retry 和 heuristic attribution 全部成立时，才输出 12 条规则的三次 denominator/observed 与 min/median/max/spread。输出不复制 question、expected/retrieved context、provider body、numeric KB id、vector collection、凭据或绝对路径。激活前 DRAFT profile 的 COMPLETE 只进入人工阈值审阅。2026-09-10用户已批准全部target/tolerance，当前canonical profile为v1/ACTIVE/APPROVED，locked reference及三轮离线PASS已生成。
 
 ## 7. 如何记录优化前后对比
 
@@ -831,3 +831,13 @@ C14 使用独立 release `tenant-isolation-adversarial-v1`，不复用 retrieval
 该结果只支持 Milvus 配置和固定 synthetic attack matrix 下的隔离 evidence。它不证明 retrieval/generation/citation/no-answer/judge 质量，不代表生产级多租户、全 adapter、真实 shadow migration、渗透测试或所有 timing side-channel 已验证；真实 provider/model calls=0、业务数据出站=false、真实 maintenance=`SKIPPED`。
 
 C14 已于 2026-07-27 验收归档；`evaluation` 5 requirements / 15 scenarios 与 `rag-system` 2 requirements / 6 scenarios 已接受进长期 baseline。归档不改变上述证据和声明边界。
+
+## C17 已批准 retrieval gate 的离线使用
+
+2026-09-10已验收归档。完整批准与哈希见[激活记录](references/c17-activation-approval-v1.json)，锁定reference见[reference](references/rag-eval-dev-v2-retrieval-reference-v1.json)。原始三轮均PASS；只证明固定开发态回归，不能当作生产质量验收。
+
+```powershell
+python -B scripts/evaluate_quality_gate.py --profile docs/eval/gates/rag-eval-dev-v2-retrieval-regression-v1.json --details <local-details.json> --reference docs/eval/references/rag-eval-dev-v2-retrieval-reference-v1.json
+```
+
+该命令只消费本地已有证据，无backend/provider调用。candidate须匹配profile/dataset/run/metric/slice身份；变更阈值或reference须新版本，不可覆盖本v1。

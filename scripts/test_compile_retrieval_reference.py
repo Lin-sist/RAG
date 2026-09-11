@@ -5,6 +5,7 @@ import copy
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 import compile_retrieval_reference as compiler
@@ -57,14 +58,25 @@ class CompileRetrievalReferenceTest(unittest.TestCase):
     def test_complete_draft_evidence_produces_review_distribution_without_pass(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             details_paths, metadata_paths = self.write_reference_runs(Path(tmp_dir))
-
-            result = compiler.compile_reference(
-                self.repo_root,
-                self.manifest_path,
-                self.profile_path,
-                details_paths,
-                metadata_paths,
-            )
+            draft = json.loads(self.profile_path.read_text(encoding="utf-8"))
+            draft.update(profileVersion="v1-draft", status="DRAFT",
+                         thresholdStatus="PENDING_REFERENCE_EVIDENCE")
+            for rule in draft["rules"]:
+                rule["target"] = None
+                rule.pop("maxAbsoluteRegression", None)
+            draft_bytes = json.dumps(draft).encode("utf-8")
+            original_read = Path.read_bytes
+            original_json = compiler._read_json
+            with patch.object(Path, "read_bytes", autospec=True,
+                              side_effect=lambda path: draft_bytes if path == self.profile_path
+                              else original_read(path)), patch.object(
+                                  compiler, "_read_json",
+                                  side_effect=lambda path, code: draft if path == self.profile_path
+                                  else original_json(path, code)):
+                result = compiler.compile_reference(
+                    self.repo_root, self.manifest_path, self.profile_path,
+                    details_paths, metadata_paths,
+                )
 
         self.assertEqual("COMPLETE", result["status"])
         self.assertEqual("PENDING_THRESHOLD_APPROVAL", result["activationStatus"])

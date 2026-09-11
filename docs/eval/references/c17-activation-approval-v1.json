@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "c17-activation-approval-v1",
+  "approvalDate": "2026-09-10",
+  "approvalBasis": "User approved all 12 exact targets and tolerances in the threshold review and authorized acceptance/archive.",
+  "reviewPath": "docs/eval/reports/c17-threshold-review-v1.md",
+  "reviewSha256": "1fad17741b1cc0a05d995c95439aae3cf706e0f4081989e6ae7d45d537113a41",
+  "profileSha256": "a1b12489a9d2d8ed5551f34d686b6071b79ede4484c1fa02c63754500e4886a9",
+  "referenceSha256": "84f3813e09c15644c47aa93cbca4f8cca943e2a9af4c8abc40654357a51c2f1b",
+  "sourceGitHead": "082b03037fbe38122e72b1f8e5bb6493643da522",
+  "sourceArtifactHashesVerified": 6,
+  "thresholds": [
+    {
+      "id": "overall-recall5",
+      "target": 0.45,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "overall-mrr",
+      "target": 0.5,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "overall-top1",
+      "target": 0.9,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "fact-recall5",
+      "target": 0.38,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "definition-recall5",
+      "target": 0.6,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "reasoning-recall5",
+      "target": 0.5,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "multi-hop-recall5",
+      "target": 0.38,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "no-answer-retrieve-success",
+      "target": 1.0,
+      "maxAbsoluteRegression": 0
+    },
+    {
+      "id": "easy-recall5",
+      "target": 0.48,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "medium-recall5",
+      "target": 0.47,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "hard-recall5",
+      "target": 0.4,
+      "maxAbsoluteRegression": 0.01
+    },
+    {
+      "id": "answerable-recall5",
+      "target": 0.45,
+      "maxAbsoluteRegression": 0.01
+    }
+  ],
+  "replays": [
+    {
+      "runIndex": 1,
+      "gateStatus": "PASS",
+      "exitCode": 0,
+      "requiredRulesPassed": 12
+    },
+    {
+      "runIndex": 2,
+      "gateStatus": "PASS",
+      "exitCode": 0,
+      "requiredRulesPassed": 12
+    },
+    {
+      "runIndex": 3,
+      "gateStatus": "PASS",
+      "exitCode": 0,
+      "requiredRulesPassed": 12
+    }
+  ],
+  "backendCalls": 0,
+  "providerCalls": 0,
+  "businessDataOutbound": false,
+  "boundary": "Fixed development retrieval regression only; no generation/citation/no-answer answer quality/judge or production quality claim."
+}

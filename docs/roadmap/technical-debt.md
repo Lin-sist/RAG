@@ -4,14 +4,14 @@
 > 本文只登记当前未完成或仍需独立证据的债务，不是活动任务计划。重大改动必须进入独立 OpenSpec change；完成状态以 accepted spec、代码、正式 evidence 和 archive 为准。
 > 长期顺序见 `docs/roadmap/iteration-blueprint.md` v6。
 
-## P0：C17 激活前
+## P0：当前运行治理
 
-### 1. C17 retrieval profile reference readiness
+### 1. C17 readiness 已关闭，保留运行风险
 
-- 当前 `rag-eval-dev-v2-retrieval-regression-v1` 仍为 `DRAFT / PENDING_REFERENCE_EVIDENCE`，12 条 target 均为 `null`。
-- 2026-09-08 full3已完成固定身份v2/150×3、450/450 observation，compiler=COMPLETE；预算为450 retrieval/1353 query embedding上限，实际新增provider0（热缓存）。
-- provider/model/KB/fixture/Git/config与zero-error身份均已核验；使用1.2秒检索节奏，失败full1/full2独立保留。详见[完整证据与阈值审阅](../eval/reports/c17-threshold-review-v1.md)。
-- 具体 hard floors 与 regression tolerances 必须在完整 evidence 产生后由用户审阅，不得提前猜测。
+- 2026-09-10 C17阈值获批、ACTIVE profile/locked reference完成；三轮离线12/12 PASS，已验收归档。
+- 固定开发集Recall@5仅47.44%；这是防退化门禁，不能外推生产质量。generation/objective、judge及其profile仍属C18–C20。
+- Docker dockerInference socket复发根因未证实；旧source与失败c17g2按原授权保留，清理必须独立授权。
+- 证据见[批准与激活记录](../eval/references/c17-activation-approval-v1.json)。
 
 ### 2. 开发态 JWT fallback 治理
 

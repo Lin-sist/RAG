@@ -42,7 +42,7 @@
 - [x] GREEN：生成脱敏 threshold review pack，包含每次 denominator/observed 与 min/median/max/spread，不含 raw sample/provider 内容。
 - [x] RED：ACTIVE profile hash/version/dataset/run/rule identity 不匹配时不能生成 locked reference。
 - [x] GREEN：用户批准阈值后，以 median 生成 `reference.rules[].observed`，绑定最终 ACTIVE profile SHA-256。
-- [ ] GREEN：三个 source reference repeat 对最终 hard floor/reference tolerance 分别重放且 required rules 全部 PASS。
+- [x] GREEN：三个 source reference repeat 对最终 hard floor/reference tolerance 分别重放且 required rules 全部 PASS。
 
 ## 5. Safety Compatibility And Documentation
 
@@ -117,19 +117,19 @@
 ## 9. Threshold Review And Activation
 
 - [x] 向用户提交12条rules的denominator、三次observed、min/median/max/spread、适用边界及具体候选阈值；canonical profile未预填。
-- [ ] 用户批准每条 hard floor 与 `maxAbsoluteRegression`；若拒绝或证据不足，profile 继续 DRAFT。
-- [ ] 将 canonical profile 显式从 `v1-draft / DRAFT / PENDING_REFERENCE_EVIDENCE` 提升为 `v1 / ACTIVE / APPROVED`，写入批准数值。
-- [ ] 生成绑定最终 profile hash 的 locked median reference，并离线重放三个 source repeats。
-- [ ] 确认 ACTIVE profile/reference 可使完整兼容 evidence 得到稳定 PASS/FAIL，同时 missing/identity/error evidence 仍 fail closed。
+- [x] 用户批准每条 hard floor 与 `maxAbsoluteRegression`；若拒绝或证据不足，profile 继续 DRAFT。
+- [x] 将 canonical profile 显式从 `v1-draft / DRAFT / PENDING_REFERENCE_EVIDENCE` 提升为 `v1 / ACTIVE / APPROVED`，写入批准数值。
+- [x] 生成绑定最终 profile hash 的 locked median reference，并离线重放三个 source repeats。
+- [x] 确认 ACTIVE profile/reference 可使完整兼容 evidence 得到稳定 PASS/FAIL，同时 missing/identity/error evidence 仍 fail closed。
 
 ## 10. Acceptance And Closeout
 
-- [ ] 汇总 offline、W0、preflight、canary、full、compiler、threshold approval、activation replay 的证据与全部 skipped 边界。
-- [ ] 用户最终验收 C17 的 4 requirements / 12 scenarios、ACTIVE profile、locked reference 和结论边界。
-- [ ] 将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`，验证 exact suffix/无重复 requirement title。
-- [ ] 同步 project/architecture/roadmap/optimization/eval guide 与 append-only `.ai/AGENT_LOG.md`。
-- [ ] 将 change 归档到 `openspec/changes/archive/<date>-retrieval-quality-gate-activation/` 并恢复 `.ai/ACTIVE_TASK.md=IDLE`。
-- [ ] 提交责任为本 change 计划内 `Agent 提交`；baseline acceptance、archive、push、PR、deploy 均不从实现或外调授权自动继承。
+- [x] 汇总 offline、W0、preflight、canary、full、compiler、threshold approval、activation replay 的证据与全部 skipped 边界。
+- [x] 用户最终验收 C17 的 4 requirements / 12 scenarios、ACTIVE profile、locked reference 和结论边界。
+- [x] 将 approved delta 原文接受进 `openspec/specs/evaluation/spec.md`，验证 exact suffix/无重复 requirement title。
+- [x] 同步 project/architecture/roadmap/optimization/eval guide 与 append-only `.ai/AGENT_LOG.md`。
+- [x] 将 change 归档到 `openspec/changes/archive/<date>-retrieval-quality-gate-activation/` 并恢复 `.ai/ACTIVE_TASK.md=IDLE`。
+- [x] 提交责任为本 change 计划内 `Agent 提交`；baseline acceptance、archive、push、PR、deploy 均不从实现或外调授权自动继承。
 
 ## 2026-09-08 HTTP/canary 最新执行补充
 
@@ -172,4 +172,8 @@
 ## 2026-09-08 full3正式reference完成
 - [x] full3在HEAD=082b030完成450/450，三轮零错误，公开descriptor及全部metadata一致；compiler=COMPLETE，schema通过。
 - [x] 正式脱敏review JSON/execution summary/中文12项阈值审阅文档保存；三轮spread全0，新增provider0（热缓存）、预算0。
-- [ ] 12项候选target/tolerance尚待具体批准；之后完成profile激活、locked reference、3次离线replay与最终验收。C17尚未归档。
+- [x] 2026-09-10用户已批准12项target/tolerance；profile激活、locked reference、3次离线replay与最终验收完成，归档见acceptance.md。
+
+## 2026-09-10 验收
+- [x] 用户明确批准具体阈值和归档；三轮12/12规则PASS、244 tests通过。
+- [x] 验收记录与剩余证据边界见acceptance.md；historical DRAFT/失败状态按时间保留。

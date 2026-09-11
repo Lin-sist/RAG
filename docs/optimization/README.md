@@ -113,3 +113,13 @@
 2. 指标结论必须同时核对报告状态、error count、metadata 和 Git HEAD。
 3. 新优化不得继续在本目录新增无版本号的 `stage1.md / stage2.md`。
 4. 未完成的新 change 以 OpenSpec 为执行源；本目录只保存阶段完成后的长期结论。
+
+## 2026-09-10 C17 已验收归档
+
+用户批准完整审阅包中的12项hard floor/tolerance及归档。canonical profile 已为 `v1 / ACTIVE / APPROVED`，locked median reference 绑定最终profile SHA-256。固定v2/150×3 reference为450/450、COMPLETE；原始六文件哈希复核通过，三轮离线重放各12/12 required rules PASS。缺样本、身份漂移、错误分别NOT_EVALUABLE/4；完整质量退化FAIL/3。244项Python tests通过。
+
+本次激活/验收backend/provider calls=0、业务数据出站=0；来源仍是2026-09-08 HEAD `082b030` 的c17g3热embedding缓存检索，不能作为冷缓存性能基准。Recall@5=47.44%、MRR=0.52615、Top1=92.31%；只建立固定开发态retrieval回归门禁，不证明generation/citation/no-answer回答质量/judge、生产SLA或Agentic RAG。固定评测KB的真实模型重建/强读回/CAS已完成，其他业务KB迁移及失败generation/source清理不在验收范围。Docker socket复发根因仍未证实。
+
+证据：`docs/eval/references/c17-activation-approval-v1.json`、`c17-retrieval-reference-active-v1.json`、`rag-eval-dev-v2-retrieval-reference-v1.json`、三份`c17-replay-run*-v1.json`。历史DRAFT review/full执行摘要保留原样；它们记录激活前状态，不能覆盖本次已批准状态。
+
+归档：`../../openspec/changes/archive/2026-09-10-retrieval-quality-gate-activation/`。

@@ -545,16 +545,23 @@ class EvaluateQualityGateTest(unittest.TestCase):
             self.assertNotIn(forbidden, json_text)
             self.assertNotIn(forbidden, markdown_text)
 
-    def test_tracked_retrieval_profile_stays_draft_until_reference_evidence(self) -> None:
+    def test_tracked_retrieval_profile_binds_approved_reference(self) -> None:
         schema_path = self.repo_root / "docs/eval/schema/rag-quality-gate-profile-v1.json"
         profile_path = self.repo_root / "docs/eval/gates/rag-eval-dev-v2-retrieval-regression-v1.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         profile = json.loads(profile_path.read_text(encoding="utf-8"))
         self.assertEqual("rag-quality-gate-profile-v1", schema["$id"])
-        self.assertEqual("DRAFT", profile["status"])
-        self.assertEqual("PENDING_REFERENCE_EVIDENCE", profile["thresholdStatus"])
+        self.assertEqual("ACTIVE", profile["status"])
+        self.assertEqual("APPROVED", profile["thresholdStatus"])
+        self.assertEqual("v1", profile["profileVersion"])
         self.assertTrue(profile["rules"])
-        self.assertTrue(all(rule["target"] is None for rule in profile["rules"]))
+        reference_path = self.repo_root / "docs/eval/references/rag-eval-dev-v2-retrieval-reference-v1.json"
+        reference = json.loads(reference_path.read_text(encoding="utf-8"))
+        self.assertEqual(hashlib.sha256(profile_path.read_bytes()).hexdigest(),
+                         reference["profile"]["sha256"])
+        self.assertTrue(all(isinstance(rule["target"], (int, float)) and
+                            isinstance(rule["maxAbsoluteRegression"], (int, float))
+                            for rule in profile["rules"]))
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             details_path = Path(tmp_dir) / "details.json"
@@ -563,10 +570,11 @@ class EvaluateQualityGateTest(unittest.TestCase):
                 self.repo_root,
                 profile_path,
                 details_path,
+                reference_path,
             )
 
-        self.assertEqual("NOT_EVALUABLE", result["gateStatus"])
-        self.assertEqual("profile_draft", result["reason"])
+        self.assertEqual("PASS", result["gateStatus"])
+        self.assertEqual(12, len(result["rules"]))
 
     def test_no_answer_type_can_gate_retrieval_execution_completeness(self) -> None:
         profile = self.active_profile([

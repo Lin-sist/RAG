@@ -2405,3 +2405,18 @@
 - 安全：raw保留ignored不回填、不拼接；未写凭据/保护路径，无push/PR/deploy。Docker run备份保留，Windows MySQL80已恢复原Stopped。
 - 剩余风险：阈值/activation replay/最终验收未完成；Docker socket深层复发原因未证实。
 - Commit: pending
+
+## 2026-09-10 C17提交补录
+- 上一执行提交：38c5d1fed4ffac96444118848396b9fa4173d6df（docs(eval): 保存C17完整基线与阈值审阅包）。
+
+## 2026-09-10 C17激活验收与归档
+- 范围：canonical profile、references六份脱敏产物、两项生命周期测试、evaluation baseline、C17 tasks/acceptance/archive、project/architecture/roadmap/optimization/eval guide与ACTIVE_TASK。
+- 用户已明确批准审阅包12项数值与归档。profile=v1/ACTIVE/APPROVED；6份raw哈希验证、strict compiler COMPLETE/ACTIVE_REFERENCE_LOCKED、三轮各12/12 PASS；原始raw及历史review/execution summary不改写。
+- 验证：Python244 tests/OK，profile/evidence schema通过；四个独立派生负例分别NOT_EVALUABLE/4（missing/identity/error）和FAIL/3（quality regression）；LF profile/reference hash绑定通过。初版负例误用未消费字段，修正后才采纳结果。
+- 仅测试对canonical DRAFT的假定随生命周期更新；独立DRAFT负例保留，不修改compiler/evaluator或业务算法。
+- Maven/frontend build跳过：Java/POM/frontend无改动。OpenSpec CLI未安装，使用文件级结构、baseline exact suffix、链接和敏感字段扫描替代；归档后最终复核另记。
+- 安全：backend/provider/SQL/Milvus mutations=0、业务数据出站=false；不改凭据/保护路径、无push/PR/deploy。原始证据、旧source/失败generation保留。
+- 剩余风险：低retrieval recall、热缓存不代表跨时稳定性或冷缓存性能；generation/judge/生产质量未证；Docker复发根因未闭环。
+- 提交责任：C17沿用已批准Agent本地提交。Commit: pending
+
+- 归档后最终复核：4 requirements/12 scenarios exact suffix、无重复标题、tasks全部完成、IDLE、5个实际Markdown链接、artifact SHA-256/敏感字段/保护路径检查和git diff --check通过；最终LF profile下Python244 tests再次OK。

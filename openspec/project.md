@@ -37,10 +37,10 @@
 
 ## 当前边界
 
-- 不是生产级多租户系统。C13b 已实现指定数据面的服务端 enforcement；Qdrant/Elasticsearch 在 enforcement mode 下仍 fail startup，既有真实 Milvus 数据尚未执行 shadow migration/readiness 切换。
+- 不是生产级多租户系统。C13b 已实现指定数据面的服务端 enforcement；Qdrant/Elasticsearch 在 enforcement mode 下仍 fail startup，C17 固定评测 KB 已完成真实 shadow/model-bound rebuild 与 readiness 切换，其他业务 KB 不在本次验证范围。
 - 登录与 refresh 已使用数据库用户、tenant identity、状态和角色；bootstrap 默认关闭，运行时不提供固定默认账号，客户端不能通过 header/query/body/metadata 选择 tenant。
 - LLM judge 默认关闭；C9b 已接受的是离线校准工具、静态 corpus 与状态语义，尚无 live provider evidence，不能声称 judge 已真实校准或逐 claim faithfulness 已成立。
-- C10 已接受的是离线门禁 contract/evaluator 与 DRAFT profile，不包含正式 v2 reference evidence、具体阈值或 ACTIVE profile；后续激活仍须单独披露并授权 reference calls。
+- C10 最初接受离线门禁 contract/evaluator；C17 已补齐正式 v2 reference、用户批准的阈值与 ACTIVE profile，只支持固定开发态 retrieval 回归。
 - C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项仍未完成。C12 已完成默认关闭的单机 reference observability 闭环，但生产 HA、容量、合规 retention、租户观测权限、跨主机传输、通知与 SLA 仍未完成。
 - C14 已验收归档，但结果只支持 Milvus 配置和固定 synthetic attack matrix；不构成生产级多租户、全 adapter、真实迁移或所有 timing side-channel 证明，也不自动开放生产第二业务 tenant、tenant management、C15 MCP 或 C16 Router。
 - C15 已归档但继续默认关闭，证据仍只来自本机 synthetic fixture；远程暴露、TLS/proxy trust、MCP OAuth Authorization Profile、真实 provider/model smoke、Qdrant/Elasticsearch、生产第二业务 tenant 和 C16 Router 均不在已证范围。
@@ -60,3 +60,11 @@
 - `docs/eval/RAG_EVAL_GUIDE.md`
 
 如果参考文档与当前代码或 accepted spec 冲突，先记录差异并请示，不得自行选择对自己实现最方便的版本。
+
+## 2026-09-10 C17 已验收归档
+
+用户批准完整审阅包中的12项hard floor/tolerance及归档。canonical profile 已为 `v1 / ACTIVE / APPROVED`，locked median reference 绑定最终profile SHA-256。固定v2/150×3 reference为450/450、COMPLETE；原始六文件哈希复核通过，三轮离线重放各12/12 required rules PASS。缺样本、身份漂移、错误分别NOT_EVALUABLE/4；完整质量退化FAIL/3。244项Python tests通过。
+
+本次激活/验收backend/provider calls=0、业务数据出站=0；来源仍是2026-09-08 HEAD `082b030` 的c17g3热embedding缓存检索，不能作为冷缓存性能基准。Recall@5=47.44%、MRR=0.52615、Top1=92.31%；只建立固定开发态retrieval回归门禁，不证明generation/citation/no-answer回答质量/judge、生产SLA或Agentic RAG。固定评测KB的真实模型重建/强读回/CAS已完成，其他业务KB迁移及失败generation/source清理不在验收范围。Docker socket复发根因仍未证实。
+
+证据：`docs/eval/references/c17-activation-approval-v1.json`、`c17-retrieval-reference-active-v1.json`、`rag-eval-dev-v2-retrieval-reference-v1.json`、三份`c17-replay-run*-v1.json`。历史DRAFT review/full执行摘要保留原样；它们记录激活前状态，不能覆盖本次已批准状态。
