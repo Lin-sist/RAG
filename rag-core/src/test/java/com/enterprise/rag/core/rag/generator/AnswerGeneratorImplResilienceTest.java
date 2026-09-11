@@ -34,6 +34,18 @@ class AnswerGeneratorImplResilienceTest {
         assertThat(new LLMProperties().getMaxRetries()).isZero();
     }
 
+    @Test
+    void shouldAttemptGenerationOnlyOnceWhenZeroRetryReceivesTransientFailure() {
+        server.createContext("/v1/chat/completions", exchange -> {
+            attempts.incrementAndGet();
+            sendJson(exchange, 503, "{\"error\":\"synthetic temporary failure\"}");
+        });
+        LLMException error = catchThrowableOfType(
+                () -> generator(0).generate("synthetic budget audit", List.of()), LLMException.class);
+        assertThat(attempts).hasValue(1);
+        assertThat(error.diagnostics()).containsEntry("attemptCount", 1).containsEntry("retryCount", 0);
+    }
+
     @BeforeEach
     void setUp() throws IOException {
         attempts = new AtomicInteger();

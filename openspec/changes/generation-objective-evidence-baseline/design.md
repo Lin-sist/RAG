@@ -81,3 +81,19 @@ W0/W1完成且canary具体范围获批后才能进入真实执行。HTTP preflig
 ## 待实施闸门确认
 
 规划批准后才启动W0/W1；live前必须提供最终E、runtime fingerprint、REST副作用和调用前护栏证据。当前没有外调授权，不宣称新增工具已实现。
+
+## 2026-09-11 W0执行冻结
+
+用户已授权开始C18实现，当前按一次一个可验证切片完成W0及budget plan-only。真实RAGServiceImpl.ask在全空分支遍历全部解释fallback；每个可命中pass分别验证提前退出和一次generate。QueryEngineImpl.explainQueryVariants复用当前真实逻辑，外部依赖由测试替身隔离；无应用启动/真实provider/数据库调用。
+
+- Canary：初始variants=11，解释回退variants=12，debug+ask最坏embedding=34，ask/generation上限=5。
+- Full：初始variants=451，解释回退variants=590，debug+ask最坏embedding=1492，ask/generation上限=150。
+- 证据：docs/eval/reports/c18-query-budget-audit-v1.json，包含150个ID的各pass计数和14个源码/配置/数据hash（UTF-8文本LF规范化）。它是离线调用图证据，不是真实HTTP调用或质量证据。
+- 常规service单次有context只调用一次generate、无context零generate。额外本机合成HTTP503测试证明maxRetries=0时provider application retry=0、attempt=1；不能据此替代后续传输层重试关闭与真实HTTP预算护栏。
+- QAController debug为60/60s、ask为30/60s，RateLimitInterceptor使用USER identity而不是endpoint路径构造key，SlidingWindowRateLimiter继续复用该key。正式计划改为每个debug或ask前至少2.2秒，合计低于30/60s；不修改服务端限流，其他并发请求仍可能消耗配额。
+- c18_budget_contract.py是独立离线预算计划入口，不是正式live runner；executionReady=false，W1 manifest/护栏/compiler与runtime fingerprint仍未完成。不能从该入口发出真实调用。
+
+### 决策 9. 共享用户限流下的节奏
+- **面临的选择**：沿用两端点各自1.2秒估算；按共享用户键统一至少2.2秒间隔；拆分限流键或关闭限流。
+- **选了哪个 + 为什么**：按共享键统一2.2秒，遵循当前实际30次/60秒最严限制，不改变业务保护语义。
+- **放弃的代价**：按独立端点估算漏掉共享配额，缓存命中快时会429；改键或关限流会改变生产行为且超出此切片。

@@ -55,3 +55,9 @@ C18规划提交责任：**Agent 提交**（2026-09-11用户明确授权本地提
 ## 2026-09-11 提交交接更新
 
 上方2026-09-10启动盘点保留为当时事实。C17已提交为`9276d114058664a3cf33f26fecca046e68e566a4`；提交阻断已解除，C18规划将独立本地提交。当前仍没有C18实现或真实生成evidence；精确嵌套预算/runtime fingerprint与live授权要求不变。
+
+## 2026-09-11 W0实施结果
+
+用户已要求开始实现。W0已冻结最坏query embedding：canary34、full1492（含解释回退12/590）；ask/generation仍最多5/150，judge/model rerank=0。该结果覆盖上方待冻结公式，不沿用300或902的旧估计。共享用户限流下每个请求前至少2.2秒；其他并发用户请求和实际runtime状态仍须执行前核验。
+
+当前仅W0及纯离线budget plan-only通过：33项Java聚焦、252项Python通过。W1正式manifest/调用前护栏/完整compiler、runtime fingerprint和canary/full授权未完成；无真实生成质量结论。计划内本地提交责任继续为Agent。

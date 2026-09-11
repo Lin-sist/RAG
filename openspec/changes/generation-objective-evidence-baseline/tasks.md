@@ -5,13 +5,13 @@
 - [x] 按原用户请求开始下一阶段规划，审计runner、RAGService、QueryEngine、generator及REST持久化。
 - [x] 创建proposal/design（8条决策记录）/tasks/evaluation delta；C18唯一active change。
 - [x] 当前仅规划，provider/backend calls=0、业务数据出站=false；C18规划提交责任于2026-09-11由用户授权更新为Agent本地提交。
-- [ ] 用户审阅批准规划与W0/W1离线实施范围。
+- [x] 用户于2026-09-11明确要求“开始C18实现”，进入已规划W0/W1离线实施；真实canary/full仍须独立授权。
 
 ## 1. W0 调用与身份审计（零外调）
-- [ ] 从实际Java纯逻辑枚举canary/full初始和解释回退variants，输出ID-only预算；绑定代码/数据/配置hash，冻结精确E，重验11/451初始项。
-- [ ] 核对debug/ask检索、generation最坏调用数、runner/provider retries=0、答案缓存关闭、embedding cache计数、Router关闭及heuristic归因。
-- [ ] 核对prompt/model/endpoint/temperature/token budget/timeout安全fingerprint来源，不读取或输出secret。
-- [ ] 明确query count/history副作用和共享限流节奏，不修改既有业务语义。
+- [x] 从实际Java纯逻辑枚举canary/full初始和解释回退variants，输出ID-only预算；绑定代码/数据/配置hash，冻结精确E，重验11/451初始项。
+- [x] 核对debug/ask检索、generation最坏调用数、runner/provider retries=0、答案缓存关闭、embedding cache计数、Router关闭及heuristic归因。
+- [x] 核对prompt/model/endpoint/temperature/token budget/timeout安全fingerprint来源，不读取或输出secret。
+- [x] 明确query count/history副作用和共享限流节奏，不修改既有业务语义。
 
 ## 2. W1 离线工具与验证
 - [ ] RED→GREEN：C18 manifest/schema和模式互斥；ID/order/repeat、预算或source hash漂移在login前拒绝。
@@ -42,3 +42,10 @@
 ## 2026-09-11 本地提交交接
 - [x] 用户明确授权Agent本地提交并保持Git干净；C17收尾已提交，C18规划独立提交。
 - [x] 本轮不开始C18实现或真实调用，保留上述尚未实施的任务与证据闸门。
+
+## 2026-09-11 W0预算冻结与plan-only切片
+- [x] 真实RAGServiceImpl.ask全空分支及每个命中提前退出点均经测试；复用实际QueryEngineImpl.explainQueryVariants，未在Python复制检索算法。
+- [x] canary初始11、解释回退12，总query embedding上限34；full初始451、解释回退590，总上限1492。每条ID的各pass计数及源码hash已保存。
+- [x] c18_budget_contract.py纯离线计划入口：源码/数据/完整ID/order/整数/合计校验、no-overwrite；PLAN_VALID不意味着executionReady或live授权。
+- [x] 33项Java聚焦测试/0失败/0错误/0跳过；252项Python tests/OK；canary/full离线计划均通过。
+- [ ] W1完整manifest/runtime护栏/runner集成/compiler尚未实现；当前只交付W0与budget plan-only，不宣称W1完成。

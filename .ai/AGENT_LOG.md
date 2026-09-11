@@ -2446,3 +2446,20 @@
 - 安全：无保护路径或无关改动，无provider/backend/数据库调用，无push/PR/deploy。
 - 剩余风险：C18精确嵌套预算、runtime fingerprint和调用护栏仍待实施；不将本地提交视为质量或外调授权。
 - 提交信息：docs(openspec): 规划C18生成与客观质量基线。Commit: pending
+
+## 2026-09-11 C18规划提交补录
+- 上一执行提交：8023ce8a9d1638c6fe361f2359f06280fbc094d0（docs(openspec): 规划C18生成与客观质量基线）。
+
+## 2026-09-11 C18 W0与预算plan-only实现
+- 用户明确要求开始C18实现；沿用Agent本地提交授权，限定离线W0/W1范围，不继承C17外调预算。
+- 修改：C18BudgetAudit/Test测试源码、generator resilience零重试测试、scripts/c18_budget_contract.py和8项测试、ID-only预算报告、C18四份OpenSpec文件、ACTIVE_TASK、eval guide及本日志。
+- 已确认：真实RAGServiceImpl.ask全空路径穷举和每个命中提前退出点验证；QueryEngine真实variant函数，provider/Redis/vector均测试替身。canary=2*11+12=34，full=2*451+590=1492；有context单次generate、无context零generate。
+- QAController与rate limiter源码确认USER共享键：ask30/60s、debug60/60s；冻结每请求2.2秒计划下限，不改生产限流。源码hash以UTF-8/LF规范化，报告无问题/context/provider body。
+- RED：Java缺audit实现编译失败；Python缺contract模块失败。首次Maven受沙箱依赖访问限制非代码失败，获现有验证权限后重跑得到真实RED。GREEN：Java聚焦33 tests/0 failures/0 errors/0 skipped；Python252 tests/OK；canary/full plan-only通过。
+- Java聚焦命令：mvn -q -pl rag-core -am test -Dtest=C18BudgetAuditTest,AnswerGeneratorImplResilienceTest,RAGServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false。Python：python -B -m unittest discover -s scripts -p 'test_*.py'。
+- 安全：provider/backend业务calls=0、KB/SQL/Milvus mutation=0、业务数据出站=false；generator503测试只访问本机合成HTTP server，不是业务provider evidence。C17 profile/reference、生产Java/配置、原始历史、保护路径均未修改，无push/PR/deploy。
+- 跳过：全仓Maven/frontend build（仅测试源码及Python离线工具，聚焦覆盖真实控制流，生产/前端未改）；真实preflight/canary/full（独立授权与W1执行护栏尚未完成）。
+- 剩余风险：W1正式manifest/消费前provider预算护栏/runner/compiler未完成，executionReady=false；runtime模型/传输重试/并发限流需执行前验证。按一次一个可验证切片，本次只宣称W0和budget plan-only完成。
+- Commit: pending
+
+- 最终检查：预算/source hash与ID-only隐私、9条决策/4 requirements/12 scenarios、Markdown链接、C17 profile/reference及生产/前端零diff、git diff --check均PASS。

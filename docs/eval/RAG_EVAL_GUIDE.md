@@ -841,3 +841,15 @@ python -B scripts/evaluate_quality_gate.py --profile docs/eval/gates/rag-eval-de
 ```
 
 该命令只消费本地已有证据，无backend/provider调用。candidate须匹配profile/dataset/run/metric/slice身份；变更阈值或reference须新版本，不可覆盖本v1。
+
+## C18 离线预算审计（W0，非live runner）
+
+当前最坏query embedding上限为canary34/full1492，包含ask解释回退；原300/902估计不可使用。审计调用真实Java控制流、无真实provider。逐ID计数见[W0预算证据](reports/c18-query-budget-audit-v1.json)。
+
+```powershell
+mvn -q -pl rag-core -am test '-Dtest=C18BudgetAuditTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dc18.auditOutput=C:/_01_Code/RAG/tmp/eval/c18/new-audit.json'
+python -B scripts/c18_budget_contract.py --mode canary
+python -B scripts/c18_budget_contract.py --mode full
+```
+
+audit输出必须是本仓库tmp/eval/c18下的新文件；已存在时拒绝覆盖。源码hash变化时plan-only会BLOCKED，必须重验并审阅预算，不直接修改冻结数值。两个计划始终liveAuthorized=false/executionReady=false；真实runner、护栏/compiler尚待W1。每个debug或ask前至少2.2秒，因二者共用USER限流键；不修改服务端限流。正式ask会写query count/history，后续外调授权须明确包含这些本地副作用。

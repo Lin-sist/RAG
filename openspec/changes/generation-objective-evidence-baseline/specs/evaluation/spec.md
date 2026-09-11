@@ -88,3 +88,7 @@ Raw artifacts SHALL remain local ignored no-overwrite files; tracked output SHAL
 - WHEN C18 closes
 - THEN approved delta is accepted, current documentation/risks synchronized, and the change may be archived
 - AND skipped judge, production and semantic-faithfulness claims remain unproven
+
+## 2026-09-11 W0预算与节奏具体化
+
+当前源码审计冻结canary query embedding upper bound=34、full=1492，包含debug初始、ask初始与全部可达解释回退variants；generation上限仍为5/150。每个请求前至少2.2秒以遵循共享USER键的30次/60秒限制。源码/数据/配置hash漂移必须BLOCKED并重新离线审计，不自动放大预算。本节只具体化已批准规划，不授权真实调用；budget plan-only通过不代表runtime护栏或完整evidence compiler已实现。
