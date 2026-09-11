@@ -141,6 +141,8 @@
 
 ### C18. `generation-objective-evidence-baseline`
 
+2026-09-10已建立独立C18规划，待审阅；当前仅文档。下列300次embedding是冻结蓝图的旧估计，不能作为live授权上限：实际ask还有解释回退，需W0枚举全部variants并冻结精确预算。详见[当前C18规划](../../openspec/changes/generation-objective-evidence-baseline/proposal.md)。
+
 **目标**：在 judge 关闭的条件下，为 v2 建立真实 generation、citation、objective claim support 与 no-answer 基线，并为未来独立 objective profile 固定 evidence identity。
 
 **首轮正式边界**：

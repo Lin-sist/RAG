@@ -2420,3 +2420,29 @@
 - 提交责任：C17沿用已批准Agent本地提交。Commit: pending
 
 - 归档后最终复核：4 requirements/12 scenarios exact suffix、无重复标题、tasks全部完成、IDLE、5个实际Markdown链接、artifact SHA-256/敏感字段/保护路径检查和git diff --check通过；最终LF profile下Python244 tests再次OK。
+
+## 2026-09-10 C17提交被拒与C18规划
+- C17已归档并精确暂存23个文件；自动审批拒绝git commit，理由为缺少本轮明确Agent提交授权。命令未执行，无新hash、未push；暂存证据保留，没有借其他命令绕过。
+- 当前HEAD仍为38c5d1fed4ffac96444118848396b9fa4173d6df。Commit: pending。
+- 范围：C18 proposal/design/tasks/evaluation delta、ACTIVE_TASK、蓝图C18状态说明与本日志；仅规划，业务代码不变。
+- 已确认：C17验收可作为下一阶段文档规划前置；当前非clean Git阻止后续live。通用runner预算缺embedding/generation计数，ask含解释类再次检索；22/902只是初始组成项，最终最坏上限由W0冻结。REST ask有query count/history副作用。
+- C18交付4份规划文件、8条决策记录、4 requirements/12 scenarios；独立唯一active，未修改C17 profile/reference或raw；C18提交责任为用户手动提交，未暂存。
+- 验证：按当前Java/Python调用图核对规划；文件结构、决策三行、requirement/scenario、引用路径、受保护范围及git diff --check做最终检查。
+- 跳过：C18实现测试/Maven/frontend和真实canary/full，原因是当前仅规划未实施/未获外调授权；OpenSpec CLI未安装，采用文件级校验。
+- 安全：backend/provider calls=0、业务数据出站=false、SQL/Milvus/KB mutation=0，无保护路径修改、无push/PR/deploy。
+- 剩余风险：C17尚未提交；C18规划待审阅、精确嵌套预算/runtime fingerprint/调用护栏待实施验证，generation/judge仍未证明。
+- 建议C18提交信息：docs(openspec): 规划C18生成与客观质量基线。Commit: pending
+
+- C18最终文件级验证PASS：4份文件、8条三行决策、4 requirements/12 scenarios、唯一ACTIVE、未提前接受C18 delta、链接有效；C17暂存/工作区profile SHA-256一致，C18未暂存且共享文件增量仅ACTIVE_TASK/AGENT_LOG/蓝图；git diff --check与cached --check均通过。
+
+## 2026-09-11 C17提交补录
+- 上一执行提交：9276d114058664a3cf33f26fecca046e68e566a4（docs(eval): 激活C17检索门禁并验收归档）。用户本轮明确授权Agent本地提交，原审批阻断已解除，未push。
+
+## 2026-09-11 C18规划本地提交交接
+- 范围：C18四份规划、ACTIVE_TASK、蓝图及本日志；更新本轮Agent本地提交责任和C17已提交事实，不修改历史日志。
+- 用户授权本地提交并保持Git干净，用户将另行开始实现。本轮只交接；C18业务代码/预算工具/live evidence均未实施。
+- 验证：提交前C18结构4文件/8决策/4 requirements/12 scenarios、唯一active、链接、C17 profile暂存/工作区哈希一致和范围隔离通过；最终文档diff和提交后Git clean再次检查。
+- 跳过：Python测试沿用上一轮同一代码244 tests/OK，本轮仅文档状态和Git提交，不重复；Java/frontend无修改，Maven/build不运行；无真实调用。
+- 安全：无保护路径或无关改动，无provider/backend/数据库调用，无push/PR/deploy。
+- 剩余风险：C18精确嵌套预算、runtime fingerprint和调用护栏仍待实施；不将本地提交视为质量或外调授权。
+- 提交信息：docs(openspec): 规划C18生成与客观质量基线。Commit: pending
