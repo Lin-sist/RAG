@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 import eval_dataset_contract as dataset_contract
+import c18_generation_contract as c18_contract
 import rag_judge_contract as judge_contract
 
 
@@ -130,6 +131,9 @@ class JudgeContractIdentityError(ValueError):
     pass
 
 
+C18_GUARD: c18_contract.C18BudgetGuard | None = None
+
+
 def nonnegative_seconds(value: str) -> float:
     seconds = float(value)
     if not math.isfinite(seconds) or seconds < 0:
@@ -187,6 +191,8 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("RAG_EVAL_RUN_METADATA_JSON", ""),
         help="Optional JSON metadata to include in the report header and details JSON.",
     )
+    parser.add_argument("--c18-manifest", default=os.getenv("C18_GENERATION_MANIFEST", ""))
+    parser.add_argument("--c18-mode", choices=("canary", "full"), default=os.getenv("C18_GENERATION_MODE", ""))
     args = parser.parse_args()
     if args.ask_timeout is None:
         args.ask_timeout = args.timeout
@@ -331,6 +337,10 @@ def call_json(
 
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
+        if C18_GUARD is not None:
+            request_kind = c18_contract.request_kind(url)
+            if request_kind is not None:
+                C18_GUARD.before_request(request_kind)
         with urllib.request.urlopen(request, timeout=timeout) as response:
             text = response.read().decode("utf-8")
             return json.loads(text) if text else {}
@@ -660,6 +670,14 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             "ask": ask_error,
         },
     }
+    if C18_GUARD is not None:
+        details["c18ExecutionFacts"] = c18_contract.execution_facts(
+            ask_response,
+            ask_attempts,
+            ask_retry_count,
+            rate_limit_errors,
+            details["rerankAttribution"],
+        )
 
     return SampleResult(
         sample=sample,
@@ -2172,7 +2190,11 @@ def write_details_json(
         "baseUrl": args.base_url,
         "kbId": args.kb_id,
         "evalSet": args.eval_set,
-        "sampleIds": args.sample_ids or [],
+        "sampleIds": (
+            [str(sample.get("id")) for sample in samples]
+            if C18_GUARD is not None
+            else args.sample_ids or []
+        ),
         "sampleLimit": args.sample_limit,
         "topK": args.top_k,
         "minScore": args.min_score,
@@ -2199,6 +2221,8 @@ def write_details_json(
         "sampleCount": len(samples),
         "samples": [result.details for result in results],
     }
+    if C18_GUARD is not None:
+        payload["c18Execution"] = C18_GUARD.snapshot()
     path.write_text(json.dumps(sanitize_sensitive(payload), ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -2213,9 +2237,19 @@ def ensure_no_overwrite(paths: list[Path]) -> bool:
 
 
 def main() -> int:
+    global C18_GUARD
     started_at = time.time()
+    C18_GUARD = None
     args = parse_args()
     args.base_url = args.base_url.rstrip("/")
+    repo_root = Path(__file__).resolve().parents[1]
+    c18_manifest = None
+    if args.c18_manifest:
+        try:
+            c18_manifest = c18_contract.load_manifest(repo_root, Path(args.c18_manifest))
+        except c18_contract.C18ContractError as exc:
+            print(f"C18 contract failed: errorCode={exc.code}", file=sys.stderr)
+            return 2
     try:
         args.dataset_release_identity = validate_eval_dataset(args)
     except dataset_contract.DatasetContractError as exc:
@@ -2247,7 +2281,6 @@ def main() -> int:
     except JudgeContractIdentityError:
         print("Judge contract validation failed: errorCode=judge_contract_identity_mismatch", file=sys.stderr)
         return 2
-
     if args.no_overwrite:
         output_paths = [report_path]
         if after_report_path is not None:
@@ -2257,18 +2290,49 @@ def main() -> int:
         if not ensure_no_overwrite(output_paths):
             return 2
 
-    if args.kb_id is None:
-        print("Missing --kb-id or RAG_EVAL_KB_ID. Create an eval knowledge base first, then pass its id.", file=sys.stderr)
-        return 2
-
     all_samples = load_eval_set(eval_path)
     samples = select_samples(all_samples, args.sample_ids, args.sample_limit)
     if not samples:
         print("No eval samples selected. Check --sample-id/--sample-limit.", file=sys.stderr)
         return 2
+    if c18_manifest is not None:
+        try:
+            args.details_json = args.details_json or "tmp/eval/c18/direct-details.json"
+            args.metadata_json = args.run_metadata_json or "tmp/eval/c18/direct-metadata.json"
+            args.keep_existing = True
+            c18_contract.validate_runner_configuration(
+                args,
+                c18_manifest,
+                args.c18_mode,
+                [str(sample.get("id")) for sample in samples],
+                [1],
+            )
+        except c18_contract.C18ContractError as exc:
+            print(f"C18 contract failed: errorCode={exc.code}", file=sys.stderr)
+            return 2
+        C18_GUARD = c18_contract.C18BudgetGuard(c18_manifest["budgets"][args.c18_mode])
     if args.plan_only:
-        print_eval_plan(eval_plan(samples, args))
+        if c18_manifest is not None:
+            print(json.dumps(c18_contract.build_plan(c18_manifest, args.c18_mode), ensure_ascii=False, indent=2))
+        else:
+            print_eval_plan(eval_plan(samples, args))
         return 0
+    if c18_manifest is not None:
+        c18_metadata = run_metadata.get("c18Manifest")
+        c18_runtime = run_metadata.get("c18RuntimeFingerprint")
+        if c18_metadata != {"id": c18_contract.MANIFEST_ID, "sha256": c18_manifest["manifestSha256"]}:
+            print("C18 contract failed: errorCode=c18_metadata_manifest_mismatch", file=sys.stderr)
+            return 2
+        if (
+            not isinstance(c18_runtime, dict)
+            or c18_runtime.get("status") != "verified"
+            or c18_runtime.get("identity") != c18_contract.EXPECTED_RUNTIME
+        ):
+            print("C18 contract failed: errorCode=c18_runtime_fingerprint_required", file=sys.stderr)
+            return 2
+    if args.kb_id is None:
+        print("Missing --kb-id or RAG_EVAL_KB_ID. Create an eval knowledge base first, then pass its id.", file=sys.stderr)
+        return 2
     try:
         require_credentials(args)
     except RuntimeError as exc:
@@ -2369,6 +2433,9 @@ def main() -> int:
     if args.fail_on_judge_errors and counts["judgeErrors"] > 0:
         print("--fail-on-judge-errors enabled and judgeErrors > 0.", file=sys.stderr)
         return 1
+    if C18_GUARD is not None and C18_GUARD.rejections:
+        print("C18 budget guard rejected a request before it was sent.", file=sys.stderr)
+        return 2
     return 0
 
 

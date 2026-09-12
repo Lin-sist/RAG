@@ -60,4 +60,12 @@ C18规划提交责任：**Agent 提交**（2026-09-11用户明确授权本地提
 
 用户已要求开始实现。W0已冻结最坏query embedding：canary34、full1492（含解释回退12/590）；ask/generation仍最多5/150，judge/model rerank=0。该结果覆盖上方待冻结公式，不沿用300或902的旧估计。共享用户限流下每个请求前至少2.2秒；其他并发用户请求和实际runtime状态仍须执行前核验。
 
-当前仅W0及纯离线budget plan-only通过：33项Java聚焦、252项Python通过。W1正式manifest/调用前护栏/完整compiler、runtime fingerprint和canary/full授权未完成；无真实生成质量结论。计划内本地提交责任继续为Agent。
+当前仅W0及纯离线budget plan-only通过：33项Java聚焦、252项Python通过。以上是W0结束时状态；随后W1离线manifest、调用前护栏、完整compiler与负例验证已完成，runtime fingerprint和canary/full授权仍未完成；无真实生成质量结论。计划内本地提交责任继续为Agent。
+
+## 2026-09-12 W1离线实施结果
+
+用户已授权C18离线实现，本轮完成W1，不继承C17外调预算。新增独立 `c18-generation-objective-v1` manifest/schema、C18 contract、父子runner集成和 `compile_generation_objective_baseline.py`。manifest在login前绑定v2/150、canary/full ID/order、W0 query embedding上限34/1492、ask/generation上限5/150、judge/router/cache/retry与2.2秒节奏；源码或运行身份漂移时fail closed。
+
+child runner在debug/ask/judge请求前统计预算，超限请求不进入`urlopen`，父runner保留非零退出码。compiler只读取本地raw details/metadata，分别验证retrieval、generation、citation、objective claim、no-answer和judge状态/分母；只输出allowlisted hash、counts、metrics和reason，raw问题/答案/contexts/provider payload/凭据/数字KB ID/collection/绝对路径不进入tracked摘要。C18 W0审计中的两个runner源码hash已同步到当前W1代码，预算数字未改变。
+
+验证：13项W1聚焦测试与全套Python 265项通过；canary/full plan-only通过；本轮backend/provider/KB/SQL/Milvus calls=0、业务数据出站=false。runtime fingerprint、真实5条canary、真实150条full、验收和归档仍保持独立闸门。

@@ -20,13 +20,13 @@ C18参数与C17/C7模式互斥；plan-only登录前验证，显示精确整数�
 
 generation最多N次的前提是runner/provider自动重试都0且无额外生成回路；不能证明就阻止live，不扩大已批准预算。记录query/provider HTTP、cache hit、generation/no-context bypass、algorithm fallback与provider fallback；缺实际计数意味着审计不完整。
 
-护栏优先复用可验证的本机执行入口/计数器。若必须新增runtime capability、API/DTO/持久化字段，先修订design/spec，不临场扩大范围。W1必须证明超限请求发出前即被拒绝。保留服务端限流；初始计划retrieval前1.2秒、ask前后1.2秒，W0核对共享限流键与每题两端点最坏节奏。等待排除在单次请求latency外。
+护栏优先复用可验证的本机执行入口/计数器。若必须新增runtime capability、API/DTO/持久化字段，先修订design/spec，不临场扩大范围。W1必须证明超限请求发出前即被拒绝。保留服务端限流；当前计划按共享USER键统一至少2.2秒，等待排除在单次请求latency外。
 
 ## 身份、原始数据与compiler
 
 raw report/details/metadata写ignored `tmp/eval/c18/`，新执行ID且no-overwrite。绑定150 observations、ordered dataset、clean Git HEAD、fixture/content/chunk、runtime model/request/generation、prompt/token/citation/claim descriptors及retry/call counters。debug contexts不冒充实际ask上下文；生成/引用/claim指标以ask返回且经既有provenance验证的证据为准。
 
-拟新增 `scripts/compile_generation_objective_baseline.py`、测试和schema。纯离线返回COMPLETE/INCOMPLETE/NOT_COMPARABLE/INVALID，复用C9a/C9b公式/状态，不重新评分、补缺或删失败。完整基线需exact150 ID/order、zero errors/retries、CLEAN/objective COMPLETE/judge SKIPPED、固定身份和调用预算合规；no-context bypass须显式记录，不要求150个LLM请求。
+已新增 `scripts/compile_generation_objective_baseline.py`、`scripts/c18_generation_contract.py`、测试和schema。纯离线返回COMPLETE/INCOMPLETE/NOT_COMPARABLE/INVALID，复用C9a/C9b公式/状态，不重新评分、补缺或删失败。完整基线需exact150 ID/order、zero errors/retries、CLEAN/objective COMPLETE/judge SKIPPED、固定身份和调用预算合规；no-context bypass须显式记录，不要求150个LLM请求。
 
 聚合分别保留retrieval、answer keyword、citation source/snippet、unsupported citation、claim support、no-answer、错误/latency/调用数及分母。完整低分不触发题目或算法调整。tracked产物只存allowlisted身份、hash、counts/aggregates、status/reason，不含问题/答案/context/claim/provider body、凭据、数字KB ID、collection或绝对路径。
 
@@ -80,7 +80,7 @@ W0/W1完成且canary具体范围获批后才能进入真实执行。HTTP preflig
 
 ## 待实施闸门确认
 
-规划批准后才启动W0/W1；live前必须提供最终E、runtime fingerprint、REST副作用和调用前护栏证据。当前没有外调授权，不宣称新增工具已实现。
+W0/W1离线切片已完成；live前必须提供最终E、runtime fingerprint、REST副作用和调用前护栏证据。当前没有外调授权，不宣称真实generation质量或canary/full已完成。
 
 ## 2026-09-11 W0执行冻结
 
@@ -91,9 +91,21 @@ W0/W1完成且canary具体范围获批后才能进入真实执行。HTTP preflig
 - 证据：docs/eval/reports/c18-query-budget-audit-v1.json，包含150个ID的各pass计数和14个源码/配置/数据hash（UTF-8文本LF规范化）。它是离线调用图证据，不是真实HTTP调用或质量证据。
 - 常规service单次有context只调用一次generate、无context零generate。额外本机合成HTTP503测试证明maxRetries=0时provider application retry=0、attempt=1；不能据此替代后续传输层重试关闭与真实HTTP预算护栏。
 - QAController debug为60/60s、ask为30/60s，RateLimitInterceptor使用USER identity而不是endpoint路径构造key，SlidingWindowRateLimiter继续复用该key。正式计划改为每个debug或ask前至少2.2秒，合计低于30/60s；不修改服务端限流，其他并发请求仍可能消耗配额。
-- c18_budget_contract.py是独立离线预算计划入口，不是正式live runner；executionReady=false，W1 manifest/护栏/compiler与runtime fingerprint仍未完成。不能从该入口发出真实调用。
+- c18_budget_contract.py是独立离线预算计划入口，不是正式live runner；executionReady=false。当时W1 manifest/护栏/compiler与runtime fingerprint仍未完成，随后W1补齐了前四项中的离线工具，但仍不能从该入口发出真实调用。
 
 ### 决策 9. 共享用户限流下的节奏
 - **面临的选择**：沿用两端点各自1.2秒估算；按共享用户键统一至少2.2秒间隔；拆分限流键或关闭限流。
 - **选了哪个 + 为什么**：按共享键统一2.2秒，遵循当前实际30次/60秒最严限制，不改变业务保护语义。
 - **放弃的代价**：按独立端点估算漏掉共享配额，缓存命中快时会429；改键或关限流会改变生产行为且超出此切片。
+
+### 10. W1护栏与compiler的边界
+- **面临的选择**：修改Java服务增加分布式预算器；只在现有Python REST runner的请求边界加opt-in护栏；只做离线compiler而不拦截请求。
+- **选了哪个 + 为什么**：选现有runner的opt-in护栏加独立C18 contract/compiler；它能在自有HTTP请求发出前fail closed，不改变业务API/DTO/持久化语义，W0的内部query embedding上限继续由源码审计绑定。
+- **放弃的代价**：Java分布式预算器会扩大runtime/API范围；compiler-only不能证明超限请求未发出；两者都不适合作为本轮最小离线切片。
+
+## W1实施结果
+
+- `docs/eval/config/c18-generation-objective-v1.json`、`docs/eval/schema/c18-generation-objective-v1.json` 与 `docs/eval/schema/c18-generation-objective-evidence-v1.json` 固定v2数据/fixture、W0审计hash、canary/full selection、预算、runtime descriptor、指标与隐私allowlist。
+- 两个runner在login前校验模式互斥、ID/order/repeat、输出目录、节奏和zero retry；child runner在debug/ask/judge请求前使用计数器，超限时不调用`urlopen`，父runner保留child非零退出码。
+- `compile_generation_objective_baseline.py` 只消费本地raw details/metadata，验证exact selection、CLEAN/objective/judge状态、零错误重试、ask返回provenance、no-answer generation bypass和hash identity；tracked输出不复制raw文本或敏感字段。
+- 本轮仍无runtime fingerprint、backend/provider/KB/SQL/Milvus调用，W2/W3外调授权与W4验收未推进。

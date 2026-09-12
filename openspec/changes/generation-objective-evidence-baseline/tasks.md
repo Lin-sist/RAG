@@ -14,13 +14,13 @@
 - [x] 明确query count/history副作用和共享限流节奏，不修改既有业务语义。
 
 ## 2. W1 离线工具与验证
-- [ ] RED→GREEN：C18 manifest/schema和模式互斥；ID/order/repeat、预算或source hash漂移在login前拒绝。
-- [ ] RED→GREEN：query/generation HTTP调用前护栏，缓存/算法回退/provider fallback/自动retry分别统计；超限不发请求。
-- [ ] RED→GREEN：exact150 compiler、details/metadata/hash/channel status；missing/error/identity负例。
-- [ ] RED→GREEN：复用C9公式，不以debug contexts冒充ask provenance，不以成功子集补分母。
-- [ ] safe summary/schema、no-overwrite与敏感字段负例；C17 profile/reference字节保持不变。
-- [ ] Python全套；若新增Java测试/实现则聚焦及按风险全仓Maven。真实结果和跳过项写AGENT_LOG。
-- [ ] canary/full plan-only：精确预算、模型、出站和副作用，前置缺失时fail closed。
+- [x] RED→GREEN：C18 manifest/schema和模式互斥；ID/order/repeat、预算或source hash漂移在login前拒绝。
+- [x] RED→GREEN：query/generation HTTP调用前护栏，缓存/算法回退/provider fallback/自动retry分别统计；超限不发请求。
+- [x] RED→GREEN：exact150 compiler、details/metadata/hash/channel status；missing/error/identity负例。
+- [x] RED→GREEN：复用C9公式，不以debug contexts冒充ask provenance，不以成功子集补分母。
+- [x] safe summary/schema、no-overwrite与敏感字段负例；C17 profile/reference字节保持不变。
+- [x] Python全套；本轮无新增Java生产实现，Java聚焦测试不重复；真实结果和跳过项写AGENT_LOG。
+- [x] canary/full plan-only：精确预算、模型、出站和副作用，前置缺失时fail closed。
 
 ## 3. W2 Canary（待单独授权）
 - [ ] 提交形成clean HEAD，HTTP preflight只读验证3 fixtures/50 chunks、c17g3/model identity。
@@ -48,4 +48,12 @@
 - [x] canary初始11、解释回退12，总query embedding上限34；full初始451、解释回退590，总上限1492。每条ID的各pass计数及源码hash已保存。
 - [x] c18_budget_contract.py纯离线计划入口：源码/数据/完整ID/order/整数/合计校验、no-overwrite；PLAN_VALID不意味着executionReady或live授权。
 - [x] 33项Java聚焦测试/0失败/0错误/0跳过；252项Python tests/OK；canary/full离线计划均通过。
-- [ ] W1完整manifest/runtime护栏/runner集成/compiler尚未实现；当前只交付W0与budget plan-only，不宣称W1完成。
+- [x] W1在后续离线切片完成：manifest/schema、runner集成、请求前护栏、compiler和负例测试已通过；runtime fingerprint、真实canary/full及验收仍未完成。
+
+## 2026-09-12 W1离线工具与证据编译
+- [x] 新增C18独立manifest/schema与`c18_generation_contract.py`，绑定v2/150、W0审计hash、canary/full精确预算、runtime descriptor、zero retry、judge/router/cache开关、2.2秒节奏和safe allowlist。
+- [x] 两个runner完成C18模式互斥、ID/order/repeat、raw no-overwrite、源码hash和runtime fingerprint前置校验；child请求前护栏超限不发送请求，父runner保留非零退出码。
+- [x] 新增`compile_generation_objective_baseline.py`，验证exact selection、details/metadata/hash/channel status、ask返回citation provenance、no-answer bypass、调用事实和隐私边界；tracked摘要不包含raw文本、provider payload、凭据、数字KB ID、collection或绝对路径。
+- [x] RED→GREEN：13项C18 W1聚焦测试通过；全套Python `unittest discover` 共265项通过；canary/full plan-only通过。
+- [x] 本轮仅修改C18离线脚本/配置/schema、W0审计源码hash、OpenSpec/eval guide/日志；无Java生产实现、无frontend变更、无真实provider/backend/KB/SQL/Milvus调用。
+- [ ] runtime fingerprint验证、5条canary、150条full、真实baseline验收和change归档仍按独立授权推进。

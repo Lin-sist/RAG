@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "c18-generation-objective-evidence-v1",
+  "title": "C18 safe generation objective evidence summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "reasonCodes",
+    "compiler",
+    "manifest",
+    "dataset",
+    "runIdentity",
+    "expected",
+    "actual",
+    "identity",
+    "providerAttribution",
+    "callFacts",
+    "channels",
+    "metrics",
+    "artifacts",
+    "privacy"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "c18-generation-objective-evidence-v1"},
+    "status": {"enum": ["COMPLETE", "INCOMPLETE", "NOT_COMPARABLE", "INVALID"]},
+    "reasonCodes": {"type": "array", "items": {"type": "string"}},
+    "compiler": {"type": "object", "additionalProperties": false, "required": ["version", "mode"], "properties": {"version": {"const": "c18-generation-objective-compiler-v1"}, "mode": {"enum": ["canary", "full"]}}},
+    "manifest": {"type": "object", "additionalProperties": false, "required": ["id", "sha256"], "properties": {"id": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "dataset": {"type": "object", "additionalProperties": true},
+    "runIdentity": {"type": "object", "additionalProperties": false, "required": ["mode", "slice", "repeat", "runIndex"], "properties": {"mode": {"const": "generation/objective"}, "slice": {"enum": ["canary", "full"]}, "repeat": {"const": 1}, "runIndex": {"const": 1}}},
+    "expected": {"type": "object", "additionalProperties": true},
+    "actual": {"type": "object", "additionalProperties": true},
+    "identity": {"type": "object", "additionalProperties": true},
+    "providerAttribution": {"type": "object", "additionalProperties": true},
+    "callFacts": {"type": "object", "additionalProperties": true},
+    "channels": {"type": "object", "additionalProperties": true},
+    "metrics": {"type": "object", "additionalProperties": true},
+    "artifacts": {"type": "object", "additionalProperties": true},
+    "privacy": {"type": "object", "additionalProperties": false, "required": ["rawArtifactsLocalIgnored", "rawQuestionAnswerContextsTracked", "credentialsTracked", "numericKnowledgeBaseIdsTracked", "absolutePathsTracked", "noOverwrite"], "properties": {"rawArtifactsLocalIgnored": {"const": true}, "rawQuestionAnswerContextsTracked": {"const": false}, "credentialsTracked": {"const": false}, "numericKnowledgeBaseIdsTracked": {"const": false}, "absolutePathsTracked": {"const": false}, "noOverwrite": {"const": true}}}
+  }
+}

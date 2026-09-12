@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import eval_dataset_contract as dataset_contract
+import c18_generation_contract as c18_contract
 import run_rag_eval as eval_runner
 
 
@@ -111,6 +112,12 @@ class ApiError(RuntimeError):
     pass
 
 
+class ChildEvalError(ApiError):
+    def __init__(self, returncode: int) -> None:
+        self.returncode = returncode
+        super().__init__(f"child_eval_exit_code={returncode}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare and run a reproducible RAG eval.")
     parser.add_argument("--base-url", default=os.getenv("RAG_BASE_URL", DEFAULT_BASE_URL))
@@ -183,6 +190,22 @@ def parse_args() -> argparse.Namespace:
         choices=("canary", "full"),
         default="full",
         help="C17 reference execution slice. Requires --reference-manifest.",
+    )
+    parser.add_argument(
+        "--c18-manifest",
+        default=os.getenv("C18_GENERATION_MANIFEST", ""),
+        help="Optional C18 generation/objective execution manifest.",
+    )
+    parser.add_argument(
+        "--c18-mode",
+        choices=("canary", "full"),
+        default=os.getenv("C18_GENERATION_MODE", "full"),
+        help="C18 offline/live execution slice.",
+    )
+    parser.add_argument(
+        "--c18-runtime-fingerprint",
+        default=os.getenv("C18_RUNTIME_FINGERPRINT", ""),
+        help="Operator-confirmed C18 runtime fingerprint JSON; required before live execution.",
     )
     parser.add_argument(
         "--keep-existing",
@@ -887,6 +910,10 @@ def load_reference_manifest(path: Path) -> dict[str, Any]:
 
 
 def validate_manifest_exclusivity(args: argparse.Namespace) -> None:
+    if getattr(args, "c18_manifest", "") and (
+        getattr(args, "arm_manifest", "") or getattr(args, "reference_manifest", "")
+    ):
+        raise ApiError("c18_c17_c7_manifest_conflict")
     if getattr(args, "arm_manifest", "") and getattr(args, "reference_manifest", ""):
         raise ApiError("c17_c7_manifest_conflict")
     if getattr(args, "reference_mode", "full") != "full" and not getattr(args, "reference_manifest", ""):
@@ -966,6 +993,18 @@ def git_head() -> str:
         return ""
 
 
+def git_worktree_clean() -> bool:
+    try:
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=all"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+        return status.strip() == ""
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def build_metadata(
     args: argparse.Namespace,
     kb: dict[str, Any],
@@ -978,6 +1017,7 @@ def build_metadata(
     chunk_count = sum(int(doc.get("chunkCount") or 0) for doc in docs)
     eval_path = Path(args.eval_set)
     reference_manifest = getattr(args, "reference_manifest_data", None)
+    c18_manifest = getattr(args, "c18_manifest_data", None)
     repeat_total = int(
         (arm_manifest or {}).get("measuredRepeats")
         or (
@@ -989,7 +1029,9 @@ def build_metadata(
     )
     metadata = {
         "evaluationSchema": (
-            C7_ARM_SCHEMA
+            c18_contract.SCHEMA_VERSION
+            if isinstance(c18_manifest, dict)
+            else C7_ARM_SCHEMA
             if arm_manifest
             else C17_REFERENCE_SCHEMA
             if isinstance(reference_manifest, dict)
@@ -1051,7 +1093,7 @@ def build_metadata(
             for path in DEFAULT_CONFIG_SNAPSHOT
             if path.exists()
         },
-        "git": {"head": git_head()},
+        "git": {"head": git_head(), "clean": git_worktree_clean()},
         "claimMetricConfig": dict(eval_runner.CLAIM_METRIC_CONFIG),
         "judgeContractConfig": eval_runner.judge_contract.contract_config(args),
         "armManifest": dict(arm_manifest) if arm_manifest else None,
@@ -1072,6 +1114,41 @@ def build_metadata(
     if isinstance(dataset_identity, dict):
         metadata["datasetReleaseIdentity"] = dataset_identity
         metadata["datasetValidation"] = dataset_identity.get("validationStatus")
+    if isinstance(c18_manifest, dict):
+        fingerprint = getattr(args, "c18_runtime_fingerprint_data", None)
+        metadata["c18Manifest"] = {
+            "id": c18_contract.MANIFEST_ID,
+            "sha256": c18_manifest["manifestSha256"],
+        }
+        metadata["c18RunIdentity"] = {
+            "mode": "generation/objective",
+            "slice": getattr(args, "c18_mode", "full"),
+            "repeat": 1,
+            "runIndex": run_index,
+        }
+        metadata["c18Execution"] = {
+            "selectionMode": "ordered-v2",
+            "judgeMode": "off",
+            "routerEnabled": False,
+            "answerCache": False,
+            "maxAskRetries": 0,
+            "retryAskTimeouts": False,
+            "minimumRequestIntervalSeconds": 2.2,
+            "askDelaySeconds": float(args.ask_delay_seconds),
+            "retrievalDelaySeconds": float(getattr(args, "retrieval_delay_seconds", 0.0)),
+        }
+        metadata["c18RuntimeFingerprint"] = (
+            {
+                "status": "verified",
+                "identity": dict(c18_contract.EXPECTED_RUNTIME),
+                "sha256": fingerprint["sha256"],
+            }
+            if isinstance(fingerprint, dict)
+            else {
+                "status": "required",
+                "identity": dict(c18_contract.EXPECTED_RUNTIME),
+            }
+        )
     return metadata
 
 
@@ -1187,6 +1264,13 @@ def build_eval_command(args: argparse.Namespace, kb_id: int, report: Path, detai
         "--retrieval-delay-seconds",
         str(getattr(args, "retrieval_delay_seconds", 0.0)),
     ]
+    if getattr(args, "c18_manifest", ""):
+        command.extend([
+            "--c18-manifest",
+            str(args.c18_manifest),
+            "--c18-mode",
+            str(args.c18_mode),
+        ])
     if args.include_ask:
         command.extend([
             "--ask-delay-seconds",
@@ -1292,7 +1376,9 @@ def run_eval(args: argparse.Namespace, kb_id: int, report: Path, details: Path, 
     if args.judge_api_key:
         env["RAG_EVAL_JUDGE_API_KEY"] = args.judge_api_key
     print("Running:", " ".join(redact_command(command)))
-    subprocess.run(command, check=True, env=env)
+    completed = subprocess.run(command, check=False, env=env)
+    if completed.returncode != 0:
+        raise ChildEvalError(completed.returncode)
 
 
 def validate_c17_live_run(
@@ -1416,6 +1502,14 @@ def build_plan(
         plan["referenceManifestSha256"] = reference_manifest.get("sha256")
         plan["referenceMode"] = getattr(args, "reference_mode", "full")
         plan["embeddingGeneration"] = reference_manifest.get("embeddingGeneration")
+    c18_manifest = getattr(args, "c18_manifest_data", None)
+    if isinstance(c18_manifest, dict):
+        c18_plan = c18_contract.build_plan(c18_manifest, getattr(args, "c18_mode", "full"))
+        plan["mode"] = "generation/objective"
+        plan["includeAsk"] = True
+        plan["judgeMode"] = "off"
+        plan["estimatedLiveCalls"] = c18_plan["callBudget"]
+        plan["c18"] = c18_plan
     dataset_identity = getattr(args, "dataset_release_identity", None)
     if isinstance(dataset_identity, dict):
         plan["datasetReleaseIdentity"] = dataset_identity
@@ -1498,6 +1592,16 @@ def redact_preflight_for_display(preflight: dict[str, Any]) -> dict[str, Any]:
 def main() -> int:
     args = parse_args()
     args.base_url = args.base_url.rstrip("/")
+    repo_root = Path(__file__).resolve().parents[1]
+    try:
+        args.c18_manifest_data = (
+            c18_contract.load_manifest(repo_root, Path(args.c18_manifest))
+            if args.c18_manifest
+            else None
+        )
+    except c18_contract.C18ContractError as exc:
+        print(f"C18 contract failed: errorCode={exc.code}", file=sys.stderr)
+        return 2
     fixtures = [Path(value) for value in (args.fixtures or [str(path) for path in DEFAULT_FIXTURES])]
     try:
         validate_manifest_exclusivity(args)
@@ -1547,6 +1651,18 @@ def main() -> int:
     if not selected_samples:
         print("No eval samples selected. Check --sample-id/--sample-limit.", file=sys.stderr)
         return 2
+    if args.c18_manifest_data:
+        try:
+            c18_contract.validate_runner_configuration(
+                args,
+                args.c18_manifest_data,
+                args.c18_mode,
+                [str(sample.get("id")) for sample in selected_samples],
+                run_indexes,
+            )
+        except c18_contract.C18ContractError as exc:
+            print(f"C18 contract failed: errorCode={exc.code}", file=sys.stderr)
+            return 2
     if args.reference_manifest_data:
         try:
             validate_c17_reference_plan(
@@ -1561,6 +1677,20 @@ def main() -> int:
     if args.plan_only:
         print_plan(build_plan(args, fixtures, selected_samples))
         return 0
+
+    args.c18_runtime_fingerprint_data = None
+    if args.c18_manifest_data:
+        if not args.c18_runtime_fingerprint:
+            print("C18 contract failed: errorCode=c18_runtime_fingerprint_required", file=sys.stderr)
+            return 2
+        try:
+            args.c18_runtime_fingerprint_data = c18_contract.validate_runtime_fingerprint(
+                Path(args.c18_runtime_fingerprint),
+                args.c18_manifest_data,
+            )
+        except c18_contract.C18ContractError as exc:
+            print(f"C18 contract failed: errorCode={exc.code}", file=sys.stderr)
+            return 2
 
     try:
         require_credentials(args)
@@ -1638,6 +1768,9 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
+    except ChildEvalError as exc:
+        print(f"Reproducible eval failed: errorType={type(exc).__name__}", file=sys.stderr)
+        raise SystemExit(exc.returncode) from exc
     except ApiError as exc:
         print(f"Reproducible eval failed: errorType={type(exc).__name__}", file=sys.stderr)
         raise SystemExit(1) from exc

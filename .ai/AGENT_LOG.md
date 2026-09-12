@@ -2463,3 +2463,14 @@
 - Commit: pending
 
 - 最终检查：预算/source hash与ID-only隐私、9条决策/4 requirements/12 scenarios、Markdown链接、C17 profile/reference及生产/前端零diff、git diff --check均PASS。
+
+## 2026-09-12 C18 W1离线工具与证据编译
+- Change：`generation-objective-evidence-baseline`；范围为W1离线manifest/schema、父子runner护栏、safe compiler和负例验证。
+- 修改文件：`scripts/c18_generation_contract.py`、`scripts/compile_generation_objective_baseline.py`、`scripts/run_rag_eval.py`、`scripts/run_reproducible_rag_eval.py`、两项C18测试、`docs/eval/config/c18-generation-objective-v1.json`、对应schema、W0预算审计中的两个runner源码hash、C18 proposal/design/tasks、`docs/eval/RAG_EVAL_GUIDE.md`、`.ai/ACTIVE_TASK.md`。
+- 已确认：C18 manifest绑定`rag-eval-dev-v2` exact 150及canary五条、W0 query embedding上限34/1492、ask/generation上限5/150、judge/router/cache关闭、zero retry和共享USER至少2.2秒节奏；源码/ID/order/repeat/预算/输出目录漂移在login或请求前fail closed。child超限不调用`urlopen`，父runner保留非零退出码；compiler不以debug contexts替代ask provenance，不以成功子集补分母。
+- 安全边界：tracked compiler摘要只保留allowlisted identity/hash/count/metric/status/reason；raw问题、答案、contexts、claims、provider payload、凭据、数字KB ID、collection和绝对路径不写入摘要。C17 profile/reference字节保持不变；无Java生产实现、无frontend变更。
+- 验证：`python -B -m unittest discover -s scripts -p 'test_*.py'`，265项通过；C18 canary/full plan-only通过；W1负例覆盖预算、身份、样本缺失、错误、debug-only claim、tooling source drift和no-overwrite。
+- 跳过：runtime fingerprint真实核验、HTTP preflight、canary/full、judge、KB重建/清理及验收/归档，因仍需各自授权；Java聚焦/Maven与frontend build未重复，生产Java/前端未修改。
+- 外部调用：backend/provider/SQL/Milvus/Redis/KB calls=0，业务数据出站=false；仅使用本地测试替身/离线文件。
+- 剩余风险：runtime fingerprint、真实provider传输重试与并发限流仍待执行前核验；W2/W3真实结果和C18验收未形成，不能据W1工具PASS宣称生成质量或baseline COMPLETE。
+- Commit: pending

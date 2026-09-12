@@ -852,4 +852,49 @@ python -B scripts/c18_budget_contract.py --mode canary
 python -B scripts/c18_budget_contract.py --mode full
 ```
 
-audit输出必须是本仓库tmp/eval/c18下的新文件；已存在时拒绝覆盖。源码hash变化时plan-only会BLOCKED，必须重验并审阅预算，不直接修改冻结数值。两个计划始终liveAuthorized=false/executionReady=false；真实runner、护栏/compiler尚待W1。每个debug或ask前至少2.2秒，因二者共用USER限流键；不修改服务端限流。正式ask会写query count/history，后续外调授权须明确包含这些本地副作用。
+audit输出必须是本仓库tmp/eval/c18下的新文件；已存在时拒绝覆盖。源码hash变化时plan-only会BLOCKED，必须重验并审阅预算，不直接修改冻结数值。两个计划始终liveAuthorized=false/executionReady=false；W1已补齐独立真实runner护栏和compiler，但仍不能代替外调授权。每个debug或ask前至少2.2秒，因二者共用USER限流键；不修改服务端限流。正式ask会写query count/history，后续外调授权须明确包含这些本地副作用。
+
+## C18 W1 离线执行护栏与证据编译
+
+W1 已增加独立 manifest/schema、父子 runner 参数互斥校验、请求发出前的 debug/ask/judge 预算护栏，以及只输出安全聚合结果的 compiler。它们只读本地数据；plan-only 不登录、不访问 backend/provider，也不表示 canary/full 已获授权。manifest、审计源码 hash、v2 的 ID/order、repeat=1、`topK=5`、`minScore=0.3`、heuristic、judge=off、Router=off、cache=false、retry=0 和 `2.2s` 节奏任一漂移都会 fail closed。
+
+先分别查看两个离线计划：
+
+```powershell
+python -B scripts\run_reproducible_rag_eval.py `
+  --c18-manifest docs\eval\config\c18-generation-objective-v1.json `
+  --c18-mode canary `
+  --plan-only --keep-existing --no-overwrite --include-ask `
+  --sample-id fact-001 --sample-id definition-001 `
+  --sample-id reasoning-001 --sample-id multi-hop-001 `
+  --sample-id no-answer-001 `
+  --no-retry-ask-timeouts --ask-delay-seconds 2.2 `
+  --retrieval-delay-seconds 2.2 `
+  --report tmp\eval\c18\canary-report.md `
+  --details-json tmp\eval\c18\canary-details.json `
+  --metadata-json tmp\eval\c18\canary-metadata.json
+
+python -B scripts\run_reproducible_rag_eval.py `
+  --c18-manifest docs\eval\config\c18-generation-objective-v1.json `
+  --c18-mode full `
+  --plan-only --keep-existing --no-overwrite --include-ask `
+  --no-retry-ask-timeouts --ask-delay-seconds 2.2 `
+  --retrieval-delay-seconds 2.2 `
+  --report tmp\eval\c18\full-report.md `
+  --details-json tmp\eval\c18\full-details.json `
+  --metadata-json tmp\eval\c18\full-metadata.json
+```
+
+canary 的预算是 `debugRetrieve=5`、`ask=5`、`generation≤5`、query embedding 上限 `34`；full 是 `150/150/≤150/1492`。后续真实运行前还必须提供未写入 tracked 文件的 operator-confirmed runtime fingerprint，并分别取得 canary、full 的外调授权。真实 raw details/metadata 只能写入 ignored `tmp/eval/c18/`，再用以下命令编译安全摘要；缺失、错误、身份漂移或非零护栏拒绝不会用成功子集补齐分母：
+
+```powershell
+python -B scripts\compile_generation_objective_baseline.py `
+  --manifest docs\eval\config\c18-generation-objective-v1.json `
+  --mode full `
+  --details tmp\eval\c18\full-details.json `
+  --metadata tmp\eval\c18\full-metadata.json `
+  --output-json docs\eval\reports\c18-generation-objective-review-v1.json `
+  --no-overwrite
+```
+
+compiler 只保留 manifest/dataset/runtime/Git hash、调用事实、分通道数值与状态；问题、答案、contexts、claims、provider payload、凭据、数字 KB ID、collection 和绝对路径留在本地 raw，不进入 tracked 摘要。`COMPLETE` 仍要求 exact 150、`CLEAN`、objective `COMPLETE`、judge `SKIPPED`、zero errors/retries、固定 identity 和预算合规；低分也不会触发本轮优化。

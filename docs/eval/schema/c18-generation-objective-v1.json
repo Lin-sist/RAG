@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "c18-generation-objective-v1",
+  "title": "C18 generation objective execution manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "manifestId",
+    "compilerVersion",
+    "toolingSourceSha256",
+    "dataset",
+    "budgetAudit",
+    "execution",
+    "retrieval",
+    "runtime",
+    "metrics",
+    "budgets",
+    "authorizationBoundary",
+    "rawArtifactPolicy",
+    "trackedOutputAllowlist"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "c18-generation-objective-v1"},
+    "manifestId": {"const": "rag-eval-dev-v2-generation-objective-v1"},
+    "compilerVersion": {"const": "c18-generation-objective-compiler-v1"},
+    "toolingSourceSha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "dataset": {"$ref": "#/$defs/dataset"},
+    "budgetAudit": {"$ref": "#/$defs/budgetAudit"},
+    "execution": {"$ref": "#/$defs/execution"},
+    "retrieval": {"$ref": "#/$defs/retrieval"},
+    "runtime": {"$ref": "#/$defs/runtime"},
+    "metrics": {"$ref": "#/$defs/metrics"},
+    "budgets": {"$ref": "#/$defs/budgets"},
+    "authorizationBoundary": {"$ref": "#/$defs/authorization"},
+    "rawArtifactPolicy": {"$ref": "#/$defs/rawPolicy"},
+    "trackedOutputAllowlist": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "pathDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestPath", "manifestSha256", "releaseVersion", "questionSetPath", "questionSetSha256", "questionSetBytes", "expectedSampleCount", "orderedIdsSha256", "fixtureCorpus"],
+      "properties": {
+        "manifestPath": {"type": "string"},
+        "manifestSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "releaseVersion": {"const": "rag-eval-dev-v2"},
+        "questionSetPath": {"type": "string"},
+        "questionSetSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "questionSetBytes": {"type": "integer", "minimum": 0},
+        "expectedSampleCount": {"const": 150},
+        "orderedIdsSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "fixtureCorpus": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/pathDescriptor"}}
+      }
+    },
+    "budgetAudit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "schemaVersion", "canaryBudget", "fullBudget"],
+      "properties": {
+        "path": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "schemaVersion": {"const": "c18-query-budget-audit-v1"},
+        "canaryBudget": {"$ref": "#/$defs/budget"},
+        "fullBudget": {"$ref": "#/$defs/budget"}
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["debugRetrieve", "ask", "generationUpperBound", "queryEmbeddingUpperBound", "modelRerank", "llmJudge"],
+      "properties": {
+        "debugRetrieve": {"type": "integer", "minimum": 0},
+        "ask": {"type": "integer", "minimum": 0},
+        "generationUpperBound": {"type": "integer", "minimum": 0},
+        "queryEmbeddingUpperBound": {"type": "integer", "minimum": 0},
+        "modelRerank": {"type": "integer", "minimum": 0},
+        "llmJudge": {"type": "integer", "minimum": 0}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "measuredRepeats", "runIndexes", "selectionMode", "judgeMode", "routerEnabled", "answerCache", "maxAskRetries", "retryAskTimeouts", "minimumRequestIntervalSeconds", "askDelaySeconds", "retrievalDelaySeconds"],
+      "properties": {
+        "mode": {"const": "generation/objective"},
+        "measuredRepeats": {"const": 1},
+        "runIndexes": {"const": [1]},
+        "selectionMode": {"const": "ordered-v2"},
+        "judgeMode": {"const": "off"},
+        "routerEnabled": {"const": false},
+        "answerCache": {"const": false},
+        "maxAskRetries": {"const": 0},
+        "retryAskTimeouts": {"const": false},
+        "minimumRequestIntervalSeconds": {"const": 2.2},
+        "askDelaySeconds": {"const": 2.2},
+        "retrievalDelaySeconds": {"const": 2.2}
+      }
+    },
+    "retrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topK", "minScore", "enableRerank", "requestedProvider", "effectiveProvider", "maxFallbackCount", "maxModelCallCount"],
+      "properties": {
+        "topK": {"const": 5},
+        "minScore": {"const": 0.3},
+        "enableRerank": {"const": true},
+        "requestedProvider": {"const": "heuristic"},
+        "effectiveProvider": {"const": "heuristic"},
+        "maxFallbackCount": {"const": 0},
+        "maxModelCallCount": {"const": 0}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "endpointIdentity", "model", "requestContractVersion", "temperature", "maxOutputTokens", "timeoutSeconds", "maxRetries"],
+      "properties": {
+        "provider": {"const": "openai"},
+        "endpointIdentity": {"const": "https://integrate.api.nvidia.com/v1/chat/completions"},
+        "model": {"const": "qwen/qwen3.5-122b-a10b"},
+        "requestContractVersion": {"const": "openai-compatible-chat-json-v1"},
+        "temperature": {"const": 0.2},
+        "maxOutputTokens": {"const": 2048},
+        "timeoutSeconds": {"const": 120},
+        "maxRetries": {"const": 0}
+      }
+    },
+    "metrics": {"type": "object", "additionalProperties": true},
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canary", "full"],
+      "properties": {"canary": {"$ref": "#/$defs/budget"}, "full": {"$ref": "#/$defs/budget"}}
+    },
+    "authorization": {"type": "object", "additionalProperties": true},
+    "rawPolicy": {"type": "object", "additionalProperties": false, "required": ["directory", "noOverwrite", "tracked"], "properties": {"directory": {"const": "tmp/eval/c18"}, "noOverwrite": {"const": true}, "tracked": {"const": false}}}
+  }
+}

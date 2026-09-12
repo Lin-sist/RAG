@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "c18-generation-objective-v1",
+  "manifestId": "rag-eval-dev-v2-generation-objective-v1",
+  "compilerVersion": "c18-generation-objective-compiler-v1",
+  "toolingSourceSha256": {
+    "scripts/c18_generation_contract.py": "c342a3c9f2425fff14d23bd54b8c00333d30ae9c9b47d738c47029c4171d1b31",
+    "scripts/compile_generation_objective_baseline.py": "eba4a40c146af8b644065e2a3a5cfcb2b40d5f2c8504aae88d265610d652348e",
+    "docs/eval/schema/c18-generation-objective-v1.json": "5f1535afed8fcb52047de61f5aecac85490908663618e33ea8ed4adbde098de4",
+    "docs/eval/schema/c18-generation-objective-evidence-v1.json": "3b9ab978eb6e3fc677e96f063e5a2403e6f84d20c3c0ea1dc60153deb3fabecc"
+  },
+  "dataset": {
+    "manifestPath": "docs/eval/dataset-manifest.json",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
+    "releaseVersion": "rag-eval-dev-v2",
+    "questionSetPath": "docs/eval/releases/rag-eval-dev-v2.jsonl",
+    "questionSetSha256": "cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d",
+    "questionSetBytes": 94504,
+    "expectedSampleCount": 150,
+    "orderedIdsSha256": "5baac0884a917ae20bf6e584207127f5d0e084569c5c07aa0c08d00fd986b67e",
+    "fixtureCorpus": [
+      {
+        "path": "test-data/springboot-basics.md",
+        "sha256": "c51df5761d510aa4c8a5fd610c90454b12973e2999138c3b57ba83768a296521",
+        "bytes": 7975
+      },
+      {
+        "path": "test-data/java-interview-guide.md",
+        "sha256": "a33f16e91025e9a8d92274c4221d1c172bb4f68c03790db53b8e20157ef4faa0",
+        "bytes": 6946
+      },
+      {
+        "path": "test-data/rag-technology-guide.md",
+        "sha256": "59ad5d66a59be2ce4e517ca81e37fde06b7673f3da7f798a4c76b01cc6f348a9",
+        "bytes": 7392
+      }
+    ]
+  },
+  "budgetAudit": {
+    "path": "docs/eval/reports/c18-query-budget-audit-v1.json",
+    "sha256": "3cf5fe27a8ed18e144e9334677ef9f12aaaa9f1ba1bd91ef6516ce6810ece5fe",
+    "schemaVersion": "c18-query-budget-audit-v1",
+    "canaryBudget": {
+      "debugRetrieve": 5,
+      "ask": 5,
+      "generationUpperBound": 5,
+      "queryEmbeddingUpperBound": 34,
+      "modelRerank": 0,
+      "llmJudge": 0
+    },
+    "fullBudget": {
+      "debugRetrieve": 150,
+      "ask": 150,
+      "generationUpperBound": 150,
+      "queryEmbeddingUpperBound": 1492,
+      "modelRerank": 0,
+      "llmJudge": 0
+    }
+  },
+  "execution": {
+    "mode": "generation/objective",
+    "measuredRepeats": 1,
+    "runIndexes": [1],
+    "selectionMode": "ordered-v2",
+    "judgeMode": "off",
+    "routerEnabled": false,
+    "answerCache": false,
+    "maxAskRetries": 0,
+    "retryAskTimeouts": false,
+    "minimumRequestIntervalSeconds": 2.2,
+    "askDelaySeconds": 2.2,
+    "retrievalDelaySeconds": 2.2
+  },
+  "retrieval": {
+    "topK": 5,
+    "minScore": 0.3,
+    "enableRerank": true,
+    "requestedProvider": "heuristic",
+    "effectiveProvider": "heuristic",
+    "maxFallbackCount": 0,
+    "maxModelCallCount": 0
+  },
+  "runtime": {
+    "provider": "openai",
+    "endpointIdentity": "https://integrate.api.nvidia.com/v1/chat/completions",
+    "model": "qwen/qwen3.5-122b-a10b",
+    "requestContractVersion": "openai-compatible-chat-json-v1",
+    "temperature": 0.2,
+    "maxOutputTokens": 2048,
+    "timeoutSeconds": 120,
+    "maxRetries": 0
+  },
+  "metrics": {
+    "claimMetricConfig": {
+      "claimMetricVersion": "claim-lexical-v1",
+      "claimSplitterVersion": "sentence-list-v1",
+      "tokenizerVersion": "ascii-cjk-bigram-v1",
+      "lexicalThreshold": 0.7,
+      "minClaimTokens": 2,
+      "evidencePolicy": "validated-returned-citations-only-v1"
+    },
+    "citationPolicy": "validated-returned-citations-only-v1",
+    "noAnswerPolicy": "existing-runner-v1"
+  },
+  "budgets": {
+    "canary": {
+      "debugRetrieve": 5,
+      "ask": 5,
+      "generationUpperBound": 5,
+      "queryEmbeddingUpperBound": 34,
+      "modelRerank": 0,
+      "llmJudge": 0
+    },
+    "full": {
+      "debugRetrieve": 150,
+      "ask": 150,
+      "generationUpperBound": 150,
+      "queryEmbeddingUpperBound": 1492,
+      "modelRerank": 0,
+      "llmJudge": 0
+    }
+  },
+  "authorizationBoundary": {
+    "offlineProviderCalls": 0,
+    "businessDataOutbound": false,
+    "liveAuthorized": false,
+    "egress": [
+      "tracked_v2_questions",
+      "deterministic_query_variants",
+      "fixture_contexts",
+      "fixed_prompt"
+    ],
+    "localSideEffects": [
+      "query_count",
+      "successful_answer_history"
+    ],
+    "directCostBasis": "user-declared-free-no-payment-method"
+  },
+  "rawArtifactPolicy": {
+    "directory": "tmp/eval/c18",
+    "noOverwrite": true,
+    "tracked": false
+  },
+  "trackedOutputAllowlist": [
+    "schemaVersion",
+    "status",
+    "reasonCodes",
+    "compiler",
+    "manifest",
+    "dataset",
+    "runIdentity",
+    "expected",
+    "actual",
+    "identity",
+    "providerAttribution",
+    "callFacts",
+    "channels",
+    "metrics",
+    "artifacts",
+    "privacy"
+  ]
+}
