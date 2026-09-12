@@ -2474,3 +2474,6 @@
 - 外部调用：backend/provider/SQL/Milvus/Redis/KB calls=0，业务数据出站=false；仅使用本地测试替身/离线文件。
 - 剩余风险：runtime fingerprint、真实provider传输重试与并发限流仍待执行前核验；W2/W3真实结果和C18验收未形成，不能据W1工具PASS宣称生成质量或baseline COMPLETE。
 - Commit: pending
+
+## 2026-09-12 C18 W1提交补录
+- 上一执行提交：`993404008c2875089ba7cc0eb0adefd104b4903e`（`feat(eval): 完成C18离线护栏与证据编译`）。
