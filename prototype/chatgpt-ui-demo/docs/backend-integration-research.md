@@ -1,7 +1,8 @@
 # chatgpt-ui-demo 对接真实后端调研报告
 
 > 文档性质：只读调研报告（Type A 产物），不改变任何能力声明，不构成实现授权。
-> 状态日期：2026-08-30 · Git HEAD：`46bd90a`（main，ahead 15）。
+> 状态日期：2026-09-13 · Git HEAD：`478d00d`（main，ahead 5）。
+> v1.0 基线：2026-08-30 · HEAD `46bd90a`。v1.1 修订要点见 §1.1，主体契约结论不变。
 > 调研方法：静态阅读后端 Controller/DTO/Security 配置、现有 `rag-frontend` API 层、OpenSpec spec 与 demo 全部源码；未启动后端、未发起任何 provider/embedding/LLM 外部调用。所有契约字段均标注来源文件，行号以该 HEAD 为准；运行时行为（尤其异常分支）需联调实测复核。
 
 ---
@@ -16,6 +17,16 @@
 3. **demo 9 个视图中有 5 个无后端支撑**（评测 / MCP / 可观测 / 知识源 / 研究任务），对接时应保持静态演示或裁剪，不要为其发明接口。
 4. **对接本身不需要新基础设施**：后端 CORS 允许任意来源（`allowedOriginPatterns("*")`），demo 的零依赖静态服务形态可以直接跨域调 8080；也可以走同源反代贴近生产形态。
 5. **治理路径**：本调研是 Type A 只读产物；真正动手对接属于 Type C（新增用户可见能力、改变 demo"不发起网络请求"的边界声明），必须先立 OpenSpec change 并更新 `.ai/ACTIVE_TASK.md`。
+
+### 1.1 v1.1 修订（2026-09-13，复核区间 `46bd90a..478d00d`）
+
+这段时间后端经历了 C17 收尾归档与 C18 开工，对前端契约的影响核实如下：
+
+1. **REST/SSE 契约零破坏性变更**。C18（`generation-objective-evidence-baseline`）是纯评测侧 change（judge 关闭下的 150 条生成基线），proposal 明确 out_of_scope 包括改检索/prompt/citation/no-answer 公式、开启 Router；期间后端 diff 仅涉及向量重建服务、embedding 身份绑定与 KB mapper，不改任何 Controller 签名。§5 三大模型级差距（会话、行内引用、流式终态）原样存在。
+2. **`KnowledgeBaseDTO` 新增 7 个字段（additive，非破坏）**：`vectorProviderFamily / vectorModel / vectorEndpointIdentity / vectorRequestContract / vectorDimension / vectorGeneration / vectorIdentityFingerprint`（V13 迁移 + `KnowledgeBaseServiceImpl.java`）。demo 知识库详情页的"向量库 Milvus · dim 2048"等硬编码信息可改为渲染真实向量身份。
+3. **⚠️ 存量知识库全部 fail closed（对联调影响最大）**：embedding 模型默认值已更换（`nvidia/llama-nemotron-embed-1b-v2` → `nvidia/nemotron-3-embed-1b`），`requireReadyVectorScope` 现在会校验 KB 绑定的向量身份与当前激活的 embedding 身份完全一致，不一致或 `vectorGeneration` 为空即抛 `VectorDependencyException.indexNotReady`（`KnowledgeBaseServiceImpl.java:122-133`）。V13 迁移注释原文："Existing READY rows intentionally remain identity-null and therefore fail closed"。**即：C17 之前创建的所有知识库（含 demo mock 里出现过的旧库）既不能问答也不能上传，只有新建知识库才会绑定当前 embedding 身份**。迁移分期的顺序因此调整为"先建库上传、再问答"（见 §7.2/§7.5）。
+4. **C18 带来联调窗口约束**：C18 的 canary/full 会以共享 USER 限流（≥2.2 秒/请求节奏）执行真实 ask/embedding 调用，且 REST ask 有 query count/history 写入副作用（proposal 已披露）。demo 的问答/上传联调应避开 C18 的 live 执行窗口，见 §7.5。
+5. **迁移时机结论：可以立即开始，无需等 C18 完成**——理由与两车道排程见 §7.5。
 
 ---
 
@@ -87,7 +98,7 @@
 | `/{id}/documents` | GET | — | `Document[]` | READ |
 | `/{kbId}/documents/{docId}` | DELETE | — | null | WRITE；20/60s |
 
-`KnowledgeBaseDTO`：`id, name, description, ownerId, vectorCollection, documentCount, isPublic, createdAt, updatedAt`。
+`KnowledgeBaseDTO`：`id, name, description, ownerId, vectorCollection, documentCount, isPublic, createdAt, updatedAt`；v1.1 起新增向量身份字段 `vectorProviderFamily, vectorModel, vectorEndpointIdentity, vectorRequestContract, vectorDimension, vectorGeneration, vectorIdentityFingerprint`（C17 引入，demo 详情页可直接渲染真实向量模型/维度，替代原来的硬编码）。
 `KnowledgeBaseStatistics`：`kbId, documentCount, vectorCount, queryCount`。
 `Document`：`id, kbId, uploaderId, title, fileType, contentHash, status, chunkCount, createdAt, updatedAt`（`status ∈ PENDING/PROCESSING/COMPLETED/FAILED/RECONCILIATION_REQUIRED`；**无文件大小字段**，`inputSizeBytes` 被 `@JsonIgnore`）。
 `DocumentUploadResponse`：`documentId, taskId(string), fileName, fileType, status="PENDING"`。
@@ -254,8 +265,9 @@ demo 的五态终态条（含 NO_ANSWER 拒答解释、ERROR 分类）在流式�
 8. 无结果/错误在同步路径也是 200：靠 `metadata.status`（`no_result`/`error`）区分，不要只看 HTTP。
 9. `debug/retrieve` 检索失败也是 200 + `status:"retrieve_failed"`。
 10. Redis 未启动时所有需认证请求 503（本地联调常见故障，先查 compose 栈）。
-11. 联调会产生**真实的 embedding/rerank/LLM provider 调用与费用**：按仓库规则需在事前说明调用量并取得授权；当前 active change（C17）阶段向量索引处于未就绪状态，问答可能以 `VECTOR_INDEX_NOT_READY`/503 失败——联调前先确认有一个已完成索引的知识库。
-12. demo 的 `mdRender()` 是迷你渲染器（粗体/行内代码/标题/列表/引用块/代码块），真实 LLM 回答可能含表格、链接、嵌套结构 → 要么扩渲染器，要么换 markdown-it（引入依赖，破坏"零依赖"边界，需决策）；现有"先 esc 后渲染"的顺序必须保留（防 XSS）。
+11. 联调会产生**真实的 embedding/rerank/LLM provider 调用与费用**：按仓库规则需在事前说明调用量并取得授权。
+12. **（v1.1）存量知识库不可用**：向量身份与当前 embedding 模型不一致（含身份为空的全部旧库）时，问答/检索/上传一律 503 `indexNotReady` fail closed（§1.1 第 3 条）。联调必须新建知识库走完整上传链路，不要假设旧库可复用。
+13. demo 的 `mdRender()` 是迷你渲染器（粗体/行内代码/标题/列表/引用块/代码块），真实 LLM 回答可能含表格、链接、嵌套结构 → 要么扩渲染器，要么换 markdown-it（引入依赖，破坏"零依赖"边界，需决策）；现有"先 esc 后渲染"的顺序必须保留（防 XSS）。
 
 ---
 
@@ -271,11 +283,13 @@ demo 的五态终态条（含 NO_ANSWER 拒答解释、ERROR 分类）在流式�
 | 期 | 内容 | 验收 |
 | --- | --- | --- |
 | P0 认证 | 登录页接 `/auth/login`；token 存储 + axios 式请求封装（原生 fetch 即可）+ 单飞 refresh + 401 处理 + logout；顶栏/菜单显示真实 userInfo | 登录→刷新页面保持登录→过期自动续期→登出黑名单生效 |
-| P1 问答主链路 | KB 列表接真实数据（kbId 选择器）；同步 `/ask` + 流式 `/ask/stream`；引用列表（降级方案 1）；[ERROR]/[DONE]/停止按钮；错误/空态（no_result）UI | 真实知识库上问答全链路可用，拒答与错误可见 |
-| P2 知识库与文档 | KB 新建/删除；文档列表/删除；上传 + 任务轮询面板（mock 定时器替换为真实轮询） | 上传→进度→完成→可检索 闭环 |
+| P1 知识库与文档（v1.1 前置） | KB 新建/删除；文档列表/删除；上传 + 任务轮询面板（mock 定时器替换为真实轮询）。**必须先于问答联调**：存量 KB 因向量身份 fail closed，问答只能发生在新建 KB 上传完成之后 | 新建 KB→上传→进度→完成→`vectorGeneration` 非空 闭环 |
+| P2 问答主链路 | KB 范围选择（真实 kbId）；同步 `/ask` + 流式 `/ask/stream`；引用列表（降级方案 1）；[ERROR]/[DONE]/停止按钮；错误/空态（no_result）UI | 在 P1 的新建知识库上问答全链路可用，拒答与错误可见 |
 | P3 历史与反馈 | 历史列表接 `/api/history`（信息架构按 §5.1 决策落地）；点赞/点踩接 feedback（需先解决 historyId 获取，见矩阵 #11）；我的反馈页 | 反馈可写可读 |
 | P4 检索可视化 | 高级菜单参数真实映射（topK/minScore/enableCache）；管道视图改吃 `debug/retrieve`；演示成分显式标注 | 管道数据与真实检索一致（除分步耗时） |
 | 持续 | 评测/MCP/可观测/知识源/研究任务 5 页保持静态演示并保留"演示数据"角标；语音/听写/对话搜索等占位维持 | 不为演示页发明接口 |
+
+> v1.1 顺序调整说明：v1.0 的 P1（问答）/P2（知识库文档）顺序对调——因为存量 KB 全部 fail closed，"新建 KB + 上传"从可选能力变成了问答联调的**前置条件**；且新建/上传链路不调用 LLM（仅 embedding），是外调成本最低、又最能验证任务轮询契约的切片。
 
 ### 7.3 治理路径
 
@@ -287,9 +301,25 @@ demo 的五态终态条（含 NO_ANSWER 拒答解释、ERROR 分类）在流式�
 
 - [ ] MySQL/Redis/Milvus compose 栈可用；后端 8080 启动（`start-backend.ps1`）
 - [ ] 管理员账号就绪（`AUTH_BOOTSTRAP_*` 引导或已有账号）
-- [ ] 至少一个知识库已完成索引（`GET /statistics` 的 vectorCount > 0）
-- [ ] LLM/embedding/rerank provider 配置确认，**外部调用量与费用已获用户授权**
+- [ ] **（v1.1）问答联调目标为"新建知识库"**：旧库向量身份为 null 会 fail closed；新建后确认 `GET /statistics` 的 vectorCount > 0 且 DTO 的 `vectorGeneration` 非空
+- [ ] LLM/embedding/rerank provider 配置确认，**外部调用量与费用已获用户授权**；demo 的 ask/上传调用须避开 C18 canary/full 的 live 执行窗口（§7.5）
 - [ ] Swagger（`/swagger-ui.html`）可访问，作为联调期契约仲裁
+
+### 7.5 迁移时机建议（2026-09-13，基于 C17 归档 / C18 W1 完成）
+
+**结论：立即开始，今天就能动工，不需要等 C18 完成，也不建议把它推到下个星期。** 理由：
+
+1. **契约面已经稳定**：`46bd90a..478d00d` 复核区间内 REST/SSE 零破坏性变更（§1.1），C18 是评测侧工作、不改前端契约；三大模型级差距也不会因等待消失。等待唯一的收益是若下周的后端迭代排入 P1.4（SSE 结构化终态）或 QAResponse 回传 historyId——二者能从源头关闭 demo 的两个降级设计，但都不在 C18 范围内、无既定排期，不应作为迁移的前置。
+2. **联调前置条件比 v1.0 更明确**：C17 已归档（ACTIVE profile + locked reference），向量链路本身是验证过的；唯一硬约束是"必须用新建知识库"（§1.1 第 3 条），这是确定性规则而非环境风险。
+
+**两车道排程**（与 C18 共存不冲突）：
+
+| 车道 | 内容 | 对 C18 的影响 | 何时做 |
+| --- | --- | --- | --- |
+| A：零外调 | P0 认证联调（login/refresh/logout 只触本机 MySQL/Redis，不碰 provider）；KB/文档/历史的**只读**路径；P1–P4 全部代码编写与自测 | 无 | **立即，随时** |
+| B：有外调 | 新建 KB + 上传（embedding 按块计费）；问答 ask/stream/debug（每次 ask = 真实检索 + LLM 生成） | 共享 USER 限流（≥2.2s/请求）竞争；REST ask 写 query count/history | 避开 C18 canary/full 的 live 执行窗口；当前 C18 W2 canary 尚未申请授权，正好是空窗 |
+
+**具体建议**：今天完成 OpenSpec change 立项 + 车道 A（认证/只读/代码）；车道 B 中的"新建 KB + 上传"调用量小且可控（几个测试文档），可在与 C18 窗口错开的前提下尽早做；批量问答联调（流式、重新生成、建议问题等易触发限流的场景）放到 C18 full run 完成之后集中做，并按仓库规则对调用量单独授权。若 C18 的 live 授权与 demo 联调窗口撞期，**C18 优先**——评测窗口内插业务调用会污染其限流节奏与副作用披露口径。
 
 ---
 

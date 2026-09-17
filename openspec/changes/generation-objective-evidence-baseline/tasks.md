@@ -23,7 +23,8 @@
 - [x] canary/full plan-only：精确预算、模型、出站和副作用，前置缺失时fail closed。
 
 ## 3. W2 Canary（待单独授权）
-- [ ] 提交形成clean HEAD，HTTP preflight只读验证3 fixtures/50 chunks、c17g3/model identity。
+- [ ] 提交形成 clean HEAD（当前工作区仍有用户既有修改）。
+- [x] 持久化 embedding identity 后，HTTP preflight 只读验证 3 fixtures/50 chunks、c17g3/model identity；连续两次 `READY`，vector `50/50`，fixture `3/3`。
 - [ ] 披露5 debug/5 ask/≤5 generation、精确E(canary)、fixed ID出站、timeout/retry/限流及query count/history写入，取得授权。
 - [ ] 固定5条一次no-overwrite执行，judge/model rerank=0；失败保留并停止，无自动重跑或full。
 - [ ] 验证canary预算/identity完整，不据小样本宣称质量达标。

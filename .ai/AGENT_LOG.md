@@ -2477,3 +2477,36 @@
 
 ## 2026-09-12 C18 W1提交补录
 - 上一执行提交：`993404008c2875089ba7cc0eb0adefd104b4903e`（`feat(eval): 完成C18离线护栏与证据编译`）。
+
+## 2026-09-13｜调研文档 v1.1 修订：复核 C17 归档/C18 开工后的契约面并给出迁移时机结论
+
+- 任务类型：Type A 只读调研复核（用户询问 C18 阶段下何时开始 demo→后端迁移，并授权按需修改迁移文档；未立新 OpenSpec change、未改 `.ai/ACTIVE_TASK.md`）。
+- 范围与修改文件：`prototype/chatgpt-ui-demo/docs/backend-integration-research.md`（v1.0→v1.1：头部基线更新至 HEAD `478d00d`、新增 §1.1 修订摘要、§2.4 KnowledgeBaseDTO 新字段、§6 注意事项 11-13 重排、§7.2 分期 P1/P2 对调、§7.4 checklist 更新、新增 §7.5 迁移时机建议）；追加本日志。
+- 已确认事实与关键决策：复核区间 `46bd90a..478d00d` 内 REST/SSE 契约零破坏性变更（C18 proposal 明确评测侧 out_of_scope；后端 diff 仅向量重建/embedding 身份/KB mapper）；`KnowledgeBaseDTO` additive 新增 7 个向量身份字段；embedding 默认模型更换为 `nvidia/nemotron-3-embed-1b` 且 `requireReadyVectorScope` 新增身份一致性校验，V13 迁移注释原文确认存量 READY 行 identity-null 刻意 fail closed——**旧知识库问答与上传均不可用，联调必须新建 KB**，据此把"新建 KB+上传"分期前置到问答之前；C18 canary/full 以共享 USER 限流（≥2.2s/请求）执行真实 ask/embedding 且 REST ask 写 query count/history。关键决策：迁移时机结论为"立即开始、两车道排程"（车道 A 零外调随时做；车道 B 有外调避开 C18 live 窗口，撞期时 C18 优先），不建议等待——等待仅在 P1.4 SSE 结构化终态或 historyId 回传排期时才有契约收益，二者均不在 C18 范围。
+- 验证：`git diff 46bd90a..HEAD`（Controller/DTO/application.yml 逐一核对）、C18 proposal 与 V13 SQL 原文阅读、`requireReadyVectorScope`/`activeIdentityMatches` 源码核验；`git diff --check`=PASS。
+- 跳过项：未启动后端、未发起任何 provider 调用；C18 live 窗口的实际限流表现为推定（依据 proposal 披露），待窗口出现时实测。
+- 剩余风险：存量旧库若要复用需显式授权的 `vector-model-rebuild`（默认关、非 REST），demo 迁移路径已绕开该依赖；车道 B 上传/ask 的外部调用仍需按仓库规则逐次授权。
+- Commit：`pending`；提交责任为用户手动提交（本轮未获提交授权），建议 `docs(前端): 调研文档v1.1复核C18契约面并给出迁移时机结论`；push/PR/deploy 未授权。
+
+## 2026-09-17 C18 W2 preflight阻断定位与临时复验
+
+- 范围：恢复本地 Docker 依赖、启动现有后端并执行 C18 canary 的 `--preflight-only --keep-existing`；不修改 `.env.local`，不执行 live canary/full、judge、KB重建或清理。
+- 已确认：Docker Compose 的 etcd/Milvus/MinIO/MySQL/Redis 当前均为 healthy；后端使用临时进程环境覆盖 `NVIDIA_EMBED_MODEL=nvidia/nemotron-3-embed-1b` 后，active embedding identity 与 KB 15 的现有 collection 一致。
+- 根因证据：`.env.local` 当前仍为 `nvidia/llama-nemotron-embed-1b-v2`；该配置下既有 preflight 返回 `BLOCKED / VECTOR_READINESS_UNAVAILABLE`。同一代码、同一 KB、同一 fixture 参数仅切换为现有 collection 对应 identity 后返回 `READY`，`vectorCount=50`、`expectedVectorCount=50`，3/3 fixture 匹配，状态 `COMPLETED`，chunk counts=11/14/25，`mutationFree=true`。
+- 外部调用边界：本次仅发生本机后端的登录、知识库/文档读取和只读 statistics 检查；provider、embedding、rerank、ask、generation、judge calls=0，未创建/上传/删除/重建资源，业务数据未出站。
+- Docker边界：恢复使用安全的 Explorer 上下文启动方式；未删除或重建容器、镜像、卷或 WSL 数据。持久化配置尚未修改，普通启动仍可能因 `.env.local` identity 漂移再次阻断，需单独明确授权后修正。
+- 验证：`docker compose --env-file .env.local ps`=5 services healthy；C18 canary preflight=`READY`；输出写入 ignored `tmp/eval/c18/`，未覆盖既有 raw；工作区仍保留用户既有两项未提交修改。
+- 跳过：live canary/full及其真实 provider/ask 调用，因 manifest liveAuthorized=false且canary需独立授权；`.env.local`持久化修正，因受仓库规则保护且本轮未获明确文件修改授权；commit/push/PR/deploy未执行。
+- 剩余风险：普通启动入口仍读取旧 embedding identity；当前 W2 仍未形成 clean HEAD，也未取得 canary 外调授权，不能宣称 C18 generation/citation/objective baseline 完成。
+- Commit: pending
+
+## 2026-09-17 C18 embedding identity持久化修复与普通启动复验
+
+- 用户授权：允许修改本地 `.env.local` 中的 `NVIDIA_EMBED_MODEL`；未扩大到 live canary/full、judge、KB重建/清理、commit或push。
+- 修改：仅将 `.env.local` 的 `NVIDIA_EMBED_MODEL` 从 `nvidia/llama-nemotron-embed-1b-v2` 改为现有 KB 15 collection 对应的 `nvidia/nemotron-3-embed-1b`；其他本地配置未改。
+- 验证：使用未覆盖环境变量的真实入口 `start-backend.ps1` 启动，Maven 内部模块安装 `BUILD SUCCESS`，启动日志 active embedding provider=`nvidia/nemotron-3-embed-1b`；C18 canary `--preflight-only --keep-existing` 连续两次均为 `READY`，vector `50/50`，fixture `3/3`，document states=`COMPLETED`，chunk counts=11/14/25，`mutationFree=true`。
+- 外部调用边界：两次 preflight 仅执行本机登录、KB/文档读取和只读 statistics；provider、embedding、rerank、ask、generation、judge calls=0，未创建/上传/删除/重建评测资源，业务数据未出站。
+- 安全与范围：未修改 Java/前端/OpenSpec契约，未触碰用户既有 `prototype/chatgpt-ui-demo/docs/backend-integration-research.md` 修改；Docker 容器/镜像/卷/WSL 数据未删除或重建。`.env.local` 为本地受保护配置，已按用户授权修改一行。
+- 跳过：live canary/full及其真实 provider/ask调用，因仍需独立外调授权；未声称 C18 generation/citation/objective baseline 完成。当前仍有用户既有工作区修改，未形成 clean HEAD。
+- 剩余风险：Docker 重启后的自动启动策略未配置为本轮目标；若系统重启后 Docker 未自动启动，仍需按安全启动方式恢复依赖。C18 canary/full质量结果尚未产生。
+- Commit: pending
