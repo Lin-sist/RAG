@@ -337,7 +337,10 @@ def _validate_sample(
         if facts.get("generationBypassCount") == 1 and isinstance(ask, dict) and ask.get("metadata", {}).get("status") != "no_result":
             _reason(result, "no_answer_generation_bypass_mismatch")
             incomplete = True
-        if facts.get("generationBypassCount") == 0 and isinstance(ask, dict) and ask.get("metadata", {}).get("status") == "no_result":
+        if (facts.get("generationBypassCount") == 0 and isinstance(ask, dict)
+                and ask.get("metadata", {}).get("status") == "no_result"
+                and not ask.get("metadata", {}).get("model")
+                and not ask.get("contexts")):
             _reason(result, "generation_bypass_fact_mismatch")
             incomplete = True
     return invalid, incomplete

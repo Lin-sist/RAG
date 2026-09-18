@@ -18,6 +18,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class C18GenerationContractTest(unittest.TestCase):
+    def test_generated_no_answer_is_not_a_generation_bypass(self) -> None:
+        response = {"contexts": [{"content": "synthetic"}],
+                    "metadata": {"status": "no_result", "model": c18.EXPECTED_RUNTIME["model"]}}
+        facts = c18.execution_facts(response, 1, 0, 0, {})
+        self.assertEqual((facts["generationCalls"], facts["generationBypassCount"]), (1, 0))
+        facts = c18.execution_facts({"metadata": {"status": "no_result"}}, 1, 0, 0, {})
+        self.assertEqual((facts["generationCalls"], facts["generationBypassCount"]), (0, 1))
+
     def test_retrieval_failure_never_calls_ask_in_c18(self) -> None:
         args = Namespace(skip_ask=False, base_url="http://localhost", kb_id=1,
                          top_k=5, min_score=0.3, enable_rerank=True, timeout=1,

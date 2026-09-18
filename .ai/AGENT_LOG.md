@@ -2565,3 +2565,8 @@
 - 待验证：Python全套、runtime/preflight、新canary和full。旧raw不覆盖，诊断不进入基线。
 - Commit: pending
 - 离线验证：模型身份修订后Python268 tests/OK；生成合成HTTP200，正式canary/full尚未开始。
+
+## 2026-09-18 模型冻结提交补录与计数核验
+- 上一执行提交：a11bf28（fix(eval): 为C18冻结可用的Nemotron生成模型）。
+- 代码审查确认模型生成的no_result仍消耗generation；修复C18计数仅将无model且无context的服务端no_result记bypass，补合成回归；不改业务拒答语义。修改contract/compiler/test/manifest。Commit: pending
+- 计数修复验证：269 Python tests/OK，业务Java/前端未改；预算不变，无新增真实调用。

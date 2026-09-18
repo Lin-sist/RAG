@@ -652,7 +652,11 @@ def execution_facts(
     if not isinstance(metadata, dict):
         metadata = {}
     status = str(metadata.get("status") or "")
-    generation_bypass = 1 if status == "no_result" else 0
+    # A model can itself refuse. Only the service's empty-context no-result
+    # branch lacks both a model identity and returned contexts.
+    generation_bypass = 1 if (status == "no_result" and not metadata.get("model")
+                             and not metadata.get("llmModel")
+                             and not (ask_response or {}).get("contexts")) else 0
     generation_calls = 0 if generation_bypass else 1 if ask_response is not None else None
     cache_hit = bool(metadata.get("cached") or metadata.get("cacheHit"))
     expected_model = (expected_runtime or EXPECTED_RUNTIME).get("model")
