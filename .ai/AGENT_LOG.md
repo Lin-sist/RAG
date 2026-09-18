@@ -2570,3 +2570,13 @@
 - 上一执行提交：a11bf28（fix(eval): 为C18冻结可用的Nemotron生成模型）。
 - 代码审查确认模型生成的no_result仍消耗generation；修复C18计数仅将无model且无context的服务端no_result记bypass，补合成回归；不改业务拒答语义。修改contract/compiler/test/manifest。Commit: pending
 - 计数修复验证：269 Python tests/OK，业务Java/前端未改；预算不变，无新增真实调用。
+
+## 2026-09-18 r2 模型修复后的真实canary
+- 上一执行提交：ad39548d76874de21f0231e9e6f40e367f476511（fix(eval): 区分生成拒答与无上下文绕过计数）。
+- 用户授权继续剩余任务；原Qwen免费endpoint已由官方确认为Deprecated，新模型Nemotron3 Super合成200、Java进程CLI模型覆盖已核验、preflight READY。
+- r2实际debug/ask各1；生成provider HTTP503 ServiceUnavailable，timeout120s/retry0；首题停止、后4题和full未发出。原raw不覆盖。Python和Java均无代理，现有OpenAI协议字段一致，尚无证据归因为本地网络或请求格式错误。
+- 离线compiler返回NOT_COMPARABLE：旧的fixture/judge/details metadata兼容性原因已消失；仍有实际失败/缺样本以及git_provenance_not_clean。运行期间另一个任务修改AGENTS.md和共享日志（用户手动提交范围），metadata真实记录clean=false，不抹除该证据。
+- 修改：r2失败脱敏summary、失败说明、ACTIVE_TASK、tasks和本日志。只提交本任务日志增量，不混入其他任务AGENTS或日志。
+- 验证：269 Python tests沿用当前相同代码成功结果；git diff --check聚焦本任务；C17/题目/fixture和.env.local未改，未push/PR/deploy。
+- 跳过：full、baseline接受/归档，因为canary503且不满足clean身份；不重试/不拼接。新完整run需要干净隔离checkout和新身份；provider持续可用性仍未知。
+- Commit: pending

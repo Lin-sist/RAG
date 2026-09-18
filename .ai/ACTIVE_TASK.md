@@ -8,7 +8,7 @@
 
 - Change ID：`generation-objective-evidence-baseline`
 - 路径：`openspec/changes/generation-objective-evidence-baseline/`
-- 阶段：`C18_CANARY_FAILED_PROVIDER_HTTP_410`
+- 阶段：`C18_R2_CANARY_FAILED_PROVIDER_HTTP_503`
 - 目标：judge关闭下建立v2/150条一次完整真实generation/citation/objective claim/no-answer基线。
 
 ## Current Boundary
@@ -40,3 +40,9 @@
 已修复Windows fixture路径规范化、judge模式从已验证的c18Execution读取、仅对完全匹配的公开runtime descriptor保留maxOutputTokens数值；任意同名字段仍脱敏。失败generation计数聚合现在保留null并单列unknown样本数，不再折算成0。真实runner的judge descriptor和sanitize函数已接入回归测试，全套Python 268 tests/OK，git diff --check PASS。仅同步相关源码hash，预算及模型未改。
 
 上文描述的是原始失败run及原版compiler发现的问题；这些离线缺口已修复，但原始失败证据和原版摘要未改写、未重编成COMPLETE。下一步实际阻断仍为冻结生成模型HTTP410；没有追加provider请求，也没有执行full。
+
+## 最新状态：r2 canary失败
+- 原Qwen免费端点Deprecated已确认，C18模型契约改为nvidia/nemotron-3-super-120b-a12b；合成检查200、Java CLI身份核验、preflight READY。
+- r2首题生成HTTP503，debug/ask各1、retry0；full未启动。详见 docs/eval/reports/c18-canary-r2-20260918-failure.md。
+- 并发其他任务修改AGENTS.md/AGENT_LOG，r2 metadata clean=false；不得将本次作为clean基线。后续真实运行须隔离checkout或待用户工作区干净，不暂存其他任务修改。
+- 269 tests通过，compiler兼容性修复生效；阶段保持ACTIVE，不归档。

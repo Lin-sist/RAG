@@ -71,3 +71,8 @@
 - [ ] 解决冻结模型HTTP410，并重新执行新身份canary；本次失败不拼接、不自动重跑，full未启动。
 - [x] 修复真实runner暴露的compiler元数据缺口（268 tests PASS）：Windows路径、judgeConfig.mode、maxOutputTokens误脱敏、失败generation计数unknown语义；不得改raw凑COMPLETE。
 - [ ] full/真实baseline验收/归档仍未完成，原因已从审批阻断变为provider失败及上述工具兼容性问题。
+
+## r2 重冻结与执行
+- [x] 官方确认旧Qwen免费端点Deprecated；新模型Nemotron3 Super合成HTTP200，manifest r2冻结，269 Python tests通过。
+- [x] 进程CLI覆盖而不改.env.local；preflight READY，新canary只发首题后因HTTP503停止。
+- [ ] provider持续可用性与新clean canary/full；r2另受并发工作区改动影响，metadata clean=false，不能接受为基线。
