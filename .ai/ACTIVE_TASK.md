@@ -8,7 +8,7 @@
 
 - Change ID：`generation-objective-evidence-baseline`
 - 路径：`openspec/changes/generation-objective-evidence-baseline/`
-- 阶段：`C18_W1_COMPLETE_W2_PENDING`
+- 阶段：`C18_RUNTIME_READY_LIVE_APPROVAL_REVIEW_BLOCKED`
 - 目标：judge关闭下建立v2/150条一次完整真实generation/citation/objective claim/no-answer基线。
 
 ## Current Boundary
@@ -20,3 +20,10 @@
 - REST ask会写query count/history；后续外调披露必须包含该本地副作用。2026-09-17已执行两次仅本机读取的 C18 canary preflight，均为 `READY`（vector 50/50、fixtures 3/3、chunk 11/14/25）；provider/embedding/rerank/ask/generation/judge calls=0，业务数据未出站、资源未mutation。
 - 用户已授权将 `.env.local` 的 `NVIDIA_EMBED_MODEL` 对齐至现有 KB 15 的 `nvidia/nemotron-3-embed-1b`；普通 `start-backend.ps1` 启动日志与两次 preflight 均验证持久化 identity 生效。
 - 本轮C18规划提交责任：`Agent 提交`（2026-09-11用户明确授权本地提交并保持Git干净）。用户已授权C18离线实现，本轮完成W1；未执行任何live调用。后续canary/full及验收/归档仍按对应范围授权；无push/PR/deploy授权。
+
+## 2026-09-18 当前执行状态（覆盖上方旧授权待办）
+
+- 用户明确授权一次性完成 C18 并由 Agent 提交；runtime allowlist 核验及真实只读 preflight READY，3 fixtures/50 vectors，后端启动成功。
+- 补齐 C18 runner 失败即停护栏，Python 266 tests PASS；本地提交 `a8c95cf`。
+- 真正执行 canary 前，自动审批拒绝命令：要求可信用户内容明确确认开发题目/变体/fixture contexts/prompt 至 NVIDIA endpoint 的具体出站及本地 history 写入，未接受整阶段授权覆盖该载荷。命令未启动，canary/full/provider calls=0。
+- W2/W3/W4 未完成；不标 IDLE、不接受 baseline、不归档、不宣称真实 generation 质量。下一步只需解除该具体审批阻断，无需重复离线实现。

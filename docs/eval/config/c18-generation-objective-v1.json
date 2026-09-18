@@ -37,7 +37,7 @@
   },
   "budgetAudit": {
     "path": "docs/eval/reports/c18-query-budget-audit-v1.json",
-    "sha256": "407f4961d528d3a4f3a74eba0e6ddce8f89676453641f924ad9d454a183d5a45",
+    "sha256": "a34b59cd99e845c0014270ac1cb7b76e020ee728c9140ffcb14665fc686a1c1a",
     "schemaVersion": "c18-query-budget-audit-v1",
     "canaryBudget": {
       "debugRetrieve": 5,

@@ -2520,3 +2520,16 @@
 - 剩余风险：canary/full 真实完整性和 provider 可用性待执行。
 - Commit: pending
 - 验证补录：修复后 Python 266 tests/OK；git diff --check PASS。
+
+## 2026-09-18 C18 护栏提交补录
+- 上一执行提交：`a8c95cff4f2614568e46a91d1549e92698be7fe3`（fix(eval): 补齐C18失败即停执行护栏）。
+
+## 2026-09-18 C18 runtime READY 与真实执行自动审批阻断
+- 范围：ACTIVE_TASK、C18 tasks、本日志、audit/manifest（恢复 audit 原排版，仅保留 runner hash 变化）。
+- 验证：Docker 5 services healthy；正常 start-backend.ps1 成功；active embedding nemotron-3-embed-1b；LLM qwen/qwen3.5-122b-a10b，120s/retry=0/temperature=0.2，生成上限2048；provider key仅检查存在，不输出。只读 HTTP preflight READY，mutationFree=true，fixtures=3，vectors=50。
+- 自动审批在 canary 进程启动前拒绝：用户整阶段授权未被审核器视为题目/变体/fixture contexts/prompt 发送至 NVIDIA 及 history 写入的具体授权。未绕过/重试；本轮 provider/embedding/ask/generation/judge calls=0，未产生评测 query count/history。
+- 跳过：canary/full及compiler真实质量验收/归档，因为自动审批阻断；Java/前端无改动，不重复其测试。C18保持ACTIVE，不虚报完成。
+- 范围安全：C17 profile/reference、原raw、题目/fixture及本地配置均保持；无KB重建/清理，无push/PR/deploy。
+- 剩余风险：真实provider可用性、完整150条generation/citation/objective基线仍未知。
+- Commit: pending
+- 最终验证：C18聚焦16 tests/OK、git diff --check PASS；输出中的 BLOCKED 为 no-overwrite 负例的预期结果。

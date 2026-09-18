@@ -23,7 +23,7 @@
 - [x] canary/full plan-only：精确预算、模型、出站和副作用，前置缺失时fail closed。
 
 ## 3. W2 Canary（待单独授权）
-- [ ] 提交形成 clean HEAD（当前工作区仍有用户既有修改）。
+- [x] 提交形成 clean HEAD：2026-09-18 初始 clean，护栏修复提交 a8c95cf；无用户未提交修改。
 - [x] 持久化 embedding identity 后，HTTP preflight 只读验证 3 fixtures/50 chunks、c17g3/model identity；连续两次 `READY`，vector `50/50`，fixture `3/3`。
 - [ ] 披露5 debug/5 ask/≤5 generation、精确E(canary)、fixed ID出站、timeout/retry/限流及query count/history写入，取得授权。
 - [ ] 固定5条一次no-overwrite执行，judge/model rerank=0；失败保留并停止，无自动重跑或full。
@@ -58,3 +58,9 @@
 - [x] RED→GREEN：13项C18 W1聚焦测试通过；全套Python `unittest discover` 共265项通过；canary/full plan-only通过。
 - [x] 本轮仅修改C18离线脚本/配置/schema、W0审计源码hash、OpenSpec/eval guide/日志；无Java生产实现、无frontend变更、无真实provider/backend/KB/SQL/Milvus调用。
 - [ ] runtime fingerprint验证、5条canary、150条full、真实baseline验收和change归档仍按独立授权推进。
+
+## 2026-09-18 整阶段执行与自动审批阻断
+- [x] 收到用户整阶段及 Agent commit 授权，完成具体预算/出站/REST副作用披露。
+- [x] 修复 direct runner 在 C18 样本错误后继续调用的缺口；266 Python tests PASS。
+- [x] Docker 五项 healthy、后端启动、runtime allowlist 核验、只读 preflight READY。
+- [ ] 真实 canary 命令被自动审批拒绝，尚未发出；需用户明确具体 NVIDIA 出站载荷及本地 history 写入，full/真实验收/归档因此仍未完成。
