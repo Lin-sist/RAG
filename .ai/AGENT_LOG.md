@@ -2557,3 +2557,11 @@
 
 ## 2026-09-18 C18真实执行与修复提交补录
 - 上一执行提交：9f00eed90ee005e2e4d15f40f8dc6870e9feb474（fix(eval): 修复C18真实产物兼容性并保留410失败证据）。
+
+## 2026-09-18 C18 模型修复及新canary/full准备
+- 用户授权继续剩余任务，沿用具体NVIDIA出站与REST副作用授权和Agent本地提交。
+- 官方旧模型Free Endpoint Deprecated，目录无旧Qwen；两次只读models查询。替代候选mistral-large-2-instruct合成1次404，Nemotron3 Super合成1次200/OK、completion tokens12，均零重试，无业务题目。
+- 修改：C18 contract/manifest/schema模型身份和tooling哈希、proposal/design、日志。生成模型nvidia/nemotron-3-super-120b-a12b，r2身份，预算/算法/题目不变；后端仅CLI覆盖，受保护本地配置未改。
+- 待验证：Python全套、runtime/preflight、新canary和full。旧raw不覆盖，诊断不进入基线。
+- Commit: pending
+- 离线验证：模型身份修订后Python268 tests/OK；生成合成HTTP200，正式canary/full尚未开始。

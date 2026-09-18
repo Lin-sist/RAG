@@ -23,14 +23,14 @@ import eval_dataset_contract as dataset_contract
 
 SCHEMA_VERSION = "c18-generation-objective-v1"
 COMPILER_VERSION = "c18-generation-objective-compiler-v1"
-MANIFEST_ID = "rag-eval-dev-v2-generation-objective-v1"
+MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r2"
 DEFAULT_MANIFEST = Path("docs/eval/config/c18-generation-objective-v1.json")
 RAW_DIRECTORY = "tmp/eval/c18"
 CANARY_IDS = ["fact-001", "definition-001", "reasoning-001", "multi-hop-001", "no-answer-001"]
 EXPECTED_RUNTIME = {
     "provider": "openai",
     "endpointIdentity": "https://integrate.api.nvidia.com/v1/chat/completions",
-    "model": "qwen/qwen3.5-122b-a10b",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
     "requestContractVersion": "openai-compatible-chat-json-v1",
     "temperature": 0.2,
     "maxOutputTokens": 2048,

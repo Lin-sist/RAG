@@ -22,7 +22,7 @@
   ],
   "properties": {
     "schemaVersion": {"const": "c18-generation-objective-v1"},
-    "manifestId": {"const": "rag-eval-dev-v2-generation-objective-v1"},
+    "manifestId": {"const": "rag-eval-dev-v2-generation-objective-nemotron3-super-r2"},
     "compilerVersion": {"const": "c18-generation-objective-compiler-v1"},
     "toolingSourceSha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
     "dataset": {"$ref": "#/$defs/dataset"},
@@ -128,7 +128,7 @@
       "properties": {
         "provider": {"const": "openai"},
         "endpointIdentity": {"const": "https://integrate.api.nvidia.com/v1/chat/completions"},
-        "model": {"const": "qwen/qwen3.5-122b-a10b"},
+        "model": {"const": "nvidia/nemotron-3-super-120b-a12b"},
         "requestContractVersion": {"const": "openai-compatible-chat-json-v1"},
         "temperature": {"const": 0.2},
         "maxOutputTokens": {"const": 2048},

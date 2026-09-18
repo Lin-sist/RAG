@@ -120,3 +120,12 @@ W0/W1离线切片已完成；live前必须提供最终E、runtime fingerprint、
 已修复Windows fixture路径规范化、judge模式从已验证的c18Execution读取、仅对完全匹配的公开runtime descriptor保留maxOutputTokens数值；任意同名字段仍脱敏。失败generation计数聚合现在保留null并单列unknown样本数，不再折算成0。真实runner的judge descriptor和sanitize函数已接入回归测试，全套Python 268 tests/OK，git diff --check PASS。仅同步相关源码hash，预算及模型未改。
 
 上文描述的是原始失败run及原版compiler发现的问题；这些离线缺口已修复，但原始失败证据和原版摘要未改写、未重编成COMPLETE。下一步实际阻断仍为冻结生成模型HTTP410；没有追加provider请求，也没有执行full。
+
+## 2026-09-18 模型可用性修复与新身份
+用户授权继续全部剩余任务，涵盖对HTTP410的诊断、替代模型冻结及新canary/full执行；既定出站目的地与载荷不变。官方旧模型页面标Free Endpoint Deprecated；只读模型目录不含旧模型。目录中的mistral-large-2-instruct合成请求404（1次、32 token上限），不选用；官方免费端点Available的nvidia/nemotron-3-super-120b-a12b合成请求200、返回OK（1次、2048 token上限，实际12 completion tokens）。诊断与正式评测分开，均retry=0。
+正式生成模型冻结为nvidia/nemotron-3-super-120b-a12b，manifestId增加nemotron3-super-r2；温度0.2、maxOutputTokens2048、timeout120s保持。embedding、题目/fixture、prompt、指标及预算34/1492、5/150不变。以进程启动参数覆盖生成模型，不改.env.local或生产默认。旧410 raw和旧manifest可通过源Git HEAD回放，不混入新run。
+
+### 决策 11. 已退役免费模型的替代
+- **面临的选择**：继续调用退役Qwen端点；迁移到收费合作方；同NVIDIA端点使用已验证可用的Nemotron 3 Super。
+- **选了哪个 + 为什么**：选Nemotron 3 Super，新模型身份重冻结，维持用户已授权的目的地、免费原型账户与现有协议，合成检查200。
+- **放弃的代价**：旧端点继续410不能生成基线；合作方需要新凭据/数据目的地/费用；替代模型与旧模型不可直接比较，报告必须明确模型更换。
