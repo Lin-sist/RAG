@@ -236,14 +236,18 @@ def _validate_metadata(
         not_comparable = True
     fixtures = metadata.get("fixtures")
     normalized_fixtures = (
-        [{key: item.get(key) for key in ("path", "sha256", "bytes")} for item in fixtures]
+        [{"path": str(item.get("path", "")).replace("\\", "/"),
+          "sha256": item.get("sha256"), "bytes": item.get("bytes")} for item in fixtures]
         if isinstance(fixtures, list) and all(isinstance(item, dict) for item in fixtures)
         else None
     )
     if normalized_fixtures != manifest["dataset"]["fixtureCorpus"]:
         _reason(result, "fixture_identity_mismatch")
         not_comparable = True
-    if metadata.get("judgeContractConfig", {}).get("mode") != "off":
+    # The shared judge descriptor has no mode field. C18 execution above binds
+    # judgeMode=off; reject an explicit conflicting legacy mode if present.
+    judge_config = metadata.get("judgeContractConfig")
+    if not isinstance(judge_config, dict) or judge_config.get("mode", "off") != "off":
         _reason(result, "judge_identity_mismatch")
         not_comparable = True
     return invalid, not_comparable
@@ -473,6 +477,13 @@ def compile_evidence(
         "providerFallbackCount": actual_facts["providerFallbackCount"],
         "answerCacheHitCount": actual_facts["answerCacheHitCount"],
     }
+    unknown_generation = sum(
+        1 for item in samples
+        if item.get("c18ExecutionFacts", {}).get("generationCalls") not in (0, 1)
+    )
+    if unknown_generation:
+        actual_facts["generationCalls"] = None
+        actual_facts["generationUnknownSampleCount"] = unknown_generation
     result["callFacts"] = actual_facts
     result["channels"] = {
         "retrieval": "COMPLETE" if not incomplete else "INCOMPLETE",

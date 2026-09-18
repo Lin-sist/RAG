@@ -64,3 +64,10 @@
 - [x] 修复 direct runner 在 C18 样本错误后继续调用的缺口；266 Python tests PASS。
 - [x] Docker 五项 healthy、后端启动、runtime allowlist 核验、只读 preflight READY。
 - [ ] 真实 canary 命令被自动审批拒绝，尚未发出；需用户明确具体 NVIDIA 出站载荷及本地 history 写入，full/真实验收/归档因此仍未完成。
+
+## 2026-09-18 具体出站授权后的 canary 结果
+- [x] 用户明确NVIDIA endpoint载荷、既定canary/full预算和REST写入授权；审批已通过。
+- [x] clean HEAD 65c2d3c，preflight READY，固定canary实际发出debug/ask各1，生成HTTP410后停止、retry=0，原始证据保留。
+- [ ] 解决冻结模型HTTP410，并重新执行新身份canary；本次失败不拼接、不自动重跑，full未启动。
+- [x] 修复真实runner暴露的compiler元数据缺口（268 tests PASS）：Windows路径、judgeConfig.mode、maxOutputTokens误脱敏、失败generation计数unknown语义；不得改raw凑COMPLETE。
+- [ ] full/真实baseline验收/归档仍未完成，原因已从审批阻断变为provider失败及上述工具兼容性问题。

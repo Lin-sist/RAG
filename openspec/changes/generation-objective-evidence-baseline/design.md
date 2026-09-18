@@ -114,3 +114,9 @@ W0/W1离线切片已完成；live前必须提供最终E、runtime fingerprint、
 
 用户明确要求一次性完成 C18、不再逐步请示，并授权 Agent 本地提交。本次授权覆盖固定预算的 W2 canary、clean 后 W3 full、结果记录与阶段收尾；替代此前等待逐阶段授权的状态。保留 canary clean 才能 full、每轮 retry=0、失败证据不覆盖、不拼接、无 KB 重建/清理、无 push/PR/deploy 的边界。完整测量低分如实保留，不修改阈值或题目。
 执行前代码审查发现 direct runner 在样本错误后仍继续后续请求；已补齐 C18 opt-in 失败即停，retrieval 错误时不发 ask，保留已执行 raw 并非零退出。Java 调用图和预算 34/1492 不变，仅同步 runner 源码 hash。
+
+## 2026-09-18 本地兼容性修复验证
+
+已修复Windows fixture路径规范化、judge模式从已验证的c18Execution读取、仅对完全匹配的公开runtime descriptor保留maxOutputTokens数值；任意同名字段仍脱敏。失败generation计数聚合现在保留null并单列unknown样本数，不再折算成0。真实runner的judge descriptor和sanitize函数已接入回归测试，全套Python 268 tests/OK，git diff --check PASS。仅同步相关源码hash，预算及模型未改。
+
+上文描述的是原始失败run及原版compiler发现的问题；这些离线缺口已修复，但原始失败证据和原版摘要未改写、未重编成COMPLETE。下一步实际阻断仍为冻结生成模型HTTP410；没有追加provider请求，也没有执行full。

@@ -2151,7 +2151,7 @@ def sanitize_sensitive(value: Any) -> Any:
         # This exact public, versioned descriptor contains tokenizer/count fields,
         # not credentials. Only the canonical values qualify; arbitrary fields
         # with these names must still be redacted.
-        if value == CLAIM_METRIC_CONFIG:
+        if value == CLAIM_METRIC_CONFIG or value == c18_contract.EXPECTED_RUNTIME:
             return dict(value)
         sanitized: dict[str, Any] = {}
         for key, item in value.items():

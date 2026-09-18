@@ -12,6 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import c18_generation_contract as c18
 import compile_generation_objective_baseline as compiler
 import eval_dataset_contract as dataset_contract
+import run_rag_eval as runner
+from argparse import Namespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -190,6 +192,29 @@ class C18CompilerTest(unittest.TestCase):
         result = self.compile_temp(details, metadata)
         self.assertEqual(result["status"], "INCOMPLETE")
         self.assertIn("sample_order_or_count_mismatch", result["reasonCodes"])
+
+    def test_real_runner_windows_descriptors_survive_sanitization(self) -> None:
+        details, metadata = self.make_artifacts()
+        metadata["fixtures"] = copy.deepcopy(metadata["fixtures"])
+        for item in metadata["fixtures"]:
+            item["path"] = item["path"].replace("/", "\\")
+        metadata["judgeContractConfig"] = runner.judge_contract.contract_config(
+            Namespace(judge_mode="off", judge_model="", judge_temperature=0.0,
+                      judge_base_url="https://integrate.api.nvidia.com/v1", judge_max_context_chars=6000)
+        )
+        details = runner.sanitize_sensitive(details)
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "COMPLETE", result["reasonCodes"])
+        self.assertEqual(runner.sanitize_sensitive({"maxOutputTokens": "secret"}),
+                         {"maxOutputTokens": "[REDACTED]"})
+
+    def test_failed_generation_count_stays_unknown(self) -> None:
+        details, metadata = self.make_artifacts()
+        details["samples"][0]["c18ExecutionFacts"]["generationCalls"] = None
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "INCOMPLETE")
+        self.assertIsNone(result["callFacts"]["generationCalls"])
+        self.assertEqual(result["callFacts"]["generationUnknownSampleCount"], 1)
 
     def test_error_observation_is_incomplete_not_scored_from_successes(self) -> None:
         details, metadata = self.make_artifacts()

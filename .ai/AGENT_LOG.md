@@ -2536,3 +2536,21 @@
 
 ## 2026-09-18 C18执行状态提交补录
 - 上一执行提交：68fc6619b0d37a6868de489a7bb3349b292da476（docs(eval): 记录C18运行就绪与外调审批阻断）。
+
+## 2026-09-18 C18 已授权真实canary失败保留
+- 范围：新增脱敏失败摘要JSON和诊断MD，更新ACTIVE_TASK及C18 tasks，仅追加本日志。
+- 授权：用户明确开发题/变体/fixture/prompt至NVIDIA integrate.api.nvidia.com、固定canary/full预算及query count/history；自动审批通过，不再将当前阻断写成缺授权。
+- 运行：source HEAD 65c2d3c clean，preflight READY；固定canary首题debug成功，ask内qwen/qwen3.5-122b-a10b收到HTTP410 Gone，provider_http_error；120s/retry0，立即停止，子进程非零退出。实际debug/ask各1；应用日志1次生成发起及410，不是0次provider调用；judge/model rerank/full=0。
+- 数据：已按授权将开发数据发送至既定NVIDIA目的地；ask失败按代码计query count、不保存成功答案历史，未另做SQL差量复核。raw no-overwrite保留，未拼接/清理/重建。
+- 验证：离线compiler输出NOT_COMPARABLE；PARTIAL/objective PARTIAL/judge SKIPPED；失败之外还发现路径斜杠、judgeConfig.mode缺失、maxOutputTokens误脱敏三项元数据兼容性问题，详见失败诊断。compiler generationCalls=0不是实际尝试数，失败unknown语义待修复。
+- 跳过：后4条canary/full、验收/归档因410和失败即停契约；没有更换模型或自动重试。Java/Python/前端代码本轮未改，沿用上一轮266 tests证据，不重复全套。
+- 范围安全：C17 profile/reference、题目/fixtures、本地配置不变，无push/PR/deploy。
+- 剩余风险：provider410具体成因未验证；完整基线未形成；真实runner/compiler兼容性缺口待修复。
+- Commit: pending
+
+## 2026-09-18 C18 真实产物兼容性离线修复
+- 修改：run_rag_eval.py、compile_generation_objective_baseline.py、compiler测试、C18 audit/manifest源码hash、design/状态/诊断。
+- 修复：fixture Windows路径规范化；judge mode依据已校验c18Execution、显式冲突仍拒绝；仅完整公开runtime descriptor放行数值token预算、其他同名字段继续脱敏；失败generation聚合null及unknown样本数，不伪装0次。
+- 验证：真实runner descriptor/sanitize形状回归和unknown负例，全套Python 268 tests/OK；git diff --check PASS。历史失败raw和旧compiler摘要未改写，未对失败数据补值；修复不是live成功证据。
+- 无新增provider/ask请求，预算、模型、Java算法和C17基线不变。Java/前端未改，无需重复测试；当前仍仅HTTP410阻断live闭环，full未执行，未归档。
+- Commit: pending

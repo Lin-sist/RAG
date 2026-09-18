@@ -8,7 +8,7 @@
 
 - Change ID：`generation-objective-evidence-baseline`
 - 路径：`openspec/changes/generation-objective-evidence-baseline/`
-- 阶段：`C18_RUNTIME_READY_LIVE_APPROVAL_REVIEW_BLOCKED`
+- 阶段：`C18_CANARY_FAILED_PROVIDER_HTTP_410`
 - 目标：judge关闭下建立v2/150条一次完整真实generation/citation/objective claim/no-answer基线。
 
 ## Current Boundary
@@ -27,3 +27,16 @@
 - 补齐 C18 runner 失败即停护栏，Python 266 tests PASS；本地提交 `a8c95cf`。
 - 真正执行 canary 前，自动审批拒绝命令：要求可信用户内容明确确认开发题目/变体/fixture contexts/prompt 至 NVIDIA endpoint 的具体出站及本地 history 写入，未接受整阶段授权覆盖该载荷。命令未启动，canary/full/provider calls=0。
 - W2/W3/W4 未完成；不标 IDLE、不接受 baseline、不归档、不宣称真实 generation 质量。下一步只需解除该具体审批阻断，无需重复离线实现。
+
+## 2026-09-18 具体授权后真实执行（最新状态）
+
+- 用户已明确具体NVIDIA出站和REST写入授权；自动审批通过，授权阻断解除。
+- HEAD 65c2d3c clean 上执行canary，首题debug成功、生成HTTP 410 Gone，retry=0，护栏停止；实际debug/ask各1，后4条/full未执行。
+- 原始证据保留，脱敏诊断见 docs/eval/reports/c18-canary-20260918-failure.md；compiler NOT_COMPARABLE，另发现Windows路径/judge字段/token脱敏三项元数据兼容性缺口及失败generation计数unknown语义问题。
+- 当前不能接受baseline或归档：须先解决provider 410和工具元数据缺口，再以新身份验证；未擅改冻结模型，未重跑。
+
+## 2026-09-18 本地兼容性修复验证
+
+已修复Windows fixture路径规范化、judge模式从已验证的c18Execution读取、仅对完全匹配的公开runtime descriptor保留maxOutputTokens数值；任意同名字段仍脱敏。失败generation计数聚合现在保留null并单列unknown样本数，不再折算成0。真实runner的judge descriptor和sanitize函数已接入回归测试，全套Python 268 tests/OK，git diff --check PASS。仅同步相关源码hash，预算及模型未改。
+
+上文描述的是原始失败run及原版compiler发现的问题；这些离线缺口已修复，但原始失败证据和原版摘要未改写、未重编成COMPLETE。下一步实际阻断仍为冻结生成模型HTTP410；没有追加provider请求，也没有执行full。
