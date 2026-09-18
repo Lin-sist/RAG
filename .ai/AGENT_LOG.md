@@ -2533,3 +2533,6 @@
 - 剩余风险：真实provider可用性、完整150条generation/citation/objective基线仍未知。
 - Commit: pending
 - 最终验证：C18聚焦16 tests/OK、git diff --check PASS；输出中的 BLOCKED 为 no-overwrite 负例的预期结果。
+
+## 2026-09-18 C18执行状态提交补录
+- 上一执行提交：68fc6619b0d37a6868de489a7bb3349b292da476（docs(eval): 记录C18运行就绪与外调审批阻断）。
