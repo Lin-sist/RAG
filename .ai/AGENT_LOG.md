@@ -2554,3 +2554,6 @@
 - 验证：真实runner descriptor/sanitize形状回归和unknown负例，全套Python 268 tests/OK；git diff --check PASS。历史失败raw和旧compiler摘要未改写，未对失败数据补值；修复不是live成功证据。
 - 无新增provider/ask请求，预算、模型、Java算法和C17基线不变。Java/前端未改，无需重复测试；当前仍仅HTTP410阻断live闭环，full未执行，未归档。
 - Commit: pending
+
+## 2026-09-18 C18真实执行与修复提交补录
+- 上一执行提交：9f00eed90ee005e2e4d15f40f8dc6870e9feb474（fix(eval): 修复C18真实产物兼容性并保留410失败证据）。
