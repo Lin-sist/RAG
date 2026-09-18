@@ -531,7 +531,14 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             rate_limit_errors += 1
     retrieve_latency_millis = max(0.0, (time.monotonic() - retrieval_started_at) * 1000.0)
 
-    if not args.skip_ask:
+    if retrieval_error is None and debug_response is not None:
+        debug_status = debug_response.get("status")
+        if debug_status not in (None, "", "ok"):
+            retrieval_error = str(debug_response.get("message") or f"debug retrieve returned status={debug_status}")
+    if C18_GUARD is not None and retrieval_error is not None:
+        skipped_ask = True
+
+    if not skipped_ask:
         try:
             ask_response, ask_meta = call_ask_with_retries(question, args, token)
             ask_attempts = ask_meta["attempts"]
@@ -2350,7 +2357,11 @@ def main() -> int:
     if not login_error:
         for index, sample in enumerate(samples, start=1):
             print(f"[{index}/{len(samples)}] sampleId={sample['id']}")
-            results.append(run_sample(sample, args, token))
+            result = run_sample(sample, args, token)
+            results.append(result)
+            if C18_GUARD is not None and (result.retrieval_error or result.ask_error or C18_GUARD.rejections):
+                print("C18 execution stopped after failed sample; remaining samples were not called.", file=sys.stderr)
+                break
 
     write_report(report_path, args, samples, results, login_error, started_at, run_metadata)
     if after_report_path is not None:
@@ -2427,6 +2438,8 @@ def main() -> int:
         print(f"Wrote report: {after_report_path}")
     if details_json_path is not None:
         print(f"Wrote details JSON: {details_json_path}")
+    if C18_GUARD is not None and (counts["retrieveErrors"] or counts["askErrors"] or len(results) != len(samples)):
+        return 1
     if args.fail_on_ask_errors and counts["askErrors"] > 0:
         print("--fail-on-ask-errors enabled and askErrors > 0.", file=sys.stderr)
         return 1

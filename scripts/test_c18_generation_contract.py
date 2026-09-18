@@ -4,17 +4,35 @@ import copy
 import json
 import sys
 import unittest
+from unittest import mock
+from argparse import Namespace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import c18_generation_contract as c18
+import run_rag_eval as runner
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class C18GenerationContractTest(unittest.TestCase):
+    def test_retrieval_failure_never_calls_ask_in_c18(self) -> None:
+        args = Namespace(skip_ask=False, base_url="http://localhost", kb_id=1,
+                         top_k=5, min_score=0.3, enable_rerank=True, timeout=1,
+                         judge_mode="off")
+        sample = {"id": "fact-001", "question": "synthetic", "should_answer": True}
+        for response in (RuntimeError("HTTP 429"), {"code": 200, "data": {"status": "error"}}):
+            with self.subTest(response=type(response).__name__), mock.patch.object(
+                runner, "C18_GUARD", c18.C18BudgetGuard(self.manifest["budgets"]["canary"])
+            ), mock.patch.object(runner, "call_json", side_effect=response if isinstance(response, Exception) else None,
+                                 return_value=response), mock.patch.object(runner, "call_ask_with_retries") as ask:
+                result = runner.run_sample(sample, args, "synthetic")
+                ask.assert_not_called()
+                self.assertTrue(result.retrieval_error)
+                self.assertTrue(result.skipped_ask)
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.manifest = c18.load_manifest(ROOT)

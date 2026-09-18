@@ -69,3 +69,8 @@ C18规划提交责任：**Agent 提交**（2026-09-11用户明确授权本地提
 child runner在debug/ask/judge请求前统计预算，超限请求不进入`urlopen`，父runner保留非零退出码。compiler只读取本地raw details/metadata，分别验证retrieval、generation、citation、objective claim、no-answer和judge状态/分母；只输出allowlisted hash、counts、metrics和reason，raw问题/答案/contexts/provider payload/凭据/数字KB ID/collection/绝对路径不进入tracked摘要。C18 W0审计中的两个runner源码hash已同步到当前W1代码，预算数字未改变。
 
 验证：13项W1聚焦测试与全套Python 265项通过；canary/full plan-only通过；本轮backend/provider/KB/SQL/Milvus calls=0、业务数据出站=false。runtime fingerprint、真实5条canary、真实150条full、验收和归档仍保持独立闸门。
+
+## 2026-09-18 C18 整阶段授权与执行前护栏补齐
+
+用户明确要求一次性完成 C18、不再逐步请示，并授权 Agent 本地提交。本次授权覆盖固定预算的 W2 canary、clean 后 W3 full、结果记录与阶段收尾；替代此前等待逐阶段授权的状态。保留 canary clean 才能 full、每轮 retry=0、失败证据不覆盖、不拼接、无 KB 重建/清理、无 push/PR/deploy 的边界。完整测量低分如实保留，不修改阈值或题目。
+执行前代码审查发现 direct runner 在样本错误后仍继续后续请求；已补齐 C18 opt-in 失败即停，retrieval 错误时不发 ask，保留已执行 raw 并非零退出。Java 调用图和预算 34/1492 不变，仅同步 runner 源码 hash。

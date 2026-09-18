@@ -109,3 +109,8 @@ W0/W1离线切片已完成；live前必须提供最终E、runtime fingerprint、
 - 两个runner在login前校验模式互斥、ID/order/repeat、输出目录、节奏和zero retry；child runner在debug/ask/judge请求前使用计数器，超限时不调用`urlopen`，父runner保留child非零退出码。
 - `compile_generation_objective_baseline.py` 只消费本地raw details/metadata，验证exact selection、CLEAN/objective/judge状态、零错误重试、ask返回provenance、no-answer generation bypass和hash identity；tracked输出不复制raw文本或敏感字段。
 - 本轮仍无runtime fingerprint、backend/provider/KB/SQL/Milvus调用，W2/W3外调授权与W4验收未推进。
+
+## 2026-09-18 C18 整阶段授权与执行前护栏补齐
+
+用户明确要求一次性完成 C18、不再逐步请示，并授权 Agent 本地提交。本次授权覆盖固定预算的 W2 canary、clean 后 W3 full、结果记录与阶段收尾；替代此前等待逐阶段授权的状态。保留 canary clean 才能 full、每轮 retry=0、失败证据不覆盖、不拼接、无 KB 重建/清理、无 push/PR/deploy 的边界。完整测量低分如实保留，不修改阈值或题目。
+执行前代码审查发现 direct runner 在样本错误后仍继续后续请求；已补齐 C18 opt-in 失败即停，retrieval 错误时不发 ask，保留已执行 raw 并非零退出。Java 调用图和预算 34/1492 不变，仅同步 runner 源码 hash。

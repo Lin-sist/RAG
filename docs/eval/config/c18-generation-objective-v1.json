@@ -37,7 +37,7 @@
   },
   "budgetAudit": {
     "path": "docs/eval/reports/c18-query-budget-audit-v1.json",
-    "sha256": "3cf5fe27a8ed18e144e9334677ef9f12aaaa9f1ba1bd91ef6516ce6810ece5fe",
+    "sha256": "407f4961d528d3a4f3a74eba0e6ddce8f89676453641f924ad9d454a183d5a45",
     "schemaVersion": "c18-query-budget-audit-v1",
     "canaryBudget": {
       "debugRetrieve": 5,
@@ -59,7 +59,9 @@
   "execution": {
     "mode": "generation/objective",
     "measuredRepeats": 1,
-    "runIndexes": [1],
+    "runIndexes": [
+      1
+    ],
     "selectionMode": "ordered-v2",
     "judgeMode": "off",
     "routerEnabled": false,

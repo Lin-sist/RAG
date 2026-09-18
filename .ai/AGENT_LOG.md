@@ -2510,3 +2510,13 @@
 - 跳过：live canary/full及其真实 provider/ask调用，因仍需独立外调授权；未声称 C18 generation/citation/objective baseline 完成。当前仍有用户既有工作区修改，未形成 clean HEAD。
 - 剩余风险：Docker 重启后的自动启动策略未配置为本轮目标；若系统重启后 Docker 未自动启动，仍需按安全启动方式恢复依赖。C18 canary/full质量结果尚未产生。
 - Commit: pending
+
+## 2026-09-18 C18 执行前失败即停护栏
+- 用户授权：一次性完成 C18 并由 Agent 本地提交；已披露 canary 5/5/≤5/34、full 150/150/≤150/1492、NVIDIA 开发题/变体/fixture/prompt 出站、REST query count/history、judge/model rerank=0、retry=0；不再重复请求阶段授权。
+- 修改：scripts/run_rag_eval.py、scripts/test_c18_generation_contract.py、C18 budget audit/manifest source hash、proposal/design、AGENT_LOG。补齐 retrieval 错误后不发 ask、样本失败停止后续请求及非零退出，保留失败 raw。
+- 事实：初始 Git clean，Docker 五项依赖 healthy，现有后端启动；原 265 tests PASS。修复后全套结果见本次验证补录。
+- 跳过：Java/前端未修改，不重复其全套验证；此记录时尚未调用 provider。
+- 范围：预算、Java 算法、题目/fixture、C17 profile/reference、受保护本地配置均未改；未 push/PR/deploy。
+- 剩余风险：canary/full 真实完整性和 provider 可用性待执行。
+- Commit: pending
+- 验证补录：修复后 Python 266 tests/OK；git diff --check PASS。
