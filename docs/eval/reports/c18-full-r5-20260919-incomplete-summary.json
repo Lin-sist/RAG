@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "c18-generation-objective-evidence-v1",
+  "status": "INCOMPLETE",
+  "reasonCodes": [
+    "channel_status_not_complete",
+    "run_counts_not_clean",
+    "sample_order_or_count_mismatch",
+    "sample_error",
+    "sample_observation_missing",
+    "claim_metric_incomplete_or_identity_mismatch",
+    "generation_call_fact_invalid"
+  ],
+  "compiler": {
+    "version": "c18-generation-objective-compiler-v2",
+    "mode": "full"
+  },
+  "manifest": {
+    "id": "rag-eval-dev-v2-generation-objective-nemotron3-super-r3-transient",
+    "sha256": "49c0012fae8ef772155ef7d9d82ab4e42301c407998d29e052f22003f91e88c0"
+  },
+  "dataset": {
+    "releaseVersion": "rag-eval-dev-v2",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
+    "questionSetSha256": "cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d",
+    "sampleCount": 150,
+    "orderedIdsSha256": "5baac0884a917ae20bf6e584207127f5d0e084569c5c07aa0c08d00fd986b67e"
+  },
+  "runIdentity": {
+    "mode": "generation/objective",
+    "slice": "full",
+    "repeat": 1,
+    "runIndex": 1
+  },
+  "expected": {
+    "sampleCount": 150,
+    "orderedIdsSha256": "5baac0884a917ae20bf6e584207127f5d0e084569c5c07aa0c08d00fd986b67e",
+    "callBudget": {
+      "debugRetrieve": 600,
+      "ask": 600,
+      "generationUpperBound": 600,
+      "queryEmbeddingUpperBound": 5968,
+      "modelRerank": 0,
+      "llmJudge": 0
+    }
+  },
+  "actual": {
+    "sampleCount": 115,
+    "orderedIdsSha256": "8378c904257513d3d111161c8cea325a99805daf714dfd07cd08314974a9bae6",
+    "runCounts": {
+      "askErrors": 1,
+      "retrieveErrors": 0,
+      "skippedAsk": 0,
+      "judgeErrors": 0,
+      "skippedJudge": 115,
+      "rateLimitErrors": 0,
+      "retryCount": 38
+    }
+  },
+  "identity": {
+    "gitHead": "d3a4f43de45eb5d0b766d6b39488ccc525295c94",
+    "gitClean": true,
+    "runtime": {
+      "provider": "openai",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "requestContractVersion": "openai-compatible-chat-json-v1"
+    },
+    "runtimeFingerprintSha256": "e66f366eb0c676cccc7f196f722911c809f9c3f696eb96d97c9d66d31d78287f"
+  },
+  "providerAttribution": {
+    "generationModels": {
+      "nvidia/nemotron-3-super-120b-a12b": 115
+    },
+    "algorithmFallbackCount": 0,
+    "providerFallbackCount": 0,
+    "answerCacheHitCount": 0
+  },
+  "callFacts": {
+    "debugRetrieveHttpAttempts": 115,
+    "httpRetryCount": 38,
+    "retrievalRetryCount": 0,
+    "askRetryCount": 38,
+    "recoveredFailureCount": 38,
+    "failedAttemptStatuses": {
+      "503": 38
+    },
+    "knownGenerationHttpAttempts": 152,
+    "unknownGenerationHttpAttemptCount": 1,
+    "askHttpAttempts": 153,
+    "generationCalls": null,
+    "generationBypassCount": 0,
+    "answerCacheHitCount": 0,
+    "algorithmFallbackCount": 0,
+    "providerFallbackCount": 0,
+    "automaticRetryCount": 38,
+    "queryEmbeddingUpperBound": 5968,
+    "queryEmbeddingObservation": "BOUND_FROM_OFFLINE_AUDIT_NOT_DIRECTLY_OBSERVED",
+    "llmJudgeHttpAttempts": 0,
+    "generationUnknownSampleCount": 1
+  },
+  "channels": {
+    "retrieval": "INCOMPLETE",
+    "generation": "INCOMPLETE",
+    "citation": "INCOMPLETE",
+    "objectiveClaim": "INCOMPLETE",
+    "noAnswer": "INCOMPLETE",
+    "judge": "SKIPPED"
+  },
+  "metrics": {
+    "retrieval": {
+      "recall_at_3": 0.48034934497816595,
+      "recall_at_5": 0.5021834061135371,
+      "mrr": 0.5233630952380952,
+      "top1_source_accuracy": 0.9375
+    },
+    "generation": {
+      "answer_keyword_hit_rate": 0.7690355329949239,
+      "answer_keyword_hits": 303,
+      "answer_keyword_total": 394,
+      "answerable_ask_success_samples": 111
+    },
+    "citation": {
+      "citation_hit_rate": 0.9137931034482759,
+      "citation_source_hit_rate": 0.9137931034482759,
+      "citation_snippet_hit_rate": 1.0,
+      "citation_source_hits": 106,
+      "citation_source_total": 116,
+      "citation_snippet_hits": 279,
+      "citation_snippet_total": 279,
+      "unsupported_citation_count": 0,
+      "no_answer_citation_violation_count": 0
+    },
+    "claim": {
+      "claim_metric_status": "PARTIAL",
+      "claim_total": 308,
+      "supported_claim_count": 20,
+      "unsupported_claim_count": 288,
+      "objective_claim_support_rate": 0.06493506493506493
+    },
+    "noAnswer": {
+      "no_answer_accuracy": 1.0,
+      "no_answer_ok_count": 3,
+      "no_answer_evaluable_total": 3
+    },
+    "latency": {}
+  },
+  "artifacts": {
+    "detailsSha256": "99f75b2ff77ac56979d40c2a759586a3a57af88aae924b41a6b92b5c2898a5eb",
+    "detailsBytes": 4057514,
+    "metadataSha256": "701df4228bd3aaa60eb4db4bd70603c3c67786e179437a2b0995a26ca5cd5cc3",
+    "metadataBytes": 14237
+  },
+  "privacy": {
+    "rawArtifactsLocalIgnored": true,
+    "rawQuestionAnswerContextsTracked": false,
+    "credentialsTracked": false,
+    "numericKnowledgeBaseIdsTracked": false,
+    "absolutePathsTracked": false,
+    "noOverwrite": true
+  }
+}

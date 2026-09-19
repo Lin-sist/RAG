@@ -8,7 +8,7 @@
 
 - Change ID：`generation-objective-evidence-baseline`
 - 路径：`openspec/changes/generation-objective-evidence-baseline/`
-- 阶段：`C18_CANARY_COMPLETE_FULL_INCOMPLETE_HTTP_503`
+- 阶段：`C18_CANARY_COMPLETE_FULL_INCOMPLETE_NETWORK_CLOSE`
 - 目标：judge关闭下建立v2/150条一次完整真实generation/citation/objective claim/no-answer基线。
 
 ## Current Boundary
@@ -56,3 +56,9 @@
 ## 2026-09-19 最新批准的重试切片
 - r4 full2/150因503中断；用户已批准仅429/503最多3次重试，新身份r3-transient，预算canary136/full5968 embedding、20/600 generation。
 - 重试实现和277项Python测试已通过；接续新clean canary/full，旧失败证据保留。
+
+## 2026-09-19 r5 最终执行状态（覆盖上方旧状态）
+- 用户批准仅429/503最多3次重试；实现提交d3a4f43，277 Python tests PASS；新身份r3-transient，compiler v2。
+- clean隔离checkout：canary5/5 COMPLETE，3次503恢复，debug5/ask8。full115/150 INCOMPLETE，38次503恢复，debug115/ask153；第115条multi-hop-007因PrematureCloseException/network停止，无HTTP429/503状态，因此未重试。
+- 已知generation HTTP152，另1次unknown；剩余35条未发出，无拼接。raw全部保留；脱敏报告见docs/eval/reports/c18-r5-20260919-execution.md。
+- 正式full/接受/归档仍未完成，保持ACTIVE；需另行明确网络断连处理与新完整执行范围，不能扩大仅429/503授权。无push/PR/deploy。

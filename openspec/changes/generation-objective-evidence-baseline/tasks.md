@@ -86,3 +86,10 @@
 ## 2026-09-19 最新批准的重试切片
 - r4 full2/150因503中断；用户已批准仅429/503最多3次重试，新身份r3-transient，预算canary136/full5968 embedding、20/600 generation。
 - 重试实现和277项Python测试已通过；接续新clean canary/full，旧失败证据保留。
+
+## 2026-09-19 r5 有界重试执行
+- [x] 用户批准仅429/503最多3次重试，契约/manifest/schema/runner/compiler/测试同步；277 tests PASS，提交d3a4f43。
+- [x] 新clean canary5/5 COMPLETE，3次503恢复；真实当前preflight READY。
+- [x] 按用户full授权完整启动，115条观测、38次503恢复全部留存；第115条PrematureCloseException/network按不重试契约停止，compiler INCOMPLETE。
+- [ ] 完整150条正式full：缺35条；网络错误不在已批准重试范围，不能重试或拼接子集。
+- [ ] W4 baseline接受/归档/IDLE：正式full未完整，暂不执行。

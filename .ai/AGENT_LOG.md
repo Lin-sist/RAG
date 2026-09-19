@@ -2606,3 +2606,20 @@
 - 跳过Java/frontend重测：未修改相关代码；新canary/full待冻结clean checkout后执行。保留其他任务AGENTS和共享日志，不改.env.local/数据集/fixture，不push/PR/deploy。
 - 剩余风险：间歇503可能耗尽重试；REST重试产生已授权query count副作用，网关错误下实际generation次数可能unknown，汇总不伪造为0。
 - Commit: pending
+
+## 2026-09-19 C18 r5新契约 canary 完整
+- 上一执行提交：d3a4f43de45eb5d0b766d6b39488ccc525295c94（feat(eval): 为C18增加可审计的有界瞬态重试）。
+- clean隔离checkout固定该提交。中断后后端8080无监听，一次启动canary在连接阶段ApiError，无评测raw/业务调用；Docker五项healthy，恢复原已验证启动脚本和CLI模型覆盖，当前preflight重新READY，未改配置/重建KB。
+- 新canary5/5：compiler COMPLETE、CLEAN/objective COMPLETE/judge SKIPPED；debug5、ask8、known generation HTTP8、最终generation5；3次503经有界重试恢复、未恢复错误0、护栏拒绝0。旧失败和所有逐次attempts保留，非零重试不包装成零传输错误。
+- 原始三件产物逐字节无覆盖复制并核验；tracked仅安全摘要。同步规范正文与指南中的旧零重试表述，design决策12不变。
+- 新full执行前再次preflight READY，按已有授权独立启动150条，不混入canary；最终结果待执行结束后追加。Java/frontend无变更，复用277项Python通过；未push/PR/deploy，其他任务AGENTS和日志保持未提交。
+- Commit: pending
+
+## 2026-09-19 C18 r5 full网络失败与证据收口
+- 范围：r5 canary/full安全摘要、执行说明、规范正文/指南、ACTIVE_TASK/tasks和本日志。design决策12的仅429/503规则保持；不修改业务Java、frontend、数据集/fixture、C17 profile/reference或.env.local。
+- 结果：full实际115/150，第115条multi-hop-007 PrematureCloseException/network；HTTP状态未知，约19.5秒，非120秒超时。debug115/ask153，38次503恢复、最终askErrors1、retrievalErrors0、护栏拒绝0、judge/model rerank0。已知generation HTTP152及unknown1，generationCalls保留null。
+- 不对网络错误重试，不拼接旧run/成功子集，不为完成任务扩大授权。剩余35条未发送。provider根因未证实；后续需要明确网络失败处理与新的完整执行范围。
+- 原始三件产物逐字节无覆盖复制并校验；compiler canary COMPLETE/full INCOMPLETE，clean Git来源与ledger计数一致。tracked安全摘要不包含raw问题/回答/context、凭据、数字KB/collection或绝对路径。
+- 验证：代码仍是d3a4f43，复用277项Python tests PASS；本轮仅文档/证据，Java/frontend未改故不重跑。聚焦diff/链接/范围与敏感信息检查。
+- 跳过：正式baseline接受、归档和IDLE，原因是full不足150；不虚报C18完成，不push/PR/deploy。保留其他任务AGENTS及共享日志未提交增量。
+- Commit: pending

@@ -4,12 +4,12 @@
 
 ### Requirement: Versioned Generation Objective Execution Plan
 
-C18 SHALL define a separate manifest binding the immutable v2 release, ordered selection, one measured repeat, generation/citation mode, judge off, ordinary Router-off QA, heuristic rerank, answer cache disabled, metric/prompt/runtime identity, zero automatic retry and exact provider-call bounds. It MUST NOT reuse the C17 retrieval-only manifest or alter its accepted profile/reference. Planning and offline validation SHALL make zero backend/provider calls and no business-data egress.
+C18 SHALL define a separate manifest binding the immutable v2 release, ordered selection, one measured repeat, generation/citation mode, judge off, ordinary Router-off QA, heuristic rerank, answer cache disabled, metric/prompt/runtime identity, the approved C18-only bounded transient retry policy and exact provider-call bounds. It MUST NOT reuse the C17 retrieval-only manifest or alter its accepted profile/reference. Planning and offline validation SHALL make zero backend/provider calls and no business-data egress.
 
 #### Scenario: Complete plan is validated offline
 - GIVEN the fixed 150-sample release and audited source identities
 - WHEN full plan-only executes
-- THEN it declares one repeat, 150 debug retrieval, 150 ask, at most 150 generation, exact audited query embedding bound and zero judge/model-rerank calls
+- THEN it declares one repeat, 150 logical debug retrieval and ask requests, at most 600 attempts each, at most 600 generation reservations, query embedding upper bound 5968 and zero judge/model-rerank calls
 - AND validation occurs before login or any backend/provider request
 
 #### Scenario: Budget or source identity is not frozen
@@ -19,13 +19,13 @@ C18 SHALL define a separate manifest binding the immutable v2 release, ordered s
 - AND neither 300 nor 902 is substituted as a complete authorization bound
 
 #### Scenario: Execution modes conflict
-- GIVEN C18 is combined with a C17/C7 manifest, partial full selection, multiple repeats, judge enabled or nonzero retry
+- GIVEN C18 is combined with a C17/C7 manifest, partial full selection, multiple repeats, judge enabled, nonzero backend/legacy retry, or a transient retry policy different from the approved 429/503-only three retries
 - WHEN validation runs
 - THEN it fails closed without requests or changes to the accepted retrieval profile
 
 ### Requirement: Bounded Authorized Generation Baseline Execution
 
-Canary SHALL use the five fixed category IDs and one repeat. Full SHALL require separate authorization after clean canary and use exactly the 150 ordered v2 IDs. Execution MUST disclose tracked questions/variants, fixture contexts and prompt egress, sanitized provider/model/endpoint, timeout/retry, cost basis, rate limits and REST query-count/history persistence. Actual HTTP attempts, cache hits, generation bypass, algorithm fallback and provider fallback SHALL be distinguished. Budgets SHALL be enforced before requests; failure SHALL stop without automatic retry, subset stitching, implicit KB rebuild or cleanup.
+Canary SHALL use the five fixed category IDs and one repeat. Full SHALL require separate authorization after clean canary and use exactly the 150 ordered v2 IDs. Execution MUST disclose tracked questions/variants, fixture contexts and prompt egress, sanitized provider/model/endpoint, timeout/retry, cost basis, rate limits and REST query-count/history persistence. Actual HTTP attempts, cache hits, generation bypass, algorithm fallback and provider fallback SHALL be distinguished. Budgets SHALL be enforced before requests; unrecoverable failure SHALL stop without subset stitching, implicit KB rebuild or cleanup; only HTTP/provider 429/503 SHALL permit up to three C18 REST retries with 5/10/20 second backoff and a complete attempt ledger.
 
 #### Scenario: Canary approval does not authorize full
 - GIVEN only five-case canary is authorized with exact budgets and data scope
@@ -40,14 +40,14 @@ Canary SHALL use the five fixed category IDs and one repeat. Full SHALL require 
 - AND the runner does not force a model request or represent unexecuted generation as successful
 
 #### Scenario: Budget or execution fails
-- GIVEN a pending request exceeds the approved bound, or an error/429/timeout/identity drift occurs
+- GIVEN a pending request exceeds the approved bound, or an unrecoverable error, exhausted 429/503 chain, timeout or identity drift occurs
 - WHEN the condition is handled
-- THEN further live execution stops, failure artifacts are retained, and automatic retry stays zero
+- THEN further live execution stops and every failed attempt is retained; backend provider and legacy ask retry stay zero
 - AND a later attempt requires new explicit scope and no-overwrite identity
 
 ### Requirement: Complete Generation Objective Baseline Evidence
 
-C18 SHALL compile one exact ordered 150-observation run with matching details/metadata hashes, clean source Git provenance, dataset/fixture/KB model-generation identity, runtime/metric contracts and compliant call/error counters. COMPLETE SHALL require Report status CLEAN, objectiveMetricStatus COMPLETE, judgeMetricStatus SKIPPED and zero required execution errors/retries. Partial channels or missing IDs SHALL NOT be repaired using successful subsets. Existing C9a/C9b formulas and denominators SHALL be reused. Generation/citation/claim evidence MUST come from actual ask responses and validated returned citations, not independent debug contexts.
+C18 SHALL compile one exact ordered 150-observation run with matching details/metadata hashes, clean source Git provenance, dataset/fixture/KB model-generation identity, runtime/metric contracts and compliant call/error counters. COMPLETE SHALL require Report status CLEAN, objectiveMetricStatus COMPLETE, judgeMetricStatus SKIPPED and zero unrecovered execution errors and a valid bounded transient attempt ledger with all recovered failures/retries reported. Partial channels or missing IDs SHALL NOT be repaired using successful subsets. Existing C9a/C9b formulas and denominators SHALL be reused. Generation/citation/claim evidence MUST come from actual ask responses and validated returned citations, not independent debug contexts.
 
 #### Scenario: One full run has complete channel evidence
 - GIVEN all 150 IDs and required identities/counters are complete with judge deliberately off
@@ -56,7 +56,7 @@ C18 SHALL compile one exact ordered 150-observation run with matching details/me
 - AND judge remains SKIPPED, neither zero quality nor failure of complete objective evidence
 
 #### Scenario: Samples or channels are missing
-- GIVEN any required ID/observation/identity is missing, objective is partial, or errors exceed zero
+- GIVEN any required ID/observation/identity is missing, objective is partial, or unrecovered errors exceed zero or retry evidence is invalid
 - WHEN compilation runs
 - THEN status is INCOMPLETE, NOT_COMPARABLE or INVALID with a stable safe reason
 - AND no clean baseline is inferred from a successful subset

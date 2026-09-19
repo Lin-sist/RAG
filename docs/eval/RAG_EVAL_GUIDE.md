@@ -885,7 +885,7 @@ python -B scripts\run_reproducible_rag_eval.py `
   --metadata-json tmp\eval\c18\full-metadata.json
 ```
 
-canary 的预算是 `debugRetrieve=5`、`ask=5`、`generation≤5`、query embedding 上限 `34`；full 是 `150/150/≤150/1492`。后续真实运行前还必须提供未写入 tracked 文件的 operator-confirmed runtime fingerprint，并分别取得 canary、full 的外调授权。真实 raw details/metadata 只能写入 ignored `tmp/eval/c18/`，再用以下命令编译安全摘要；缺失、错误、身份漂移或非零护栏拒绝不会用成功子集补齐分母：
+2026-09-19 用户批准 C18 请求边界仅对 HTTP/provider 429/503 最多重试 3 次，退避 5/10/20 秒；Java provider 和 legacy ask retry 仍为 0，超时/其他错误不重试。新 manifest 身份为 `nemotron3-super-r3-transient`、compiler 为 v2。每个逻辑请求最多 4 次尝试，canary 预算是 `debugRetrieve≤20`、`ask≤20`、`generation≤20`、query embedding 上限 `136`；full 是 `600/600/≤600/5968`。底层单次审计仍为34/1492，保守重试上限乘4；上限不是实际调用量。后续真实运行前还必须提供未写入 tracked 文件的 operator-confirmed runtime fingerprint，并分别取得 canary、full 的外调授权。真实 raw details/metadata 只能写入 ignored `tmp/eval/c18/`，再用以下命令编译安全摘要；缺失、错误、身份漂移或非零护栏拒绝不会用成功子集补齐分母：
 
 ```powershell
 python -B scripts\compile_generation_objective_baseline.py `
@@ -898,3 +898,5 @@ python -B scripts\compile_generation_objective_baseline.py `
 ```
 
 compiler 只保留 manifest/dataset/runtime/Git hash、调用事实、分通道数值与状态；问题、答案、contexts、claims、provider payload、凭据、数字 KB ID、collection 和绝对路径留在本地 raw，不进入 tracked 摘要。`COMPLETE` 仍要求 exact 150、`CLEAN`、objective `COMPLETE`、judge `SKIPPED`、zero errors/retries、固定 identity 和预算合规；低分也不会触发本轮优化。
+
+C18 瞬态重试必须保留逐次失败账本。compiler 的 COMPLETE 要求最终观测完整、未恢复错误为零且 ledger 合法；CLEAN 不表示传输从未失败。摘要分别列出 HTTP/ask/retrieval 重试、恢复失败、失败状态直方图及已知/未知 generation HTTP 次数；不与旧零重试运行混比。
