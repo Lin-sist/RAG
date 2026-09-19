@@ -26,8 +26,8 @@
 - [x] 提交形成 clean HEAD：2026-09-18 初始 clean，护栏修复提交 a8c95cf；无用户未提交修改。
 - [x] 持久化 embedding identity 后，HTTP preflight 只读验证 3 fixtures/50 chunks、c17g3/model identity；连续两次 `READY`，vector `50/50`，fixture `3/3`。
 - [ ] 披露5 debug/5 ask/≤5 generation、精确E(canary)、fixed ID出站、timeout/retry/限流及query count/history写入，取得授权。
-- [ ] 固定5条一次no-overwrite执行，judge/model rerank=0；失败保留并停止，无自动重跑或full。
-- [ ] 验证canary预算/identity完整，不据小样本宣称质量达标。
+- [x] r3固定5条一次no-overwrite执行，judge/model rerank=0；CLEAN，旧失败保留，full按用户独立授权执行。
+- [x] r3 canary compiler COMPLETE、clean HEAD、预算合规；不据小样本宣称质量达标。
 
 ## 4. W3 Full（待单独授权）
 - [ ] canary clean后披露150 debug/150 ask/≤150 generation、精确E(full)及数据/副作用范围，取得独立授权。
@@ -76,3 +76,9 @@
 - [x] 官方确认旧Qwen免费端点Deprecated；新模型Nemotron3 Super合成HTTP200，manifest r2冻结，269 Python tests通过。
 - [x] 进程CLI覆盖而不改.env.local；preflight READY，新canary只发首题后因HTTP503停止。
 - [ ] provider持续可用性与新clean canary/full；r2另受并发工作区改动影响，metadata clean=false，不能接受为基线。
+
+## 2026-09-19 r3 当前验收事实
+- [x] 隔离clean checkout与runtime/preflight；新canary5/5、error/retry0、compiler COMPLETE。
+- [x] 用户已授权full150，按新身份发起；实际到第13条HTTP503即停，raw全部保留，compiler INCOMPLETE。
+- [ ] 正式full150完整基线：本次13/150，剩余137未执行；不拼接/不自动重跑。
+- [ ] W4接受与归档：完整full缺失，保持ACTIVE。

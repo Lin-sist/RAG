@@ -2580,3 +2580,16 @@
 - 验证：269 Python tests沿用当前相同代码成功结果；git diff --check聚焦本任务；C17/题目/fixture和.env.local未改，未push/PR/deploy。
 - 跳过：full、baseline接受/归档，因为canary503且不满足clean身份；不重试/不拼接。新完整run需要干净隔离checkout和新身份；provider持续可用性仍未知。
 - Commit: pending
+
+## 2026-09-19 C18 r3 隔离执行：canary COMPLETE，full INCOMPLETE
+- 上一执行提交：6c26634f63346fc44dd66336d8057f8869d7a846（docs(eval): 保留C18新模型503失败与运行身份证据）。
+- 用户要求继续，沿用NVIDIA既定模型/载荷/预算/history及Agent commit授权。隔离checkout固定HEAD6c26634，运行代码与后端源码一致；raw metadata clean=true，未暂存/改写其他任务AGENTS及日志。
+- 诊断：一次无stream字段的合成OK请求200、completion tokens12、retry0；不支持缺stream导致503假设，不宣称已定位provider内部根因。
+- 环境：Docker/后端原未运行；直接启动复现sailor-ingest.sock访问失败。按进程名停止被自动审批拒绝后，补证据确认WSL无运行实例/engine管道不存在，仅停止本任务7个已核验PID，再用既有Explorer安全脚本正常启动成功；未删除socket/容器/镜像/卷/WSL数据。后端正常启动，CLI模型覆盖和preflight READY。
+- Canary：固定5条完整执行，debug/ask各5，generation5，error/retry0，CLEAN/objective COMPLETE/judge SKIPPED，compiler COMPLETE。模型Nemotron3 Super，timeout120s，retry0；账本上限embedding34，底层embedding HTTP未直接观测。
+- Full：正式150计划实际执行13条，第13条definition-003生成HTTP503 ServiceUnavailable，前12条ask成功，立即停止；debug/ask各13、askErrors1/retrievalErrors0/retry0，PARTIAL/objective PARTIAL/judge SKIPPED，compiler INCOMPLETE。计划sampleCount150不代表实际150，按samples长度13报告。失败generation调用数unknown保留，不写0。剩余137条未发出。
+- 修改：C18 canary/full脱敏summary、r3报告、ACTIVE_TASK、tasks、日志。原始产物从隔离目录逐字节复制到主工作区ignored目录，哈希一致，无覆盖/拼接。
+- 验证：两份compiler输出与clean身份、实际ID数/错误数/零重试核验；本轮无代码变动，复用相同HEAD代码269 tests通过证据，不重复Java/Python/前端测试；文档diff/链接/范围检查。
+- 跳过：baseline接受/归档/IDLE，full未完整，不能验收。未在失败后自动重跑或改变预算、重试策略、模型/题目/指标。
+- 剩余风险：provider在完整运行中间歇503；canary成功不证明150条持续可用；继续需要新的完整执行身份和相应调用范围，或另行修订可用性/重试契约，不用成功子集补齐。
+- Commit: pending

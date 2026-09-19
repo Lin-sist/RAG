@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "c18-generation-objective-evidence-v1",
+  "status": "COMPLETE",
+  "reasonCodes": [],
+  "compiler": {
+    "version": "c18-generation-objective-compiler-v1",
+    "mode": "canary"
+  },
+  "manifest": {
+    "id": "rag-eval-dev-v2-generation-objective-nemotron3-super-r2",
+    "sha256": "92fc9511b70ea4d8e28000f379538f83e33a034af4a508953fcafd1a0d87c625"
+  },
+  "dataset": {
+    "releaseVersion": "rag-eval-dev-v2",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
+    "questionSetSha256": "cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d",
+    "sampleCount": 5,
+    "orderedIdsSha256": "0e70d733ff6e0096b6bccc5645c24bf22c5218157a0e55ec1b884813badb039e"
+  },
+  "runIdentity": {
+    "mode": "generation/objective",
+    "slice": "canary",
+    "repeat": 1,
+    "runIndex": 1
+  },
+  "expected": {
+    "sampleCount": 5,
+    "orderedIdsSha256": "0e70d733ff6e0096b6bccc5645c24bf22c5218157a0e55ec1b884813badb039e",
+    "callBudget": {
+      "debugRetrieve": 5,
+      "ask": 5,
+      "generationUpperBound": 5,
+      "queryEmbeddingUpperBound": 34,
+      "modelRerank": 0,
+      "llmJudge": 0
+    }
+  },
+  "actual": {
+    "sampleCount": 5,
+    "orderedIdsSha256": "0e70d733ff6e0096b6bccc5645c24bf22c5218157a0e55ec1b884813badb039e",
+    "runCounts": {
+      "askErrors": 0,
+      "retrieveErrors": 0,
+      "skippedAsk": 0,
+      "judgeErrors": 0,
+      "skippedJudge": 5,
+      "rateLimitErrors": 0,
+      "retryCount": 0
+    }
+  },
+  "identity": {
+    "gitHead": "6c26634f63346fc44dd66336d8057f8869d7a846",
+    "gitClean": true,
+    "runtime": {
+      "provider": "openai",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "requestContractVersion": "openai-compatible-chat-json-v1"
+    },
+    "runtimeFingerprintSha256": "e66f366eb0c676cccc7f196f722911c809f9c3f696eb96d97c9d66d31d78287f"
+  },
+  "providerAttribution": {
+    "generationModels": {
+      "nvidia/nemotron-3-super-120b-a12b": 5
+    },
+    "algorithmFallbackCount": 0,
+    "providerFallbackCount": 0,
+    "answerCacheHitCount": 0
+  },
+  "callFacts": {
+    "debugRetrieveHttpAttempts": 5,
+    "askHttpAttempts": 5,
+    "generationCalls": 5,
+    "generationBypassCount": 0,
+    "answerCacheHitCount": 0,
+    "algorithmFallbackCount": 0,
+    "providerFallbackCount": 0,
+    "automaticRetryCount": 0,
+    "queryEmbeddingUpperBound": 34,
+    "queryEmbeddingObservation": "BOUND_FROM_OFFLINE_AUDIT_NOT_DIRECTLY_OBSERVED",
+    "llmJudgeHttpAttempts": 0
+  },
+  "channels": {
+    "retrieval": "COMPLETE",
+    "generation": "COMPLETE",
+    "citation": "COMPLETE",
+    "objectiveClaim": "COMPLETE",
+    "noAnswer": "COMPLETE",
+    "judge": "SKIPPED"
+  },
+  "metrics": {
+    "retrieval": {
+      "recall_at_3": 0.875,
+      "recall_at_5": 0.875,
+      "mrr": 1.0,
+      "top1_source_accuracy": 1.0
+    },
+    "generation": {
+      "answer_keyword_hit_rate": 0.8421052631578947,
+      "answer_keyword_hits": 16,
+      "answer_keyword_total": 19,
+      "answerable_ask_success_samples": 4
+    },
+    "citation": {
+      "citation_hit_rate": 1.0,
+      "citation_source_hit_rate": 1.0,
+      "citation_snippet_hit_rate": 1.0,
+      "citation_source_hits": 4,
+      "citation_source_total": 4,
+      "citation_snippet_hits": 10,
+      "citation_snippet_total": 10,
+      "unsupported_citation_count": 0,
+      "no_answer_citation_violation_count": 0
+    },
+    "claim": {
+      "claim_metric_status": "COMPLETE",
+      "claim_total": 22,
+      "supported_claim_count": 2,
+      "unsupported_claim_count": 20,
+      "objective_claim_support_rate": 0.09090909090909091
+    },
+    "noAnswer": {
+      "no_answer_accuracy": 1.0,
+      "no_answer_ok_count": 1,
+      "no_answer_evaluable_total": 1
+    },
+    "latency": {}
+  },
+  "artifacts": {
+    "detailsSha256": "c4efd27a8330970bcaa62e3277c481cc48b7d6277a77437ec4407af1f924c36f",
+    "detailsBytes": 194822,
+    "metadataSha256": "5034df0646575b4ec2a2d541a66cb49cbc1bf7b672a0fbac2c0fc6ba8d984320",
+    "metadataBytes": 10654
+  },
+  "privacy": {
+    "rawArtifactsLocalIgnored": true,
+    "rawQuestionAnswerContextsTracked": false,
+    "credentialsTracked": false,
+    "numericKnowledgeBaseIdsTracked": false,
+    "absolutePathsTracked": false,
+    "noOverwrite": true
+  }
+}

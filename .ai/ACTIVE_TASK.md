@@ -8,7 +8,7 @@
 
 - Change ID：`generation-objective-evidence-baseline`
 - 路径：`openspec/changes/generation-objective-evidence-baseline/`
-- 阶段：`C18_R2_CANARY_FAILED_PROVIDER_HTTP_503`
+- 阶段：`C18_CANARY_COMPLETE_FULL_INCOMPLETE_HTTP_503`
 - 目标：judge关闭下建立v2/150条一次完整真实generation/citation/objective claim/no-answer基线。
 
 ## Current Boundary
@@ -46,3 +46,9 @@
 - r2首题生成HTTP503，debug/ask各1、retry0；full未启动。详见 docs/eval/reports/c18-canary-r2-20260918-failure.md。
 - 并发其他任务修改AGENTS.md/AGENT_LOG，r2 metadata clean=false；不得将本次作为clean基线。后续真实运行须隔离checkout或待用户工作区干净，不暂存其他任务修改。
 - 269 tests通过，compiler兼容性修复生效；阶段保持ACTIVE，不归档。
+
+## 2026-09-19 最新：r3 canary完成，full失败
+- 隔离checkout固定6c26634，canary/full metadata均clean=true，模型/fixture/preflight核验通过。
+- Canary 5/5，CLEAN/objective COMPLETE/judge SKIPPED，零错误零重试，compiler COMPLETE。
+- Full实际13/150，第13条HTTP503，前12条成功，零重试；compiler INCOMPLETE，未拼接、未自动重跑。
+- 证据：docs/eval/reports/c18-r3-20260919-execution.md；仅W2完成，W3完整基线/W4验收归档未完成。旧410/503证据保持。
