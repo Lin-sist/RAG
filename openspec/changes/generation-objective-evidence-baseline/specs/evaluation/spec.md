@@ -92,3 +92,6 @@ Raw artifacts SHALL remain local ignored no-overwrite files; tracked output SHAL
 ## 2026-09-11 W0预算与节奏具体化
 
 当前源码审计冻结canary query embedding upper bound=34、full=1492，包含debug初始、ask初始与全部可达解释回退variants；generation上限仍为5/150。每个请求前至少2.2秒以遵循共享USER键的30次/60秒限制。源码/数据/配置hash漂移必须BLOCKED并重新离线审计，不自动放大预算。本节只具体化已批准规划，不授权真实调用；W1 runtime护栏与完整evidence compiler已通过离线负例验证，仍不等于runtime fingerprint或真实canary/full授权。
+
+## 2026-09-19 Approved superseding transient retry contract
+The user approved C18-only REST retries for HTTP/provider 429 and 503, at most three retries per logical debug/ask request, with 5/10/20 second backoff. This supersedes the zero runner retry requirements above; backend provider retry MUST remain zero. Timeouts and all other status codes MUST NOT retry. Every attempt MUST be budgeted before dispatch and preserved in a sanitized ordered ledger. Canary budgets become 20/20/20/136 and full budgets 600/600/600/5968 for debug/ask/generation/query embedding. Final failed observations still stop execution. COMPLETE requires exact final observation coverage, no unrecovered errors, and valid attempt chains; recovered failures and all retries MUST remain visible and MUST NOT be described as zero-error transport. No subset stitching is allowed.

@@ -82,3 +82,7 @@
 - [x] 用户已授权full150，按新身份发起；实际到第13条HTTP503即停，raw全部保留，compiler INCOMPLETE。
 - [ ] 正式full150完整基线：本次13/150，剩余137未执行；不拼接/不自动重跑。
 - [ ] W4接受与归档：完整full缺失，保持ACTIVE。
+
+## 2026-09-19 最新批准的重试切片
+- r4 full2/150因503中断；用户已批准仅429/503最多3次重试，新身份r3-transient，预算canary136/full5968 embedding、20/600 generation。
+- 重试实现和277项Python测试已通过；接续新clean canary/full，旧失败证据保留。

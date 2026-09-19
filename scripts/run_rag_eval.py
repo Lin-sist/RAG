@@ -327,6 +327,62 @@ def call_json(
     token: str | None,
     timeout: float,
 ) -> dict[str, Any]:
+    kind = c18_contract.request_kind(url)
+    if C18_GUARD is None or kind not in {"debugRetrieve", "ask"}:
+        return _call_json_once(method, url, payload, token, timeout)
+    request_id = len(C18_GUARD.attempts) + 1
+    for attempt in range(4):
+        started = time.monotonic()
+        response = None
+        error = None
+        http_status = None
+        provider_status = None
+        generation_attempts = 0
+        try:
+            response = _call_json_once(method, url, payload, token, timeout)
+            http_status = 200
+            data = response.get("data", {})
+            metadata = data.get("metadata", {}) if isinstance(data, dict) else {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            if metadata.get("status") == "error":
+                provider_status = metadata.get("llmHttpStatus")
+                if type(provider_status) is not int:
+                    provider_status = None
+                generation_attempts = 1 if provider_status is not None else None
+            elif kind == "ask":
+                generation_attempts = 1 if metadata.get("model") or metadata.get("llmModel") else 0
+        except c18_contract.C18ContractError:
+            raise
+        except Exception as exc:
+            error = exc
+            http_status = exc.http_status if isinstance(exc, ApiCallError) else None
+            generation_attempts = None if kind == "ask" else 0
+        status = provider_status if provider_status is not None else http_status
+        retry = status in (429, 503) and attempt < 3
+        C18_GUARD.attempts.append({
+            "requestId": request_id, "kind": kind, "attempt": attempt + 1,
+            "httpStatus": http_status, "providerHttpStatus": provider_status,
+            "errorType": type(error).__name__ if error else None,
+            "retry": retry, "generationHttpAttempts": generation_attempts,
+            "elapsedMillis": round((time.monotonic() - started) * 1000, 3),
+        })
+        if retry:
+            time.sleep(c18_contract.TRANSIENT_RETRY_POLICY["backoffSeconds"][attempt])
+            continue
+        if error is not None:
+            raise error
+        return response
+    raise RuntimeError("unreachable C18 retry state")
+
+
+def _call_json_once(
+    method: str,
+    url: str,
+    payload: dict[str, Any] | None,
+    token: str | None,
+    timeout: float,
+) -> dict[str, Any]:
     body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
     headers = {
         "Accept": "application/json",
@@ -492,6 +548,7 @@ def extract_rerank_attribution(debug_response: dict[str, Any] | None) -> dict[st
 
 
 def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> SampleResult:
+    c18_attempt_start = len(C18_GUARD.attempts) if C18_GUARD is not None else 0
     question = sample["question"]
     debug_response: dict[str, Any] | None = None
     ask_response: dict[str, Any] | None = None
@@ -555,6 +612,11 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             if "HTTP 429" in ask_error and not isinstance(exc, AskRetryError):
                 rate_limit_errors += 1
 
+    c18_attempts = C18_GUARD.attempts[c18_attempt_start:] if C18_GUARD is not None else []
+    if C18_GUARD is not None:
+        ask_attempts = sum(item["kind"] == "ask" for item in c18_attempts)
+        ask_retry_count = sum(item["kind"] == "ask" and item["attempt"] > 1 for item in c18_attempts)
+        rate_limit_errors = sum(429 in (item["httpStatus"], item["providerHttpStatus"]) for item in c18_attempts)
     contexts = debug_response.get("contexts", []) if debug_response else []
     if retrieval_error is None and debug_response is not None:
         debug_status = debug_response.get("status")
@@ -685,6 +747,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             rate_limit_errors,
             details["rerankAttribution"],
         )
+        details["c18Attempts"] = c18_attempts
 
     return SampleResult(
         sample=sample,

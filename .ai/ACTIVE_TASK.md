@@ -52,3 +52,7 @@
 - Canary 5/5，CLEAN/objective COMPLETE/judge SKIPPED，零错误零重试，compiler COMPLETE。
 - Full实际13/150，第13条HTTP503，前12条成功，零重试；compiler INCOMPLETE，未拼接、未自动重跑。
 - 证据：docs/eval/reports/c18-r3-20260919-execution.md；仅W2完成，W3完整基线/W4验收归档未完成。旧410/503证据保持。
+
+## 2026-09-19 最新批准的重试切片
+- r4 full2/150因503中断；用户已批准仅429/503最多3次重试，新身份r3-transient，预算canary136/full5968 embedding、20/600 generation。
+- 重试实现和277项Python测试已通过；接续新clean canary/full，旧失败证据保留。

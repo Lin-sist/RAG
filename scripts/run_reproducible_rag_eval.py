@@ -1127,6 +1127,7 @@ def build_metadata(
             "runIndex": run_index,
         }
         metadata["c18Execution"] = {
+            "transientRetryPolicy": dict(c18_contract.TRANSIENT_RETRY_POLICY),
             "selectionMode": "ordered-v2",
             "judgeMode": "off",
             "routerEnabled": False,

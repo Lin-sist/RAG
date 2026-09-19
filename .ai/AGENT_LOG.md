@@ -2597,3 +2597,12 @@
 ## 2026-09-19 C18 r3执行提交补录
 - 上一执行提交：238812b2a24696bfd79901ecc8b181449f39673b（docs(eval): 记录C18干净canary与full中断证据）。
 - 隔离checkout保留，仅在本地.git/info/exclude添加其精确路径，避免父仓库误暂存嵌套worktree；未修改tracked忽略规则或删除证据。
+
+## 2026-09-19 C18 r4失败保留与批准的瞬态重试实现
+- r4 full在5秒节奏下实际2/150，第2条HTTP503停止；clean身份，旧零重试raw及INCOMPLETE摘要完整保留，不拼接。合成长prompt检查200不支持长度导致503假设，provider内部原因未知。
+- 用户明确批准仅429/503每请求最多重试3次并修订契约；按design决策12实现C18 opt-in请求边界重试，退避5/10/20秒。Java provider和legacy ask retry均0，超时/其他状态不重试；原始逐次ledger保留失败，最终指标每题一次。
+- 修改：C18 runner/contract/compiler、manifest/schema、预算审计源码hash、测试、active/tasks/design/proposal/spec及r4摘要。保守预算canary debug/ask/gen/embedding=20/20/20/136，full=600/600/600/5968；judge/model rerank0。身份r3-transient/compiler-v2，与旧零重试分开。
+- 验证：python -B -m unittest discover -s scripts -p 'test_*.py'，277 tests PASS；覆盖503/429恢复、耗尽不发第5次、其他错误不重试、预算拒绝不联网、缺失/非法ledger不能COMPLETE。
+- 跳过Java/frontend重测：未修改相关代码；新canary/full待冻结clean checkout后执行。保留其他任务AGENTS和共享日志，不改.env.local/数据集/fixture，不push/PR/deploy。
+- 剩余风险：间歇503可能耗尽重试；REST重试产生已授权query count副作用，网关错误下实际generation次数可能unknown，汇总不伪造为0。
+- Commit: pending

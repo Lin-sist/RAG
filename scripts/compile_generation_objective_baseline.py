@@ -203,6 +203,7 @@ def _validate_metadata(
             "maxAskRetries": 0,
             "retryAskTimeouts": False,
             "minimumRequestIntervalSeconds": 2.2,
+            "transientRetryPolicy": c18.TRANSIENT_RETRY_POLICY,
         }
         if any(execution.get(key) != value for key, value in fixed_execution.items()):
             _reason(result, "execution_identity_mismatch")
@@ -285,9 +286,8 @@ def _validate_sample(
     if (
         not isinstance(details, dict)
         or details.get("askSkipped") is not False
-        or details.get("askAttempts") != 1
-        or details.get("askRetries") != 0
-        or details.get("rateLimitErrors") != 0
+        or details.get("askAttempts") not in (1, 2, 3, 4)
+        or details.get("askRetries") != details.get("askAttempts", 0) - 1
     ):
         _reason(result, "ask_attempt_contract_violation")
         incomplete = True
@@ -327,7 +327,7 @@ def _validate_sample(
         if facts.get("cacheRequestEnabled") is not False:
             _reason(result, "answer_cache_request_not_disabled")
             incomplete = True
-        if facts.get("askHttpAttempts") != 1 or any(facts.get(field) != 0 for field in ("askRetryCount", "rateLimitErrors", "answerCacheHitCount", "providerFallbackCount", "automaticRetryCount")):
+        if facts.get("askHttpAttempts") not in (1, 2, 3, 4) or any(facts.get(field) != 0 for field in ("answerCacheHitCount", "providerFallbackCount")):
             _reason(result, "execution_fact_budget_violation")
             incomplete = True
         generation_calls = facts.get("generationCalls")
@@ -343,6 +343,37 @@ def _validate_sample(
                 and not ask.get("contexts")):
             _reason(result, "generation_bypass_fact_mismatch")
             incomplete = True
+    events = sample.get("c18Attempts")
+    ledger_valid = isinstance(events, list) and all(isinstance(e, dict) for e in events)
+    if ledger_valid:
+        chains = [[e for e in events if e.get("kind") == kind] for kind in ("debugRetrieve", "ask")]
+        ledger_valid = events == chains[0] + chains[1]
+        for chain in chains:
+            ledger_valid = ledger_valid and 1 <= len(chain) <= 4
+            for index, event in enumerate(chain):
+                status = event.get("providerHttpStatus") or event.get("httpStatus")
+                more = index < len(chain) - 1
+                ledger_valid = ledger_valid and (
+                    event.get("attempt") == index + 1
+                    and type(event.get("requestId")) is int
+                    and event.get("requestId") == chain[0].get("requestId")
+                    and event.get("retry") is more
+                    and (status in (429, 503) if more else status == 200)
+                    and event.get("generationHttpAttempts") in (0, 1, None)
+                    and (more or event.get("errorType") is None)
+                )
+        if isinstance(facts, dict) and isinstance(details, dict):
+            asks = len(chains[1])
+            rates = sum(429 in (e.get("httpStatus"), e.get("providerHttpStatus")) for e in events)
+            ledger_valid = ledger_valid and (
+                facts.get("askHttpAttempts") == details.get("askAttempts") == asks
+                and facts.get("askRetryCount") == details.get("askRetries") == asks - 1
+                and facts.get("automaticRetryCount") == asks - 1
+                and facts.get("rateLimitErrors") == details.get("rateLimitErrors") == rates
+            )
+    if not ledger_valid:
+        _reason(result, "transient_attempt_ledger_invalid")
+        incomplete = True
     return invalid, incomplete
 
 
@@ -382,7 +413,7 @@ def compile_evidence(
         _reason(result, "channel_status_not_complete")
         incomplete = True
     counts = details.get("runCounts")
-    expected_counts = {"askErrors": 0, "retrieveErrors": 0, "skippedAsk": 0, "judgeErrors": 0, "skippedJudge": len(expected_ids), "rateLimitErrors": 0, "retryCount": 0}
+    expected_counts = {"askErrors": 0, "retrieveErrors": 0, "skippedAsk": 0, "judgeErrors": 0, "skippedJudge": len(expected_ids), "rateLimitErrors": sum(s.get("c18ExecutionFacts", {}).get("rateLimitErrors", 0) for s in details.get("samples", []) if isinstance(s, dict)), "retryCount": sum(s.get("c18ExecutionFacts", {}).get("askRetryCount", 0) for s in details.get("samples", []) if isinstance(s, dict))}
     if counts != expected_counts:
         _reason(result, "run_counts_not_clean")
         incomplete = True
@@ -415,8 +446,20 @@ def compile_evidence(
         invalid = invalid or sample_invalid
         incomplete = incomplete or sample_incomplete
 
+    events = [e for sample in samples if isinstance(sample, dict) for e in sample.get("c18Attempts", []) if isinstance(e, dict)]
+    request_ids = [e.get("requestId") for e in events if e.get("attempt") == 1]
+    if len(request_ids) != len(set(request_ids)):
+        _reason(result, "transient_request_identity_duplicate")
+        incomplete = True
     actual_facts = {
-        "debugRetrieveHttpAttempts": len(samples),
+        "debugRetrieveHttpAttempts": sum(e.get("kind") == "debugRetrieve" for e in events),
+        "httpRetryCount": sum(e.get("attempt", 0) > 1 for e in events),
+        "retrievalRetryCount": sum(e.get("kind") == "debugRetrieve" and e.get("attempt", 0) > 1 for e in events),
+        "askRetryCount": sum(e.get("kind") == "ask" and e.get("attempt", 0) > 1 for e in events),
+        "recoveredFailureCount": sum(e.get("retry") is True for e in events),
+        "failedAttemptStatuses": dict(Counter(str(e.get("providerHttpStatus") or e.get("httpStatus")) for e in events if (e.get("providerHttpStatus") or e.get("httpStatus")) != 200)),
+        "knownGenerationHttpAttempts": sum(e.get("generationHttpAttempts") or 0 for e in events),
+        "unknownGenerationHttpAttemptCount": sum(e.get("kind") == "ask" and e.get("generationHttpAttempts") is None for e in events),
         "askHttpAttempts": sum(item.get("c18ExecutionFacts", {}).get("askHttpAttempts", 0) for item in samples if isinstance(item, dict)),
         "generationCalls": sum(item.get("c18ExecutionFacts", {}).get("generationCalls", 0) or 0 for item in samples if isinstance(item, dict)),
         "generationBypassCount": sum(item.get("c18ExecutionFacts", {}).get("generationBypassCount", 0) for item in samples if isinstance(item, dict)),
@@ -433,6 +476,9 @@ def compile_evidence(
         incomplete = True
     guard_snapshot = details.get("c18Execution")
     if isinstance(guard_snapshot, dict):
+        if guard_snapshot.get("attempts") != events:
+            _reason(result, "transient_global_ledger_mismatch")
+            incomplete = True
         observed_counts = guard_snapshot.get("counts")
         if isinstance(observed_counts, dict) and (
             observed_counts.get("debugRetrieve") != actual_facts["debugRetrieveHttpAttempts"]

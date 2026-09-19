@@ -1,12 +1,12 @@
 {
   "schemaVersion": "c18-generation-objective-v1",
-  "manifestId": "rag-eval-dev-v2-generation-objective-nemotron3-super-r2",
-  "compilerVersion": "c18-generation-objective-compiler-v1",
+  "manifestId": "rag-eval-dev-v2-generation-objective-nemotron3-super-r3-transient",
+  "compilerVersion": "c18-generation-objective-compiler-v2",
   "toolingSourceSha256": {
-    "scripts/c18_generation_contract.py": "465bd8926b8bf92e8d23e4af795d2082fd3fccc36a14fea780f4dce20a3997cc",
-    "scripts/compile_generation_objective_baseline.py": "6917dae4bee537c553cc1e06e32ab66cb2f6db350de6ced93a85d13498736cac",
-    "docs/eval/schema/c18-generation-objective-v1.json": "b2143d8f69dd01276fae39c551ccce5a35aee817fbe630c1693640cb53a506aa",
-    "docs/eval/schema/c18-generation-objective-evidence-v1.json": "3b9ab978eb6e3fc677e96f063e5a2403e6f84d20c3c0ea1dc60153deb3fabecc"
+    "scripts/c18_generation_contract.py": "6f75aa8265db6b5329934dbb71eec0b8f344edacda2f0a7729bbb71da77f85d4",
+    "scripts/compile_generation_objective_baseline.py": "3090b603f0077029af07c8d96875ba330a3a693cae71de02ba1ad90aead50c2e",
+    "docs/eval/schema/c18-generation-objective-v1.json": "3f0020890d1f548679078ff62e7d276d9fb8753a0d1cc8236aa75c39cacf448e",
+    "docs/eval/schema/c18-generation-objective-evidence-v1.json": "bd3fb66ecf84a7d2f096f94eb17e43ce359c3c928789d771d07b8aa962477dc1"
   },
   "dataset": {
     "manifestPath": "docs/eval/dataset-manifest.json",
@@ -37,21 +37,21 @@
   },
   "budgetAudit": {
     "path": "docs/eval/reports/c18-query-budget-audit-v1.json",
-    "sha256": "a7372b8cb2f664398a9388f6a818534e45a8977b66d17514fc415177ded6e23f",
+    "sha256": "58a1bb5a1b993aab85cb71e2572eb103803c1841c0f1c9dbeafe0296037a985b",
     "schemaVersion": "c18-query-budget-audit-v1",
     "canaryBudget": {
-      "debugRetrieve": 5,
-      "ask": 5,
-      "generationUpperBound": 5,
-      "queryEmbeddingUpperBound": 34,
+      "debugRetrieve": 20,
+      "ask": 20,
+      "generationUpperBound": 20,
+      "queryEmbeddingUpperBound": 136,
       "modelRerank": 0,
       "llmJudge": 0
     },
     "fullBudget": {
-      "debugRetrieve": 150,
-      "ask": 150,
-      "generationUpperBound": 150,
-      "queryEmbeddingUpperBound": 1492,
+      "debugRetrieve": 600,
+      "ask": 600,
+      "generationUpperBound": 600,
+      "queryEmbeddingUpperBound": 5968,
       "modelRerank": 0,
       "llmJudge": 0
     }
@@ -70,7 +70,20 @@
     "retryAskTimeouts": false,
     "minimumRequestIntervalSeconds": 2.2,
     "askDelaySeconds": 2.2,
-    "retrievalDelaySeconds": 2.2
+    "retrievalDelaySeconds": 2.2,
+    "transientRetryPolicy": {
+      "version": "http-429-503-v1",
+      "maxRetries": 3,
+      "statusCodes": [
+        429,
+        503
+      ],
+      "backoffSeconds": [
+        5,
+        10,
+        20
+      ]
+    }
   },
   "retrieval": {
     "topK": 5,
@@ -105,18 +118,18 @@
   },
   "budgets": {
     "canary": {
-      "debugRetrieve": 5,
-      "ask": 5,
-      "generationUpperBound": 5,
-      "queryEmbeddingUpperBound": 34,
+      "debugRetrieve": 20,
+      "ask": 20,
+      "generationUpperBound": 20,
+      "queryEmbeddingUpperBound": 136,
       "modelRerank": 0,
       "llmJudge": 0
     },
     "full": {
-      "debugRetrieve": 150,
-      "ask": 150,
-      "generationUpperBound": 150,
-      "queryEmbeddingUpperBound": 1492,
+      "debugRetrieve": 600,
+      "ask": 600,
+      "generationUpperBound": 600,
+      "queryEmbeddingUpperBound": 5968,
       "modelRerank": 0,
       "llmJudge": 0
     }

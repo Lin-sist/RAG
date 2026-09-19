@@ -22,8 +22,10 @@ import eval_dataset_contract as dataset_contract
 
 
 SCHEMA_VERSION = "c18-generation-objective-v1"
-COMPILER_VERSION = "c18-generation-objective-compiler-v1"
-MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r2"
+COMPILER_VERSION = "c18-generation-objective-compiler-v2"
+MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r3-transient"
+TRANSIENT_RETRY_POLICY = {"version": "http-429-503-v1", "maxRetries": 3,
+                          "statusCodes": [429, 503], "backoffSeconds": [5, 10, 20]}
 DEFAULT_MANIFEST = Path("docs/eval/config/c18-generation-objective-v1.json")
 RAW_DIRECTORY = "tmp/eval/c18"
 CANARY_IDS = ["fact-001", "definition-001", "reasoning-001", "multi-hop-001", "no-answer-001"]
@@ -240,10 +242,10 @@ def _read_jsonl(path: Path, code: str) -> list[dict[str, Any]]:
 def _expected_budgets(audit: dict[str, Any]) -> dict[str, dict[str, int]]:
     return {
         mode: {
-            "debugRetrieve": int(audit[mode]["debugRetrieval"]),
-            "ask": int(audit[mode]["ask"]),
-            "generationUpperBound": int(audit[mode]["generationUpperBound"]),
-            "queryEmbeddingUpperBound": int(audit[mode]["queryEmbeddingUpperBound"]),
+            "debugRetrieve": 4 * int(audit[mode]["debugRetrieval"]),
+            "ask": 4 * int(audit[mode]["ask"]),
+            "generationUpperBound": 4 * int(audit[mode]["generationUpperBound"]),
+            "queryEmbeddingUpperBound": 4 * int(audit[mode]["queryEmbeddingUpperBound"]),
             "modelRerank": int(audit[mode]["modelRerank"]),
             "llmJudge": int(audit[mode]["judge"]),
         }
@@ -350,6 +352,7 @@ def validate_manifest(repo_root: Path, manifest: dict[str, Any]) -> dict[str, An
             "minimumRequestIntervalSeconds",
             "askDelaySeconds",
             "retrievalDelaySeconds",
+            "transientRetryPolicy",
         },
         "c18_execution_identity_invalid",
     )
@@ -366,6 +369,7 @@ def validate_manifest(repo_root: Path, manifest: dict[str, Any]) -> dict[str, An
         "minimumRequestIntervalSeconds": 2.2,
         "askDelaySeconds": 2.2,
         "retrievalDelaySeconds": 2.2,
+        "transientRetryPolicy": TRANSIENT_RETRY_POLICY,
     }:
         _fail("c18_execution_identity_invalid")
 
@@ -567,6 +571,7 @@ def build_plan(manifest: dict[str, Any], mode: str) -> dict[str, Any]:
             "routerEnabled": False,
             "answerCache": False,
             "maxAskRetries": 0,
+            "transientRetryPolicy": TRANSIENT_RETRY_POLICY,
             "retryAskTimeouts": False,
             "minimumRequestIntervalSeconds": 2.2,
         },
@@ -600,6 +605,7 @@ class C18BudgetGuard:
             "llmJudge": 0,
         }
         self.rejections: list[dict[str, Any]] = []
+        self.attempts: list[dict[str, Any]] = []
 
     def before_request(self, kind: str) -> None:
         if kind not in {"debugRetrieve", "ask", "llmJudge"}:
@@ -626,6 +632,7 @@ class C18BudgetGuard:
             "budget": dict(self.budget),
             "rejections": list(self.rejections),
             "requestRejectionCount": len(self.rejections),
+            "attempts": list(self.attempts),
         }
 
 

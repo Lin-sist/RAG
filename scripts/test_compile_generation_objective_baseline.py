@@ -44,6 +44,7 @@ class C18CompilerTest(unittest.TestCase):
                 "routerEnabled": False,
                 "answerCache": False,
                 "maxAskRetries": 0,
+                "transientRetryPolicy": c18.TRANSIENT_RETRY_POLICY,
                 "retryAskTimeouts": False,
                 "minimumRequestIntervalSeconds": 2.2,
                 "askDelaySeconds": 2.2,
@@ -107,6 +108,11 @@ class C18CompilerTest(unittest.TestCase):
                     },
                 }
             )
+        for index, sample in enumerate(samples):
+            sample["c18Attempts"] = [dict(requestId=index*2+j+1, kind=kind, attempt=1,
+                httpStatus=200, providerHttpStatus=None, errorType=None, retry=False,
+                generationHttpAttempts=sample["c18ExecutionFacts"]["generationCalls"] if kind == "ask" else 0,
+                elapsedMillis=1) for j, kind in enumerate(("debugRetrieve", "ask"))]
         details = {
             "reportStatus": "CLEAN",
             "objectiveMetricStatus": "COMPLETE",
@@ -158,6 +164,7 @@ class C18CompilerTest(unittest.TestCase):
             "c18Execution": {
                 "counts": {"debugRetrieve": 150, "ask": 150, "generationReservations": 150, "llmJudge": 0},
                 "budget": self.manifest["budgets"]["full"],
+                "attempts": [e for s in samples for e in s["c18Attempts"]],
                 "rejections": [],
                 "requestRejectionCount": 0,
             },
@@ -192,6 +199,33 @@ class C18CompilerTest(unittest.TestCase):
         result = self.compile_temp(details, metadata)
         self.assertEqual(result["status"], "INCOMPLETE")
         self.assertIn("sample_order_or_count_mismatch", result["reasonCodes"])
+
+    def test_recovered_failure_requires_complete_consistent_ledger(self) -> None:
+        details, metadata = self.make_artifacts()
+        sample = details["samples"][0]
+        failed = copy.deepcopy(sample["c18Attempts"][1])
+        failed.update(providerHttpStatus=503, retry=True)
+        sample["c18Attempts"][1]["attempt"] = 2
+        sample["c18Attempts"].insert(1, failed)
+        sample["metricCalculationDetails"].update(askAttempts=2, askRetries=1)
+        sample["c18ExecutionFacts"].update(askHttpAttempts=2, askRetryCount=1, automaticRetryCount=1)
+        details["runCounts"]["retryCount"] = 1
+        details["c18Execution"]["counts"].update(ask=151, generationReservations=151)
+        details["c18Execution"]["attempts"] = [e for s in details["samples"] for e in s["c18Attempts"]]
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "COMPLETE", result["reasonCodes"])
+        self.assertEqual(result["callFacts"]["recoveredFailureCount"], 1)
+        self.assertEqual(result["callFacts"]["failedAttemptStatuses"], {"503": 1})
+        failed["providerHttpStatus"] = 500
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "INCOMPLETE")
+        self.assertIn("transient_attempt_ledger_invalid", result["reasonCodes"])
+
+    def test_missing_attempt_ledger_is_incomplete(self) -> None:
+        details, metadata = self.make_artifacts()
+        details["samples"][0].pop("c18Attempts")
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "INCOMPLETE")
 
     def test_real_runner_windows_descriptors_survive_sanitization(self) -> None:
         details, metadata = self.make_artifacts()

@@ -49,13 +49,13 @@ class C18GenerationContractTest(unittest.TestCase):
         plan = c18.build_plan(self.manifest, "canary")
         self.assertEqual(plan["status"], "OFFLINE_VERIFIED")
         self.assertFalse(plan["authorization"]["liveAuthorized"])
-        self.assertEqual(plan["callBudget"]["queryEmbeddingUpperBound"], 34)
+        self.assertEqual(plan["callBudget"]["queryEmbeddingUpperBound"], 136)
         self.assertEqual(len(plan["selection"]["ids"]), 5)
 
     def test_full_plan_keeps_exact_order_and_budget(self) -> None:
         plan = c18.build_plan(self.manifest, "full")
         self.assertEqual(plan["selection"]["count"], 150)
-        self.assertEqual(plan["callBudget"]["queryEmbeddingUpperBound"], 1492)
+        self.assertEqual(plan["callBudget"]["queryEmbeddingUpperBound"], 5968)
         self.assertEqual(plan["selection"]["ids"][0], "fact-001")
         self.assertEqual(plan["selection"]["ids"][-1], "no-answer-020")
 
@@ -106,11 +106,11 @@ class C18GenerationContractTest(unittest.TestCase):
 
     def test_guard_rejects_before_a_sixth_request(self) -> None:
         guard = c18.C18BudgetGuard(self.manifest["budgets"]["canary"])
-        for _ in range(5):
+        for _ in range(20):
             guard.before_request("debugRetrieve")
         with self.assertRaisesRegex(c18.C18ContractError, "c18_request_rejected"):
             guard.before_request("debugRetrieve")
-        self.assertEqual(guard.snapshot()["counts"]["debugRetrieve"], 5)
+        self.assertEqual(guard.snapshot()["counts"]["debugRetrieve"], 20)
         self.assertEqual(guard.snapshot()["rejections"][0]["requestSent"], False)
 
     def test_runtime_fingerprint_requires_exact_safe_descriptor(self) -> None:
