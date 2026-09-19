@@ -2623,3 +2623,6 @@
 - 验证：代码仍是d3a4f43，复用277项Python tests PASS；本轮仅文档/证据，Java/frontend未改故不重跑。聚焦diff/链接/范围与敏感信息检查。
 - 跳过：正式baseline接受、归档和IDLE，原因是full不足150；不虚报C18完成，不push/PR/deploy。保留其他任务AGENTS及共享日志未提交增量。
 - Commit: pending
+
+## 2026-09-19 C18 r5执行提交补录
+- 上一执行提交：1f6a96017e189768792328bf865f98bd95cffa27（docs(eval): 保留C18有界重试结果与网络中断证据）。
