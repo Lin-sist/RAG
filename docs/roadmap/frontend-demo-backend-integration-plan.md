@@ -1,0 +1,304 @@
+# 前端 Demo 迁移与真实后端对接规划
+
+> 文档性质：实施前规划（plan-only），不构成前端实现、真实后端联调、provider 调用、提交、发布或部署授权。
+> 状态日期：2026-09-20。
+> 当前事实基线：Git HEAD `b2c39a2`；唯一 active change 为 C18 `generation-objective-evidence-baseline`，正式 full、验收和归档尚未完成。
+> 唯一正式落点：`rag-frontend/`。`prototype/chatgpt-ui-demo/` 仅作为视觉、信息架构和交互参考，不改造成第二套生产前端。
+
+## 1. 目标与边界
+
+本规划回答三个问题：
+
+1. Demo 中哪些页面和交互可以映射到当前真实后端；
+2. 每个正式页面必须覆盖哪些加载、空、成功、错误和中断状态；
+3. 哪些能力可以在 C18 归档后按既有契约实施，哪些必须等待 C21 或另立 Type C change。
+
+本轮不做：
+
+- 不修改 Vue、TypeScript、Java、配置或数据库迁移；
+- 不启动前后端，不请求登录、知识库、问答、embedding、generation 或 judge；
+- 不创建第二个 active OpenSpec change，不修改 `.ai/ACTIVE_TASK.md`；
+- 不把 Demo 的 mock conversation、行内 `{{cite:N}}`、pipeline timing 或五个静态工作台视图包装成已实现能力；
+- 不决定最终视觉稿，不新增依赖，不调整生产默认行为。
+
+## 2. 当前能力分类
+
+| 能力 | 状态 | 规划结论 |
+| --- | --- | --- |
+| 登录、refresh、logout | `confirmed` | 复用现有 `/auth/**`；refresh 必须 single-flight |
+| 知识库 CRUD、统计、文档列表 | `confirmed` | 可进入 C18 后首批 REST 对接 |
+| 文档上传与任务轮询 | `confirmed` | 上传按 `202 + taskId`，不得按同步完成处理 |
+| 同步问答与独立 citations | `confirmed` | 作为第一条真实问答主链；不生成 Demo 行内引用标记 |
+| 扁平历史与 feedback | `confirmed` | 一条 history 是一轮问答，不冒充 conversation |
+| 文本 SSE | `partial` | 仅纯文本 delta、`[DONE]`、`[ERROR]`；无结构化终态和流式 citations |
+| 停止生成 | `partial` | 客户端可 abort，但当前不能可靠声明服务端 `CANCELLED` 或历史未保存 |
+| 结构化 SSE terminal | `planned` | 等待 C21；禁止前端先发明字段或终态 |
+| 多轮 conversation、重命名 | `out_of_scope` | 当前无后端实体；不得用 history id 伪装会话 id |
+| 引用原文定位接口 | `unknown` | 现有 citation/context 可展示片段；若需新接口则另立 Type C |
+| 评测/MCP/可观测/知识源/研究任务 REST | `out_of_scope` | 保留为 Demo 或从正式导航裁剪 |
+
+## 3. 工程结构原则
+
+### 3.1 单一实现原则
+
+- `prototype/chatgpt-ui-demo/`：只保留静态设计参考和历史调研，不增加真实 API client。
+- `rag-frontend/`：唯一正式路由、状态、API、错误处理和构建入口。
+- 现有 `rag-frontend/src/api/` 是唯一 HTTP 边界；页面和组件不直接散落 `fetch/axios`。
+- SSE 继续通过一个 composable 管理，不在不同聊天组件中复制解析器。
+- 任务轮询继续通过一个 composable 管理，不在详情页和上传组件各写一套计时器。
+
+### 3.2 数据模型原则
+
+- 后端 DTO 是事实源；Demo mock shape 只能适配到 view model，不能反向要求后端匹配。
+- 同步问答与流式问答共享“消息展示模型”，但保留不同的能力标记：同步可带 citations/contexts，当前流式不可。
+- history 与 conversation 分开命名：正式代码使用“历史问答记录”，不得创建虚假的 `conversationId`。
+- UI 可以定义本地显示状态，但不能提前定义 C21 尚未接受的 transport 字段。
+
+### 3.3 状态所有权
+
+| 状态 | 唯一所有者 | 页面职责 |
+| --- | --- | --- |
+| access/refresh token、userInfo | auth store | 只消费登录态，不自行操作 storage |
+| KB 列表、当前 KB、统计 | knowledgeBase store | 展示与触发动作，不复制缓存 |
+| 当前消息、选中 KB、发送状态 | chat store | 组件只派发状态转换 |
+| HTTP 错误标准化、401 refresh | request 层 | 页面仅展示标准错误，不解析多种 envelope |
+| SSE reader/abort/transport outcome | SSE composable | ChatPanel 不自行解析 `data:` 行 |
+| 上传任务轮询 | task polling composable | 页面只维护任务卡片 view model |
+
+## 4. 信息架构与页面去留
+
+| Demo/现有入口 | 正式落点 | 处理方式 | 依赖 |
+| --- | --- | --- | --- |
+| 登录页 | `/login` | 保留正式页，吸收 Demo 视觉语言 | 现有 auth REST |
+| 新问答/欢迎页 | `/chat` | 作为主入口；先同步问答，后补降级 SSE | 现有 QA REST |
+| Demo 多轮会话 | `/chat/:id` | 仅展示单条 history 的问答详情；不称多轮会话 | 现有 history REST |
+| 知识库列表 | `/kb` | 保留正式页，吸收筛选和空态设计 | 现有 KB REST |
+| 知识库详情/上传 | `/kb/:id` | 保留正式页，展示统计、文档和异步任务 | KB/task REST |
+| 历史列表 | `/history` | 保留扁平记录分组、筛选、删除 | history REST |
+| 我的反馈 | 暂不设独立主导航 | 可在历史详情内展示/提交；独立页另评估 | feedback REST |
+| 设置/主题 | 正式 shell 内本地设置 | 仅保留真实生效项 | localStorage；非业务数据 |
+| 全局搜索 | 延后 | 当前只可本地过滤已加载 KB/history；无服务端搜索 | 需要产品决策 |
+| 评测/MCP/可观测/知识源/研究任务 | Demo 保留或正式版裁剪 | 不接假接口、不放正式可点击入口 | 无现成 REST |
+
+现有 `/chat-v2`、`/history-v2`、旧知识库路径等兼容入口在实施前单独核查访问来源；未确认无引用前不删除。
+
+## 5. 页面状态设计
+
+### 5.1 全局应用壳
+
+| 状态 | 进入条件 | 页面表现 | 可用操作 |
+| --- | --- | --- | --- |
+| `AUTH_CHECKING` | 首次加载且本地有 token | 保持稳定骨架，避免先闪登录页 | 无业务操作 |
+| `AUTHENTICATED` | token 可用 | 进入目标路由 | 正常操作 |
+| `REFRESHING` | 收到 401 且 refresh 可用 | 原请求排队；只发一个 refresh | 不重复弹错 |
+| `UNAUTHENTICATED` | 无 token 或 refresh 失败 | 清空认证态，跳转 `/login` | 重新登录 |
+| `DEPENDENCY_UNAVAILABLE` | 503/Redis 等依赖失败 | 全局错误提示，可手动重试 | 不自动无限重试 |
+| `RATE_LIMITED` | HTTP 429 | 展示限流提示和可用的 `Retry-After` | 到期后手动重试 |
+
+禁止把业务 `ApiResponse.code` 当作唯一成功依据；先以 HTTP status 判定，再兼容 `ApiResponse.message` 与 `ErrorResponse.errorCode`。
+
+### 5.2 登录页
+
+状态：`IDLE → SUBMITTING → SUCCESS`，失败分为 `INVALID_CREDENTIALS / RATE_LIMITED / DEPENDENCY_UNAVAILABLE / NETWORK_ERROR`。
+
+- `SUBMITTING` 时禁用重复提交；
+- 成功后存储 access/refresh token 和 userInfo，再跳转原目标路由；
+- 失败保留用户名、清空或保留密码由安全评审决定，不显示后端堆栈；
+- 当前无注册 API，正式页面不显示可用的“注册”入口。
+
+### 5.3 知识库列表
+
+| 状态 | 表现 |
+| --- | --- |
+| `LOADING` | 卡片骨架，不显示“暂无知识库” |
+| `READY_WITH_ITEMS` | 列表、前端本地过滤、创建入口 |
+| `READY_EMPTY` | 明确空态和创建入口 |
+| `ERROR` | 保留页面结构，展示重试，不把错误当空列表 |
+| `MUTATING` | 对具体创建/编辑/删除操作局部禁用 |
+
+评测 KB 的隐藏或置底只能是明确的前端显示规则；不能把“归档”写成本地假状态。
+
+### 5.4 知识库详情与文档上传
+
+详情状态：`LOADING / READY / NOT_FOUND / FORBIDDEN / ERROR`。
+
+文档状态：`PENDING / PROCESSING / COMPLETED / FAILED / RECONCILIATION_REQUIRED`。当前 TypeScript 联合类型缺少 `RECONCILIATION_REQUIRED`，实施前先修正契约模型。
+
+上传任务状态：
+
+```text
+SELECTED → UPLOADING → ACCEPTED(taskId) → POLLING
+                                     ├─ COMPLETED → 刷新文档与统计
+                                     ├─ FAILED → 保留原因，可重新选择文件
+                                     └─ CANCELLED → 明确取消，不显示为失败或成功
+```
+
+- HTTP 202 只表示已接受，不表示索引完成；
+- 轮询异常停止后提供手动恢复，不并行启动重复 timer；
+- KB 向量身份未就绪时应显示后端错误，不自动重建、不切换模型；
+- 删除文档或 KB 都需要明确确认，成功后再更新本地列表。
+
+### 5.5 同步问答主链
+
+```text
+NO_KB
+  └─ select KB → READY
+READY
+  └─ submit → REQUESTING
+REQUESTING
+  ├─ HTTP success + answer → ANSWERED
+  ├─ HTTP success + explicit no-answer metadata → NO_ANSWER
+  ├─ 401 → REFRESHING → REQUESTING | AUTH_REQUIRED
+  ├─ 403/404/429/5xx → FAILED
+  └─ network error → INTERRUPTED
+```
+
+页面规则：
+
+- 未选择 KB 时禁止发送，并解释原因；
+- 一次发送只创建一条 user message 和一条 pending assistant message；
+- 成功响应以独立 `citations[]` 渲染来源卡片，不从 answer 文本解析 `{{cite:N}}`；
+- citations 为空时显示“本回答未返回可展示来源”，不能生成虚假来源；
+- score 表述为“检索相关度”，不能写成“答案正确率”；
+- `contexts` 是调试/解释材料，不默认等价于有效 citation；
+- 失败消息可重试，但重试是新的用户动作，不在前端静默重复真实 ask。
+
+### 5.6 当前 SSE 的降级状态
+
+在 C21 前仅支持以下本地 transport 状态：
+
+| 状态 | 可确认事实 | 不得声称 |
+| --- | --- | --- |
+| `CONNECTING` | POST 已发起，等待响应 | provider 已开始生成 |
+| `STREAMING_TEXT` | 收到纯文本 delta | 已有 citations 或最终业务状态 |
+| `DONE_TEXT_ONLY` | 收到 `[DONE]`/流结束且无已知错误 | `ANSWER`、`NO_ANSWER` 等结构化终态 |
+| `STREAM_ERROR` | 收到 `[ERROR]` 或读取异常 | HTTP status 一定失败 |
+| `CLIENT_ABORTED` | AbortController 已触发 | 服务端已取消、未写历史 |
+
+规划要求：
+
+- 当前 `useSSE` 对 `[ERROR]` 只会当普通文本，对 `AbortError` 也可能返回 `completed=true`；实施前必须先用测试锁定并修正，但本轮不修改代码；
+- stream message 不显示同步问答 citations；不为 citations 再偷偷调用一次 `/ask`；
+- client abort 后的 partial text 明确标记“已中断”，不能保存/渲染成正常成功；
+- C21 接受前不定义 `ANSWER/NO_ANSWER/UNSUPPORTED/ERROR/CANCELLED` transport DTO。
+
+### 5.7 历史与反馈
+
+历史列表状态：`LOADING / READY_WITH_ITEMS / READY_EMPTY / FILTERED_EMPTY / ERROR / DELETING`。
+
+- 按日期分组属于前端 view model，不改变后端记录；
+- `/chat/:id` 只加载一条 `QAHistoryDTO`，展示一问一答；
+- 无 rename API，不显示可用的重命名按钮；
+- feedback 提交必须绑定真实 history id；重复反馈错误单独提示；
+- “我的反馈”如需问题标题，必须回查 history 或使用已加载缓存，不假造标题。
+
+## 6. 接口契约映射
+
+| 用户动作 | 方法与路径 | 请求 | 成功数据 | 关键状态/约束 | 实施阶段 |
+| --- | --- | --- | --- | --- | --- |
+| 登录 | `POST /auth/login` | username/password | `AuthResponse` | 401、429、503 | R1 |
+| 刷新 | `POST /auth/refresh` | refreshToken | 新 `AuthResponse` | rotate；single-flight | R1 |
+| 退出 | `POST /auth/logout` | Bearer | 无 data | 本地态始终清理 | R1 |
+| KB 列表 | `GET /api/knowledge-bases` | — | `KnowledgeBaseDTO[]` | 不能把错误当空数组 | R2 |
+| KB 创建 | `POST /api/knowledge-bases` | name/description/isPublic | KB DTO | 201、限流 | R2 |
+| KB 详情/更新/删除 | `GET/PUT/DELETE /api/knowledge-bases/{id}` | 对应 DTO | KB DTO/无 data | 403/404 分开 | R2 |
+| KB 统计 | `GET /api/knowledge-bases/{id}/statistics` | — | statistics | 统计失败不抹掉详情 | R2 |
+| 上传文档 | `POST /api/knowledge-bases/{id}/documents` | multipart file/title | upload response | 202、taskId、幂等头 | R2 |
+| 文档列表/删除 | `GET/DELETE .../documents` | — | documents/无 data | 状态五态 | R2 |
+| 任务状态 | `GET /api/tasks/{taskId}` | — | task status | 五种终态/进行态 | R2 |
+| 同步问答 | `POST /api/qa/ask` | `AskRequest` | `QAResponse` | 真实调用、副作用、限流 | R3 |
+| 文本流 | `POST /api/qa/ask/stream` | `AskRequest` | SSE text | POST fetch reader；非 EventSource | R4/C21前降级 |
+| 历史分页 | `GET /api/history` | page/size/kbId? | page result | page 从1开始，size≤100 | R3 |
+| 历史详情/删除 | `GET/DELETE /api/history/{id}` | — | history/无 data | 用户所有权 | R3 |
+| 提交/读取反馈 | `POST/GET /api/history/{id}/feedback` | rating/comment | feedback | rating 1–5、重复错误 | R3 |
+
+`POST /api/qa/debug/retrieve` 不进入普通用户默认问答链。若以后作为 evidence inspection 暴露，需单独产品设计和权限/成本评审。
+
+## 7. 实施前必须修正的契约缺口
+
+这些是当前代码与后端契约之间已经确认的差异，本规划只登记、不修复：
+
+1. `KnowledgeBaseDTO` 缺少七个向量身份字段；详情页不能继续硬编码模型、维度或 collection 状态。
+2. `DocumentStatus` 缺少 `RECONCILIATION_REQUIRED`。
+3. 前端 `Citation` 仅含 `source/snippet/startIndex/endIndex`，缺少 `sourceFileName/documentTitle/documentId/chunkId/score`。
+4. `ApiResponse<T>.data` 被定义为必填，但删除/退出等成功响应可能没有 `data`；错误响应还有另一种 `ErrorResponse` 结构。
+5. request 层的错误规范化尚未形成统一 typed error；页面仍可能重复弹 toast。
+6. `useSSE` 尚未把流内 `[ERROR]` 与客户端 abort 可靠映射到 `STREAM_ERROR/CLIENT_ABORTED`。
+7. 知识库详情页已有自写轮询，同时仓库存在 `useTaskPolling`，实施时必须合并为单一机制，不能继续两套 timer。
+8. `/chat` 与 `/chat-v2` 当前指向同一 `ChatPanel`；迁移前需决定保留兼容别名还是移除，不能复制第二套页面。
+9. 仓库存在疑似重复/死代码页面和组件；先做引用图与构建验证，再删除，不能边迁移边保留两个实现。
+
+## 8. 分阶段实施策略
+
+以下阶段只是建议顺序，不构成本轮实施授权。
+
+### P0：当前阶段，仅规划
+
+- 冻结本规划、页面状态和契约映射；
+- 选择 Demo 中要迁移的视觉模块；
+- 不修改生产代码，不做真实联调；
+- 等待 C18 完整 full、验收、归档和 `ACTIVE_TASK=IDLE`。
+
+### R0：实施启动前复核
+
+- 重新检查 Git、active task、C18/C21 状态和后端 Controller/DTO；
+- 确认现有 `AGENTS.md`、日志及其他任务改动已隔离；
+- 为涉及真实问答的联调披露 provider、模型、数据出站、调用量和 history/query-count 副作用；
+- 若范围只复用既有契约，按小范围前端切片处理；若新增用户能力/接口/状态语义，先建立 Type C change。
+
+### R1：认证与错误地基
+
+- 统一 success/error envelope 和 typed error；
+- 验证 single-flight refresh、refresh rotate、失败退出；
+- 页面只消费标准错误状态，不各自解析响应体。
+
+### R2：知识库、文档与任务
+
+- 先修正 DTO，再迁移列表/详情/上传视觉；
+- 合并任务轮询实现；
+- 用新建且向量身份就绪的联调 KB 验证，不假定历史 KB 可用。
+
+### R3：同步问答、来源、历史与反馈
+
+- 同步 `/ask` 作为第一条真实问答链；
+- 使用独立 citations 数组，不实现行内 citation mock；
+- 历史保持一问一答，反馈绑定 history id；
+- 完成后再考虑是否需要新的 conversation 能力。
+
+### R4：降级文本流
+
+- 先修复并测试 `[ERROR]`、abort、分帧、尾 buffer；
+- 明确 text-only 标签，不展示虚假 citations/terminal state；
+- 若产品不能接受降级语义，则整个 R4 延后至 C21。
+
+### R5：C21 后的流式收口
+
+- 以接受后的 terminal contract 为唯一事实源；
+- 统一同步/SSE/MCP 的 final state、reason、citations、usage 与 history 行为；
+- 再开放完整停止生成、流式来源和结构化终态 UI。
+
+## 9. 防止 Bug 与冗余代码的验收规则
+
+每个实施切片必须满足：
+
+1. 只改一个能力域；不顺手重构其他页面。
+2. API、store/composable、page/component 三层职责不重复。
+3. 不新增第二套 HTTP client、SSE parser、task poller 或聊天页面。
+4. 先补状态和契约测试，再接视觉组件；错误态、空态、中断态与成功态同等验收。
+5. 前端必须运行 `npm run build`，其中包含 `vue-tsc -b`；不得只跑 `vite build`。
+6. 涉及 markdown/citation 时保持 `html: false`，复核链接与 snippet 的 XSS 边界。
+7. 涉及真实 ask/SSE 时记录 provider 调用、timeout、retry、错误类别和本地持久化副作用。
+8. 暂存只包含本切片精确路径，不混入 C18、`AGENTS.md`、`.env.local` 或其他任务日志。
+9. 不以 mock、静态 Demo 或前端合成状态宣称真实后端能力通过。
+
+## 10. 实施启动闸门
+
+建议同时满足以下条件后开始 R1：
+
+- C18 已完成正式 full、用户验收、归档，`.ai/ACTIVE_TASK.md` 为 `IDLE`；
+- Git 中当前其他任务修改已提交或隔离；
+- 用户确认首个实施切片及提交责任；
+- 本规划中的 DTO/错误/SSE 已知缺口仍经当前代码复核成立；
+- 测试账号、可用 KB 和联调数据边界明确。
+
+R1–R3 不依赖 C21；R4 是否提前取决于用户是否接受 text-only 降级。完整流式产品体验必须等待 C21，不以 C18 完成代替 C21。

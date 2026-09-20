@@ -2641,3 +2641,14 @@
 - 诊断：不含业务数据的synthetic embedding1、synthetic chat1、models目录读取1均403；key存在、格式正常，`.env.local`自2026-09-17未改。证据支持当前凭据被服务端拒绝，不支持归因于单一模型、题目、Milvus或r6重试代码。
 - 跳过：full、验收、baseline接受、归档/IDLE，因canary不完整；需要用户本机更新可用NVIDIA key后新身份重跑。Java/frontend未改，不重复测试；不改.env.local、题目/fixture/C17门禁，不清理KB/history，不push/PR/deploy。
 - Commit: pending
+
+## 2026-09-20 Type B：前端 Demo 迁移与真实后端对接 plan-only
+- 授权与范围：用户要求先做前端规划、页面状态设计和接口契约映射，不实现正式接入；本轮提交责任未授权，默认用户手动提交。
+- 修改：新增 `docs/roadmap/frontend-demo-backend-integration-plan.md`；未修改 Vue/TypeScript/Java、`.ai/ACTIVE_TASK.md`、C18 change、配置或凭据。
+- 已确认事实：`rag-frontend/` 是唯一正式落点，`prototype/chatgpt-ui-demo/` 只作设计参考；现有 auth、KB、task、同步 QA、文本 SSE、扁平 history/feedback 契约已映射；完整 structured SSE terminal/citations/cancel-history 语义仍依赖 C21。
+- 规划结果：定义全局、登录、KB、上传任务、同步问答、降级 SSE、历史/反馈状态；登记当前 DTO、错误信封、SSE abort/error、重复轮询与重复页面等实施前缺口；建议 C18 归档后按 R1 认证错误地基、R2 KB/任务、R3 同步 QA/历史、R4 降级流、R5 C21 收口推进。
+- 验证：对照当前路由、API/types/stores/composables、页面状态、五个后端 Controller、Vite 代理和既有只读调研；运行文档旧路径/关键契约定向扫描与 `git diff --check`。业务代码未改，未运行前端 build、Java/Python 测试。
+- 外部与运行边界：未启动前后端，provider/backend/KB/SQL/Milvus calls=0，业务数据出站=false；未新增依赖，未暂存、提交、push、PR、发布或部署。
+- 范围安全：保留用户已有 `AGENTS.md` 和本日志先前增量；不创建第二个 active change，不把 Demo mock 能力写成已实现事实。
+- 剩余风险：实施前需重验 C18/C21、Controller/DTO 与工作树；NVIDIA 凭据 403 仍阻断真实问答联调；当前文本 SSE 不足以证明结构化终态。
+- Commit: pending
