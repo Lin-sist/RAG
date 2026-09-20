@@ -69,3 +69,10 @@
 - runner ledger/compiler v3/manifest/schema与测试已完成；聚焦22项及全套Python 280项通过，diff check通过。随后须在新clean隔离checkout执行canary→从头full。旧r5 115/150不拼接、不改写。
 - 平台拒绝本轮暂存：尽管仓库记录同一C18已有Agent提交授权，审批器要求当前可信用户消息再次明确授权；未绕过，尚未形成clean运行提交。
 - C18在完整full、用户验收、baseline接受与归档前仍保持ACTIVE；无push/PR/deploy。
+
+## 2026-09-20 r6 凭据阻断（最新状态）
+- 用户已明确授权Agent暂存/本地提交并继续canary/full/验收/归档；实现提交 `4730abd`，未混入其他任务AGENTS及日志增量。
+- 隔离checkout固定 `4730abd`、clean=true；Docker五项healthy、后端与runtime身份正确，mutation-free preflight READY（50/50 vectors、3/3 fixtures、chunks 11/14/25）。
+- 正式canary第1条debug retrieval的NVIDIA embedding请求返回HTTP403，按契约停止；实际debug1、embedding1、ask/generation/judge0，后4条与full未执行。compiler INCOMPLETE，raw及安全摘要已保留。
+- 不含业务数据的synthetic embedding/chat与models目录鉴权均403；本地key存在、格式正常且.env.local自2026-09-17未改，当前阻断为服务端拒绝现有凭据。用户需在本机更新可用 `NVIDIA_API_KEY` 后以新no-overwrite身份重跑canary。
+- 正式full、验收、baseline接受、归档与IDLE均未完成；保持ACTIVE，不进入C19，无push/PR/deploy。

@@ -97,5 +97,5 @@
 ## 2026-09-20 r6 精确提前断连恢复
 - [x] 用户要求继续完成C18剩余内容；只将真实观测的 `network/PrematureCloseException` 纳入既有最多3次重试，不扩大timeout或其他network错误，预算不变。
 - [x] compiler v3、新manifest/schema、runner ledger及负例测试完成；全套Python 280项通过，diff check通过。
-- [ ] 新clean canary与从头完整full；旧r5 115/150证据保持，不拼接。
+- [ ] 新clean canary与从头完整full；r6第1条debug embedding收到HTTP403后停止，ask/generation=0，旧r5 115/150证据保持，不拼接。需用户更新可用NVIDIA API key后使用新身份重跑canary。
 - [ ] compiler COMPLETE后呈交真实通道数值和边界，完成用户验收、delta接受与授权范围内归档/IDLE。

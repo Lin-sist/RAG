@@ -2634,3 +2634,10 @@
 - 范围安全：未修改业务Java/前端、题目/fixture/prompt、C17门禁或.env.local；无KB重建/清理，无push/PR/deploy；保留其他任务未提交的AGENTS.md及日志增量。
 - 提交阻断：平台拒绝本轮 `git add`，理由是当前可信用户消息未明确重新授权Agent暂存/提交；未绕过、未暂存。clean正式运行须在用户明确授权后形成新提交。
 - Commit: pending
+
+## 2026-09-20 C18 r6 clean canary凭据失败
+- 上一执行提交：`4730abdbae84fd692aaea138496bf1a3b2ce4d0e`（`fix(eval): 支持C18提前断连有界重试`）。隔离checkout clean=true；Docker五项healthy、后端启动、runtime identity核验和mutation-free preflight READY（vectors50/50、fixtures3/3、chunks11/14/25）。
+- 正式canary第1条debug retrieval调用NVIDIA embedding得到HTTP403，runner失败即停：debug1、embedding1、ask/generation/judge0，后4条/full未发出。compiler v3为INCOMPLETE；raw三件产物及fingerprint复制回ignored目录并逐文件SHA-256一致，安全摘要/诊断已tracked。
+- 诊断：不含业务数据的synthetic embedding1、synthetic chat1、models目录读取1均403；key存在、格式正常，`.env.local`自2026-09-17未改。证据支持当前凭据被服务端拒绝，不支持归因于单一模型、题目、Milvus或r6重试代码。
+- 跳过：full、验收、baseline接受、归档/IDLE，因canary不完整；需要用户本机更新可用NVIDIA key后新身份重跑。Java/frontend未改，不重复测试；不改.env.local、题目/fixture/C17门禁，不清理KB/history，不push/PR/deploy。
+- Commit: pending
