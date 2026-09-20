@@ -113,6 +113,50 @@ class C18GenerationContractTest(unittest.TestCase):
         self.assertEqual(guard.snapshot()["counts"]["debugRetrieve"], 20)
         self.assertEqual(guard.snapshot()["rejections"][0]["requestSent"], False)
 
+    def test_exact_premature_close_provider_error_retries_and_is_ledgered(self) -> None:
+        failure = {
+            "data": {
+                "metadata": {
+                    "status": "error",
+                    "llmErrorCategory": "network",
+                    "llmErrorType": "PrematureCloseException",
+                }
+            }
+        }
+        success = {"data": {"metadata": {"status": "success", "model": c18.EXPECTED_RUNTIME["model"]}}}
+        guard = c18.C18BudgetGuard(self.manifest["budgets"]["canary"])
+        with mock.patch.object(runner, "C18_GUARD", guard), mock.patch.object(
+            runner, "_call_json_once", side_effect=[failure, success]
+        ), mock.patch.object(runner.time, "sleep") as sleep:
+            response = runner.call_json("POST", "http://localhost/api/qa/ask", {}, "token", 1)
+        self.assertEqual(response, success)
+        self.assertEqual(len(guard.attempts), 2)
+        self.assertEqual(guard.attempts[0]["providerErrorType"], "PrematureCloseException")
+        self.assertEqual(guard.attempts[0]["providerErrorCategory"], "network")
+        self.assertTrue(guard.attempts[0]["retry"])
+        self.assertFalse(guard.attempts[1]["retry"])
+        sleep.assert_called_once_with(5)
+
+    def test_other_network_provider_error_does_not_retry(self) -> None:
+        failure = {
+            "data": {
+                "metadata": {
+                    "status": "error",
+                    "llmErrorCategory": "network",
+                    "llmErrorType": "ConnectTimeoutException",
+                }
+            }
+        }
+        guard = c18.C18BudgetGuard(self.manifest["budgets"]["canary"])
+        with mock.patch.object(runner, "C18_GUARD", guard), mock.patch.object(
+            runner, "_call_json_once", return_value=failure
+        ), mock.patch.object(runner.time, "sleep") as sleep:
+            response = runner.call_json("POST", "http://localhost/api/qa/ask", {}, "token", 1)
+        self.assertEqual(response, failure)
+        self.assertEqual(len(guard.attempts), 1)
+        self.assertFalse(guard.attempts[0]["retry"])
+        sleep.assert_not_called()
+
     def test_runtime_fingerprint_requires_exact_safe_descriptor(self) -> None:
         import tempfile
 

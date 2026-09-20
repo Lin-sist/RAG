@@ -93,3 +93,9 @@
 - [x] 按用户full授权完整启动，115条观测、38次503恢复全部留存；第115条PrematureCloseException/network按不重试契约停止，compiler INCOMPLETE。
 - [ ] 完整150条正式full：缺35条；网络错误不在已批准重试范围，不能重试或拼接子集。
 - [ ] W4 baseline接受/归档/IDLE：正式full未完整，暂不执行。
+
+## 2026-09-20 r6 精确提前断连恢复
+- [x] 用户要求继续完成C18剩余内容；只将真实观测的 `network/PrematureCloseException` 纳入既有最多3次重试，不扩大timeout或其他network错误，预算不变。
+- [x] compiler v3、新manifest/schema、runner ledger及负例测试完成；全套Python 280项通过，diff check通过。
+- [ ] 新clean canary与从头完整full；旧r5 115/150证据保持，不拼接。
+- [ ] compiler COMPLETE后呈交真实通道数值和边界，完成用户验收、delta接受与授权范围内归档/IDLE。

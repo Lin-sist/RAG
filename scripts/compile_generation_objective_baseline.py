@@ -352,15 +352,24 @@ def _validate_sample(
             ledger_valid = ledger_valid and 1 <= len(chain) <= 4
             for index, event in enumerate(chain):
                 status = event.get("providerHttpStatus") or event.get("httpStatus")
+                provider_error = {
+                    "category": event.get("providerErrorCategory"),
+                    "type": event.get("providerErrorType"),
+                }
+                retryable_failure = (
+                    status in c18.TRANSIENT_RETRY_POLICY["statusCodes"]
+                    or provider_error in c18.TRANSIENT_RETRY_POLICY["providerErrors"]
+                )
                 more = index < len(chain) - 1
                 ledger_valid = ledger_valid and (
                     event.get("attempt") == index + 1
                     and type(event.get("requestId")) is int
                     and event.get("requestId") == chain[0].get("requestId")
                     and event.get("retry") is more
-                    and (status in (429, 503) if more else status == 200)
+                    and (retryable_failure if more else status == 200)
                     and event.get("generationHttpAttempts") in (0, 1, None)
                     and (more or event.get("errorType") is None)
+                    and (more or provider_error == {"category": None, "type": None})
                 )
         if isinstance(facts, dict) and isinstance(details, dict):
             asks = len(chains[1])
@@ -457,7 +466,12 @@ def compile_evidence(
         "retrievalRetryCount": sum(e.get("kind") == "debugRetrieve" and e.get("attempt", 0) > 1 for e in events),
         "askRetryCount": sum(e.get("kind") == "ask" and e.get("attempt", 0) > 1 for e in events),
         "recoveredFailureCount": sum(e.get("retry") is True for e in events),
-        "failedAttemptStatuses": dict(Counter(str(e.get("providerHttpStatus") or e.get("httpStatus")) for e in events if (e.get("providerHttpStatus") or e.get("httpStatus")) != 200)),
+        "failedAttemptStatuses": dict(Counter(
+            str(e.get("providerHttpStatus") or e.get("httpStatus"))
+            if (e.get("providerHttpStatus") or e.get("httpStatus")) != 200
+            else f"{e.get('providerErrorCategory')}:{e.get('providerErrorType')}"
+            for e in events if e.get("retry") is True
+        )),
         "knownGenerationHttpAttempts": sum(e.get("generationHttpAttempts") or 0 for e in events),
         "unknownGenerationHttpAttemptCount": sum(e.get("kind") == "ask" and e.get("generationHttpAttempts") is None for e in events),
         "askHttpAttempts": sum(item.get("c18ExecutionFacts", {}).get("askHttpAttempts", 0) for item in samples if isinstance(item, dict)),

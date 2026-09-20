@@ -19,13 +19,13 @@ C18 SHALL define a separate manifest binding the immutable v2 release, ordered s
 - AND neither 300 nor 902 is substituted as a complete authorization bound
 
 #### Scenario: Execution modes conflict
-- GIVEN C18 is combined with a C17/C7 manifest, partial full selection, multiple repeats, judge enabled, nonzero backend/legacy retry, or a transient retry policy different from the approved 429/503-only three retries
+- GIVEN C18 is combined with a C17/C7 manifest, partial full selection, multiple repeats, judge enabled, nonzero backend/legacy retry, or a transient retry policy different from the approved 429/503 plus exact network/PrematureCloseException three retries
 - WHEN validation runs
 - THEN it fails closed without requests or changes to the accepted retrieval profile
 
 ### Requirement: Bounded Authorized Generation Baseline Execution
 
-Canary SHALL use the five fixed category IDs and one repeat. Full SHALL require separate authorization after clean canary and use exactly the 150 ordered v2 IDs. Execution MUST disclose tracked questions/variants, fixture contexts and prompt egress, sanitized provider/model/endpoint, timeout/retry, cost basis, rate limits and REST query-count/history persistence. Actual HTTP attempts, cache hits, generation bypass, algorithm fallback and provider fallback SHALL be distinguished. Budgets SHALL be enforced before requests; unrecoverable failure SHALL stop without subset stitching, implicit KB rebuild or cleanup; only HTTP/provider 429/503 SHALL permit up to three C18 REST retries with 5/10/20 second backoff and a complete attempt ledger.
+Canary SHALL use the five fixed category IDs and one repeat. Full SHALL require separate authorization after clean canary and use exactly the 150 ordered v2 IDs. Execution MUST disclose tracked questions/variants, fixture contexts and prompt egress, sanitized provider/model/endpoint, timeout/retry, cost basis, rate limits and REST query-count/history persistence. Actual HTTP attempts, cache hits, generation bypass, algorithm fallback and provider fallback SHALL be distinguished. Budgets SHALL be enforced before requests; unrecoverable failure SHALL stop without subset stitching, implicit KB rebuild or cleanup; only HTTP/provider 429/503 or the exact provider error pair `network/PrematureCloseException` SHALL permit up to three C18 REST retries with 5/10/20 second backoff and a complete attempt ledger.
 
 #### Scenario: Canary approval does not authorize full
 - GIVEN only five-case canary is authorized with exact budgets and data scope
@@ -40,7 +40,7 @@ Canary SHALL use the five fixed category IDs and one repeat. Full SHALL require 
 - AND the runner does not force a model request or represent unexecuted generation as successful
 
 #### Scenario: Budget or execution fails
-- GIVEN a pending request exceeds the approved bound, or an unrecoverable error, exhausted 429/503 chain, timeout or identity drift occurs
+- GIVEN a pending request exceeds the approved bound, or an unrecoverable error, exhausted 429/503/PrematureCloseException chain, timeout or identity drift occurs
 - WHEN the condition is handled
 - THEN further live execution stops and every failed attempt is retained; backend provider and legacy ask retry stay zero
 - AND a later attempt requires new explicit scope and no-overwrite identity
@@ -95,3 +95,7 @@ Raw artifacts SHALL remain local ignored no-overwrite files; tracked output SHAL
 
 ## 2026-09-19 Approved superseding transient retry contract
 The user approved C18-only REST retries for HTTP/provider 429 and 503, at most three retries per logical debug/ask request, with 5/10/20 second backoff. This supersedes the zero runner retry requirements above; backend provider retry MUST remain zero. Timeouts and all other status codes MUST NOT retry. Every attempt MUST be budgeted before dispatch and preserved in a sanitized ordered ledger. Canary budgets become 20/20/20/136 and full budgets 600/600/600/5968 for debug/ask/generation/query embedding. Final failed observations still stop execution. COMPLETE requires exact final observation coverage, no unrecovered errors, and valid attempt chains; recovered failures and all retries MUST remain visible and MUST NOT be described as zero-error transport. No subset stitching is allowed.
+
+## 2026-09-20 Approved exact premature-close extension
+
+The user instructed completion after the r5 full run stopped on a provider-reported `llmErrorCategory=network` and `llmErrorType=PrematureCloseException`. C18 MAY retry only this exact pair in addition to 429/503, under the same three-retry and 5/10/20-second policy. Budgets remain 20/20/20/136 for canary and 600/600/600/5968 for full. Timeout, other network errors and all other statuses remain unrecoverable. The ledger MUST preserve provider error category/type and compiler v3 MUST reject any recovered chain outside this allowlist.

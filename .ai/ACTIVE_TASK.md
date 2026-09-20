@@ -62,3 +62,10 @@
 - clean隔离checkout：canary5/5 COMPLETE，3次503恢复，debug5/ask8。full115/150 INCOMPLETE，38次503恢复，debug115/ask153；第115条multi-hop-007因PrematureCloseException/network停止，无HTTP429/503状态，因此未重试。
 - 已知generation HTTP152，另1次unknown；剩余35条未发出，无拼接。raw全部保留；脱敏报告见docs/eval/reports/c18-r5-20260919-execution.md。
 - 正式full/接受/归档仍未完成，保持ACTIVE；需另行明确网络断连处理与新完整执行范围，不能扩大仅429/503授权。无push/PR/deploy。
+
+## 2026-09-20 r6 执行中（覆盖上方待授权状态）
+- 用户要求继续完成C18剩余内容，已明确针对r5暴露的提前断连缺口继续；仍沿用既定NVIDIA模型、固定开发数据出站、REST query count/history副作用及Agent本地提交范围。
+- 新身份仅允许 `network/PrematureCloseException` 与429/503共享最多3次、5/10/20秒重试；预算20/600及136/5968不增加，timeout/其他network错误仍不重试。
+- runner ledger/compiler v3/manifest/schema与测试已完成；聚焦22项及全套Python 280项通过，diff check通过。随后须在新clean隔离checkout执行canary→从头full。旧r5 115/150不拼接、不改写。
+- 平台拒绝本轮暂存：尽管仓库记录同一C18已有Agent提交授权，审批器要求当前可信用户消息再次明确授权；未绕过，尚未形成clean运行提交。
+- C18在完整full、用户验收、baseline接受与归档前仍保持ACTIVE；无push/PR/deploy。

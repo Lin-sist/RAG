@@ -1,12 +1,12 @@
 {
   "schemaVersion": "c18-generation-objective-v1",
-  "manifestId": "rag-eval-dev-v2-generation-objective-nemotron3-super-r3-transient",
-  "compilerVersion": "c18-generation-objective-compiler-v2",
+  "manifestId": "rag-eval-dev-v2-generation-objective-nemotron3-super-r4-network-close",
+  "compilerVersion": "c18-generation-objective-compiler-v3",
   "toolingSourceSha256": {
-    "scripts/c18_generation_contract.py": "6f75aa8265db6b5329934dbb71eec0b8f344edacda2f0a7729bbb71da77f85d4",
-    "scripts/compile_generation_objective_baseline.py": "3090b603f0077029af07c8d96875ba330a3a693cae71de02ba1ad90aead50c2e",
-    "docs/eval/schema/c18-generation-objective-v1.json": "3f0020890d1f548679078ff62e7d276d9fb8753a0d1cc8236aa75c39cacf448e",
-    "docs/eval/schema/c18-generation-objective-evidence-v1.json": "bd3fb66ecf84a7d2f096f94eb17e43ce359c3c928789d771d07b8aa962477dc1"
+    "scripts/c18_generation_contract.py": "641b4a9227444f591ac7cb809cafc66e398d3bfd4e49a4df339a9769f4ed34f7",
+    "scripts/compile_generation_objective_baseline.py": "d73e353dd82dcc09e582d33ff0086515f8a6783f4380c5d9f609e593ea8fce89",
+    "docs/eval/schema/c18-generation-objective-v1.json": "8a06010963cc34b9a59b30d4d8a27ea4b7b28fa7f4a7a29556af31a3679a444b",
+    "docs/eval/schema/c18-generation-objective-evidence-v1.json": "6cd9cc1585e66c42680fec0796e464545647cdc4d4c6960db0b9d5f4aa6a4280"
   },
   "dataset": {
     "manifestPath": "docs/eval/dataset-manifest.json",
@@ -37,7 +37,7 @@
   },
   "budgetAudit": {
     "path": "docs/eval/reports/c18-query-budget-audit-v1.json",
-    "sha256": "58a1bb5a1b993aab85cb71e2572eb103803c1841c0f1c9dbeafe0296037a985b",
+    "sha256": "3d1ee6fc2d66e8f38c51a3605067d934bc203de1af8ecadaeb27226ed44b9304",
     "schemaVersion": "c18-query-budget-audit-v1",
     "canaryBudget": {
       "debugRetrieve": 20,
@@ -72,11 +72,17 @@
     "askDelaySeconds": 2.2,
     "retrievalDelaySeconds": 2.2,
     "transientRetryPolicy": {
-      "version": "http-429-503-v1",
+      "version": "http-429-503-premature-close-v2",
       "maxRetries": 3,
       "statusCodes": [
         429,
         503
+      ],
+      "providerErrors": [
+        {
+          "category": "network",
+          "type": "PrematureCloseException"
+        }
       ],
       "backoffSeconds": [
         5,

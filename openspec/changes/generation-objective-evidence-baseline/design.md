@@ -140,3 +140,12 @@ manifest身份升级为nemotron3-super-r3-transient；compiler身份v2。底层�
 - **面临的选择**：继续零重试整轮重跑；在Java provider隐式重试；在C18 opt-in REST边界记录最多3次429/503重试。
 - **选了哪个 + 为什么**：选可审计的C18请求边界，用户明确批准；保留每次失败、预算与副作用，业务默认不变。
 - **放弃的代价**：零重试整轮容易反复消耗成功请求；Java隐式重试不易关联runner证据且改变默认provider行为；C18重试需要独立新身份和更高预算，不能沿用旧零重试基线。
+
+## 2026-09-20 提前断连重试边界修订
+
+r5 full 在第115条收到后端HTTP 200，但生成元数据明确标记 `llmErrorCategory=network`、`llmErrorType=PrematureCloseException`；该失败发生在约19.5秒，不是120秒超时，且旧契约不能重试。用户要求继续完成C18剩余内容，因此以新身份 `nemotron3-super-r4-network-close` 将这一对精确字段加入C18请求边界重试。429/503、最多3次、5/10/20秒退避、预算20/600与136/5968均不变；timeout、其他network类型、其他状态仍不重试。attempt ledger新增provider error type/category，compiler v3验证每条恢复链并单列 `network:PrematureCloseException`，旧r5 raw和摘要保持不变。
+
+### 决策 13. 提前断连的重试粒度
+- **面临的选择**：把所有network错误都视为可重试；只允许精确的network/PrematureCloseException组合；仅重跑整轮但仍不在请求边界恢复。
+- **选了哪个 + 为什么**：只允许已真实观测且可审计的精确组合，复用现有最多3次预算和ledger，不把timeout、连接配置错误或未知网络失败静默放宽。
+- **放弃的代价**：全量network重试可能掩盖持续配置故障并扩大未披露行为；只重跑整轮会重复消耗大量已成功请求，仍可能在同类短暂断连处停止。

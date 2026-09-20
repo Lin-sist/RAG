@@ -110,7 +110,8 @@ class C18CompilerTest(unittest.TestCase):
             )
         for index, sample in enumerate(samples):
             sample["c18Attempts"] = [dict(requestId=index*2+j+1, kind=kind, attempt=1,
-                httpStatus=200, providerHttpStatus=None, errorType=None, retry=False,
+                httpStatus=200, providerHttpStatus=None, providerErrorType=None,
+                providerErrorCategory=None, errorType=None, retry=False,
                 generationHttpAttempts=sample["c18ExecutionFacts"]["generationCalls"] if kind == "ask" else 0,
                 elapsedMillis=1) for j, kind in enumerate(("debugRetrieve", "ask"))]
         details = {
@@ -226,6 +227,23 @@ class C18CompilerTest(unittest.TestCase):
         details["samples"][0].pop("c18Attempts")
         result = self.compile_temp(details, metadata)
         self.assertEqual(result["status"], "INCOMPLETE")
+
+    def test_recovered_premature_close_is_complete_and_visible(self) -> None:
+        details, metadata = self.make_artifacts()
+        sample = details["samples"][0]
+        failed = copy.deepcopy(sample["c18Attempts"][1])
+        failed.update(providerErrorType="PrematureCloseException", providerErrorCategory="network", retry=True,
+                      generationHttpAttempts=None)
+        sample["c18Attempts"][1]["attempt"] = 2
+        sample["c18Attempts"].insert(1, failed)
+        sample["metricCalculationDetails"].update(askAttempts=2, askRetries=1)
+        sample["c18ExecutionFacts"].update(askHttpAttempts=2, askRetryCount=1, automaticRetryCount=1)
+        details["runCounts"]["retryCount"] = 1
+        details["c18Execution"]["counts"].update(ask=151, generationReservations=151)
+        details["c18Execution"]["attempts"] = [e for s in details["samples"] for e in s["c18Attempts"]]
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "COMPLETE", result["reasonCodes"])
+        self.assertEqual(result["callFacts"]["failedAttemptStatuses"], {"network:PrematureCloseException": 1})
 
     def test_real_runner_windows_descriptors_survive_sanitization(self) -> None:
         details, metadata = self.make_artifacts()

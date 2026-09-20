@@ -887,6 +887,10 @@ python -B scripts\run_reproducible_rag_eval.py `
 
 2026-09-19 用户批准 C18 请求边界仅对 HTTP/provider 429/503 最多重试 3 次，退避 5/10/20 秒；Java provider 和 legacy ask retry 仍为 0，超时/其他错误不重试。新 manifest 身份为 `nemotron3-super-r3-transient`、compiler 为 v2。每个逻辑请求最多 4 次尝试，canary 预算是 `debugRetrieve≤20`、`ask≤20`、`generation≤20`、query embedding 上限 `136`；full 是 `600/600/≤600/5968`。底层单次审计仍为34/1492，保守重试上限乘4；上限不是实际调用量。后续真实运行前还必须提供未写入 tracked 文件的 operator-confirmed runtime fingerprint，并分别取得 canary、full 的外调授权。真实 raw details/metadata 只能写入 ignored `tmp/eval/c18/`，再用以下命令编译安全摘要；缺失、错误、身份漂移或非零护栏拒绝不会用成功子集补齐分母：
 
+2026-09-20 在保留 r5 的115/150及失败证据后，C18以新身份 `nemotron3-super-r4-network-close`、compiler v3 精确增加 `llmErrorCategory=network` 且 `llmErrorType=PrematureCloseException` 的请求边界重试。它与429/503共享原有最多3次、5/10/20秒退避和相同最坏预算；timeout、其他network类型及其他状态仍不重试。attempt ledger必须保留provider error category/type，旧r5产物不得改写或拼接。
+
+2026-09-20 在保留 r5 的115/150及失败证据后，C18以新身份 `nemotron3-super-r4-network-close`、compiler v3 精确增加 `llmErrorCategory=network` 且 `llmErrorType=PrematureCloseException` 的请求边界重试。它与429/503共享原有最多3次、5/10/20秒退避和相同最坏预算；timeout、其他network类型及其他状态仍不重试。attempt ledger必须保留provider error category/type，旧r5产物不得改写或拼接。
+
 ```powershell
 python -B scripts\compile_generation_objective_baseline.py `
   --manifest docs\eval\config\c18-generation-objective-v1.json `

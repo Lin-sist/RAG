@@ -89,3 +89,7 @@ child runner在debug/ask/judge请求前统计预算，超限请求不进入`urlo
 采用统一REST请求边界处理debug/ask，包括HTTP200内metadata.llmHttpStatus=429/503的失败响应。每个逻辑请求最多4次，退避5/10/20秒，所有尝试在guard前记预算；每次响应记录状态/尝试序号/类型/耗时/是否重试，不记录raw载荷或凭据。错误耗尽仍停止，不拼接旧run。
 manifest身份升级为nemotron3-super-r3-transient；compiler身份v2。底层单次调用图不变，最坏预算保守乘4：canary debug/ask/generation/queryEmbedding=20/20/20/136；full=600/600/600/5968，judge/model rerank=0。实际只按观测记账，上限不当作实际值。REST重复ask可能增加query count，失败不写成功历史；同一个最终成功答案仅纳入指标一次。
 完整性现在要求150个最终观测完整、未恢复错误0、所有瞬态失败有合法可核验attempt ledger；CLEAN仅表示最终通道完整，不能解读为没有发生重试或provider故障。旧零重试产物不可与新运行直接比较，历史证据保持原样。
+
+## 2026-09-20 提前断连重试修订
+
+r5 full 已保留115/150及 `network/PrematureCloseException` 失败证据。用户要求继续完成剩余内容；新执行身份仅把这一对后端生成错误字段加入既有C18有界重试，仍为每个逻辑请求最多3次、退避5/10/20秒，最坏预算和数据出站上限不增加。timeout、其他network类型与其他HTTP/provider错误仍失败即停。runner ledger记录provider错误类型/类别，compiler v3验证恢复链并在安全摘要中单列；不修改业务Java重试、题目、fixture、prompt、检索、C17门禁或历史raw。

@@ -22,10 +22,17 @@ import eval_dataset_contract as dataset_contract
 
 
 SCHEMA_VERSION = "c18-generation-objective-v1"
-COMPILER_VERSION = "c18-generation-objective-compiler-v2"
-MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r3-transient"
-TRANSIENT_RETRY_POLICY = {"version": "http-429-503-v1", "maxRetries": 3,
-                          "statusCodes": [429, 503], "backoffSeconds": [5, 10, 20]}
+COMPILER_VERSION = "c18-generation-objective-compiler-v3"
+MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r4-network-close"
+TRANSIENT_RETRY_POLICY = {
+    "version": "http-429-503-premature-close-v2",
+    "maxRetries": 3,
+    "statusCodes": [429, 503],
+    "providerErrors": [
+        {"category": "network", "type": "PrematureCloseException"},
+    ],
+    "backoffSeconds": [5, 10, 20],
+}
 DEFAULT_MANIFEST = Path("docs/eval/config/c18-generation-objective-v1.json")
 RAW_DIRECTORY = "tmp/eval/c18"
 CANARY_IDS = ["fact-001", "definition-001", "reasoning-001", "multi-hop-001", "no-answer-001"]

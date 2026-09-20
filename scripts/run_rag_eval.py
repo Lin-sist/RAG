@@ -337,6 +337,8 @@ def call_json(
         error = None
         http_status = None
         provider_status = None
+        provider_error_type = None
+        provider_error_category = None
         generation_attempts = 0
         try:
             response = _call_json_once(method, url, payload, token, timeout)
@@ -349,6 +351,8 @@ def call_json(
                 provider_status = metadata.get("llmHttpStatus")
                 if type(provider_status) is not int:
                     provider_status = None
+                provider_error_type = metadata.get("llmErrorType")
+                provider_error_category = metadata.get("llmErrorCategory")
                 generation_attempts = 1 if provider_status is not None else None
             elif kind == "ask":
                 generation_attempts = 1 if metadata.get("model") or metadata.get("llmModel") else 0
@@ -359,10 +363,16 @@ def call_json(
             http_status = exc.http_status if isinstance(exc, ApiCallError) else None
             generation_attempts = None if kind == "ask" else 0
         status = provider_status if provider_status is not None else http_status
-        retry = status in (429, 503) and attempt < 3
+        retryable_provider_error = {
+            "category": provider_error_category,
+            "type": provider_error_type,
+        } in c18_contract.TRANSIENT_RETRY_POLICY["providerErrors"]
+        retry = (status in c18_contract.TRANSIENT_RETRY_POLICY["statusCodes"] or retryable_provider_error) and attempt < 3
         C18_GUARD.attempts.append({
             "requestId": request_id, "kind": kind, "attempt": attempt + 1,
             "httpStatus": http_status, "providerHttpStatus": provider_status,
+            "providerErrorType": provider_error_type,
+            "providerErrorCategory": provider_error_category,
             "errorType": type(error).__name__ if error else None,
             "retry": retry, "generationHttpAttempts": generation_attempts,
             "elapsedMillis": round((time.monotonic() - started) * 1000, 3),

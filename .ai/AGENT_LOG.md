@@ -2626,3 +2626,11 @@
 
 ## 2026-09-19 C18 r5执行提交补录
 - 上一执行提交：1f6a96017e189768792328bf865f98bd95cffa27（docs(eval): 保留C18有界重试结果与网络中断证据）。
+
+## 2026-09-20 C18 r6 精确提前断连重试实现
+- 用户要求继续完成C18剩余内容；沿用既定NVIDIA模型、开发题/变体/fixture context/prompt出站、REST query count/history与Agent本地提交授权。按design决策13，只把真实观测的 `network/PrematureCloseException` 加入C18请求边界重试；429/503、最多3次、5/10/20秒退避及预算保持不变，timeout和其他network错误仍失败即停。
+- 修改runner/contract/compiler、manifest/schema、budget audit源码hash、测试及OpenSpec/指南/状态；新身份r4-network-close/compiler v3，ledger新增provider error category/type并在安全摘要单列。旧r5 raw/summary保持，不拼接115条成功子集。
+- 验证：聚焦22项通过；`python -B -m unittest discover -s scripts -p 'test_*.py'`为280项通过；`git diff --check`通过。clean隔离canary/full及compiler结果待后续补录。
+- 范围安全：未修改业务Java/前端、题目/fixture/prompt、C17门禁或.env.local；无KB重建/清理，无push/PR/deploy；保留其他任务未提交的AGENTS.md及日志增量。
+- 提交阻断：平台拒绝本轮 `git add`，理由是当前可信用户消息未明确重新授权Agent暂存/提交；未绕过、未暂存。clean正式运行须在用户明确授权后形成新提交。
+- Commit: pending
