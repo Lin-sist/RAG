@@ -1,9 +1,10 @@
 # 前端 Demo 迁移与真实后端对接规划
 
-> 文档性质：实施前规划（plan-only），不构成前端实现、真实后端联调、provider 调用、提交、发布或部署授权。
+> 文档性质：前端并行实施规划与边界；不构成 Type C、真实后端联调、provider 调用、提交、发布或部署授权。
 > 状态日期：2026-09-20。
-> 当前事实基线：Git HEAD `b2c39a2`；唯一 active change 为 C18 `generation-objective-evidence-baseline`，正式 full、验收和归档尚未完成。
+> 当前事实基线：Git HEAD `b53c298`；前端规划初始提交 `24f1be2`；唯一 active change 为 C18 `generation-objective-evidence-baseline`，正式 full、验收和归档尚未完成，当前受 NVIDIA 凭据 HTTP 403 阻断。
 > 唯一正式落点：`rag-frontend/`。`prototype/chatgpt-ui-demo/` 仅作为视觉、信息架构和交互参考，不改造成第二套生产前端。
+> 当前授权：用户已要求在新对话直接开始既有契约内、零外调的前端 Type B 首切片；该授权不覆盖 Type C、真实 ask/upload/provider 调用、暂存、commit、push、PR、发布或部署。
 
 ## 1. 目标与边界
 
@@ -11,9 +12,9 @@
 
 1. Demo 中哪些页面和交互可以映射到当前真实后端；
 2. 每个正式页面必须覆盖哪些加载、空、成功、错误和中断状态；
-3. 哪些能力可以在 C18 归档后按既有契约实施，哪些必须等待 C21 或另立 Type C change。
+3. 哪些既有契约内 Type B 能在 C18 活跃期间隔离实施，哪些必须等待 C18 `IDLE`、C21 或另立 Type C change。
 
-本轮不做：
+本规划修订本身不做：
 
 - 不修改 Vue、TypeScript、Java、配置或数据库迁移；
 - 不启动前后端，不请求登录、知识库、问答、embedding、generation 或 judge；
@@ -26,7 +27,7 @@
 | 能力 | 状态 | 规划结论 |
 | --- | --- | --- |
 | 登录、refresh、logout | `confirmed` | 复用现有 `/auth/**`；refresh 必须 single-flight |
-| 知识库 CRUD、统计、文档列表 | `confirmed` | 可进入 C18 后首批 REST 对接 |
+| 知识库 CRUD、统计、文档列表 | `confirmed` | 可先做前端类型/UI/合成测试；真实上传、删除或联调须走独立数据与外调边界 |
 | 文档上传与任务轮询 | `confirmed` | 上传按 `202 + taskId`，不得按同步完成处理 |
 | 同步问答与独立 citations | `confirmed` | 作为第一条真实问答主链；不生成 Demo 行内引用标记 |
 | 扁平历史与 feedback | `confirmed` | 一条 history 是一轮问答，不冒充 conversation |
@@ -64,6 +65,30 @@
 | HTTP 错误标准化、401 refresh | request 层 | 页面仅展示标准错误，不解析多种 envelope |
 | SSE reader/abort/transport outcome | SSE composable | ChatPanel 不自行解析 `data:` 行 |
 | 上传任务轮询 | task polling composable | 页面只维护任务卡片 view model |
+
+### 3.4 C18 与前端的工作树隔离
+
+- 前端实现必须使用独立分支/worktree；建议分支名 `codex/frontend-demo-integration`，起点至少包含 `b53c298` 与 `24f1be2`。
+- C18 的正式 canary/full 只能在固定、clean、与 compiler v4 匹配的独立 checkout 执行；不得在前端分支上运行。
+- “并行”表示两条工作轨道可以同时存在，不表示两个 Agent 可以同时编辑同一个工作树或共享日志。
+- 当前主工作树存在未提交的 `AGENTS.md` 与 `.ai/AGENT_LOG.md` 增量；新 worktree 不会自动继承。新对话必须重新读取其所在 worktree 的规则，并遵守本规划的附加隔离边界。
+- 前端任务不得借用 C18 的提交或外调授权；提交责任、真实联调和外部调用分别按前端切片确认。
+
+前端轨道默认允许修改：
+
+- `rag-frontend/**`；
+- `docs/roadmap/frontend-demo-backend-integration-plan.md`；
+- `.ai/AGENT_LOG.md` 中本前端切片自己的追加段，且只能精确暂存该 hunk。
+
+前端轨道默认禁止修改：
+
+- `.ai/ACTIVE_TASK.md`；
+- `openspec/changes/generation-objective-evidence-baseline/**`；
+- C18 的 eval config/schema/report、runner、compiler、数据集、fixture、C17 profile/reference；
+- Java 后端、`.env.local`、provider/model/retrieval/prompt/citation/no-answer 生产语义；
+- C18 使用的账号、KB、history/query-count 和原始证据。
+
+一旦前端切片需要越过以上禁止路径或改变 API/DTO/持久化/状态语义，立即停止并按 Type C 报告；C18 活跃期间不得创建第二个 active change。
 
 ## 4. 信息架构与页面去留
 
@@ -218,9 +243,9 @@ REQUESTING
 
 这些是当前代码与后端契约之间已经确认的差异，本规划只登记、不修复：
 
-1. `KnowledgeBaseDTO` 缺少七个向量身份字段；详情页不能继续硬编码模型、维度或 collection 状态。
-2. `DocumentStatus` 缺少 `RECONCILIATION_REQUIRED`。
-3. 前端 `Citation` 仅含 `source/snippet/startIndex/endIndex`，缺少 `sourceFileName/documentTitle/documentId/chunkId/score`。
+1. 前端 `KnowledgeBaseDTO` 类型声明缺少后端既有的七个向量身份字段；详情页不能继续硬编码模型、维度或 collection 状态。只有逐字段对齐现有后端响应且不改变后端 DTO/运行语义时，才可按 Type B bugfix 实施。
+2. 前端 `DocumentStatus` 声明缺少后端既有的 `RECONCILIATION_REQUIRED`；同样只能做声明对齐，不修改后端状态机。
+3. 前端 `Citation` 声明仅含 `source/snippet/startIndex/endIndex`，缺少后端既有的 `sourceFileName/documentTitle/documentId/chunkId/score`；只能对齐现有响应，不新增 citation 契约。
 4. `ApiResponse<T>.data` 被定义为必填，但删除/退出等成功响应可能没有 `data`；错误响应还有另一种 `ErrorResponse` 结构。
 5. request 层的错误规范化尚未形成统一 typed error；页面仍可能重复弹 toast。
 6. `useSSE` 尚未把流内 `[ERROR]` 与客户端 abort 可靠映射到 `STREAM_ERROR/CLIENT_ABORTED`。
@@ -232,35 +257,39 @@ REQUESTING
 
 以下阶段只是建议顺序，不构成本轮实施授权。
 
-### P0：当前阶段，仅规划
+### P0：规划与并行边界（已完成）
 
-- 冻结本规划、页面状态和契约映射；
+- 冻结页面状态和接口契约映射；
 - 选择 Demo 中要迁移的视觉模块；
-- 不修改生产代码，不做真实联调；
-- 等待 C18 完整 full、验收、归档和 `ACTIVE_TASK=IDLE`。
+- 明确 Type B 可在独立 worktree 并行，Type C 必须等待 C18 `IDLE`；
+- 不做真实后端联调或 provider 调用。
 
 ### R0：实施启动前复核
 
 - 重新检查 Git、active task、C18/C21 状态和后端 Controller/DTO；
-- 确认现有 `AGENTS.md`、日志及其他任务改动已隔离；
+- 创建或确认前端独立分支/worktree，检查起点、`AGENTS.md`、日志和其他任务改动已隔离；
+- 输出本切片精确允许/禁止文件清单，确认不修改 C18、Java 后端或共享配置；
 - 为涉及真实问答的联调披露 provider、模型、数据出站、调用量和 history/query-count 副作用；
-- 若范围只复用既有契约，按小范围前端切片处理；若新增用户能力/接口/状态语义，先建立 Type C change。
+- 若范围只复用既有契约且不新增用户能力/接口/状态语义，按小范围 Type B 前端切片处理；否则停止，等待 C18 `IDLE` 后再建立 Type C change。
 
 ### R1：认证与错误地基
 
+- 本阶段是当前获准直接开始的首个候选切片；先用测试锁定现状，再做最小实现，不顺手进入 R2/R3；
 - 统一 success/error envelope 和 typed error；
 - 验证 single-flight refresh、refresh rotate、失败退出；
 - 页面只消费标准错误状态，不各自解析响应体。
 
 ### R2：知识库、文档与任务
 
-- 先修正 DTO，再迁移列表/详情/上传视觉；
+- R2a（可并行 Type B）：仅对齐前端类型声明、迁移列表/详情视觉、合并任务轮询并使用合成 fixture 验证；
+- R2b（真实联调）：上传/删除会修改 KB 并可能触发 embedding，须单独授权，只能使用非 C18 账号、KB 和数据，且避开 C18 执行窗口；
 - 合并任务轮询实现；
-- 用新建且向量身份就绪的联调 KB 验证，不假定历史 KB 可用。
+- 不假定历史 KB 可用，不清理或重建 C18 评测 KB。
 
 ### R3：同步问答、来源、历史与反馈
 
-- 同步 `/ask` 作为第一条真实问答链；
+- R3a 可先用 mock/fixture 完成前端适配与状态测试；R3b 真实 `/ask` 会写 query count/history 并触发 provider，须单独披露和授权；
+- 真实联调必须使用非 C18 账号、KB 和数据，并在 C18 live 窗口暂停；
 - 使用独立 citations 数组，不实现行内 citation mock；
 - 历史保持一问一答，反馈绑定 history id；
 - 完成后再考虑是否需要新的 conversation 能力。
@@ -290,15 +319,27 @@ REQUESTING
 7. 涉及真实 ask/SSE 时记录 provider 调用、timeout、retry、错误类别和本地持久化副作用。
 8. 暂存只包含本切片精确路径，不混入 C18、`AGENTS.md`、`.env.local` 或其他任务日志。
 9. 不以 mock、静态 Demo 或前端合成状态宣称真实后端能力通过。
+10. 前端 worktree 内不得运行正式 C18 canary/full；C18 checkout 内不得合入或试跑未验收的前端修改。
+11. `.ai/AGENT_LOG.md` 若含其他任务未提交增量，只精确暂存本切片追加 hunk，不得整文件暂存。
 
 ## 10. 实施启动闸门
 
-建议同时满足以下条件后开始 R1：
+### 10.1 并行 Type B 启动闸门
 
-- C18 已完成正式 full、用户验收、归档，`.ai/ACTIVE_TASK.md` 为 `IDLE`；
-- Git 中当前其他任务修改已提交或隔离；
-- 用户确认首个实施切片及提交责任；
+- C18 保持 ACTIVE，前端任务明确不接管、不关闭、不归档该 change；
+- 前端独立 worktree/分支已建立，起点和工作树状态已记录；
+- 当前其他任务修改已提交或与该 worktree 物理隔离；
+- 用户确认首个实施切片；提交责任单独记录，未授权时默认用户手动提交，不阻塞实现，但 Agent 不得暂存或 commit；
 - 本规划中的 DTO/错误/SSE 已知缺口仍经当前代码复核成立；
-- 测试账号、可用 KB 和联调数据边界明确。
+- 首切片不新增用户能力，不改变 API/DTO/持久化/状态语义，不修改 Java/C18 路径，不产生真实后端/provider调用；
+- 精确文件清单、测试命令和停止条件已经写明。
 
-R1–R3 不依赖 C21；R4 是否提前取决于用户是否接受 text-only 降级。完整流式产品体验必须等待 C21，不以 C18 完成代替 C21。
+用户已明确要求新对话直接开始前端对接实现，因而首个 R0/R1 Type B 切片的实现授权可沿用；暂存/commit、真实联调、外调、Type C、push/PR/deploy 未随之授权。
+
+### 10.2 Type C 与真实联调闸门
+
+- 新增用户可见能力，或修改 API、后端 DTO、持久化模型、状态机、权限/provider 契约时，必须等待 C18 正式 full、用户验收、归档且 `.ai/ACTIVE_TASK.md` 为 `IDLE`，再建立独立 Type C change；
+- 上传、删除、真实 ask/SSE 等联调先明确测试账号、非 C18 KB/数据、provider/模型、调用量、数据出站、费用/限流、timeout/retry 与 history/query-count 副作用并取得授权；
+- C21 未接受前，不实现或宣称完整 structured terminal、流式 citations 或可靠 cancel/history 语义。
+
+R1、R2a、R3a 不依赖 C21，也不要求 C18 先归档；R2b、R3b受真实联调边界约束。R4 是否提前取决于用户是否接受 text-only 降级。完整流式产品体验必须等待 C21，不以 C18 完成代替 C21。

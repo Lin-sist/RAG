@@ -8,14 +8,16 @@
 
 ## 2. 必读顺序
 
-开始任何仓库任务前，按顺序读取：
+按当前任务需要读取，不因工作目录在仓库内而加载全部开发文档：
 
-1. `AGENTS.md`
-2. `.ai/ACTIVE_TASK.md`
-3. 若存在 active change：读取对应 `openspec/changes/<change-id>/` 下的 proposal、design、tasks 和 spec delta
-4. `openspec/project.md` 与相关 baseline spec
-5. 当前任务直接涉及的代码、配置和测试
-6. 必要时再读 `docs/architecture/overview.md`、`docs/roadmap/technical-debt.md`、`docs/optimization/README.md`
+1. 先读 `AGENTS.md`；同一会话已读且内容未变时复用。
+2. 涉及仓库开发状态、代码修改或变更隔离时，读 `.ai/ACTIVE_TASK.md`。
+3. 仅当任务涉及 active change 时，读其 proposal、design、tasks 和相关 spec delta；无关审查不加载整套 change。
+4. 仅当需要项目背景或能力契约时，读 `openspec/project.md` 与相关 baseline spec。
+5. 读取当前任务直接涉及的代码、配置和测试。
+6. 必要时再读相关架构、债务或优化说明，不默认遍历历史文档。
+
+纯教学、学习验收和模拟面试不自动进入开发工作流；资料读取范围遵循对应 Skill。审查 Skill 文件本身不等于启用其中的工作流。
 
 不要先读历史报告或 `docs/optimization/history/` 再判断当前状态。
 
@@ -33,7 +35,7 @@
 
 ### A. 只读任务
 
-代码审查、现状扫描、解释、诊断和建议不要求创建 OpenSpec change，也不修改 `.ai/ACTIVE_TASK.md`。只有产生值得长期保存的验证结论时才追加 AGENT_LOG。
+代码审查、现状扫描、解释、诊断和建议不要求创建 OpenSpec change，也不修改 `.ai/ACTIVE_TASK.md`。只有产生值得长期保存的验证结论且用户未禁止写文件时才追加 AGENT_LOG；纯只读请求不因日志要求转为写入任务。
 
 ### B. 小范围维护
 
@@ -57,14 +59,14 @@
 ## 5. 工作流
 
 1. 执行 `git status --short --branch`，保护用户已有改动。
-2. 从 `.ai/ACTIVE_TASK.md` 确认当前是否有 active change。
-3. 将相关能力分类为 `confirmed / partial / planned / out_of_scope / unknown`。
-4. 事前闸门必须明确提交责任：`Agent 提交`或`用户手动提交`；未明确时默认 Agent 不暂存、不提交。
+2. 按第 2 节判断是否需要读取 `.ai/ACTIVE_TASK.md`，不得接管无关 active change。
+3. 涉及能力或验收判断时，将相关能力分类为 `confirmed / partial / planned / out_of_scope / unknown`。
+4. 提交责任与授权复用统一按第 7 节执行。
 5. 重大变更先完善 proposal、design、tasks 和 spec delta，再写代码。
 6. 一次只推进一个可验证切片，不顺手重构。
 7. 运行与风险相称的测试；不能验证时写清原因，不得假装通过。
-8. 更新 tasks 和 `.ai/AGENT_LOG.md`。
-9. 完成后将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`；OpenSpec change 经用户确认后再归档。
+8. 写入任务追加 `.ai/AGENT_LOG.md`；仅涉及本次负责的 change 时更新其 tasks。
+9. 仅当本次负责的整个 active change 验收完成后，才将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`；旁支任务或单个切片完成不改活动指针。归档须有覆盖该动作的用户授权，已有授权无需重问。
 
 ## 6. RAG 专项规则
 
@@ -73,7 +75,7 @@
 - `RETRIEVAL_ONLY` 不能证明生成质量，`PARTIAL` 不能当作干净 generation baseline。
 - 不得为了评测集定制 prompt、切分或拒答规则。
 - `--preflight-only` 只检查；`--keep-existing` 只复用；不得恢复为隐式建库行为。
-- 批量 ask、judge、embedding、rerank 或其他外部调用前，说明调用量、模型、数据出站和费用/限流风险，并取得用户授权。
+- 批量 ask、judge、embedding、rerank 或其他外部调用前，说明调用量、模型、数据出站和费用/限流风险，并取得用户授权。同一已披露目标、载荷、模型、预算和本地副作用范围内复用已有授权；仅范围扩大、授权耗尽或平台审批明确要求时重新确认。一次性、零重试和分阶段授权仍按原边界执行；不以本规则绕过平台审批。
 - 真实 provider 不可用时明确降级或跳过，不用 mock 结果宣称业务收益。
 
 ## 7. 安全与范围
@@ -81,7 +83,7 @@
 - API key、JWT secret、数据库密码和用户数据不得写入 tracked files、日志或回复。
 - 不修改 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 等本地内容，除非用户明确授权。
 - 不覆盖、回退或混入与当前任务无关的工作区改动。
-- 每个任务必须在事前闸门明确提交责任；用户授权 `Agent 提交` 后，Agent 才可暂存和提交计划内文件。未明确时默认由用户手动提交，Agent 只给建议 message。
+- 沿用当前任务已有的提交责任和授权；用户授权 `Agent 提交` 后，才可暂存和提交计划内文件。未授权则默认用户手动提交，Agent 不暂存、不提交，只给建议 message；无需为此阻塞实现或只读工作，也不将其他任务的提交授权借用到本任务。
 - `push`、创建 PR、发布或部署始终需要单独明确授权，不因 `Agent 提交` 一并放开。
 - 提交信息使用中文 Conventional Commit，例如：`docs(治理): 建立Agent协作与OpenSpec入口`。
 
@@ -90,11 +92,12 @@
 - Java 改动：聚焦测试；风险较高时运行 `mvn -q test`。
 - Python 评测脚本：运行 `python -B -m unittest discover -s scripts -p 'test_*.py'`。
 - 前端改动：必须运行包含 `vue-tsc` 的正式 build；不能用单独 `vite build` 冒充通过。
-- 文档/治理改动：扫描旧路径与断链，运行 `git diff --check`。
+- 文档/治理改动：扫描改动文件中的旧路径及受影响链接，运行 `git diff --check`；不默认全仓扫描。
 - 外部集成：记录 provider、模型、超时、重试、错误类别和是否产生真实调用。
 - Agent 已获授权直接运行现有项目的 Maven/npm 验证命令，包括 compile、test、package、build、lint，以及解析 `pom.xml`、`package-lock.json` 等已声明版本所需的正常依赖下载；无需逐次请示。
 - 上述授权不包含新增或升级依赖、`npm publish`、部署、push，也不包含 provider、embedding、rerank、ask、judge 等业务外部调用；这些动作仍按原规则单独授权。
-- 工具链不明时先运行 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_local_quality_gates.ps1 -Mode Preflight`；它只报告环境，不安装工具、不作为阻塞门禁。
+- 同一代码、配置、依赖和相关环境状态下已有的成功验证可复用；仅新增改动、失败或新风险触发受影响检查重跑。提交、收尾或换轮本身不触发重复全套验证；实时状态前置检查仍按执行契约进行。
+- 需要执行验证且工具链不明时先运行 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_local_quality_gates.ps1 -Mode Preflight`；它只报告环境，不安装工具、不作为阻塞门禁。
 
 ## 9. AGENT_LOG 规则
 
@@ -102,7 +105,7 @@
 
 - 日期与任务/change id；
 - 范围与修改文件；
-- 已确认事实和关键决策；
+- 已确认事实、执行结果及适用的 design 决策条目引用；不重复记录设计取舍；
 - 验证命令与结果；
 - 跳过项及原因；
 - 剩余风险；
@@ -114,7 +117,7 @@
 
 ## 10. design.md 决策记录规则
 
-每个 Type C change 的 `design.md` 必须包含一节 `## 决策记录`，在事前闸门随 design 一并提交、供用户审查：
+每个 Type C change 的 `design.md` 必须包含一节 `## 决策记录`，在事前闸门随 design 一并呈交审查；Git 暂存和提交按第 7 节执行：
 
 - 为本 change 中每一个存在真实岔路口的技术决策各写一条；纯唯一解、无取舍的实现细节不必记。
 - 每条固定三行结构，用大白话，禁止贴大段代码：

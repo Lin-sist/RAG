@@ -2571,6 +2571,19 @@
 - 代码审查确认模型生成的no_result仍消耗generation；修复C18计数仅将无model且无context的服务端no_result记bypass，补合成回归；不改业务拒答语义。修改contract/compiler/test/manifest。Commit: pending
 - 计数修复验证：269 Python tests/OK，业务Java/前端未改；预算不变，无新增真实调用。
 
+## 2026-09-18 Type B：AGENTS 与 Skills 触发和确认范围维护
+- 授权：用户批准上一轮逐条审查建议的最小修改；本任务提交责任为用户手动提交，未暂存或提交。
+- 仓库范围：AGENTS.md；受 Git 忽略的 .agents/skills/Linsist/SKILL.md、Lincheck/SKILL.md、Lin_interview/SKILL.md；本日志仅追加。
+- 全局范围：C:/Users/Lin/.agents/skills/ 下 agent-reach、review、diagnose、better-interface、guizang-ppt-skill 的 SKILL.md，以及 C:/Users/Lin/.codex/skills/guizang-ppt-skill/SKILL.md。
+- 事实：收紧必读与触发范围，明确同范围授权和验证复用；修正文档审查与 Git 提交措辞；学习记录按授权保存，项目能力标记历史快照；本地面试镜像转为全局规范入口引用，规范面试正文未改。
+- 记忆规则：未直接修改 memories/skills/rag-openspec-change-workflow/SKILL.md；已按目录规则在 memories/extensions/ad_hoc/notes/20260918-180000-rag-skill-scope.md 提交更新说明，尚不等于原记忆 Skill 已更新。
+- 验证：临时 verify_skill_rules_20260918.py 回读 11 个文件与准备稿逐字节一致；新增行空白、适用的 YAML frontmatter、新增本地链接及 AGENTS 受影响路径通过；两份 PPT Skill 保持一致；git diff --check -- AGENTS.md 通过；旧误触发/冲突语句定向扫描无命中。
+- 跳过：纯指令和文档维护，未运行 Java/Python 业务测试、前端 build 或外部服务调用；未验证新会话 Skill 发现与模型选择行为。
+- 范围安全：本任务未修改业务代码、ACTIVE_TASK、C18 change、凭据或受保护业务配置，未 push/PR/deploy。执行期间其他任务产生 C18 和日志改动，均保留，不计入本任务成果。
+- 备份：C:/Users/Lin/AppData/Local/Temp/rag-skill-rules-20260918/ 保存逐文件原件、修改稿、manifest 和 diff。
+- 剩余风险：Skill 目录需在新会话重新发现；全局或本地 Skill 后续同步可能覆盖修改；全局与忽略文件不包含在普通仓库提交中；记忆更新说明尚待系统吸收。
+- Commit: pending
+
 ## 2026-09-18 r2 模型修复后的真实canary
 - 上一执行提交：ad39548d76874de21f0231e9e6f40e367f476511（fix(eval): 区分生成拒答与无上下文绕过计数）。
 - 用户授权继续剩余任务；原Qwen免费endpoint已由官方确认为Deprecated，新模型Nemotron3 Super合成200、Java进程CLI模型覆盖已核验、preflight READY。
@@ -2651,4 +2664,28 @@
 - 外部与运行边界：未启动前后端，provider/backend/KB/SQL/Milvus calls=0，业务数据出站=false；未新增依赖，未暂存、提交、push、PR、发布或部署。
 - 范围安全：保留用户已有 `AGENTS.md` 和本日志先前增量；不创建第二个 active change，不把 Demo mock 能力写成已实现事实。
 - 剩余风险：实施前需重验 C18/C21、Controller/DTO 与工作树；NVIDIA 凭据 403 仍阻断真实问答联调；当前文本 SSE 不足以证明结构化终态。
+- Commit: pending
+
+## 2026-09-20 C18代码质量复审加固（compiler v4）
+- 范围：按审查顺序修复C18 generation model身份缺失/漂移、raw aggregate不可验证、畸形嵌套raw崩溃、输出路径碰撞与no-overwrite竞态、compiler路径逃逸、query embedding实际调用不可观测及重复代码；对应change仍为`generation-objective-evidence-baseline`。
+- 修改：Java新增`ObservedEmbedding`并从`EmbeddingServiceImpl`贯通逻辑调用/cache/provider/fallback计数至`QueryEngineImpl`、解释性回退、同步ask和debug diagnostics；Python runner/compiler记录并校验这些事实，逐样本重算聚合指标，严格校验generation model，输入输出锚定repo root，输出采用互异路径与独占创建。manifest/compiler升级为`nemotron3-super-r5-quality-hardening`/v4，schema、budget audit、OpenSpec、指南和ACTIVE_TASK同步。
+- 设计决策：依据design决策14，重试失败响应无法完整证明内部embedding次数；ledger继续保留，但任何HTTP重试的v4 evidence为`INCOMPLETE`，不得用最终成功响应计数冒充全程实际值。删除重复C18常量、重复`retrievalDelaySeconds`和重复guide段落，不做无关大重构。
+- TDD验证：每项先加入失败测试再实现。`mvn -q -pl rag-admin -am test "-Dtest=EmbeddingServicePropertyTest,QueryEngineImplTest,RAGServiceImplTest,C18BudgetAuditTest" "-Dsurefire.failIfNoSpecifiedTests=false"`通过；`python -B -m unittest discover -s scripts -p 'test_*.py'`为288项通过；`git diff --check`通过。
+- 跳过：未运行真实runtime preflight/canary/full及provider调用，因为本轮是代码质量修复且现有NVIDIA凭据403仍未解除；未运行前端build，因为未修改前端；未接受baseline、归档或置IDLE。
+- 范围安全：未读取/修改`.env.local`，未改题目/fixture/prompt、旧r5/r6 raw或安全摘要，未重建/清理KB，未push/PR/deploy；保留用户已有`AGENTS.md`和本日志中前端plan-only增量，不将其纳入C18提交范围。
+- 剩余风险：新v4尚无真实clean canary/full证据；凭据恢复后必须用新no-overwrite身份从canary开始，且只有无重试、embedding全程可观测的完整150条run可达到COMPLETE。
+- Commit: pending
+
+## 2026-09-20 C18代码质量复审提交补录
+- 上一执行提交：`b53c298`（`fix(eval): 加固C18证据与调用观测`）。
+- 提交仅包含C18修复文件；共享`.ai/AGENT_LOG.md`及用户已有`AGENTS.md`保持未暂存，未混入提交。
+
+## 2026-09-20 Type B：前端并行接入规划隔离修订
+- 授权与范围：用户要求修订前端规划，并为新对话直接开始前端对接实现准备交接；本轮仅改规划与临时交接，不改前端/后端业务代码，提交责任未授权。
+- 修改：更新`docs/roadmap/frontend-demo-backend-integration-plan.md`，允许C18活跃期间在独立worktree推进既有契约内、零外调的Type B；新增C18禁止路径、共享日志hunk隔离、前端类型声明对齐边界、R2/R3离线与真实联调拆分，以及Type B/Type C双闸门。
+- 已确认事实：C18仍ACTIVE且受NVIDIA凭据403阻断；当前HEAD为`b53c298`，现有C18隔离worktree仍固定旧`4730abd`，不得用于compiler v4正式基线；完整SSE终态仍依赖C21。
+- 验证：对照当前`AGENTS.md`、`.ai/ACTIVE_TASK.md`、C18 proposal/design/tasks/spec delta、rag-system baseline、iteration blueprint与technical debt；双轴review确认REST/SSE/history/citation边界一致，并定向扫描规划冲突表述、路径边界和`git diff --check`。
+- 跳过：未运行前端build、Java/Python测试，因业务代码未改；未创建worktree/分支，未启动前后端，provider/backend/KB/SQL/Milvus calls=0，业务数据出站=false。
+- 范围安全：未修改`.ai/ACTIVE_TASK.md`、C18 OpenSpec/eval/代码、Java、`.env.local`或前端业务代码；保留用户已有`AGENTS.md`及共享日志其他增量，未暂存、commit、push/PR/deploy。
+- 剩余风险：新worktree不会继承当前未提交的`AGENTS.md`治理更新；开始实现前必须在新对话读取交接、复核worktree规则并明确前端切片提交责任。
 - Commit: pending
