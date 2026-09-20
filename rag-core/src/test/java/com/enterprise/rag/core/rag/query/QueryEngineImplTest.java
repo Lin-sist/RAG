@@ -1,6 +1,7 @@
 package com.enterprise.rag.core.rag.query;
 
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.embedding.ObservedEmbedding;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
@@ -26,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +47,12 @@ class QueryEngineImplTest {
         queryEngine = new QueryEngineImpl(embeddingService, vectorStore);
 
         when(embeddingService.embed(anyLong(), anyString())).thenReturn(new float[] { 0.1f, 0.2f, 0.3f });
+        when(embeddingService.embedObserved(anyLong(), anyString())).thenAnswer(invocation ->
+                new ObservedEmbedding(
+                        embeddingService.embed(invocation.getArgument(0), invocation.getArgument(1)),
+                        false,
+                        1,
+                        0));
     }
 
     @Test
@@ -89,6 +97,23 @@ class QueryEngineImplTest {
         assertEquals(1, result.diagnostics().get("queryVariantCount"));
         verify(embeddingService, times(1)).embed(11L, "什么是JWT");
         verify(vectorStore, times(1)).search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class));
+    }
+
+    @Test
+    void shouldExposeActualEmbeddingCacheAndProviderFacts() {
+        doReturn(new ObservedEmbedding(new float[] {0.1f, 0.2f}, true, 0, 0))
+                .when(embeddingService).embedObserved(11L, "什么是JWT");
+        when(vectorStore.search(any(TenantVectorScope.class), any(float[].class), any(SearchOptions.class)))
+                .thenReturn(List.of());
+
+        RetrievalResult result = queryEngine.retrieveWithDiagnostics(
+                "什么是JWT？",
+                new RetrieveOptions(TEST_SCOPE, 5, 0.0f, Map.of(), false, 1));
+
+        assertEquals(1, result.diagnostics().get("queryEmbeddingLogicalCallCount"));
+        assertEquals(1, result.diagnostics().get("queryEmbeddingCacheHitCount"));
+        assertEquals(0, result.diagnostics().get("queryEmbeddingProviderCallCount"));
+        assertEquals(0, result.diagnostics().get("queryEmbeddingProviderFallbackCount"));
     }
 
     @Test

@@ -9,10 +9,11 @@ import math
 import re
 import sys
 from collections import Counter
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import c18_generation_contract as c18
+import run_rag_eval as runner
 
 
 STATUS_EXIT_CODES = {"COMPLETE": 0, "INVALID": 2, "NOT_COMPARABLE": 3, "INCOMPLETE": 4}
@@ -92,6 +93,28 @@ def _reason(result: dict[str, Any], code: str) -> None:
         reasons.append(code)
 
 
+def _raw_structure_valid(details: Any, metadata: Any) -> bool:
+    if not isinstance(details, dict) or not isinstance(metadata, dict):
+        return False
+    if not isinstance(details.get("judge"), dict):
+        return False
+    samples = details.get("samples")
+    if not isinstance(samples, list) or not all(isinstance(sample, dict) for sample in samples):
+        return False
+    for sample in samples:
+        if not isinstance(sample.get("errors"), dict):
+            return False
+        if not isinstance(sample.get("metricCalculationDetails"), dict):
+            return False
+        attempts = sample.get("c18Attempts")
+        if attempts is not None and (
+            not isinstance(attempts, list)
+            or not all(isinstance(event, dict) for event in attempts)
+        ):
+            return False
+    return True
+
+
 def _is_nonnegative_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
@@ -100,6 +123,24 @@ def _safe_metric_value(value: Any) -> bool:
     if isinstance(value, bool) or isinstance(value, (int, float)):
         return not isinstance(value, float) or math.isfinite(value)
     return isinstance(value, str) and len(value) <= 40 and not ABSOLUTE_PATH_PATTERN.search(value)
+
+
+def _safe_latency(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"count", "min", "p50", "p95", "max"}
+        and _is_nonnegative_int(value.get("count"))
+        and all(
+            item is None or (
+                isinstance(item, (int, float))
+                and not isinstance(item, bool)
+                and math.isfinite(float(item))
+                and float(item) >= 0
+            )
+            for key, item in value.items()
+            if key != "count"
+        )
+    )
 
 
 def _safe_metrics(metrics: Any) -> dict[str, Any]:
@@ -136,8 +177,91 @@ def _safe_metrics(metrics: Any) -> dict[str, Any]:
             "objective_claim_support_rate",
         ),
         "noAnswer": pick("no_answer_accuracy", "no_answer_ok_count", "no_answer_evaluable_total"),
-        "latency": pick("retrieval_latency_millis"),
+        "latency": {
+            "retrieval_latency_millis": metrics["retrieval_latency_millis"]
+            if "retrieval_latency_millis" in metrics and _safe_latency(metrics["retrieval_latency_millis"])
+            else None
+        },
     }
+
+
+def _recompute_safe_metrics(samples: list[dict[str, Any]]) -> dict[str, Any] | None:
+    results: list[runner.SampleResult] = []
+    integer_fields = {
+        "recall3Hits": "recall3_hits",
+        "recall5Hits": "recall5_hits",
+        "recallTotal": "recall_total",
+        "keywordHits": "keyword_hits",
+        "keywordTotal": "keyword_total",
+        "citationHits": "citation_hits",
+        "citationTotal": "citation_total",
+        "citationSnippetHits": "citation_snippet_hits",
+        "citationSnippetTotal": "citation_snippet_total",
+        "unsupportedCitationCount": "unsupported_citation_count",
+        "noAnswerCitationViolationCount": "no_answer_citation_violation_count",
+    }
+    for sample in samples:
+        if not isinstance(sample, dict):
+            return None
+        details = sample.get("metricCalculationDetails")
+        errors = sample.get("errors")
+        claim = sample.get("objectiveClaimMetrics")
+        if not isinstance(details, dict) or not isinstance(errors, dict) or not isinstance(claim, dict):
+            return None
+        values: dict[str, int] = {}
+        for raw_name, result_name in integer_fields.items():
+            value = details.get(raw_name)
+            if not _is_nonnegative_int(value):
+                return None
+            values[result_name] = value
+        first_rank = details.get("firstMatchRank")
+        top1 = details.get("top1SourceHit")
+        no_answer_ok = details.get("noAnswerOk")
+        if first_rank is not None and (not _is_nonnegative_int(first_rank) or first_rank == 0):
+            return None
+        if top1 is not None and not isinstance(top1, bool):
+            return None
+        if no_answer_ok is not None and not isinstance(no_answer_ok, bool):
+            return None
+        ask_response = sample.get("askRawResponse")
+        debug_response = sample.get("debugRetrieveRawResponse")
+        skipped_ask = details.get("askSkipped")
+        ask_attempts = details.get("askAttempts")
+        ask_retries = details.get("askRetries")
+        rate_limit_errors = details.get("rateLimitErrors")
+        if (
+            not isinstance(skipped_ask, bool)
+            or not _is_nonnegative_int(ask_attempts)
+            or not _is_nonnegative_int(ask_retries)
+            or not _is_nonnegative_int(rate_limit_errors)
+        ):
+            return None
+        results.append(runner.SampleResult(
+            sample={"should_answer": sample.get("should_answer", True)},
+            retrieve_ok=errors.get("retrieval") is None,
+            ask_ok=errors.get("ask") is None,
+            retrieval_error=errors.get("retrieval"),
+            ask_error=errors.get("ask"),
+            first_match_rank=first_rank,
+            top1_source_hit=top1,
+            no_answer_ok=no_answer_ok,
+            objective_claim_metrics=claim,
+            faithfulness_score=details.get("faithfulnessScore"),
+            relevance_score=details.get("relevanceScore"),
+            judge_pass=details.get("judgePass"),
+            judge_error=details.get("judgeError"),
+            judge_response=sample.get("judgeRawResponse"),
+            skipped_judge=details.get("judgeSkipped", True),
+            debug_response=debug_response if isinstance(debug_response, dict) else None,
+            ask_response=ask_response if isinstance(ask_response, dict) else None,
+            details=sample,
+            skipped_ask=skipped_ask,
+            ask_attempts=ask_attempts,
+            ask_retry_count=ask_retries,
+            rate_limit_errors=rate_limit_errors,
+            **values,
+        ))
+    return _safe_metrics(runner.aggregate(results))
 
 
 def _validate_metadata(
@@ -305,8 +429,11 @@ def _validate_sample(
         ):
             _reason(result, "answer_cache_not_disabled_or_unobservable")
             incomplete = True
-        observed_model = ask_metadata.get("llmModel") or ask_metadata.get("model") or expected_runtime["model"] if isinstance(ask_metadata, dict) else None
-        if observed_model != expected_runtime["model"]:
+        observed_model = ask_metadata.get("llmModel") or ask_metadata.get("model") if isinstance(ask_metadata, dict) else None
+        if observed_model is None and ask_metadata.get("status") != "no_result":
+            _reason(result, "generation_provider_identity_missing")
+            incomplete = True
+        elif observed_model is not None and observed_model != expected_runtime["model"]:
             _reason(result, "generation_provider_identity_mismatch")
             incomplete = True
     facts = sample.get("c18ExecutionFacts")
@@ -319,11 +446,37 @@ def _validate_sample(
         "algorithmFallbackCount",
         "providerFallbackCount",
         "automaticRetryCount",
+        "queryEmbeddingLogicalCallCount",
+        "queryEmbeddingCacheHitCount",
+        "queryEmbeddingProviderCallCount",
+        "queryEmbeddingProviderFallbackCount",
+    )
+    embedding_fields = (
+        "queryEmbeddingLogicalCallCount",
+        "queryEmbeddingCacheHitCount",
+        "queryEmbeddingProviderCallCount",
+        "queryEmbeddingProviderFallbackCount",
     )
     if not isinstance(facts, dict) or any(not _is_nonnegative_int(facts.get(field)) for field in required_ints):
-        _reason(result, "execution_facts_missing")
+        if not isinstance(facts, dict) or any(
+            not _is_nonnegative_int(facts.get(field)) for field in embedding_fields
+        ):
+            _reason(result, "embedding_execution_facts_missing")
+        else:
+            _reason(result, "execution_facts_missing")
         incomplete = True
     else:
+        embedding_logical = facts["queryEmbeddingLogicalCallCount"]
+        embedding_cache_hits = facts["queryEmbeddingCacheHitCount"]
+        embedding_provider_calls = facts["queryEmbeddingProviderCallCount"]
+        embedding_fallbacks = facts["queryEmbeddingProviderFallbackCount"]
+        if (
+            facts.get("queryEmbeddingObservation") != "DIRECT_RUNTIME_DIAGNOSTICS"
+            or embedding_cache_hits > embedding_logical
+            or embedding_provider_calls != embedding_logical - embedding_cache_hits + embedding_fallbacks
+        ):
+            _reason(result, "embedding_execution_facts_missing")
+            incomplete = True
         if facts.get("cacheRequestEnabled") is not False:
             _reason(result, "answer_cache_request_not_disabled")
             incomplete = True
@@ -333,6 +486,12 @@ def _validate_sample(
         generation_calls = facts.get("generationCalls")
         if generation_calls not in (0, 1) or facts.get("generationBypassCount") not in (0, 1) or generation_calls + facts.get("generationBypassCount") != 1:
             _reason(result, "generation_call_fact_invalid")
+            incomplete = True
+        if generation_calls == 1 and facts.get("generationModel") is None:
+            _reason(result, "generation_provider_identity_missing")
+            incomplete = True
+        elif facts.get("generationModel") != observed_model:
+            _reason(result, "generation_provider_identity_mismatch")
             incomplete = True
         if facts.get("generationBypassCount") == 1 and isinstance(ask, dict) and ask.get("metadata", {}).get("status") != "no_result":
             _reason(result, "no_answer_generation_bypass_mismatch")
@@ -405,6 +564,10 @@ def compile_evidence(
         metadata = read_json(metadata_path)
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
         _reason(result, "raw_artifact_unreadable")
+        result["status"] = "INVALID"
+        return result
+    if not _raw_structure_valid(details, metadata):
+        _reason(result, "raw_evidence_schema_invalid")
         result["status"] = "INVALID"
         return result
 
@@ -481,12 +644,22 @@ def compile_evidence(
         "algorithmFallbackCount": sum(item.get("c18ExecutionFacts", {}).get("algorithmFallbackCount", 0) for item in samples if isinstance(item, dict)),
         "providerFallbackCount": sum(item.get("c18ExecutionFacts", {}).get("providerFallbackCount", 0) for item in samples if isinstance(item, dict)),
         "automaticRetryCount": sum(item.get("c18ExecutionFacts", {}).get("automaticRetryCount", 0) for item in samples if isinstance(item, dict)),
+        "queryEmbeddingLogicalCallCount": sum(item.get("c18ExecutionFacts", {}).get("queryEmbeddingLogicalCallCount", 0) or 0 for item in samples if isinstance(item, dict)),
+        "queryEmbeddingCacheHitCount": sum(item.get("c18ExecutionFacts", {}).get("queryEmbeddingCacheHitCount", 0) or 0 for item in samples if isinstance(item, dict)),
+        "queryEmbeddingProviderCallCount": sum(item.get("c18ExecutionFacts", {}).get("queryEmbeddingProviderCallCount", 0) or 0 for item in samples if isinstance(item, dict)),
+        "queryEmbeddingProviderFallbackCount": sum(item.get("c18ExecutionFacts", {}).get("queryEmbeddingProviderFallbackCount", 0) or 0 for item in samples if isinstance(item, dict)),
         "queryEmbeddingUpperBound": manifest["budgets"][mode]["queryEmbeddingUpperBound"],
-        "queryEmbeddingObservation": "BOUND_FROM_OFFLINE_AUDIT_NOT_DIRECTLY_OBSERVED",
+        "queryEmbeddingObservation": "DIRECT_RUNTIME_DIAGNOSTICS",
         "llmJudgeHttpAttempts": 0,
     }
     if actual_facts["debugRetrieveHttpAttempts"] > manifest["budgets"][mode]["debugRetrieve"] or actual_facts["askHttpAttempts"] > manifest["budgets"][mode]["ask"] or actual_facts["generationCalls"] > manifest["budgets"][mode]["generationUpperBound"]:
         _reason(result, "call_budget_exceeded")
+        incomplete = True
+    if actual_facts["queryEmbeddingLogicalCallCount"] > actual_facts["queryEmbeddingUpperBound"]:
+        _reason(result, "query_embedding_budget_exceeded")
+        incomplete = True
+    if actual_facts["httpRetryCount"]:
+        _reason(result, "embedding_execution_incomplete_after_retry")
         incomplete = True
     guard_snapshot = details.get("c18Execution")
     if isinstance(guard_snapshot, dict):
@@ -510,8 +683,12 @@ def compile_evidence(
         incomplete = True
 
     safe_metrics = _safe_metrics(details.get("metrics"))
-    if not safe_metrics:
+    recomputed_metrics = _recompute_safe_metrics(samples)
+    if recomputed_metrics is None:
         _reason(result, "aggregate_metrics_missing")
+        incomplete = True
+    elif safe_metrics != recomputed_metrics:
+        _reason(result, "aggregate_metrics_mismatch")
         incomplete = True
 
     result["actual"] = {
@@ -589,22 +766,32 @@ def _assert_safe_output(value: Any, path: str = "root") -> None:
 
 
 def write_output(path: Path, result: dict[str, Any], no_overwrite: bool) -> None:
-    if no_overwrite and path.exists():
-        raise FileExistsError(path)
     _assert_safe_output(result)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    with path.open("x" if no_overwrite else "w", encoding="utf-8", newline="\n") as stream:
+        stream.write(json.dumps(result, ensure_ascii=False, indent=2))
 
 
-def _under_directory(value: str, directory: str) -> bool:
-    path = Path(value)
-    expected = Path(directory)
-    return (
-        not path.is_absolute()
-        and ".." not in path.parts
-        and len(path.parts) > len(expected.parts)
-        and path.parts[: len(expected.parts)] == expected.parts
-    )
+def resolve_scoped_path(repo_root: Path, value: str, directory: str) -> Path:
+    normalized = str(value).replace("\\", "/")
+    path = PurePosixPath(normalized)
+    expected = PurePosixPath(directory)
+    if (
+        path.is_absolute()
+        or re.match(r"^[A-Za-z]:/", normalized)
+        or ".." in path.parts
+        or len(path.parts) <= len(expected.parts)
+        or path.parts[: len(expected.parts)] != expected.parts
+    ):
+        raise ValueError("path outside required repository directory")
+    root = repo_root.resolve()
+    scoped_root = (root / Path(*expected.parts)).resolve()
+    resolved = (root / Path(*path.parts)).resolve()
+    try:
+        resolved.relative_to(scoped_root)
+    except ValueError as exc:
+        raise ValueError("path outside required repository directory") from exc
+    return resolved
 
 
 def parse_args() -> argparse.Namespace:
@@ -625,17 +812,17 @@ def main() -> int:
     if not args.no_overwrite:
         print("C18 compiler requires --no-overwrite", file=sys.stderr)
         return 2
-    if (
-        not _under_directory(args.details, c18.RAW_DIRECTORY)
-        or not _under_directory(args.metadata, c18.RAW_DIRECTORY)
-        or not _under_directory(args.output_json, "docs/eval/reports")
-    ):
+    try:
+        details_path = resolve_scoped_path(repo_root, args.details, c18.RAW_DIRECTORY)
+        metadata_path = resolve_scoped_path(repo_root, args.metadata, c18.RAW_DIRECTORY)
+        output_path = resolve_scoped_path(repo_root, args.output_json, "docs/eval/reports")
+    except ValueError:
         print("C18 compiler path policy rejected", file=sys.stderr)
         return 2
     try:
         manifest = c18.load_manifest(repo_root, Path(args.manifest))
-        result = compile_evidence(repo_root, manifest, args.mode, Path(args.details), Path(args.metadata))
-        write_output(Path(args.output_json), result, args.no_overwrite)
+        result = compile_evidence(repo_root, manifest, args.mode, details_path, metadata_path)
+        write_output(output_path, result, args.no_overwrite)
     except c18.C18ContractError as exc:
         print(f"C18 compiler failed: {exc.code}", file=sys.stderr)
         return 2

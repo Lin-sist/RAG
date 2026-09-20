@@ -340,6 +340,7 @@ def call_json(
         provider_error_type = None
         provider_error_category = None
         generation_attempts = 0
+        identity_error = None
         try:
             response = _call_json_once(method, url, payload, token, timeout)
             http_status = 200
@@ -356,6 +357,10 @@ def call_json(
                 generation_attempts = 1 if provider_status is not None else None
             elif kind == "ask":
                 generation_attempts = 1 if metadata.get("model") or metadata.get("llmModel") else 0
+                try:
+                    c18_contract.validate_generation_response_identity(data)
+                except c18_contract.C18ContractError as exc:
+                    identity_error = exc
         except c18_contract.C18ContractError:
             raise
         except Exception as exc:
@@ -373,7 +378,7 @@ def call_json(
             "httpStatus": http_status, "providerHttpStatus": provider_status,
             "providerErrorType": provider_error_type,
             "providerErrorCategory": provider_error_category,
-            "errorType": type(error).__name__ if error else None,
+            "errorType": type(error or identity_error).__name__ if (error or identity_error) else None,
             "retry": retry, "generationHttpAttempts": generation_attempts,
             "elapsedMillis": round((time.monotonic() - started) * 1000, 3),
         })
@@ -382,6 +387,8 @@ def call_json(
             continue
         if error is not None:
             raise error
+        if identity_error is not None:
+            raise identity_error
         return response
     raise RuntimeError("unreachable C18 retry state")
 
@@ -756,6 +763,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             ask_retry_count,
             rate_limit_errors,
             details["rerankAttribution"],
+            debug_response=debug_response,
         )
         details["c18Attempts"] = c18_attempts
 
@@ -1855,7 +1863,7 @@ def write_report(
         append_case_section(lines, "No-answer Cases", [])
         append_source_normalization_diagnostics(lines, [])
         append_citation_diagnostics(lines, [])
-        path.write_text("\n".join(lines), encoding="utf-8")
+        write_text_output(path, "\n".join(lines), getattr(args, "no_overwrite", False))
         return
 
     metrics = aggregate(results)
@@ -1982,7 +1990,7 @@ def write_report(
     append_source_normalization_diagnostics(lines, results)
     append_citation_diagnostics(lines, results)
 
-    path.write_text("\n".join(lines), encoding="utf-8")
+    write_text_output(path, "\n".join(lines), getattr(args, "no_overwrite", False))
 
 
 def append_header_metadata(lines: list[str], metadata: dict[str, Any]) -> None:
@@ -2217,6 +2225,13 @@ def escape_table(value: str) -> str:
 
 
 SENSITIVE_KEY_PATTERN = re.compile(r"(token|password|secret|api[_-]?key|authorization)", re.IGNORECASE)
+PUBLIC_NUMERIC_TOKEN_FIELDS = {"tokenOverlapSupportCount"}
+
+
+def write_text_output(path: Path, content: str, no_overwrite: bool) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x" if no_overwrite else "w", encoding="utf-8", newline="\n") as stream:
+        stream.write(content)
 
 
 def sanitize_sensitive(value: Any) -> Any:
@@ -2229,7 +2244,9 @@ def sanitize_sensitive(value: Any) -> Any:
         sanitized: dict[str, Any] = {}
         for key, item in value.items():
             key_text = str(key)
-            if SENSITIVE_KEY_PATTERN.search(key_text):
+            if key_text in PUBLIC_NUMERIC_TOKEN_FIELDS and type(item) is int and item >= 0:
+                sanitized[key_text] = item
+            elif SENSITIVE_KEY_PATTERN.search(key_text):
                 sanitized[key_text] = "[REDACTED]"
             else:
                 sanitized[key_text] = sanitize_sensitive(item)
@@ -2303,7 +2320,11 @@ def write_details_json(
     }
     if C18_GUARD is not None:
         payload["c18Execution"] = C18_GUARD.snapshot()
-    path.write_text(json.dumps(sanitize_sensitive(payload), ensure_ascii=False, indent=2), encoding="utf-8")
+    write_text_output(
+        path,
+        json.dumps(sanitize_sensitive(payload), ensure_ascii=False, indent=2),
+        getattr(args, "no_overwrite", False),
+    )
 
 
 def ensure_no_overwrite(paths: list[Path]) -> bool:

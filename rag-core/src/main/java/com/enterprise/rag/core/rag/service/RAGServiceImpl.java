@@ -196,7 +196,8 @@ public class RAGServiceImpl implements RAGService {
                         : evidenceAdmission.noAnswerReason().name();
                 log.info("No relevant contexts found for collection: {}", collectionName);
                 askSpan.outcome("NO_RESULT");
-                QAResponse noResult = QAResponse.noResult(question);
+                QAResponse noResult = withRetrievalDiagnostics(
+                        QAResponse.noResult(question), retrievalResult.diagnostics());
                 routePlan.ifPresent(plan -> recordRouteTelemetry(
                         askSpan,
                         plan,
@@ -247,7 +248,8 @@ public class RAGServiceImpl implements RAGService {
             if (routePlan.isPresent()) {
                 EvidenceDecision decision = factQueryStrategyExecutor.afterGeneration(generatedAnswer);
                 if (decision.finalState() == QueryFinalState.NO_ANSWER) {
-                    response = QAResponse.noResult(question);
+                    response = withRetrievalDiagnostics(
+                            QAResponse.noResult(question), retrievalResult.diagnostics());
                 }
                 response = withRouteMetadata(
                         response,
@@ -318,6 +320,19 @@ public class RAGServiceImpl implements RAGService {
         metadata.put("routeEstimatedOutputTokens", usage.estimatedOutputTokens());
         metadata.put("routeElapsedMillis", usage.elapsedMillis());
         metadata.put("routeBudgetOutcome", usage.outcome().name());
+        return new QAResponse(
+                response.question(),
+                response.answer(),
+                response.citations(),
+                response.contexts(),
+                Map.copyOf(metadata));
+    }
+
+    private QAResponse withRetrievalDiagnostics(
+            QAResponse response,
+            Map<String, Object> retrievalDiagnostics) {
+        Map<String, Object> metadata = new LinkedHashMap<>(response.metadata());
+        metadata.putAll(retrievalDiagnostics);
         return new QAResponse(
                 response.question(),
                 response.answer(),
@@ -925,6 +940,17 @@ public class RAGServiceImpl implements RAGService {
                 .map(RetrievalResult::diagnostics)
                 .mapToLong(facts -> longDiagnostic(facts, "rerankLatencyMillis"))
                 .sum());
+        for (String key : List.of(
+                "queryVariantCount",
+                "queryEmbeddingLogicalCallCount",
+                "queryEmbeddingCacheHitCount",
+                "queryEmbeddingProviderCallCount",
+                "queryEmbeddingProviderFallbackCount")) {
+            diagnostics.put(key, attempts.stream()
+                    .map(RetrievalResult::diagnostics)
+                    .mapToInt(facts -> intDiagnostic(facts, key))
+                    .sum());
+        }
         return new RetrievalResult(effectiveResult.contexts(), diagnostics);
     }
 

@@ -889,7 +889,7 @@ python -B scripts\run_reproducible_rag_eval.py `
 
 2026-09-20 在保留 r5 的115/150及失败证据后，C18以新身份 `nemotron3-super-r4-network-close`、compiler v3 精确增加 `llmErrorCategory=network` 且 `llmErrorType=PrematureCloseException` 的请求边界重试。它与429/503共享原有最多3次、5/10/20秒退避和相同最坏预算；timeout、其他network类型及其他状态仍不重试。attempt ledger必须保留provider error category/type，旧r5产物不得改写或拼接。
 
-2026-09-20 在保留 r5 的115/150及失败证据后，C18以新身份 `nemotron3-super-r4-network-close`、compiler v3 精确增加 `llmErrorCategory=network` 且 `llmErrorType=PrematureCloseException` 的请求边界重试。它与429/503共享原有最多3次、5/10/20秒退避和相同最坏预算；timeout、其他network类型及其他状态仍不重试。attempt ledger必须保留provider error category/type，旧r5产物不得改写或拼接。
+2026-09-20 代码质量复审后启用 `nemotron3-super-r5-quality-hardening` / compiler v4。runner现在要求返回模型身份与冻结模型一致，raw嵌套结构必须完整，聚合指标必须能由逐样本明细重算；三个输出路径必须互异且`--no-overwrite`使用原子独占创建。query embedding的逻辑调用、缓存命中、provider调用和fallback必须由debug/ask运行时diagnostics直接提供，缺失即`INCOMPLETE`。由于重试失败响应不能完整证明其内部embedding次数，出现任何HTTP重试的run仍保留完整ledger，但v4摘要降为`INCOMPLETE`，不得把最终成功响应的计数冒充全程实际值。
 
 ```powershell
 python -B scripts\compile_generation_objective_baseline.py `
@@ -901,6 +901,6 @@ python -B scripts\compile_generation_objective_baseline.py `
   --no-overwrite
 ```
 
-compiler 只保留 manifest/dataset/runtime/Git hash、调用事实、分通道数值与状态；问题、答案、contexts、claims、provider payload、凭据、数字 KB ID、collection 和绝对路径留在本地 raw，不进入 tracked 摘要。`COMPLETE` 仍要求 exact 150、`CLEAN`、objective `COMPLETE`、judge `SKIPPED`、zero errors/retries、固定 identity 和预算合规；低分也不会触发本轮优化。
+compiler 只保留 manifest/dataset/runtime/Git hash、调用事实、分通道数值与状态；问题、答案、contexts、claims、provider payload、凭据、数字 KB ID、collection 和绝对路径留在本地 raw，不进入 tracked 摘要。v4的`COMPLETE`要求 exact 150、`CLEAN`、objective `COMPLETE`、judge `SKIPPED`、模型身份与指标重算一致、embedding全程可观测、无重试、固定 identity 和预算合规；低分也不会触发本轮优化。
 
 C18 瞬态重试必须保留逐次失败账本。compiler 的 COMPLETE 要求最终观测完整、未恢复错误为零且 ledger 合法；CLEAN 不表示传输从未失败。摘要分别列出 HTTP/ask/retrieval 重试、恢复失败、失败状态直方图及已知/未知 generation HTTP 次数；不与旧零重试运行混比。

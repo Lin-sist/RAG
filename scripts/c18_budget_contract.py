@@ -12,6 +12,9 @@ AUDIT_PATH = "docs/eval/reports/c18-query-budget-audit-v1.json"
 CANARY = ("fact-001", "definition-001", "reasoning-001", "multi-hop-001", "no-answer-001")
 SOURCE_PATHS = (
     "docs/eval/dataset-manifest.json", "docs/eval/releases/rag-eval-dev-v2.jsonl",
+    "rag-core/src/main/java/com/enterprise/rag/core/embedding/EmbeddingService.java",
+    "rag-core/src/main/java/com/enterprise/rag/core/embedding/EmbeddingServiceImpl.java",
+    "rag-core/src/main/java/com/enterprise/rag/core/embedding/ObservedEmbedding.java",
     "rag-core/src/main/java/com/enterprise/rag/core/rag/query/QueryEngineImpl.java",
     "rag-core/src/main/java/com/enterprise/rag/core/rag/service/RAGServiceImpl.java",
     "rag-core/src/main/java/com/enterprise/rag/core/rag/generator/AnswerGeneratorImpl.java",

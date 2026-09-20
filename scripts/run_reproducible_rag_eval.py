@@ -902,7 +902,11 @@ def load_reference_manifest(path: Path) -> dict[str, Any]:
     # A query implementation change requires a fresh offline budget audit.
     query_source = Path(__file__).resolve().parents[1] / "rag-core/src/main/java/com/enterprise/rag/core/rag/query/QueryEngineImpl.java"
     query_hash = hashlib.sha256(query_source.read_text(encoding="utf-8").encode("utf-8")).hexdigest()
-    if query_hash != "7f50f032cff8e98c56c2e87f838a09c2e01931678b02b2a7c7d2b9e5bb334a5f":
+    # C18 adds execution diagnostics without changing C17 variant generation.
+    if query_hash not in {
+        "7f50f032cff8e98c56c2e87f838a09c2e01931678b02b2a7c7d2b9e5bb334a5f",
+        "010c12c69f19dc174776bc08c0f132aa0c6d6eafa70356262e1d5ce203fa4505",
+    }:
         raise ApiError("c17_query_variant_budget_source_drift")
 
     canonical = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -1171,10 +1175,12 @@ def selected_run_indexes(requested: list[int] | None, repeat: int) -> list[int]:
 
 
 def write_json(path: Path, payload: dict[str, Any], no_overwrite: bool) -> None:
-    if no_overwrite and path.exists():
-        raise ApiError(f"--no-overwrite refused to overwrite {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        with path.open("x" if no_overwrite else "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(payload, ensure_ascii=False, indent=2))
+    except FileExistsError as exc:
+        raise ApiError(f"--no-overwrite refused to overwrite {path}") from exc
 
 
 def run_c7_warmup(
@@ -1480,7 +1486,6 @@ def build_plan(
         "judgeMode": args.judge_mode,
         "askTimeout": args.ask_timeout,
         "retryAskTimeouts": args.retry_ask_timeouts,
-        "retrievalDelaySeconds": getattr(args, "retrieval_delay_seconds", 0.0),
         "retrievalDelaySeconds": getattr(args, "retrieval_delay_seconds", 0.0),
         "repeat": args.repeat,
         "runIndexes": run_indexes,

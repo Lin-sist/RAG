@@ -49,6 +49,11 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
     @Override
     public float[] embed(long tenantId, String text) {
+        return embedObserved(tenantId, text).vector();
+    }
+
+    @Override
+    public ObservedEmbedding embedObserved(long tenantId, String text) {
         requireTenantId(tenantId);
         if (text == null || text.isBlank()) {
             throw new EmbeddingException("Input text cannot be null or empty");
@@ -60,11 +65,12 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         float[] cached = getFromCache(cacheKey, tenantId, requestedProvider);
         if (cached != null) {
             log.debug("Cache hit for embedding: {}", cacheKey);
-            return cached;
+            return new ObservedEmbedding(cached, true, 0, 0);
         }
 
         // Get embedding from provider with fallback
-        float[] embedding = getEmbeddingWithFallback(text);
+        ProviderEmbedding providerEmbedding = getEmbeddingWithFallback(text);
+        float[] embedding = providerEmbedding.vector();
         EmbeddingProvider effectiveProvider = getActiveProvider();
         if (!isValidVector(embedding, effectiveProvider.getDimension())) {
             throw new EmbeddingException("Embedding vector contract mismatch",
@@ -75,7 +81,11 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         saveToCache(getCacheKey(tenantId, text, effectiveProvider),
                 tenantId, effectiveProvider, embedding);
         
-        return embedding;
+        return new ObservedEmbedding(
+                embedding,
+                false,
+                providerEmbedding.providerCallCount(),
+                providerEmbedding.providerFallbackCount());
     }
 
     @Override
@@ -184,11 +194,11 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         }
     }
 
-    private float[] getEmbeddingWithFallback(String text) {
+    private ProviderEmbedding getEmbeddingWithFallback(String text) {
         EmbeddingProvider provider = getActiveProvider();
         
         try {
-            return provider.getEmbedding(text);
+            return new ProviderEmbedding(provider.getEmbedding(text), 1, 0);
         } catch (EmbeddingException e) {
             if (enableFallback && e.isRetryable()) {
                 return tryFallbackProviders(text, provider);
@@ -210,9 +220,9 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         }
     }
 
-    private float[] tryFallbackProviders(String text, EmbeddingProvider failedProvider) {
+    private ProviderEmbedding tryFallbackProviders(String text, EmbeddingProvider failedProvider) {
         log.warn("Primary provider {} failed, trying fallback providers", failedProvider.getModelName());
-        
+        int providerCallCount = 1;
         for (EmbeddingProvider provider : providers) {
             if (provider == failedProvider || !provider.isAvailable()) {
                 continue;
@@ -221,17 +231,22 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             try {
                 log.info("Trying fallback provider: {}", provider.getModelName());
                 float[] result = provider.getEmbedding(text);
+                providerCallCount++;
                 // Update active provider on successful fallback
                 this.activeProvider = provider;
                 log.info("Switched to fallback provider: {}", provider.getModelName());
-                return result;
+                return new ProviderEmbedding(result, providerCallCount, providerCallCount - 1);
             } catch (EmbeddingException e) {
+                providerCallCount++;
                 log.warn("Fallback provider {} also failed: errorType={}",
                         provider.getModelName(), e.getClass().getSimpleName());
             }
         }
         
         throw new EmbeddingException("All embedding providers failed");
+    }
+
+    private record ProviderEmbedding(float[] vector, int providerCallCount, int providerFallbackCount) {
     }
 
     private List<float[]> tryFallbackProvidersBatch(List<String> texts, EmbeddingProvider failedProvider) {

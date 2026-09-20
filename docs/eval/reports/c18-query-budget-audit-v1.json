@@ -4,18 +4,21 @@
   "sourceSha256" : {
     "docs/eval/dataset-manifest.json" : "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
     "docs/eval/releases/rag-eval-dev-v2.jsonl" : "cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d",
-    "rag-admin/src/main/java/com/enterprise/rag/admin/controller/QAController.java" : "32736607e9105f5c13263b84966582172a717a6002684bf4d47ec26719bde26a",
+    "rag-core/src/main/java/com/enterprise/rag/core/embedding/EmbeddingService.java" : "0a324a31fe63bb90fee1ca579cf80b49586661ed2ade0fd7116bfc88be710f21",
+    "rag-core/src/main/java/com/enterprise/rag/core/embedding/EmbeddingServiceImpl.java" : "5f9d859b3c405dd654915f2fd6d39e36b4e0ec2e69e6497c63f1fc61ae273275",
+    "rag-core/src/main/java/com/enterprise/rag/core/embedding/ObservedEmbedding.java" : "209c435c615ab928d68dd9e43b6d2dfa3d59b8c0b572865fda046eb8e13d8197",
+    "rag-admin/src/main/java/com/enterprise/rag/admin/controller/QAController.java" : "bb196db9a86dbbe48c7e13ead4ddd26d95c86ba4e0632717537dc834e0a8874a",
     "rag-admin/src/main/resources/application.yml" : "9bd6029d27e932ac221d3afb3412767e154b2032cec52b6df1c4b6166ffb30a7",
     "rag-common/src/main/java/com/enterprise/rag/common/ratelimit/RateLimitInterceptor.java" : "859628bfb87a7efb27cf99dc7f9ce9b6b7feb99b7c5a1c285181a17847cd7426",
     "rag-common/src/main/java/com/enterprise/rag/common/ratelimit/SlidingWindowRateLimiter.java" : "144976cd9152eccd3896c6b2bc7b5f33695c8bdda41c9d0117484d23922dc571",
     "rag-core/src/main/java/com/enterprise/rag/core/rag/generator/AnswerGeneratorImpl.java" : "250482839036f18daa8ba9108b5dc8b83430101a1682f5b66127b13b63273d6e",
     "rag-core/src/main/java/com/enterprise/rag/core/rag/generator/LLMProperties.java" : "53b8eef8169eabad64c1ab733abfdc04c2b8f5eafbee0e7f679b6bacf1daa777",
     "rag-core/src/main/java/com/enterprise/rag/core/rag/prompt/PromptBuilder.java" : "371d7e94e847d33ea8b6c29cc831b99d9a989f9d5a5db0bd470dabedccd5422c",
-    "rag-core/src/main/java/com/enterprise/rag/core/rag/query/QueryEngineImpl.java" : "7f50f032cff8e98c56c2e87f838a09c2e01931678b02b2a7c7d2b9e5bb334a5f",
-    "rag-core/src/main/java/com/enterprise/rag/core/rag/service/RAGServiceImpl.java" : "f72e0a55db90b02427c857d11bb6563baf3947c426060ba03def5c274cb8febf",
+    "rag-core/src/main/java/com/enterprise/rag/core/rag/query/QueryEngineImpl.java" : "010c12c69f19dc174776bc08c0f132aa0c6d6eafa70356262e1d5ce203fa4505",
+    "rag-core/src/main/java/com/enterprise/rag/core/rag/service/RAGServiceImpl.java" : "85061b5ee6aeac12a125f62473cad3650be52633c2b3a6d5e454b880038e8823",
     "rag-core/src/test/java/com/enterprise/rag/core/rag/C18BudgetAudit.java" : "d2cdfcd134f6653b92ab671cf732816906526529b27960c46c4dd7e424ca64fd",
-    "scripts/run_rag_eval.py" : "e4ab250beff0bfd7ee85511fba99ec6a818daffd4a98113d63895b9343c71241",
-    "scripts/run_reproducible_rag_eval.py" : "3da72830f722ef8bd8990af214ab1f99c20322a5b53447e66a42ba71941c3f01"
+    "scripts/run_rag_eval.py" : "9499c888f7309f2d4286723341f4d0541ad3fe93eeabbe1820afb9ddcaba9196",
+    "scripts/run_reproducible_rag_eval.py" : "ce2998a7ed6d91c583a75c753aa737ee601695b6ee64e09d757a247a65ee3684"
   },
   "samples" : [ {
     "id" : "fact-001",

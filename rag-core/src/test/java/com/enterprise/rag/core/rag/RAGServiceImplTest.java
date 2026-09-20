@@ -324,7 +324,14 @@ class RAGServiceImplTest {
     void enabledFactRouteReturnsUnifiedNoAnswerWithoutGenerationWhenEvidenceIsEmpty() {
         doReturn(new RetrievalResult(
                 List.of(),
-                Map.of("queryVariantCount", 1, "rerankModelCallCount", 0, "rerankCandidateCount", 0)))
+                Map.of(
+                        "queryVariantCount", 1,
+                        "queryEmbeddingLogicalCallCount", 1,
+                        "queryEmbeddingCacheHitCount", 1,
+                        "queryEmbeddingProviderCallCount", 0,
+                        "queryEmbeddingProviderFallbackCount", 0,
+                        "rerankModelCallCount", 0,
+                        "rerankCandidateCount", 0)))
                 .when(queryEngine).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
         RouterProperties properties = new RouterProperties();
         properties.setEnabled(true);
@@ -343,6 +350,9 @@ class RAGServiceImplTest {
         assertEquals("INSUFFICIENT_EVIDENCE", response.metadata().get("noAnswerReason"));
         assertEquals(1, response.metadata().get("routeRetrievalPasses"));
         assertEquals(0, response.metadata().get("routeGenerationCalls"));
+        assertEquals(1, response.metadata().get("queryEmbeddingLogicalCallCount"));
+        assertEquals(1, response.metadata().get("queryEmbeddingCacheHitCount"));
+        assertEquals(0, response.metadata().get("queryEmbeddingProviderCallCount"));
         verify(queryEngine).retrieveWithDiagnostics(
                 eq("什么是 JWT？"),
                 argThat(options -> options.maxQueryVariants() == 8));

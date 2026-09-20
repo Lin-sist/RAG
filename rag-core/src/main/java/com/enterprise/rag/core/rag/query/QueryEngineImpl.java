@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag.query;
 
 import com.enterprise.rag.common.trace.GenAiTelemetry;
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.embedding.ObservedEmbedding;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.rag.keyword.NoOpKeywordIndex;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
@@ -131,9 +132,12 @@ public class QueryEngineImpl implements QueryEngine {
                 .limit(options.maxQueryVariants())
                 .toList();
         List<RetrievedContext> vectorContexts;
+        EmbeddingFacts embeddingFacts = EmbeddingFacts.empty();
         VectorDependencyException vectorFailure = null;
         try {
-            vectorContexts = mergeRetrievedContexts(queryVariants, options.scope(), searchOptions);
+            MergedRetrieval merged = mergeRetrievedContexts(queryVariants, options.scope(), searchOptions);
+            vectorContexts = merged.contexts();
+            embeddingFacts = merged.embeddingFacts();
             log.debug("Vector route merged {} contexts from {} query variants", vectorContexts.size(), queryVariants.size());
         } catch (VectorDependencyException e) {
             vectorContexts = List.of();
@@ -210,6 +214,10 @@ public class QueryEngineImpl implements QueryEngine {
             diagnostics.putAll(RetrievalResult.keywordOnly(finalContexts).diagnostics());
         }
         diagnostics.put("queryVariantCount", queryVariants.size());
+        diagnostics.put("queryEmbeddingLogicalCallCount", embeddingFacts.logicalCallCount());
+        diagnostics.put("queryEmbeddingCacheHitCount", embeddingFacts.cacheHitCount());
+        diagnostics.put("queryEmbeddingProviderCallCount", embeddingFacts.providerCallCount());
+        diagnostics.put("queryEmbeddingProviderFallbackCount", embeddingFacts.providerFallbackCount());
         diagnostics.putAll(rerankDiagnostics);
         return new RetrievalResult(finalContexts, diagnostics);
     }
@@ -254,14 +262,17 @@ public class QueryEngineImpl implements QueryEngine {
                 result.metadata());
     }
 
-    private List<RetrievedContext> mergeRetrievedContexts(List<QueryVariant> queryVariants,
+    private MergedRetrieval mergeRetrievedContexts(List<QueryVariant> queryVariants,
             com.enterprise.rag.core.vectorstore.TenantVectorScope scope,
             SearchOptions searchOptions) {
         Map<String, RetrievedContext> merged = new LinkedHashMap<>();
+        EmbeddingFacts embeddingFacts = EmbeddingFacts.empty();
 
         for (QueryVariant queryVariant : queryVariants) {
-            float[] queryVector = traceStage(GenAiTelemetry.SpanNames.QUERY_EMBEDDING,
-                    () -> embeddingService.embed(scope.tenantId(), queryVariant.query()));
+            ObservedEmbedding observed = traceStage(GenAiTelemetry.SpanNames.QUERY_EMBEDDING,
+                    () -> embeddingService.embedObserved(scope.tenantId(), queryVariant.query()));
+            float[] queryVector = observed.vector();
+            embeddingFacts = embeddingFacts.plus(observed);
             log.debug("Query variant embedded: weight={}", queryVariant.weight());
 
             List<SearchResult> searchResults = traceStage(GenAiTelemetry.SpanNames.VECTOR_SEARCH,
@@ -284,9 +295,32 @@ public class QueryEngineImpl implements QueryEngine {
             }
         }
 
-        return merged.values().stream()
+        List<RetrievedContext> contexts = merged.values().stream()
                 .sorted(Comparator.comparingDouble(RetrievedContext::relevanceScore).reversed())
                 .toList();
+        return new MergedRetrieval(contexts, embeddingFacts);
+    }
+
+    private record MergedRetrieval(List<RetrievedContext> contexts, EmbeddingFacts embeddingFacts) {
+    }
+
+    private record EmbeddingFacts(
+            int logicalCallCount,
+            int cacheHitCount,
+            int providerCallCount,
+            int providerFallbackCount) {
+
+        private static EmbeddingFacts empty() {
+            return new EmbeddingFacts(0, 0, 0, 0);
+        }
+
+        private EmbeddingFacts plus(ObservedEmbedding observed) {
+            return new EmbeddingFacts(
+                    logicalCallCount + 1,
+                    cacheHitCount + (observed.cacheHit() ? 1 : 0),
+                    providerCallCount + observed.providerCallCount(),
+                    providerFallbackCount + observed.providerFallbackCount());
+        }
     }
 
     private <T> T traceStage(String spanName, java.util.function.Supplier<T> action) {

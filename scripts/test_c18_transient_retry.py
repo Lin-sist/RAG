@@ -17,7 +17,7 @@ class TransientRetryTest(unittest.TestCase):
 
     def test_provider_503_recovers_with_full_ledger(self):
         failure = {"data": {"metadata": {"status": "error", "llmHttpStatus": 503}}}
-        success = {"data": {"metadata": {"status": "success", "model": "model"}}}
+        success = {"data": {"metadata": {"status": "success", "model": c18.EXPECTED_RUNTIME["model"]}}}
         value, events, count, sleeps = self.run_calls([failure, failure, success])
         self.assertEqual(value, success)
         self.assertEqual(count, 3)
@@ -62,3 +62,17 @@ class TransientRetryTest(unittest.TestCase):
             with self.assertRaises(runner.ApiCallError):
                 runner.call_json("POST", "http://localhost/api/qa/ask", {}, None, 10)
         self.assertEqual(call.call_count, 1)
+
+    def test_c18_ask_rejects_missing_or_drifted_generation_model_immediately(self):
+        for metadata in (
+            {"status": "success"},
+            {"status": "success", "model": "unexpected/model"},
+        ):
+            with self.subTest(metadata=metadata):
+                response = {"data": {"answer": "synthetic", "contexts": [{}], "metadata": metadata}}
+                value, events, count, sleeps = self.run_calls([response])
+                self.assertIsInstance(value, c18.C18ContractError)
+                self.assertEqual(value.code, "c18_generation_runtime_identity_mismatch")
+                self.assertEqual(count, 1)
+                self.assertEqual(len(events), 1)
+                self.assertFalse(sleeps)

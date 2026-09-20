@@ -29,6 +29,30 @@ class EmbeddingServicePropertyTest {
     private static final long TEST_TENANT_ID = 11L;
 
     @Example
+    void observedEmbeddingDistinguishesProviderCallFromCacheHit() {
+        EmbeddingProvider provider = createMockProvider(TEST_DIMENSION);
+        RedisUtil redisUtil = mock(RedisUtil.class);
+        final String[] cachedValue = {null};
+        when(redisUtil.getString(anyString())).thenAnswer(invocation -> cachedValue[0]);
+        doAnswer(invocation -> {
+            cachedValue[0] = invocation.getArgument(1);
+            return null;
+        }).when(redisUtil).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+        EmbeddingService service = new EmbeddingServiceImpl(
+                List.of(provider), redisUtil, new ObjectMapper(), false, CACHE_TTL);
+
+        ObservedEmbedding first = service.embedObserved(TEST_TENANT_ID, "observed");
+        ObservedEmbedding second = service.embedObserved(TEST_TENANT_ID, "observed");
+
+        assertThat(!first.cacheHit() && first.providerCallCount() == 1)
+                .as("First embedding should execute one provider call")
+                .isTrue();
+        assertThat(second.cacheHit() && second.providerCallCount() == 0)
+                .as("Cached embedding should execute no provider call")
+                .isTrue();
+    }
+
+    @Example
     void cacheIdentityIncludesModelContractAndDimension() {
         RedisUtil redisUtil = createMockRedisUtil();
         Set<String> writtenKeys = new HashSet<>();

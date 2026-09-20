@@ -149,3 +149,12 @@ r5 full 在第115条收到后端HTTP 200，但生成元数据明确标记 `llmEr
 - **面临的选择**：把所有network错误都视为可重试；只允许精确的network/PrematureCloseException组合；仅重跑整轮但仍不在请求边界恢复。
 - **选了哪个 + 为什么**：只允许已真实观测且可审计的精确组合，复用现有最多3次预算和ledger，不把timeout、连接配置错误或未知网络失败静默放宽。
 - **放弃的代价**：全量network重试可能掩盖持续配置故障并扩大未披露行为；只重跑整轮会重复消耗大量已成功请求，仍可能在同类短暂断连处停止。
+
+## 2026-09-20 代码质量复审加固
+
+compiler v4不再把离线query embedding上限标成实际调用：`EmbeddingService`返回本次缓存/provider观测，`QueryEngineImpl`聚合每个variant，解释性回退累加各pass，debug与ask原始证据均保存四项计数。生成模型身份在单次ask返回后立即校验；逐样本指标重新聚合并与raw aggregate比对。输出使用互异路径、repo-root约束和原子no-overwrite。
+
+### 决策 14. 重试成功但embedding失败路径不可观测时的证据等级
+- **面临的选择**：把最终成功响应的embedding计数当作整条重试链实际值；继续只报告离线上限；保留重试ledger但将该run判为`INCOMPLETE`。
+- **选了哪个 + 为什么**：选择保留重试证据并降为`INCOMPLETE`；失败响应当前不能完整返回其内部缓存/provider调用，严格摘要不能虚构全程实际值。
+- **放弃的代价**：只看最终响应会系统性漏计失败attempt；只报上限仍回答不了实际调用问题；降级会使发生过可恢复503的run不能成为v4 COMPLETE基线，需要一轮无重试的clean run。

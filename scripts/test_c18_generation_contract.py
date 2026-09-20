@@ -26,6 +26,29 @@ class C18GenerationContractTest(unittest.TestCase):
         facts = c18.execution_facts({"metadata": {"status": "no_result"}}, 1, 0, 0, {})
         self.assertEqual((facts["generationCalls"], facts["generationBypassCount"]), (0, 1))
 
+    def test_execution_facts_include_actual_embedding_observations(self) -> None:
+        debug = {"diagnostics": {
+            "queryEmbeddingLogicalCallCount": 2,
+            "queryEmbeddingCacheHitCount": 1,
+            "queryEmbeddingProviderCallCount": 1,
+            "queryEmbeddingProviderFallbackCount": 0,
+        }}
+        ask = {"contexts": [{"content": "synthetic"}], "metadata": {
+            "status": "success",
+            "model": c18.EXPECTED_RUNTIME["model"],
+            "queryEmbeddingLogicalCallCount": 3,
+            "queryEmbeddingCacheHitCount": 0,
+            "queryEmbeddingProviderCallCount": 3,
+            "queryEmbeddingProviderFallbackCount": 0,
+        }}
+
+        facts = c18.execution_facts(ask, 1, 0, 0, {}, debug_response=debug)
+
+        self.assertEqual(facts["queryEmbeddingLogicalCallCount"], 5)
+        self.assertEqual(facts["queryEmbeddingCacheHitCount"], 1)
+        self.assertEqual(facts["queryEmbeddingProviderCallCount"], 4)
+        self.assertEqual(facts["queryEmbeddingObservation"], "DIRECT_RUNTIME_DIAGNOSTICS")
+
     def test_retrieval_failure_never_calls_ask_in_c18(self) -> None:
         args = Namespace(skip_ask=False, base_url="http://localhost", kb_id=1,
                          top_k=5, min_score=0.3, enable_rerank=True, timeout=1,
@@ -102,6 +125,36 @@ class C18GenerationContractTest(unittest.TestCase):
         )()
         with self.assertRaisesRegex(c18.C18ContractError, "c18_pacing_interval_required"):
             args.ask_delay_seconds = 2.1
+            c18.validate_runner_configuration(args, self.manifest, "canary", list(c18.CANARY_IDS), [1])
+
+    def test_runner_requires_distinct_output_paths(self) -> None:
+        args = type(
+            "Args",
+            (),
+            {
+                "arm_manifest": "",
+                "reference_manifest": "",
+                "keep_existing": True,
+                "include_ask": True,
+                "skip_ask": False,
+                "judge_mode": "off",
+                "repeat": 1,
+                "max_ask_retries": 0,
+                "retry_ask_timeouts": False,
+                "retrieval_delay_seconds": 2.2,
+                "ask_delay_seconds": 2.2,
+                "top_k": 5,
+                "min_score": 0.3,
+                "enable_rerank": True,
+                "sample_limit": 0,
+                "sample_ids": list(c18.CANARY_IDS),
+                "report": "tmp/eval/c18/shared.json",
+                "details_json": "tmp/eval/c18/shared.json",
+                "metadata_json": "tmp/eval/c18/metadata.json",
+                "no_overwrite": True,
+            },
+        )()
+        with self.assertRaisesRegex(c18.C18ContractError, "c18_output_paths_not_distinct"):
             c18.validate_runner_configuration(args, self.manifest, "canary", list(c18.CANARY_IDS), [1])
 
     def test_guard_rejects_before_a_sixth_request(self) -> None:

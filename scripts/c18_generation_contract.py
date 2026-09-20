@@ -22,8 +22,8 @@ import eval_dataset_contract as dataset_contract
 
 
 SCHEMA_VERSION = "c18-generation-objective-v1"
-COMPILER_VERSION = "c18-generation-objective-compiler-v3"
-MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r4-network-close"
+COMPILER_VERSION = "c18-generation-objective-compiler-v4"
+MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r5-quality-hardening"
 TRANSIENT_RETRY_POLICY = {
     "version": "http-429-503-premature-close-v2",
     "maxRetries": 3,
@@ -84,12 +84,6 @@ TRACKED_OUTPUT_ALLOWLIST = [
     "artifacts",
     "privacy",
 ]
-TOOLING_SOURCE_PATHS = (
-    "scripts/c18_generation_contract.py",
-    "scripts/compile_generation_objective_baseline.py",
-    "docs/eval/schema/c18-generation-objective-v1.json",
-    "docs/eval/schema/c18-generation-objective-evidence-v1.json",
-)
 TOOLING_SOURCE_PATHS = (
     "scripts/c18_generation_contract.py",
     "scripts/compile_generation_objective_baseline.py",
@@ -529,9 +523,16 @@ def validate_runner_configuration(
         _fail("c18_canary_selection_mismatch")
     if mode == "full" and requested_ids:
         _fail("c18_full_selection_mismatch")
-    for value in (getattr(args, "report", ""), getattr(args, "details_json", ""), getattr(args, "metadata_json", "")):
+    output_values = (
+        getattr(args, "report", ""),
+        getattr(args, "details_json", ""),
+        getattr(args, "metadata_json", ""),
+    )
+    for value in output_values:
         if not _raw_output_path(value):
             _fail("c18_raw_output_path_required")
+    if len({Path(value).resolve() for value in output_values}) != len(output_values):
+        _fail("c18_output_paths_not_distinct")
     if not getattr(args, "no_overwrite", False):
         _fail("c18_no_overwrite_required")
 
@@ -654,6 +655,24 @@ def request_kind(url: str) -> str | None:
     return None
 
 
+def validate_generation_response_identity(response: Any) -> None:
+    if not isinstance(response, dict):
+        _fail("c18_generation_runtime_identity_mismatch")
+    metadata = response.get("metadata")
+    if not isinstance(metadata, dict):
+        _fail("c18_generation_runtime_identity_mismatch")
+    if metadata.get("status") == "error":
+        return
+    observed_model = metadata.get("llmModel") or metadata.get("model")
+    deterministic_bypass = (
+        metadata.get("status") == "no_result"
+        and observed_model is None
+        and not response.get("contexts")
+    )
+    if not deterministic_bypass and observed_model != EXPECTED_RUNTIME["model"]:
+        _fail("c18_generation_runtime_identity_mismatch")
+
+
 def execution_facts(
     ask_response: dict[str, Any] | None,
     ask_attempts: int,
@@ -661,6 +680,7 @@ def execution_facts(
     rate_limit_errors: int,
     rerank_attribution: dict[str, Any],
     expected_runtime: dict[str, Any] | None = None,
+    debug_response: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     metadata = ask_response.get("metadata", {}) if isinstance(ask_response, dict) else {}
     if not isinstance(metadata, dict):
@@ -674,13 +694,35 @@ def execution_facts(
     generation_calls = 0 if generation_bypass else 1 if ask_response is not None else None
     cache_hit = bool(metadata.get("cached") or metadata.get("cacheHit"))
     expected_model = (expected_runtime or EXPECTED_RUNTIME).get("model")
-    observed_model = metadata.get("llmModel") or metadata.get("model") or expected_model
-    provider_fallback = 0 if observed_model == expected_model else 1
+    observed_model = metadata.get("llmModel") or metadata.get("model")
+    provider_fallback = 0 if generation_bypass or observed_model in (None, expected_model) else 1
     llm_retry_count = metadata.get("llmRetryCount", 0)
     try:
         llm_retry_count = int(llm_retry_count)
     except (TypeError, ValueError):
         llm_retry_count = None
+    debug_diagnostics = (
+        debug_response.get("diagnostics", {})
+        if isinstance(debug_response, dict) else {}
+    )
+    if not isinstance(debug_diagnostics, dict):
+        debug_diagnostics = {}
+    embedding_fields = (
+        "queryEmbeddingLogicalCallCount",
+        "queryEmbeddingCacheHitCount",
+        "queryEmbeddingProviderCallCount",
+        "queryEmbeddingProviderFallbackCount",
+    )
+    embedding_facts: dict[str, int | None] = {}
+    for field in embedding_fields:
+        debug_value = debug_diagnostics.get(field)
+        ask_value = metadata.get(field)
+        if (type(debug_value) is int and debug_value >= 0
+                and type(ask_value) is int and ask_value >= 0):
+            embedding_facts[field] = debug_value + ask_value
+        else:
+            embedding_facts[field] = None
+    embedding_observed = all(embedding_facts[field] is not None for field in embedding_fields)
     return {
         "askHttpAttempts": ask_attempts,
         "askRetryCount": ask_retries,
@@ -693,5 +735,9 @@ def execution_facts(
         "algorithmFallbackReason": str(rerank_attribution.get("fallbackReason", "unknown")),
         "providerFallbackCount": provider_fallback,
         "automaticRetryCount": ask_retries + max(0, llm_retry_count or 0),
-        "generationModel": str(observed_model),
+        "generationModel": str(observed_model) if observed_model is not None else None,
+        **embedding_facts,
+        "queryEmbeddingObservation": (
+            "DIRECT_RUNTIME_DIAGNOSTICS" if embedding_observed else "UNOBSERVED"
+        ),
     }

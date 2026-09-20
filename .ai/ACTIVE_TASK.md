@@ -76,3 +76,9 @@
 - 正式canary第1条debug retrieval的NVIDIA embedding请求返回HTTP403，按契约停止；实际debug1、embedding1、ask/generation/judge0，后4条与full未执行。compiler INCOMPLETE，raw及安全摘要已保留。
 - 不含业务数据的synthetic embedding/chat与models目录鉴权均403；本地key存在、格式正常且.env.local自2026-09-17未改，当前阻断为服务端拒绝现有凭据。用户需在本机更新可用 `NVIDIA_API_KEY` 后以新no-overwrite身份重跑canary。
 - 正式full、验收、baseline接受、归档与IDLE均未完成；保持ACTIVE，不进入C19，无push/PR/deploy。
+
+## 2026-09-20 C18代码质量复审加固（最新状态）
+- 已按审查顺序修复model identity缺失/漂移、aggregate信任、畸形raw崩溃、输出覆盖竞态/路径碰撞、repo-root路径逃逸和embedding实际调用不可观测问题。
+- 新身份为`nemotron3-super-r5-quality-hardening`、compiler v4；embedding逻辑调用/cache/provider/fallback从Java运行时贯通至raw与安全摘要。存在HTTP重试时因失败attempt内部embedding事实不完整，v4明确`INCOMPLETE`。
+- 本轮仅离线代码、契约和测试；未读取/修改`.env.local`，未发起provider/canary/full，旧r5/r6 raw与摘要不改写、不拼接。
+- NVIDIA凭据403仍是新canary/full的外部阻断；正式baseline、用户验收、归档和IDLE未完成，change保持ACTIVE。

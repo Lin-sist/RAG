@@ -80,7 +80,12 @@ public class QAController {
             "rerankCoverage",
             "rerankLatencyMillis",
             "rerankModel",
-            "rerankProtocol");
+            "rerankProtocol",
+            "queryVariantCount",
+            "queryEmbeddingLogicalCallCount",
+            "queryEmbeddingCacheHitCount",
+            "queryEmbeddingProviderCallCount",
+            "queryEmbeddingProviderFallbackCount");
 
     private final RAGService ragService;
     private final KnowledgeBaseService knowledgeBaseService;

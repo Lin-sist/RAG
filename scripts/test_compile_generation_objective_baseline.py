@@ -68,12 +68,28 @@ class C18CompilerTest(unittest.TestCase):
                     "id": sample["id"],
                     "question": "raw question must stay in ignored details",
                     "should_answer": answerable,
-                    "debugRetrieveRawResponse": {"contexts": [{"source": "fixture.md", "snippet": "debug only"}]},
+                    "debugRetrieveRawResponse": {
+                        "contexts": [{"source": "fixture.md", "snippet": "debug only"}],
+                        "diagnostics": {
+                            "queryEmbeddingLogicalCallCount": 1,
+                            "queryEmbeddingCacheHitCount": 0,
+                            "queryEmbeddingProviderCallCount": 1,
+                            "queryEmbeddingProviderFallbackCount": 0,
+                        },
+                    },
                     "askRawResponse": {
                         "answer": "raw answer must stay in ignored details",
                         "contexts": [{"source": "fixture.md", "snippet": "ask provenance"}],
                         "citations": [],
-                        "metadata": {"cached": False, "model": c18.EXPECTED_RUNTIME["model"], "status": ask_status},
+                        "metadata": {
+                            "cached": False,
+                            "model": c18.EXPECTED_RUNTIME["model"],
+                            "status": ask_status,
+                            "queryEmbeddingLogicalCallCount": 1,
+                            "queryEmbeddingCacheHitCount": 0,
+                            "queryEmbeddingProviderCallCount": 1,
+                            "queryEmbeddingProviderFallbackCount": 0,
+                        },
                     },
                     "rerankAttribution": {
                         "requestedProvider": "heuristic",
@@ -84,13 +100,33 @@ class C18CompilerTest(unittest.TestCase):
                     "objectiveClaimMetrics": {
                         "claimMetricStatus": "COMPLETE" if answerable else "NOT_APPLICABLE",
                         "claimMetricConfig": c18.EXPECTED_CLAIM_METRIC_CONFIG,
+                        "claimTotal": 1 if answerable else 0,
+                        "supportedClaimCount": 1 if answerable else 0,
+                        "unsupportedClaimCount": 0,
+                        "exactSupportCount": 1 if answerable else 0,
+                        "tokenOverlapSupportCount": 0,
                     },
                     "metricCalculationDetails": {
+                        "recall3Hits": 1 if answerable else 0,
+                        "recall5Hits": 1 if answerable else 0,
+                        "recallTotal": 1 if answerable else 0,
+                        "firstMatchRank": 1 if answerable else None,
+                        "top1SourceHit": True if answerable else None,
+                        "keywordHits": 1 if answerable else 0,
+                        "keywordTotal": 1 if answerable else 0,
+                        "citationHits": 1 if answerable else 0,
+                        "citationTotal": 1 if answerable else 0,
+                        "citationSnippetHits": 1 if answerable else 0,
+                        "citationSnippetTotal": 1 if answerable else 0,
+                        "unsupportedCitationCount": 0,
+                        "noAnswerCitationViolationCount": 0,
+                        "noAnswerOk": True if not answerable else None,
                         "askSkipped": False,
                         "askAttempts": 1,
                         "askRetries": 0,
                         "rateLimitErrors": 0,
                     },
+                    "retrieveLatencyMillis": 1,
                     "errors": {"retrieval": None, "ask": None},
                     "c18ExecutionFacts": {
                         "askHttpAttempts": 1,
@@ -105,6 +141,11 @@ class C18CompilerTest(unittest.TestCase):
                         "providerFallbackCount": 0,
                         "automaticRetryCount": 0,
                         "generationModel": c18.EXPECTED_RUNTIME["model"],
+                        "queryEmbeddingLogicalCallCount": 2,
+                        "queryEmbeddingCacheHitCount": 0,
+                        "queryEmbeddingProviderCallCount": 2,
+                        "queryEmbeddingProviderFallbackCount": 0,
+                        "queryEmbeddingObservation": "DIRECT_RUNTIME_DIAGNOSTICS",
                     },
                 }
             )
@@ -142,6 +183,7 @@ class C18CompilerTest(unittest.TestCase):
                 "answer_keyword_hit_rate": 1.0,
                 "answer_keyword_hits": 130,
                 "answer_keyword_total": 130,
+                "answerable_ask_success_samples": 130,
                 "citation_hit_rate": 1.0,
                 "citation_source_hit_rate": 1.0,
                 "citation_snippet_hit_rate": 1.0,
@@ -159,7 +201,7 @@ class C18CompilerTest(unittest.TestCase):
                 "no_answer_accuracy": 1.0,
                 "no_answer_ok_count": 20,
                 "no_answer_evaluable_total": 20,
-                "retrieval_latency_millis": {"count": 150, "min": 1, "p50": 2, "p95": 3, "max": 4},
+                "retrieval_latency_millis": {"count": 150, "min": 1.0, "p50": 1.0, "p95": 1.0, "max": 1.0},
             },
             "runMetadata": metadata,
             "c18Execution": {
@@ -193,6 +235,49 @@ class C18CompilerTest(unittest.TestCase):
         self.assertNotIn("fixture.md", encoded)
         self.assertNotIn("kbId", encoded)
 
+    def test_missing_observed_generation_model_is_incomplete(self) -> None:
+        details, metadata = self.make_artifacts()
+        for sample in details["samples"]:
+            sample["askRawResponse"]["metadata"].pop("model")
+            sample["c18ExecutionFacts"]["generationModel"] = None
+
+        result = self.compile_temp(details, metadata)
+
+        self.assertEqual(result["status"], "INCOMPLETE")
+        self.assertIn("generation_provider_identity_missing", result["reasonCodes"])
+
+    def test_missing_embedding_observation_is_incomplete(self) -> None:
+        details, metadata = self.make_artifacts()
+        details["samples"][0]["c18ExecutionFacts"]["queryEmbeddingProviderCallCount"] = None
+        details["samples"][0]["c18ExecutionFacts"]["queryEmbeddingObservation"] = "UNOBSERVED"
+
+        result = self.compile_temp(details, metadata)
+
+        self.assertEqual(result["status"], "INCOMPLETE")
+        self.assertIn("embedding_execution_facts_missing", result["reasonCodes"])
+
+    def test_tampered_aggregate_metric_is_incomplete(self) -> None:
+        details, metadata = self.make_artifacts()
+        details["metrics"]["recall_at_3"] = 0.123456
+
+        result = self.compile_temp(details, metadata)
+
+        self.assertEqual(result["status"], "INCOMPLETE")
+        self.assertIn("aggregate_metrics_mismatch", result["reasonCodes"])
+
+    def test_malformed_nested_raw_returns_invalid_instead_of_crashing(self) -> None:
+        details, metadata = self.make_artifacts()
+        details["judge"] = None
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "INVALID")
+        self.assertIn("raw_evidence_schema_invalid", result["reasonCodes"])
+
+        details, metadata = self.make_artifacts()
+        details["samples"][0] = None
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "INVALID")
+        self.assertIn("raw_evidence_schema_invalid", result["reasonCodes"])
+
     def test_missing_sample_is_incomplete(self) -> None:
         details, metadata = self.make_artifacts()
         details["samples"].pop()
@@ -214,7 +299,8 @@ class C18CompilerTest(unittest.TestCase):
         details["c18Execution"]["counts"].update(ask=151, generationReservations=151)
         details["c18Execution"]["attempts"] = [e for s in details["samples"] for e in s["c18Attempts"]]
         result = self.compile_temp(details, metadata)
-        self.assertEqual(result["status"], "COMPLETE", result["reasonCodes"])
+        self.assertEqual(result["status"], "INCOMPLETE", result["reasonCodes"])
+        self.assertIn("embedding_execution_incomplete_after_retry", result["reasonCodes"])
         self.assertEqual(result["callFacts"]["recoveredFailureCount"], 1)
         self.assertEqual(result["callFacts"]["failedAttemptStatuses"], {"503": 1})
         failed["providerHttpStatus"] = 500
@@ -242,7 +328,8 @@ class C18CompilerTest(unittest.TestCase):
         details["c18Execution"]["counts"].update(ask=151, generationReservations=151)
         details["c18Execution"]["attempts"] = [e for s in details["samples"] for e in s["c18Attempts"]]
         result = self.compile_temp(details, metadata)
-        self.assertEqual(result["status"], "COMPLETE", result["reasonCodes"])
+        self.assertEqual(result["status"], "INCOMPLETE", result["reasonCodes"])
+        self.assertIn("embedding_execution_incomplete_after_retry", result["reasonCodes"])
         self.assertEqual(result["callFacts"]["failedAttemptStatuses"], {"network:PrematureCloseException": 1})
 
     def test_real_runner_windows_descriptors_survive_sanitization(self) -> None:
@@ -299,6 +386,16 @@ class C18CompilerTest(unittest.TestCase):
             compiler.write_output(output, result, no_overwrite=True)
             with self.assertRaises(FileExistsError):
                 compiler.write_output(output, result, no_overwrite=True)
+
+    def test_compiler_paths_are_anchored_to_repo_root(self) -> None:
+        resolved = compiler.resolve_scoped_path(
+            ROOT,
+            "tmp/eval/c18/details.json",
+            c18.RAW_DIRECTORY,
+        )
+        self.assertEqual(resolved, (ROOT / "tmp/eval/c18/details.json").resolve())
+        with self.assertRaises(ValueError):
+            compiler.resolve_scoped_path(ROOT, "../tmp/eval/c18/details.json", c18.RAW_DIRECTORY)
 
 
 if __name__ == "__main__":

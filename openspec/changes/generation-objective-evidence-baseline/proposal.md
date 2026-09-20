@@ -79,6 +79,10 @@ child runner在debug/ask/judge请求前统计预算，超限请求不进入`urlo
 用户授权继续全部剩余任务，涵盖对HTTP410的诊断、替代模型冻结及新canary/full执行；既定出站目的地与载荷不变。官方旧模型页面标Free Endpoint Deprecated；只读模型目录不含旧模型。目录中的mistral-large-2-instruct合成请求404（1次、32 token上限），不选用；官方免费端点Available的nvidia/nemotron-3-super-120b-a12b合成请求200、返回OK（1次、2048 token上限，实际12 completion tokens）。诊断与正式评测分开，均retry=0。
 正式生成模型冻结为nvidia/nemotron-3-super-120b-a12b，manifestId增加nemotron3-super-r2；温度0.2、maxOutputTokens2048、timeout120s保持。embedding、题目/fixture、prompt、指标及预算34/1492、5/150不变。以进程启动参数覆盖生成模型，不改.env.local或生产默认。旧410 raw和旧manifest可通过源Git HEAD回放，不混入新run。
 
+## 2026-09-20 代码质量复审修订
+
+新身份`nemotron3-super-r5-quality-hardening`与compiler v4要求运行时generation model、逐样本重算指标和query embedding实际计数全部可验证；缺失、漂移、畸形raw、输出路径碰撞/逃逸均fail closed。HTTP重试ledger仍保留，但失败attempt内部embedding不可完整观测，因此发生重试的run不再可作为COMPLETE基线。NVIDIA凭据403仍阻断新canary/full，本修订未发起外部调用。
+
 ### 决策 11. 已退役免费模型的替代
 - **面临的选择**：继续调用退役Qwen端点；迁移到收费合作方；同NVIDIA端点使用已验证可用的Nemotron 3 Super。
 - **选了哪个 + 为什么**：选Nemotron 3 Super，新模型身份重冻结，维持用户已授权的目的地、免费原型账户与现有协议，合成检查200。

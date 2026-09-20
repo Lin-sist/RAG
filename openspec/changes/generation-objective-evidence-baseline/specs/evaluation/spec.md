@@ -99,3 +99,7 @@ The user approved C18-only REST retries for HTTP/provider 429 and 503, at most t
 ## 2026-09-20 Approved exact premature-close extension
 
 The user instructed completion after the r5 full run stopped on a provider-reported `llmErrorCategory=network` and `llmErrorType=PrematureCloseException`. C18 MAY retry only this exact pair in addition to 429/503, under the same three-retry and 5/10/20-second policy. Budgets remain 20/20/20/136 for canary and 600/600/600/5968 for full. Timeout, other network errors and all other statuses remain unrecoverable. The ledger MUST preserve provider error category/type and compiler v3 MUST reject any recovered chain outside this allowlist.
+
+## 2026-09-20 Quality-hardening evidence contract
+
+C18 compiler v4 SHALL require the observed generation model to equal the frozen runtime model, SHALL reconstruct aggregate metrics from per-sample evidence, and SHALL reject malformed nested raw evidence without crashing. Query embedding logical calls, cache hits, provider calls and provider fallback calls SHALL be directly observed in both debug and ask diagnostics and SHALL satisfy their arithmetic and frozen upper bound. Missing observations make evidence INCOMPLETE. Because failed retry responses do not expose complete internal embedding facts, any run with an HTTP retry remains ledger-valid but SHALL be INCOMPLETE for v4 acceptance. Output paths SHALL be distinct, repository-scoped and atomically no-overwrite.

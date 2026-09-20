@@ -99,3 +99,12 @@
 - [x] compiler v3、新manifest/schema、runner ledger及负例测试完成；全套Python 280项通过，diff check通过。
 - [ ] 新clean canary与从头完整full；r6第1条debug embedding收到HTTP403后停止，ask/generation=0，旧r5 115/150证据保持，不拼接。需用户更新可用NVIDIA API key后使用新身份重跑canary。
 - [ ] compiler COMPLETE后呈交真实通道数值和边界，完成用户验收、delta接受与授权范围内归档/IDLE。
+
+## 2026-09-20 代码质量复审加固（compiler v4）
+- [x] 缺失/漂移generation model在请求边界立即停止，compiler不再用expected model补写observed identity。
+- [x] compiler从逐样本明细重算安全聚合指标；畸形嵌套raw返回`INVALID`而非崩溃。
+- [x] report/details/metadata路径必须互异；runner、metadata writer与compiler的no-overwrite采用独占创建。
+- [x] compiler输入/输出路径锚定repo root并拒绝绝对路径、盘符和`..`逃逸。
+- [x] Java embedding层直接记录逻辑调用、缓存命中、provider调用与fallback，并贯通debug/ask diagnostics；缺失观测或存在无法归因的HTTP重试时compiler v4降为`INCOMPLETE`。
+- [x] 删除重复C18常量、重复metadata键和重复guide段落；保留分层契约验证，不做无关frontend或跨模块重构。
+- [ ] 新身份canary/full、真实baseline验收及归档仍受NVIDIA凭据403阻断；本轮未产生provider调用。

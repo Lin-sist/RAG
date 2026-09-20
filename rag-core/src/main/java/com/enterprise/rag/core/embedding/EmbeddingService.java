@@ -16,6 +16,13 @@ public interface EmbeddingService {
      */
     float[] embed(long tenantId, String text);
 
+    /**
+     * Retrieve one embedding together with cache/provider execution facts.
+     */
+    default ObservedEmbedding embedObserved(long tenantId, String text) {
+        return new ObservedEmbedding(embed(tenantId, text), false, 1, 0);
+    }
+
     /** @deprecated Tenant scope is required for embedding cache isolation. */
     @Deprecated(since = "C13b", forRemoval = false)
     default float[] embed(String text) {
