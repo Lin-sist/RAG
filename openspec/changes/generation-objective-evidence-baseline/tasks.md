@@ -117,3 +117,9 @@
 - [x] W0样本与预算34/1492保持不变；Java聚焦测试通过，Python聚焦37项通过。
 - [x] compiler v5已提交为`4b143b2`并形成clean HEAD；r9最终5/5且恢复1次503，但后端从本机仓库加载旧版`rag-core` JAR，失败attempt仍无embedding事实，compiler按契约为`INCOMPLETE`。
 - [ ] 安装当前内部模块后，以新no-overwrite身份执行canary；仅在compiler v5 `COMPLETE`后从头full150并完成W4。r9不拼接、不改写，full尚未启动。
+
+## 2026-09-21 r10暂停状态
+- [x] install当前内部模块；r10 clean canary 5/5，5次503均恢复，compiler v5 `COMPLETE`且逐attempt embedding事实完整。
+- [x] r10 full从头启动并在38/150的`fact-018`耗尽4次503后停止；剩余112条未调用，旧run不拼接。
+- [ ] 修复compiler对失败ask无raw响应时`observed_model`未初始化的异常，补回归测试并升级冻结身份；r10 full因`gitClean=false`及provider失败只作失败证据。
+- [ ] 新身份clean canary完成并提交其摘要后，再从clean工作树启动完整full150；compiler COMPLETE后方可进行W4。

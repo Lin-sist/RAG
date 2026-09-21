@@ -2715,3 +2715,12 @@
 ## 2026-09-21 C18 r9证据提交补录
 - 上一执行提交：`9aa96c6`（`docs(eval): 保留C18 r9运行时装载缺口证据`）。
 - 当前内部模块已使用`mvn -q -f pom.xml -pl rag-common,rag-auth,rag-document,rag-core -am -DskipTests install`成功安装到本机仓库；下一次后端启动将加载compiler v5对应的当前`rag-core`实现。
+
+## 2026-09-21 C18 r9补录提交与r10暂停收口
+- 上一补录提交：`cc399842a6880497c90ecf9d105c5c303cd910d2`（`docs(eval): 补录C18 r9证据提交`）。
+- r10 preflight READY；canary固定5条全部完成，恢复5次HTTP503，compiler v5 `COMPLETE`，clean=true，逐attempt embedding事实完整。安全摘要为`docs/eval/reports/c18-canary-r10-20260921-summary.json`。
+- full从头运行38/150，第38条`fact-018`初次及3次重试均为HTTP503/ServiceUnavailable，retry总数24，askErrors1、retrieveErrors0，剩余112条未调用。canary摘要在full前尚未提交，故full metadata clean=false，不能接受为正式baseline。
+- full compiler暴露失败样本分支`observed_model`未初始化并抛`UnboundLocalError`；未生成full安全摘要。一次最小试改因会改变冻结源码hash而撤回，工作区无该试改残留；旧raw不重编为正式结果。执行详情和raw SHA-256见`docs/eval/reports/c18-r10-20260921-execution.md`。
+- 用户要求暂告一段落准备关机；未重跑。后端已停止；未接受delta、归档或置IDLE，未改`.env.local`、题目/fixture/prompt、重试预算、C17、Java业务语义或前端，无push/PR/deploy。
+- 验证：r10 canary compiler COMPLETE；full runner按错误即停。compiler修复及Python全套留到下次新冻结身份切片，当前不虚报通过。
+- Commit: pending
