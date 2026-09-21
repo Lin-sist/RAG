@@ -340,6 +340,7 @@ def call_json(
         provider_error_type = None
         provider_error_category = None
         generation_attempts = 0
+        query_embedding_facts = None
         identity_error = None
         try:
             response = _call_json_once(method, url, payload, token, timeout)
@@ -348,6 +349,16 @@ def call_json(
             metadata = data.get("metadata", {}) if isinstance(data, dict) else {}
             if not isinstance(metadata, dict):
                 metadata = {}
+            diagnostics = (
+                data.get("diagnostics", {}) if kind == "debugRetrieve" else metadata
+            ) if isinstance(data, dict) else {}
+            if isinstance(diagnostics, dict):
+                candidate = {
+                    field: diagnostics.get(field)
+                    for field in c18_contract.QUERY_EMBEDDING_FACT_FIELDS
+                }
+                if all(type(value) is int and value >= 0 for value in candidate.values()):
+                    query_embedding_facts = candidate
             if metadata.get("status") == "error":
                 provider_status = metadata.get("llmHttpStatus")
                 if type(provider_status) is not int:
@@ -380,6 +391,7 @@ def call_json(
             "providerErrorCategory": provider_error_category,
             "errorType": type(error or identity_error).__name__ if (error or identity_error) else None,
             "retry": retry, "generationHttpAttempts": generation_attempts,
+            "queryEmbeddingFacts": query_embedding_facts,
             "elapsedMillis": round((time.monotonic() - started) * 1000, 3),
         })
         if retry:
@@ -764,6 +776,7 @@ def run_sample(sample: dict[str, Any], args: argparse.Namespace, token: str) -> 
             rate_limit_errors,
             details["rerankAttribution"],
             debug_response=debug_response,
+            attempts=c18_attempts,
         )
         details["c18Attempts"] = c18_attempts
 

@@ -22,8 +22,8 @@ import eval_dataset_contract as dataset_contract
 
 
 SCHEMA_VERSION = "c18-generation-objective-v1"
-COMPILER_VERSION = "c18-generation-objective-compiler-v4"
-MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r5-quality-hardening"
+COMPILER_VERSION = "c18-generation-objective-compiler-v5"
+MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r6-attempt-embedding"
 TRANSIENT_RETRY_POLICY = {
     "version": "http-429-503-premature-close-v2",
     "maxRetries": 3,
@@ -46,6 +46,12 @@ EXPECTED_RUNTIME = {
     "timeoutSeconds": 120,
     "maxRetries": 0,
 }
+QUERY_EMBEDDING_FACT_FIELDS = (
+    "queryEmbeddingLogicalCallCount",
+    "queryEmbeddingCacheHitCount",
+    "queryEmbeddingProviderCallCount",
+    "queryEmbeddingProviderFallbackCount",
+)
 RUNTIME_FINGERPRINT_FIELDS = {
     "schemaVersion",
     "provider",
@@ -681,6 +687,7 @@ def execution_facts(
     rerank_attribution: dict[str, Any],
     expected_runtime: dict[str, Any] | None = None,
     debug_response: dict[str, Any] | None = None,
+    attempts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     metadata = ask_response.get("metadata", {}) if isinstance(ask_response, dict) else {}
     if not isinstance(metadata, dict):
@@ -707,22 +714,28 @@ def execution_facts(
     )
     if not isinstance(debug_diagnostics, dict):
         debug_diagnostics = {}
-    embedding_fields = (
-        "queryEmbeddingLogicalCallCount",
-        "queryEmbeddingCacheHitCount",
-        "queryEmbeddingProviderCallCount",
-        "queryEmbeddingProviderFallbackCount",
-    )
     embedding_facts: dict[str, int | None] = {}
-    for field in embedding_fields:
+    attempt_facts = [event.get("queryEmbeddingFacts") for event in attempts or []]
+    attempt_observed = bool(attempt_facts) and all(
+        isinstance(item, dict)
+        and all(type(item.get(field)) is int and item[field] >= 0
+                for field in QUERY_EMBEDDING_FACT_FIELDS)
+        for item in attempt_facts
+    )
+    for field in QUERY_EMBEDDING_FACT_FIELDS:
+        if attempt_observed:
+            embedding_facts[field] = sum(item[field] for item in attempt_facts)
+            continue
         debug_value = debug_diagnostics.get(field)
         ask_value = metadata.get(field)
-        if (type(debug_value) is int and debug_value >= 0
+        if (not attempts
+                and type(debug_value) is int and debug_value >= 0
                 and type(ask_value) is int and ask_value >= 0):
             embedding_facts[field] = debug_value + ask_value
         else:
             embedding_facts[field] = None
-    embedding_observed = all(embedding_facts[field] is not None for field in embedding_fields)
+    embedding_observed = all(
+        embedding_facts[field] is not None for field in QUERY_EMBEDDING_FACT_FIELDS)
     return {
         "askHttpAttempts": ask_attempts,
         "askRetryCount": ask_retries,

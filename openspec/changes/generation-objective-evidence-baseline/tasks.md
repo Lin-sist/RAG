@@ -108,3 +108,11 @@
 - [x] Java embedding层直接记录逻辑调用、缓存命中、provider调用与fallback，并贯通debug/ask diagnostics；缺失观测或存在无法归因的HTTP重试时compiler v4降为`INCOMPLETE`。
 - [x] 删除重复C18常量、重复metadata键和重复guide段落；保留分层契约验证，不做无关frontend或跨模块重构。
 - [ ] 新身份canary/full、真实baseline验收及归档仍受NVIDIA凭据403阻断；本轮未产生provider调用。
+
+## 2026-09-21 compiler v5 逐attempt embedding观测
+- [x] NVIDIA鉴权恢复；models/embedding为200，chat由503恢复到200，mutation-free preflight仍为READY。
+- [x] r7因启动脚本重新导入`.env.local`覆盖进程前置模型而实际调用旧Qwen并410，首条停止；raw保留，不续接。
+- [x] r8正确使用Nemotron3 Super，5/5最终CLEAN但恢复6次503；compiler v4按设计判`INCOMPLETE`，full未启动。
+- [x] 生成失败响应合并本次retrieval diagnostics；runner逐attempt记录embedding逻辑/cache/provider/fallback，compiler v5逐attempt校验并从ledger重算聚合。
+- [x] W0样本与预算34/1492保持不变；Java聚焦测试通过，Python聚焦37项通过。
+- [ ] 提交compiler v5形成clean HEAD后，以新身份执行canary；COMPLETE后从头full150并完成W4。

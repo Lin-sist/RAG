@@ -146,6 +146,7 @@ public class RAGServiceImpl implements RAGService {
         }
         java.util.Optional<QueryBudgetLedger> budgetLedger = routePlan
                 .map(factQueryStrategyExecutor::openBudget);
+        Map<String, Object> observedRetrievalDiagnostics = Map.of();
 
         log.info("Processing QA request for collection: {}", collectionName);
 
@@ -178,6 +179,7 @@ public class RAGServiceImpl implements RAGService {
                         ? retryExplanatoryRetrieval(question, request, collectionName, initial)
                         : initial;
             });
+            observedRetrievalDiagnostics = retrievalResult.diagnostics();
             budgetLedger.ifPresent(ledger -> recordBudgetDiagnostics(
                     ledger,
                     retrievalResult.diagnostics(),
@@ -277,7 +279,9 @@ public class RAGServiceImpl implements RAGService {
         } catch (Exception e) {
             log.error("Failed to process QA request: errorType={}", e.getClass().getSimpleName());
             askSpan.safeError(e, classifyClientError(e), "ASK_FAILED").outcome("ERROR");
-            QAResponse error = QAResponse.error(question, toClientErrorMessage(e), errorMetadata(e));
+            QAResponse error = withRetrievalDiagnostics(
+                    QAResponse.error(question, toClientErrorMessage(e), errorMetadata(e)),
+                    observedRetrievalDiagnostics);
             routePlan.ifPresent(plan -> recordRouteTelemetry(
                     askSpan,
                     plan,

@@ -2689,3 +2689,13 @@
 - 范围安全：未修改`.ai/ACTIVE_TASK.md`、C18 OpenSpec/eval/代码、Java、`.env.local`或前端业务代码；保留用户已有`AGENTS.md`及共享日志其他增量，未暂存、commit、push/PR/deploy。
 - 剩余风险：新worktree不会继承当前未提交的`AGENTS.md`治理更新；开始实现前必须在新对话读取交接、复核worktree规则并明确前端切片提交责任。
 - Commit: pending
+
+## 2026-09-21 C18权限恢复、r7/r8与compiler v5逐attempt观测
+- 用户授权：明确同意canary5及通过后的full150，将固定开发题、确定性variants、fixture contexts和prompts发往NVIDIA integrate endpoint；允许query count/history；沿用429/503/PrematureCloseException最多3次、既定预算、验收/归档和Agent本地提交。
+- 运行事实：models/embedding探针200；chat先连续503后恢复200；Docker五项healthy，mutation-free preflight READY（vectors50/50、fixtures3/3、chunks11/14/25）。r7首条ask为410，定位为`start-backend.ps1`重新导入`.env.local`覆盖进程前置Nemotron变量，实际用了退役Qwen；raw保留，后4条/full未调用。改为导入后进程级覆盖，r8使用Nemotron3 Super完成5/5、最终CLEAN/objective COMPLETE/judge SKIPPED，但恢复6次503；compiler v4因失败attempt embedding不可观测判INCOMPLETE，full未启动。
+- 修改：RAGServiceImpl生成失败响应合并已完成的retrieval diagnostics；C18 runner逐debug/ask attempt记录四项embedding事实；compiler v5逐attempt校验并从ledger重算聚合，缺失/不一致仍INCOMPLETE。manifest身份升级为`nemotron3-super-r6-attempt-embedding`，同步schema、W0源码hash、OpenSpec与指南；重试范围、预算、题目/fixture/prompt及C17门禁不变。
+- 验证：Java `RAGServiceImplTest,C18BudgetAuditTest`通过，新W0 audit样本逐项一致且预算仍canary34/full1492；Python聚焦37项通过。全套Python与diff检查待本记录后的验证补录。
+- 验证补录：全套Python `289 tests/OK`；canary/full budget plan均`PLAN_VALID`且仍为34/1492；`git diff --check`仅报告AGENT_LOG既有CRLF转换提示，无空白错误。
+- 范围安全：未修改`.env.local`、业务默认模型、数据集、fixture、C17 profile/reference；未拼接旧run、未启动full、未清理KB/history；无frontend改动，无push/PR/deploy。
+- 剩余风险：provider持续503；compiler v5尚需clean HEAD上的真实canary/full验证。r7/r8 raw和r8安全摘要保留。
+- Commit: pending

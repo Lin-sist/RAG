@@ -504,12 +504,20 @@ def _validate_sample(
             incomplete = True
     events = sample.get("c18Attempts")
     ledger_valid = isinstance(events, list) and all(isinstance(e, dict) for e in events)
+    embedding_ledger_valid = ledger_valid
     if ledger_valid:
         chains = [[e for e in events if e.get("kind") == kind] for kind in ("debugRetrieve", "ask")]
         ledger_valid = events == chains[0] + chains[1]
         for chain in chains:
             ledger_valid = ledger_valid and 1 <= len(chain) <= 4
             for index, event in enumerate(chain):
+                embedding = event.get("queryEmbeddingFacts")
+                event_embedding_valid = (
+                    isinstance(embedding, dict)
+                    and all(type(embedding.get(field)) is int and embedding[field] >= 0
+                            for field in c18.QUERY_EMBEDDING_FACT_FIELDS)
+                )
+                embedding_ledger_valid = embedding_ledger_valid and event_embedding_valid
                 status = event.get("providerHttpStatus") or event.get("httpStatus")
                 provider_error = {
                     "category": event.get("providerErrorCategory"),
@@ -533,12 +541,21 @@ def _validate_sample(
         if isinstance(facts, dict) and isinstance(details, dict):
             asks = len(chains[1])
             rates = sum(429 in (e.get("httpStatus"), e.get("providerHttpStatus")) for e in events)
+            embedding_totals = {
+                field: sum(e["queryEmbeddingFacts"][field] for e in events)
+                for field in c18.QUERY_EMBEDDING_FACT_FIELDS
+            } if embedding_ledger_valid else {}
             ledger_valid = ledger_valid and (
                 facts.get("askHttpAttempts") == details.get("askAttempts") == asks
                 and facts.get("askRetryCount") == details.get("askRetries") == asks - 1
                 and facts.get("automaticRetryCount") == asks - 1
                 and facts.get("rateLimitErrors") == details.get("rateLimitErrors") == rates
+                and all(facts.get(field) == embedding_totals.get(field)
+                        for field in c18.QUERY_EMBEDDING_FACT_FIELDS)
             )
+    if not embedding_ledger_valid:
+        _reason(result, "attempt_embedding_facts_missing")
+        incomplete = True
     if not ledger_valid:
         _reason(result, "transient_attempt_ledger_invalid")
         incomplete = True
@@ -619,6 +636,17 @@ def compile_evidence(
         incomplete = incomplete or sample_incomplete
 
     events = [e for sample in samples if isinstance(sample, dict) for e in sample.get("c18Attempts", []) if isinstance(e, dict)]
+    attempt_embedding_totals = {}
+    for field in c18.QUERY_EMBEDDING_FACT_FIELDS:
+        values = [
+            embedding.get(field) if isinstance(embedding := e.get("queryEmbeddingFacts"), dict) else None
+            for e in events
+        ]
+        attempt_embedding_totals[field] = (
+            sum(values)
+            if all(type(value) is int and value >= 0 for value in values)
+            else None
+        )
     request_ids = [e.get("requestId") for e in events if e.get("attempt") == 1]
     if len(request_ids) != len(set(request_ids)):
         _reason(result, "transient_request_identity_duplicate")
@@ -644,10 +672,10 @@ def compile_evidence(
         "algorithmFallbackCount": sum(item.get("c18ExecutionFacts", {}).get("algorithmFallbackCount", 0) for item in samples if isinstance(item, dict)),
         "providerFallbackCount": sum(item.get("c18ExecutionFacts", {}).get("providerFallbackCount", 0) for item in samples if isinstance(item, dict)),
         "automaticRetryCount": sum(item.get("c18ExecutionFacts", {}).get("automaticRetryCount", 0) for item in samples if isinstance(item, dict)),
-        "queryEmbeddingLogicalCallCount": sum(item.get("c18ExecutionFacts", {}).get("queryEmbeddingLogicalCallCount", 0) or 0 for item in samples if isinstance(item, dict)),
-        "queryEmbeddingCacheHitCount": sum(item.get("c18ExecutionFacts", {}).get("queryEmbeddingCacheHitCount", 0) or 0 for item in samples if isinstance(item, dict)),
-        "queryEmbeddingProviderCallCount": sum(item.get("c18ExecutionFacts", {}).get("queryEmbeddingProviderCallCount", 0) or 0 for item in samples if isinstance(item, dict)),
-        "queryEmbeddingProviderFallbackCount": sum(item.get("c18ExecutionFacts", {}).get("queryEmbeddingProviderFallbackCount", 0) or 0 for item in samples if isinstance(item, dict)),
+        "queryEmbeddingLogicalCallCount": attempt_embedding_totals["queryEmbeddingLogicalCallCount"],
+        "queryEmbeddingCacheHitCount": attempt_embedding_totals["queryEmbeddingCacheHitCount"],
+        "queryEmbeddingProviderCallCount": attempt_embedding_totals["queryEmbeddingProviderCallCount"],
+        "queryEmbeddingProviderFallbackCount": attempt_embedding_totals["queryEmbeddingProviderFallbackCount"],
         "queryEmbeddingUpperBound": manifest["budgets"][mode]["queryEmbeddingUpperBound"],
         "queryEmbeddingObservation": "DIRECT_RUNTIME_DIAGNOSTICS",
         "llmJudgeHttpAttempts": 0,
@@ -655,11 +683,9 @@ def compile_evidence(
     if actual_facts["debugRetrieveHttpAttempts"] > manifest["budgets"][mode]["debugRetrieve"] or actual_facts["askHttpAttempts"] > manifest["budgets"][mode]["ask"] or actual_facts["generationCalls"] > manifest["budgets"][mode]["generationUpperBound"]:
         _reason(result, "call_budget_exceeded")
         incomplete = True
-    if actual_facts["queryEmbeddingLogicalCallCount"] > actual_facts["queryEmbeddingUpperBound"]:
+    if (type(actual_facts["queryEmbeddingLogicalCallCount"]) is not int
+            or actual_facts["queryEmbeddingLogicalCallCount"] > actual_facts["queryEmbeddingUpperBound"]):
         _reason(result, "query_embedding_budget_exceeded")
-        incomplete = True
-    if actual_facts["httpRetryCount"]:
-        _reason(result, "embedding_execution_incomplete_after_retry")
         incomplete = True
     guard_snapshot = details.get("c18Execution")
     if isinstance(guard_snapshot, dict):

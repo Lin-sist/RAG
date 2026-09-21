@@ -82,3 +82,9 @@
 - 新身份为`nemotron3-super-r5-quality-hardening`、compiler v4；embedding逻辑调用/cache/provider/fallback从Java运行时贯通至raw与安全摘要。存在HTTP重试时因失败attempt内部embedding事实不完整，v4明确`INCOMPLETE`。
 - 本轮仅离线代码、契约和测试；未读取/修改`.env.local`，未发起provider/canary/full，旧r5/r6 raw与摘要不改写、不拼接。
 - NVIDIA凭据403仍是新canary/full的外部阻断；正式baseline、用户验收、归档和IDLE未完成，change保持ACTIVE。
+
+## 2026-09-21 compiler v5实施中（最新状态）
+- 用户已在当前可信消息明确授权canary5、通过后的full150、固定开发题/变体/fixture contexts/prompt到NVIDIA、query count/history副作用、既定重试、验收/归档及本地提交。
+- NVIDIA models/embedding已200；chat从503恢复200；preflight READY。r7因启动脚本导入`.env.local`覆盖进程前置模型而调用旧Qwen并410，首条停止；r8改为正确Nemotron3 Super后5/5最终CLEAN，但恢复6次503，compiler v4按设计为INCOMPLETE，full未启动。
+- 当前以`nemotron3-super-r6-attempt-embedding`/compiler v5补齐失败ask attempt的embedding diagnostics和逐attempt校验；重试范围与预算不变。Java聚焦测试、W0 audit与Python聚焦测试已通过，待全套验证和本地提交形成clean HEAD后执行新canary→从头full。
+- C18仍ACTIVE；完整full、baseline接受、归档和IDLE尚未完成，无push/PR/deploy。

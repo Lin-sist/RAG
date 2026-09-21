@@ -83,6 +83,10 @@ child runner在debug/ask/judge请求前统计预算，超限请求不进入`urlo
 
 新身份`nemotron3-super-r5-quality-hardening`与compiler v4要求运行时generation model、逐样本重算指标和query embedding实际计数全部可验证；缺失、漂移、畸形raw、输出路径碰撞/逃逸均fail closed。HTTP重试ledger仍保留，但失败attempt内部embedding不可完整观测，因此发生重试的run不再可作为COMPLETE基线。NVIDIA凭据403仍阻断新canary/full，本修订未发起外部调用。
 
+## 2026-09-21 失败attempt观测修订
+
+NVIDIA权限恢复后，r8 canary 5/5最终成功但恢复6次HTTP503；compiler v4因失败attempt的embedding事实缺失而正确判为`INCOMPLETE`。新身份`nemotron3-super-r6-attempt-embedding`与compiler v5让同步ask的生成失败响应保留本次retrieval diagnostics，并由C18 runner逐attempt记录四项embedding计数。只有每个debug/ask attempt均具备非负完整计数、逐样本聚合与ledger一致且仍满足原预算时，带重试run才可`COMPLETE`；传输层无响应或任一计数缺失仍fail closed。既有429/503/PrematureCloseException范围、最多3次、5/10/20秒退避和20/600、136/5968预算不变。
+
 ### 决策 11. 已退役免费模型的替代
 - **面临的选择**：继续调用退役Qwen端点；迁移到收费合作方；同NVIDIA端点使用已验证可用的Nemotron 3 Super。
 - **选了哪个 + 为什么**：选Nemotron 3 Super，新模型身份重冻结，维持用户已授权的目的地、免费原型账户与现有协议，合成检查200。

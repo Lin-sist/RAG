@@ -154,6 +154,12 @@ class C18CompilerTest(unittest.TestCase):
                 httpStatus=200, providerHttpStatus=None, providerErrorType=None,
                 providerErrorCategory=None, errorType=None, retry=False,
                 generationHttpAttempts=sample["c18ExecutionFacts"]["generationCalls"] if kind == "ask" else 0,
+                queryEmbeddingFacts={
+                    "queryEmbeddingLogicalCallCount": 1,
+                    "queryEmbeddingCacheHitCount": 0,
+                    "queryEmbeddingProviderCallCount": 1,
+                    "queryEmbeddingProviderFallbackCount": 0,
+                },
                 elapsedMillis=1) for j, kind in enumerate(("debugRetrieve", "ask"))]
         details = {
             "reportStatus": "CLEAN",
@@ -294,13 +300,16 @@ class C18CompilerTest(unittest.TestCase):
         sample["c18Attempts"][1]["attempt"] = 2
         sample["c18Attempts"].insert(1, failed)
         sample["metricCalculationDetails"].update(askAttempts=2, askRetries=1)
-        sample["c18ExecutionFacts"].update(askHttpAttempts=2, askRetryCount=1, automaticRetryCount=1)
+        sample["c18ExecutionFacts"].update(
+            askHttpAttempts=2, askRetryCount=1, automaticRetryCount=1,
+            queryEmbeddingLogicalCallCount=3,
+            queryEmbeddingProviderCallCount=3,
+        )
         details["runCounts"]["retryCount"] = 1
         details["c18Execution"]["counts"].update(ask=151, generationReservations=151)
         details["c18Execution"]["attempts"] = [e for s in details["samples"] for e in s["c18Attempts"]]
         result = self.compile_temp(details, metadata)
-        self.assertEqual(result["status"], "INCOMPLETE", result["reasonCodes"])
-        self.assertIn("embedding_execution_incomplete_after_retry", result["reasonCodes"])
+        self.assertEqual(result["status"], "COMPLETE", result["reasonCodes"])
         self.assertEqual(result["callFacts"]["recoveredFailureCount"], 1)
         self.assertEqual(result["callFacts"]["failedAttemptStatuses"], {"503": 1})
         failed["providerHttpStatus"] = 500
@@ -323,14 +332,33 @@ class C18CompilerTest(unittest.TestCase):
         sample["c18Attempts"][1]["attempt"] = 2
         sample["c18Attempts"].insert(1, failed)
         sample["metricCalculationDetails"].update(askAttempts=2, askRetries=1)
+        sample["c18ExecutionFacts"].update(
+            askHttpAttempts=2, askRetryCount=1, automaticRetryCount=1,
+            queryEmbeddingLogicalCallCount=3,
+            queryEmbeddingProviderCallCount=3,
+        )
+        details["runCounts"]["retryCount"] = 1
+        details["c18Execution"]["counts"].update(ask=151, generationReservations=151)
+        details["c18Execution"]["attempts"] = [e for s in details["samples"] for e in s["c18Attempts"]]
+        result = self.compile_temp(details, metadata)
+        self.assertEqual(result["status"], "COMPLETE", result["reasonCodes"])
+        self.assertEqual(result["callFacts"]["failedAttemptStatuses"], {"network:PrematureCloseException": 1})
+
+    def test_retry_without_attempt_embedding_facts_is_incomplete(self) -> None:
+        details, metadata = self.make_artifacts()
+        sample = details["samples"][0]
+        failed = copy.deepcopy(sample["c18Attempts"][1])
+        failed.update(providerHttpStatus=503, retry=True, queryEmbeddingFacts=None)
+        sample["c18Attempts"][1]["attempt"] = 2
+        sample["c18Attempts"].insert(1, failed)
+        sample["metricCalculationDetails"].update(askAttempts=2, askRetries=1)
         sample["c18ExecutionFacts"].update(askHttpAttempts=2, askRetryCount=1, automaticRetryCount=1)
         details["runCounts"]["retryCount"] = 1
         details["c18Execution"]["counts"].update(ask=151, generationReservations=151)
         details["c18Execution"]["attempts"] = [e for s in details["samples"] for e in s["c18Attempts"]]
         result = self.compile_temp(details, metadata)
-        self.assertEqual(result["status"], "INCOMPLETE", result["reasonCodes"])
-        self.assertIn("embedding_execution_incomplete_after_retry", result["reasonCodes"])
-        self.assertEqual(result["callFacts"]["failedAttemptStatuses"], {"network:PrematureCloseException": 1})
+        self.assertEqual(result["status"], "INCOMPLETE")
+        self.assertIn("attempt_embedding_facts_missing", result["reasonCodes"])
 
     def test_real_runner_windows_descriptors_survive_sanitization(self) -> None:
         details, metadata = self.make_artifacts()

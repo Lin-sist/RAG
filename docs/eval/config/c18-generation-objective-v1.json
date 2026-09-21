@@ -1,12 +1,12 @@
 {
   "schemaVersion": "c18-generation-objective-v1",
-  "manifestId": "rag-eval-dev-v2-generation-objective-nemotron3-super-r5-quality-hardening",
-  "compilerVersion": "c18-generation-objective-compiler-v4",
+  "manifestId": "rag-eval-dev-v2-generation-objective-nemotron3-super-r6-attempt-embedding",
+  "compilerVersion": "c18-generation-objective-compiler-v5",
   "toolingSourceSha256": {
-    "scripts/c18_generation_contract.py": "0de1f0e4f2588a8bf28851432983a6a721a5a7293f4125e26d34e8dbf59e4e68",
-    "scripts/compile_generation_objective_baseline.py": "ea8434805ca656bda5863e1d6f168720fe7c08a2a930ca77316339d02d3cfec4",
-    "docs/eval/schema/c18-generation-objective-v1.json": "f99918d17c2df4a64aa3775daea6ec680ed62959bcc6a1a2a5cea9e5d85325d8",
-    "docs/eval/schema/c18-generation-objective-evidence-v1.json": "de5e34fcad4a05f640d98651c00cfbfb8ed86a040bd59acd24c2d2d56e11d210"
+    "scripts/c18_generation_contract.py": "d19bf3b4659b1c355192c94c1bf2c6077d4f0685ad34ba0939aec12e778d0aa9",
+    "scripts/compile_generation_objective_baseline.py": "68b076dcad0dd20a6145eda4d7d341848c15b214e3c6f3d8d85fea658345d185",
+    "docs/eval/schema/c18-generation-objective-v1.json": "2f0a6976f9496c3f230369aa3a5fc644e1ffd05db2c42728e675bbfd8e9fb10b",
+    "docs/eval/schema/c18-generation-objective-evidence-v1.json": "1ea224d445ad95e3b1af0a8832e55a31866f4b7279aa0681ac5905045a902cf1"
   },
   "dataset": {
     "manifestPath": "docs/eval/dataset-manifest.json",
@@ -37,7 +37,7 @@
   },
   "budgetAudit": {
     "path": "docs/eval/reports/c18-query-budget-audit-v1.json",
-    "sha256": "53dcdb2e7de8383208dd27f2cdae857ba8c98393f2ff1a0802bd9470a7297956",
+    "sha256": "c4c2991fddc70eccc6895e21148c80ae086e38beb00ef47aed1d52f24426a883",
     "schemaVersion": "c18-query-budget-audit-v1",
     "canaryBudget": {
       "debugRetrieve": 20,

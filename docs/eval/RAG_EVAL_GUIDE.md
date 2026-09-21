@@ -891,6 +891,8 @@ python -B scripts\run_reproducible_rag_eval.py `
 
 2026-09-20 代码质量复审后启用 `nemotron3-super-r5-quality-hardening` / compiler v4。runner现在要求返回模型身份与冻结模型一致，raw嵌套结构必须完整，聚合指标必须能由逐样本明细重算；三个输出路径必须互异且`--no-overwrite`使用原子独占创建。query embedding的逻辑调用、缓存命中、provider调用和fallback必须由debug/ask运行时diagnostics直接提供，缺失即`INCOMPLETE`。由于重试失败响应不能完整证明其内部embedding次数，出现任何HTTP重试的run仍保留完整ledger，但v4摘要降为`INCOMPLETE`，不得把最终成功响应的计数冒充全程实际值。
 
+2026-09-21 启用 `nemotron3-super-r6-attempt-embedding` / compiler v5。同步ask即使在generation失败时也保留已经完成的retrieval diagnostics，runner为每次debug/ask attempt记录四项embedding计数；compiler从attempt ledger重算逐样本及全局计数。只有所有attempt观测完整且与聚合、预算一致时，恢复后的429/503/PrematureCloseException才允许形成`COMPLETE`；传输层无响应、字段缺失或不一致仍为`INCOMPLETE`。重试范围与最坏预算不增加。
+
 ```powershell
 python -B scripts\compile_generation_objective_baseline.py `
   --manifest docs\eval\config\c18-generation-objective-v1.json `
@@ -901,6 +903,6 @@ python -B scripts\compile_generation_objective_baseline.py `
   --no-overwrite
 ```
 
-compiler 只保留 manifest/dataset/runtime/Git hash、调用事实、分通道数值与状态；问题、答案、contexts、claims、provider payload、凭据、数字 KB ID、collection 和绝对路径留在本地 raw，不进入 tracked 摘要。v4的`COMPLETE`要求 exact 150、`CLEAN`、objective `COMPLETE`、judge `SKIPPED`、模型身份与指标重算一致、embedding全程可观测、无重试、固定 identity 和预算合规；低分也不会触发本轮优化。
+compiler 只保留 manifest/dataset/runtime/Git hash、调用事实、分通道数值与状态；问题、答案、contexts、claims、provider payload、凭据、数字 KB ID、collection 和绝对路径留在本地 raw，不进入 tracked 摘要。v5的`COMPLETE`要求 exact 150、`CLEAN`、objective `COMPLETE`、judge `SKIPPED`、模型身份与指标重算一致、每个attempt的embedding全程可观测、固定 identity 和预算合规；允许契约内已恢复的瞬态重试，但不允许缺失attempt事实。低分也不会触发本轮优化。
 
 C18 瞬态重试必须保留逐次失败账本。compiler 的 COMPLETE 要求最终观测完整、未恢复错误为零且 ledger 合法；CLEAN 不表示传输从未失败。摘要分别列出 HTTP/ask/retrieval 重试、恢复失败、失败状态直方图及已知/未知 generation HTTP 次数；不与旧零重试运行混比。

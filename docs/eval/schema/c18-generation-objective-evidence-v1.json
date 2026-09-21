@@ -26,7 +26,7 @@
     "schemaVersion": {"const": "c18-generation-objective-evidence-v1"},
     "status": {"enum": ["COMPLETE", "INCOMPLETE", "NOT_COMPARABLE", "INVALID"]},
     "reasonCodes": {"type": "array", "items": {"type": "string"}},
-    "compiler": {"type": "object", "additionalProperties": false, "required": ["version", "mode"], "properties": {"version": {"const": "c18-generation-objective-compiler-v4"}, "mode": {"enum": ["canary", "full"]}}},
+    "compiler": {"type": "object", "additionalProperties": false, "required": ["version", "mode"], "properties": {"version": {"const": "c18-generation-objective-compiler-v5"}, "mode": {"enum": ["canary", "full"]}}},
     "manifest": {"type": "object", "additionalProperties": false, "required": ["id", "sha256"], "properties": {"id": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
     "dataset": {"type": "object", "additionalProperties": true},
     "runIdentity": {"type": "object", "additionalProperties": false, "required": ["mode", "slice", "repeat", "runIndex"], "properties": {"mode": {"const": "generation/objective"}, "slice": {"enum": ["canary", "full"]}, "repeat": {"const": 1}, "runIndex": {"const": 1}}},
