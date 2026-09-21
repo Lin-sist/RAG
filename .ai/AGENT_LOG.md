@@ -2699,3 +2699,15 @@
 - 范围安全：未修改`.env.local`、业务默认模型、数据集、fixture、C17 profile/reference；未拼接旧run、未启动full、未清理KB/history；无frontend改动，无push/PR/deploy。
 - 剩余风险：provider持续503；compiler v5尚需clean HEAD上的真实canary/full验证。r7/r8 raw和r8安全摘要保留。
 - Commit: pending
+
+## 2026-09-21 C18 compiler v5提交补录
+- 上一执行提交：`4b143b2dd808b1aa2aeab97901d8f6d4fa65e1c2`（`fix(eval): 补齐C18重试调用观测`）。
+- 提交包含compiler v5、逐attempt embedding观测、r8安全摘要及对应OpenSpec/测试/指南更新；未包含前端、`.env.local`、题目/fixture、C17门禁或push/PR/deploy。
+
+## 2026-09-21 C18 r9旧内部JAR运行证据
+- 范围：在clean提交`4b143b2`、正确Nemotron3 Super进程变量和READY preflight后执行新canary；保留raw并生成`docs/eval/reports/c18-canary-r9-20260921-summary.json`。未启动full。
+- 结果：5/5最终成功、askErrors/retrieveErrors均0，恢复1次HTTP503；compiler v5为`INCOMPLETE`，原因码为`embedding_execution_facts_missing`、`attempt_embedding_facts_missing`、`query_embedding_budget_exceeded`。该run不作为正式canary通过证据。
+- 根因：`mvn -f rag-admin/pom.xml spring-boot:run`解析到本机仓库中的旧版`rag-core` JAR；本轮只运行过源码测试、未先install内部模块，因此成功响应含旧diagnostics，失败503 attempt缺少v5新增的embedding事实。证据支持启动工序缺口，不改写raw或compiler结果。
+- 验证与边界：r9 identity为clean=true、Git HEAD=`4b143b2`、固定5条和正确模型；安全摘要不含raw题目/回答/context、凭据、数字KB或绝对路径。后端已停止；未改`.env.local`、题目/fixture/prompt、重试范围/预算、C17或前端，未清理KB/history，无push/PR/deploy。
+- 下一步：先install当前`rag-common/rag-auth/rag-document/rag-core`，再以新身份执行canary；仅当compiler COMPLETE才启动full150。
+- Commit: pending

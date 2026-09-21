@@ -88,3 +88,10 @@
 - NVIDIA models/embedding已200；chat从503恢复200；preflight READY。r7因启动脚本导入`.env.local`覆盖进程前置模型而调用旧Qwen并410，首条停止；r8改为正确Nemotron3 Super后5/5最终CLEAN，但恢复6次503，compiler v4按设计为INCOMPLETE，full未启动。
 - 当前以`nemotron3-super-r6-attempt-embedding`/compiler v5补齐失败ask attempt的embedding diagnostics和逐attempt校验；重试范围与预算不变。Java聚焦测试、W0 audit与Python聚焦测试已通过，待全套验证和本地提交形成clean HEAD后执行新canary→从头full。
 - C18仍ACTIVE；完整full、baseline接受、归档和IDLE尚未完成，无push/PR/deploy。
+
+## 2026-09-21 r9 运行时装载缺口（最新状态）
+
+- compiler v5实现已提交为`4b143b2dd808b1aa2aeab97901d8f6d4fa65e1c2`；Java聚焦测试、W0预算审计、Python 289项与plan-only均通过。
+- r9在clean HEAD与正确Nemotron3 Super进程变量下完成5/5，最终错误0并恢复1次503；compiler v5仍为`INCOMPLETE`，失败attempt缺少embedding事实。
+- 根因是仅对`rag-admin`执行`spring-boot:run`时加载了本机仓库中的旧版`rag-core` JAR，未装载本提交新增的失败响应diagnostics；这是启动工序缺口，不是将r9改写为成功的理由。r9 raw及安全摘要保留，full未启动。
+- 下一步先安装当前内部模块，再以新no-overwrite身份执行clean canary；只有compiler v5 `COMPLETE`后才从头启动full150。C18保持ACTIVE，无push/PR/deploy。

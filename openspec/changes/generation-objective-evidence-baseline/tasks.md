@@ -115,4 +115,5 @@
 - [x] r8正确使用Nemotron3 Super，5/5最终CLEAN但恢复6次503；compiler v4按设计判`INCOMPLETE`，full未启动。
 - [x] 生成失败响应合并本次retrieval diagnostics；runner逐attempt记录embedding逻辑/cache/provider/fallback，compiler v5逐attempt校验并从ledger重算聚合。
 - [x] W0样本与预算34/1492保持不变；Java聚焦测试通过，Python聚焦37项通过。
-- [ ] 提交compiler v5形成clean HEAD后，以新身份执行canary；COMPLETE后从头full150并完成W4。
+- [x] compiler v5已提交为`4b143b2`并形成clean HEAD；r9最终5/5且恢复1次503，但后端从本机仓库加载旧版`rag-core` JAR，失败attempt仍无embedding事实，compiler按契约为`INCOMPLETE`。
+- [ ] 安装当前内部模块后，以新no-overwrite身份执行canary；仅在compiler v5 `COMPLETE`后从头full150并完成W4。r9不拼接、不改写，full尚未启动。
