@@ -2711,3 +2711,7 @@
 - 验证与边界：r9 identity为clean=true、Git HEAD=`4b143b2`、固定5条和正确模型；安全摘要不含raw题目/回答/context、凭据、数字KB或绝对路径。后端已停止；未改`.env.local`、题目/fixture/prompt、重试范围/预算、C17或前端，未清理KB/history，无push/PR/deploy。
 - 下一步：先install当前`rag-common/rag-auth/rag-document/rag-core`，再以新身份执行canary；仅当compiler COMPLETE才启动full150。
 - Commit: pending
+
+## 2026-09-21 C18 r9证据提交补录
+- 上一执行提交：`9aa96c6`（`docs(eval): 保留C18 r9运行时装载缺口证据`）。
+- 当前内部模块已使用`mvn -q -f pom.xml -pl rag-common,rag-auth,rag-document,rag-core -am -DskipTests install`成功安装到本机仓库；下一次后端启动将加载compiler v5对应的当前`rag-core`实现。
