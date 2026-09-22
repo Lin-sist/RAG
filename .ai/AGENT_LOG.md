@@ -2767,3 +2767,7 @@
 - 边界：只接受一次固定开发态基线；不激活objective/judge gate，不改C17，不证明judge、语义faithfulness、稳定性、生产SLA或Agentic RAG。未改`.env.local`、业务默认配置、前端代码，无push/PR/deploy。
 - 验证：Python290项此前通过并复用；本轮新增正式compiler COMPLETE、exact150/ordered hash、schema/隐私/链接/diff与archive结构检查。Java/frontend无改动不重跑。
 - Commit: pending
+
+## 2026-09-22 C18验收归档提交补录
+- 上一执行提交：`9113945`（`docs(eval): 验收归档C18生成基线`）。
+- 提交仅包含C18正式安全摘要、验收记录、approved delta接受、归档、roadmap/debt与ACTIVE_TASK收尾；无业务配置、C17、Java或前端代码改动，无push/PR/deploy。
