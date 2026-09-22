@@ -2756,3 +2756,14 @@
 ## 2026-09-22 C18 r11 canary提交补录
 - 上一执行提交：`90e6210`（`docs(eval): 记录C18 r11干净canary`）。
 - 提交仅包含r11安全摘要与C18状态/任务/日志；raw仍在ignored目录，未包含问题、回答、context或凭据。
+
+## 2026-09-22 C18 r11完整full、验收与归档
+- 上一补录提交：`bbab928`（`docs(eval): 补录C18 r11 canary提交`）。full前mutation-free preflight READY，Git clean=true；后端按正确模型覆盖顺序运行并在证据编译后停止。
+- r11 full从头完成150/150：CLEAN/objective COMPLETE/judge SKIPPED，ask/retrieval errors=0、retry=31；全部为已恢复HTTP503，无未恢复失败。compiler v6=`COMPLETE`，Git HEAD=`bbab928097c996453cce8b6cb7ad72c0e51a1a5f`。
+- 调用事实：debug=150、ask/generation HTTP attempts=181、最终generation=150；embedding logical/cache/provider/fallback=`973/552/421/0`，judge/model rerank/provider fallback/answer cache hit=0，预算合规。
+- 正式指标：Recall@3=44.37%、Recall@5=47.44%、MRR=0.52615、Top1=92.31%；generation keyword hit=79.74%（374/469）；citation source=91.91%（125/136）、snippet=100%（336/336）；lexical claim support=5.22%（23/441）；no-answer=95%（19/20），no-answer citation violation=1。低值如实保留，未优化题目/prompt/检索/阈值。
+- 安全摘要`docs/eval/reports/c18-generation-objective-review-v1.json` SHA-256=`06dd7458e4950e6d61de7aa8a408570cb06a5524fa4786fa9d67612d7d8f30ae`；raw report/details/metadata哈希与验收边界见归档`acceptance.md`。tracked摘要不含raw内容、凭据、数字KB、collection或绝对路径。
+- 用户已授权验收、归档及本地提交。C18 delta接受进baseline，roadmap/debt同步，change归档至`openspec/changes/archive/2026-09-22-generation-objective-evidence-baseline/`，ACTIVE_TASK恢复IDLE。
+- 边界：只接受一次固定开发态基线；不激活objective/judge gate，不改C17，不证明judge、语义faithfulness、稳定性、生产SLA或Agentic RAG。未改`.env.local`、业务默认配置、前端代码，无push/PR/deploy。
+- 验证：Python290项此前通过并复用；本轮新增正式compiler COMPLETE、exact150/ordered hash、schema/隐私/链接/diff与archive结构检查。Java/frontend无改动不重跑。
+- Commit: pending

@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-08-10
+> 状态日期：2026-09-22
 > 本文只登记当前未完成或仍需独立证据的债务，不是活动任务计划。重大改动必须进入独立 OpenSpec change；完成状态以 accepted spec、代码、正式 evidence 和 archive 为准。
 > 长期顺序见 `docs/roadmap/iteration-blueprint.md` v6。
 
@@ -9,7 +9,7 @@
 ### 1. C17 readiness 已关闭，保留运行风险
 
 - 2026-09-10 C17阈值获批、ACTIVE profile/locked reference完成；三轮离线12/12 PASS，已验收归档。
-- 固定开发集Recall@5仅47.44%；这是防退化门禁，不能外推生产质量。generation/objective、judge及其profile仍属C18–C20。
+- 固定开发集Recall@5仅47.44%；这是防退化门禁，不能外推生产质量。C18单次generation/objective基线已归档，但judge及objective/judge profile仍属C19–C20。
 - Docker dockerInference socket复发根因未证实；旧source与失败c17g2按原授权保留，清理必须独立授权。
 - 证据见[批准与激活记录](../eval/references/c17-activation-approval-v1.json)。
 
@@ -20,11 +20,11 @@
 
 ## P1：真实质量证据与用户结果
 
-### 1. Generation / citation / no-answer 真实基线
+### 1. Generation / citation / no-answer 重复证据与门禁
 
-- C9a 已形成 deterministic objective lexical claim alignment，但真实 v2/150 generation evidence 尚未执行。
-- 首轮应在 judge off 下固定 full v2/150、provider/model、KB/fixture、Git/config 与 raw artifact 边界，分开报告 retrieval、generation、citation、claim support、no-answer 和 errors。
-- 词法 claim support 不能表述为语义蕴含或完整事实正确性。
+- C18已在judge off下完成一次真实v2/150基线：generation keyword hit=79.74%、citation source hit=91.91%、lexical claim support=5.22%、no-answer=95%；31次503均恢复。
+- 该结果只有单次固定开发态身份，不是objective release gate；后续仍需独立profile/version和批准的重复evidence决定阈值。
+- 词法 claim support不能表述为语义蕴含或完整事实正确性；1次no-answer citation violation与低claim support必须保持可见，不得调题或调prompt掩盖。
 
 ### 2. Judge 真实校准
 

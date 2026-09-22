@@ -2,14 +2,14 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
 ## Active Change
 
-- Change ID：`generation-objective-evidence-baseline`
-- 路径：`openspec/changes/generation-objective-evidence-baseline/`
-- 阶段：`C18_CANARY_COMPLETE_FULL_INCOMPLETE_NETWORK_CLOSE`
-- 目标：judge关闭下建立v2/150条一次完整真实generation/citation/objective claim/no-answer基线。
+- Change ID：无
+- 上一归档：`openspec/changes/archive/2026-09-22-generation-objective-evidence-baseline/`
+- 阶段：`C18_ACCEPTED_ARCHIVED`
+- 下一步：如推进C19或其他Type C，须新建独立change后再切换为ACTIVE。
 
 ## Current Boundary
 
@@ -116,3 +116,9 @@
 - r11固定5条全部完成，CLEAN/objective COMPLETE/judge SKIPPED，error/retry=0；compiler v6 `COMPLETE`，模型Nemotron3 Super，embedding logical/cache/provider/fallback=`22/11/11/0`。
 - 安全摘要为`docs/eval/reports/c18-canary-r11-20260922-summary.json`；先提交该摘要恢复clean HEAD，再执行独立full preflight与从头150条。旧r10及此前run不拼接。
 - C18保持ACTIVE；full、验收、baseline接受、归档和IDLE尚未完成，无push/PR/deploy。
+
+## 2026-09-22 C18验收归档（最终状态）
+
+- r11 full从clean HEAD完成150/150，compiler v6 `COMPLETE`；CLEAN/objective COMPLETE/judge SKIPPED，31次503全部恢复，未恢复错误0。
+- 正式安全摘要、低质量指标、调用事实与声明边界已写入归档`acceptance.md`；不激活objective/judge gate，不改C17。
+- approved delta已接受进baseline，change归档；ACTIVE_TASK恢复`IDLE`。无push/PR/deploy。

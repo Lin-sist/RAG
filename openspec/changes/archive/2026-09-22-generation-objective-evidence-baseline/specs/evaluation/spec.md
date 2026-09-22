@@ -103,3 +103,11 @@ The user instructed completion after the r5 full run stopped on a provider-repor
 ## 2026-09-20 Quality-hardening evidence contract
 
 C18 compiler v4 SHALL require the observed generation model to equal the frozen runtime model, SHALL reconstruct aggregate metrics from per-sample evidence, and SHALL reject malformed nested raw evidence without crashing. Query embedding logical calls, cache hits, provider calls and provider fallback calls SHALL be directly observed in both debug and ask diagnostics and SHALL satisfy their arithmetic and frozen upper bound. Missing observations make evidence INCOMPLETE. Because failed retry responses do not expose complete internal embedding facts, any run with an HTTP retry remains ledger-valid but SHALL be INCOMPLETE for v4 acceptance. Output paths SHALL be distinct, repository-scoped and atomically no-overwrite.
+
+## 2026-09-21 Attempt-level embedding evidence contract
+
+C18 generation failure responses SHALL preserve completed retrieval diagnostics, and the runner SHALL record query embedding logical calls, cache hits, provider calls and provider fallback calls for every debug/ask attempt. Compiler v5 and later MAY accept a run with recovered 429/503/PrematureCloseException attempts only when every attempt has complete non-negative embedding facts, per-sample aggregates match the ordered ledger, global totals remain within the frozen budget and all other completeness requirements pass. Missing, inconsistent or transport-unobservable attempt facts SHALL remain INCOMPLETE.
+
+## 2026-09-22 Failure-safe compiler contract
+
+A provider failure MAY yield a sample with errors and attempt facts but no `askRawResponse`. Compiler v6 and later SHALL classify this evidence as INCOMPLETE with stable safe reasons and SHALL NOT crash, invent an observed model or promote a partial run. Structurally malformed or identity-tampered raw evidence remains INVALID or NOT_COMPARABLE under the existing rules. This compiler-only revision MUST NOT change provider/model, retry policy, budgets, samples, prompts or runtime behavior.

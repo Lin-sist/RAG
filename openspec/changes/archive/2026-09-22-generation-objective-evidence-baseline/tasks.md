@@ -25,20 +25,20 @@
 ## 3. W2 Canary（待单独授权）
 - [x] 提交形成 clean HEAD：2026-09-18 初始 clean，护栏修复提交 a8c95cf；无用户未提交修改。
 - [x] 持久化 embedding identity 后，HTTP preflight 只读验证 3 fixtures/50 chunks、c17g3/model identity；连续两次 `READY`，vector `50/50`，fixture `3/3`。
-- [ ] 披露5 debug/5 ask/≤5 generation、精确E(canary)、fixed ID出站、timeout/retry/限流及query count/history写入，取得授权。
+- [x] 已披露并获授权；最终r11 canary固定5条、零错误零重试、compiler v6 COMPLETE。
 - [x] r3固定5条一次no-overwrite执行，judge/model rerank=0；CLEAN，旧失败保留，full按用户独立授权执行。
 - [x] r3 canary compiler COMPLETE、clean HEAD、预算合规；不据小样本宣称质量达标。
 
 ## 4. W3 Full（待单独授权）
-- [ ] canary clean后披露150 debug/150 ask/≤150 generation、精确E(full)及数据/副作用范围，取得独立授权。
-- [ ] 一次完整150 run；raw全部保留，无自动retry、无拼接、无KB重建或历史清理。
-- [ ] compiler COMPLETE、CLEAN/objective COMPLETE/judge SKIPPED；IDs/order/hash/errors/budget/provider归因完整。
-- [ ] 分通道数值、分母和no-context bypass/调用计数；明确词法指标与单次run边界。
+- [x] 已披露并获授权；r11从clean HEAD独立启动full。
+- [x] 一次完整150 run；raw全部保留，无旧run拼接、无KB重建或历史清理；31次503按批准的C18请求边界恢复。
+- [x] compiler v6 COMPLETE、CLEAN/objective COMPLETE/judge SKIPPED；IDs/order/hash/errors/budget/provider归因完整。
+- [x] 分通道数值、分母和调用计数已记录于正式安全摘要及acceptance；明确词法指标与单次run边界。
 
 ## 5. W4 收尾
-- [ ] 用户验收真实baseline及边界；不激活objective/judge profile、不改C17阈值。
-- [ ] approved delta接受进baseline，更新说明/债务/日志，验证exact suffix/链接/隐私。
-- [ ] 用户授权归档后移动change并恢复IDLE；按明确提交责任处理commit，push/PR/deploy仍需单独授权。
+- [x] 用户已授权验收与归档；真实baseline及边界记录于acceptance，不激活objective/judge profile、不改C17阈值。
+- [x] approved delta接受进baseline，更新说明/日志并验证exact suffix/链接/隐私。
+- [x] 用户已授权归档；移动change并恢复IDLE，按Agent本地提交处理，push/PR/deploy仍未授权。
 
 ## 2026-09-11 本地提交交接
 - [x] 用户明确授权Agent本地提交并保持Git干净；C17收尾已提交，C18规划独立提交。
@@ -57,31 +57,31 @@
 - [x] 新增`compile_generation_objective_baseline.py`，验证exact selection、details/metadata/hash/channel status、ask返回citation provenance、no-answer bypass、调用事实和隐私边界；tracked摘要不包含raw文本、provider payload、凭据、数字KB ID、collection或绝对路径。
 - [x] RED→GREEN：13项C18 W1聚焦测试通过；全套Python `unittest discover` 共265项通过；canary/full plan-only通过。
 - [x] 本轮仅修改C18离线脚本/配置/schema、W0审计源码hash、OpenSpec/eval guide/日志；无Java生产实现、无frontend变更、无真实provider/backend/KB/SQL/Milvus调用。
-- [ ] runtime fingerprint验证、5条canary、150条full、真实baseline验收和change归档仍按独立授权推进。
+- [x] runtime fingerprint、5条canary、150条full、真实baseline验收和change归档均在后续授权下完成。
 
 ## 2026-09-18 整阶段执行与自动审批阻断
 - [x] 收到用户整阶段及 Agent commit 授权，完成具体预算/出站/REST副作用披露。
 - [x] 修复 direct runner 在 C18 样本错误后继续调用的缺口；266 Python tests PASS。
 - [x] Docker 五项 healthy、后端启动、runtime allowlist 核验、只读 preflight READY。
-- [ ] 真实 canary 命令被自动审批拒绝，尚未发出；需用户明确具体 NVIDIA 出站载荷及本地 history 写入，full/真实验收/归档因此仍未完成。
+- [x] 历史审批阻断后已取得具体NVIDIA出站与history写入授权，并由r11完成canary/full。
 
 ## 2026-09-18 具体出站授权后的 canary 结果
 - [x] 用户明确NVIDIA endpoint载荷、既定canary/full预算和REST写入授权；审批已通过。
 - [x] clean HEAD 65c2d3c，preflight READY，固定canary实际发出debug/ask各1，生成HTTP410后停止、retry=0，原始证据保留。
-- [ ] 解决冻结模型HTTP410，并重新执行新身份canary；本次失败不拼接、不自动重跑，full未启动。
+- [x] 旧Qwen 410由冻结Nemotron3 Super新身份解决；旧失败不拼接，r11独立完成。
 - [x] 修复真实runner暴露的compiler元数据缺口（268 tests PASS）：Windows路径、judgeConfig.mode、maxOutputTokens误脱敏、失败generation计数unknown语义；不得改raw凑COMPLETE。
-- [ ] full/真实baseline验收/归档仍未完成，原因已从审批阻断变为provider失败及上述工具兼容性问题。
+- [x] provider与工具兼容性问题修复后，r11 full/验收/归档完成。
 
 ## r2 重冻结与执行
 - [x] 官方确认旧Qwen免费端点Deprecated；新模型Nemotron3 Super合成HTTP200，manifest r2冻结，269 Python tests通过。
 - [x] 进程CLI覆盖而不改.env.local；preflight READY，新canary只发首题后因HTTP503停止。
-- [ ] provider持续可用性与新clean canary/full；r2另受并发工作区改动影响，metadata clean=false，不能接受为基线。
+- [x] r2保持历史失败；r11以独立clean identity完成canary/full。
 
 ## 2026-09-19 r3 当前验收事实
 - [x] 隔离clean checkout与runtime/preflight；新canary5/5、error/retry0、compiler COMPLETE。
 - [x] 用户已授权full150，按新身份发起；实际到第13条HTTP503即停，raw全部保留，compiler INCOMPLETE。
-- [ ] 正式full150完整基线：本次13/150，剩余137未执行；不拼接/不自动重跑。
-- [ ] W4接受与归档：完整full缺失，保持ACTIVE。
+- [x] r3保持13/150历史失败；r11从头完成150/150，不拼接。
+- [x] r11完整full后完成W4接受与归档。
 
 ## 2026-09-19 最新批准的重试切片
 - r4 full2/150因503中断；用户已批准仅429/503最多3次重试，新身份r3-transient，预算canary136/full5968 embedding、20/600 generation。
@@ -91,14 +91,14 @@
 - [x] 用户批准仅429/503最多3次重试，契约/manifest/schema/runner/compiler/测试同步；277 tests PASS，提交d3a4f43。
 - [x] 新clean canary5/5 COMPLETE，3次503恢复；真实当前preflight READY。
 - [x] 按用户full授权完整启动，115条观测、38次503恢复全部留存；第115条PrematureCloseException/network按不重试契约停止，compiler INCOMPLETE。
-- [ ] 完整150条正式full：缺35条；网络错误不在已批准重试范围，不能重试或拼接子集。
-- [ ] W4 baseline接受/归档/IDLE：正式full未完整，暂不执行。
+- [x] r5保持115/150历史失败；批准精确断连恢复后，r11从头完成150条。
+- [x] r11正式full完整，W4 baseline接受/归档/IDLE完成。
 
 ## 2026-09-20 r6 精确提前断连恢复
 - [x] 用户要求继续完成C18剩余内容；只将真实观测的 `network/PrematureCloseException` 纳入既有最多3次重试，不扩大timeout或其他network错误，预算不变。
 - [x] compiler v3、新manifest/schema、runner ledger及负例测试完成；全套Python 280项通过，diff check通过。
-- [ ] 新clean canary与从头完整full；r6第1条debug embedding收到HTTP403后停止，ask/generation=0，旧r5 115/150证据保持，不拼接。需用户更新可用NVIDIA API key后使用新身份重跑canary。
-- [ ] compiler COMPLETE后呈交真实通道数值和边界，完成用户验收、delta接受与授权范围内归档/IDLE。
+- [x] r6保持403失败；凭据恢复后r11使用新身份完成clean canary与从头full，旧证据不拼接。
+- [x] compiler v6 COMPLETE，通道数值与边界已呈交并完成验收、delta接受、归档/IDLE。
 
 ## 2026-09-20 代码质量复审加固（compiler v4）
 - [x] 缺失/漂移generation model在请求边界立即停止，compiler不再用expected model补写observed identity。
@@ -107,7 +107,7 @@
 - [x] compiler输入/输出路径锚定repo root并拒绝绝对路径、盘符和`..`逃逸。
 - [x] Java embedding层直接记录逻辑调用、缓存命中、provider调用与fallback，并贯通debug/ask diagnostics；缺失观测或存在无法归因的HTTP重试时compiler v4降为`INCOMPLETE`。
 - [x] 删除重复C18常量、重复metadata键和重复guide段落；保留分层契约验证，不做无关frontend或跨模块重构。
-- [ ] 新身份canary/full、真实baseline验收及归档仍受NVIDIA凭据403阻断；本轮未产生provider调用。
+- [x] 历史403阻断已解除；r11完成新身份canary/full、baseline验收与归档。
 
 ## 2026-09-21 compiler v5 逐attempt embedding观测
 - [x] NVIDIA鉴权恢复；models/embedding为200，chat由503恢复到200，mutation-free preflight仍为READY。
@@ -116,16 +116,16 @@
 - [x] 生成失败响应合并本次retrieval diagnostics；runner逐attempt记录embedding逻辑/cache/provider/fallback，compiler v5逐attempt校验并从ledger重算聚合。
 - [x] W0样本与预算34/1492保持不变；Java聚焦测试通过，Python聚焦37项通过。
 - [x] compiler v5已提交为`4b143b2`并形成clean HEAD；r9最终5/5且恢复1次503，但后端从本机仓库加载旧版`rag-core` JAR，失败attempt仍无embedding事实，compiler按契约为`INCOMPLETE`。
-- [ ] 安装当前内部模块后，以新no-overwrite身份执行canary；仅在compiler v5 `COMPLETE`后从头full150并完成W4。r9不拼接、不改写，full尚未启动。
+- [x] r9保持历史INCOMPLETE；安装当前模块后由r10/r11验证，最终r11完成W4。
 
 ## 2026-09-21 r10暂停状态
 - [x] install当前内部模块；r10 clean canary 5/5，5次503均恢复，compiler v5 `COMPLETE`且逐attempt embedding事实完整。
 - [x] r10 full从头启动并在38/150的`fact-018`耗尽4次503后停止；剩余112条未调用，旧run不拼接。
 - [x] 修复compiler对失败ask无raw响应时`observed_model`未初始化的异常，新增回归测试；冻结为`nemotron3-super-r7-failure-safe-compiler`/compiler v6，失败证据返回`INCOMPLETE`而非异常。
 - [x] Python全套290项通过；canary/full plan均`OFFLINE_VERIFIED`，预算136/5968及题目顺序不变；manifest/source hash自验证、diff检查通过。待本地提交形成clean HEAD。
-- [ ] 新身份clean canary完成并提交其摘要后，再从clean工作树启动完整full150；compiler COMPLETE后方可进行W4。
+- [x] r11 clean canary摘要先提交，随后从clean工作树完成full150与W4。
 
 ## 2026-09-22 r11 compiler v6执行
 - [x] compiler v6提交并补录，install当前内部模块；Docker healthy、preflight READY。
 - [x] clean canary固定5条全部完成，error/retry=0，compiler v6 `COMPLETE`；embedding事实`22/11/11/0`，安全摘要待本提交纳入Git。
-- [ ] 摘要提交形成clean HEAD后，重新full preflight并从头执行150条；不得复用或拼接r10的38条。
+- [x] r11 canary摘要提交形成clean HEAD；full preflight READY并从头完成150条，未复用r10的38条。

@@ -1,8 +1,8 @@
 # 前端 Demo 迁移与真实后端对接规划
 
 > 文档性质：前端并行实施规划与边界；不构成 Type C、真实后端联调、provider 调用、提交、发布或部署授权。
-> 状态日期：2026-09-20。
-> 当前事实基线：Git HEAD `b53c298`；前端规划初始提交 `24f1be2`；唯一 active change 为 C18 `generation-objective-evidence-baseline`，正式 full、验收和归档尚未完成，当前受 NVIDIA 凭据 HTTP 403 阻断。
+> 状态日期：2026-09-22。
+> 当前事实基线：前端规划初始提交 `24f1be2`；C18已完成正式full、验收和归档，`.ai/ACTIVE_TASK.md`恢复`IDLE`。下文关于“C18活跃期间”的隔离规则保留为当时实施边界，不再表示当前阻断。
 > 唯一正式落点：`rag-frontend/`。`prototype/chatgpt-ui-demo/` 仅作为视觉、信息架构和交互参考，不改造成第二套生产前端。
 > 当前授权：用户已要求在新对话直接开始既有契约内、零外调的前端 Type B 首切片；该授权不覆盖 Type C、真实 ask/upload/provider 调用、暂存、commit、push、PR、发布或部署。
 
@@ -83,7 +83,7 @@
 前端轨道默认禁止修改：
 
 - `.ai/ACTIVE_TASK.md`；
-- `openspec/changes/generation-objective-evidence-baseline/**`；
+- `openspec/changes/archive/2026-09-22-generation-objective-evidence-baseline/**`；
 - C18 的 eval config/schema/report、runner、compiler、数据集、fixture、C17 profile/reference；
 - Java 后端、`.env.local`、provider/model/retrieval/prompt/citation/no-answer 生产语义；
 - C18 使用的账号、KB、history/query-count 和原始证据。
