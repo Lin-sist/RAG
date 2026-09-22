@@ -2728,3 +2728,16 @@
 ## 2026-09-21 C18 r10暂停交接提交补录
 - 上一执行提交：`2cff78d`（`docs(eval): 固化C18 r10暂停交接证据`）。
 - 本补录同时移除交接文档EOF多余空行；不改变任何运行事实、raw证据或C18契约。
+
+## 2026-09-22 C18 compiler v6失败样本安全修复
+- 上一补录提交：`c863e4b`（`docs(eval): 补录C18 r10交接提交`）。用户要求继续上次任务，沿用已披露的C18 canary/full、NVIDIA载荷、REST副作用、重试/预算、验收归档和Agent本地提交授权；无push/PR/deploy。
+- TDD RED：新增失败ask无`askRawResponse`回归，公开`compile_evidence`稳定复现`UnboundLocalError: observed_model`。GREEN：在读取raw前初始化未观测模型为`None`，结果为`INCOMPLETE`并保留`sample_error`、`sample_observation_missing`，不补写模型或升级partial evidence。
+- 冻结新身份`nemotron3-super-r7-failure-safe-compiler`/compiler v6，同步manifest、两份schema和四项tooling source hash；依据design决策16，旧r10 raw保持原样且不重编为正式baseline。provider/model、题目/fixture/prompt、429/503/PrematureCloseException范围、最多3次、预算和Java业务行为均不变。
+- 验证：单条RED失败后GREEN通过；compiler/contract/runner聚焦123项Python tests/OK。全套Python、budget plan与diff检查待本记录后补录。
+- 外部边界：本切片backend/provider/KB/SQL/Milvus calls=0，业务数据出站=false；未读取/修改`.env.local`，未启动canary/full，未改C17或前端。
+- Commit: pending
+
+### 验证补录
+- `python -B -m unittest discover -s scripts -p 'test_*.py'`：290项通过。
+- canary/full plan-only均`OFFLINE_VERIFIED`，新manifest SHA-256=`db1b80497a74dc4ad5edb1435ee86b93ecad95e692d71bc21ec37a53fb228694`；预算仍为canary query embedding≤136、full≤5968，debug/ask/generation≤20/600，judge/model rerank=0。
+- manifest及四项tooling source hash自验证；`git diff --check`无空白错误，仅AGENT_LOG既有CRLF转换提示。Java/frontend未改，按影响范围跳过相关测试。

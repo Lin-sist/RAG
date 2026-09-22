@@ -252,6 +252,18 @@ class C18CompilerTest(unittest.TestCase):
         self.assertEqual(result["status"], "INCOMPLETE")
         self.assertIn("generation_provider_identity_missing", result["reasonCodes"])
 
+    def test_failed_ask_without_raw_response_is_incomplete_not_exception(self) -> None:
+        details, metadata = self.make_artifacts()
+        sample = details["samples"][0]
+        sample["errors"]["ask"] = "provider failure"
+        sample["askRawResponse"] = None
+
+        result = self.compile_temp(details, metadata)
+
+        self.assertEqual(result["status"], "INCOMPLETE")
+        self.assertIn("sample_error", result["reasonCodes"])
+        self.assertIn("sample_observation_missing", result["reasonCodes"])
+
     def test_missing_embedding_observation_is_incomplete(self) -> None:
         details, metadata = self.make_artifacts()
         details["samples"][0]["c18ExecutionFacts"]["queryEmbeddingProviderCallCount"] = None

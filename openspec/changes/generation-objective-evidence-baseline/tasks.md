@@ -121,5 +121,6 @@
 ## 2026-09-21 r10暂停状态
 - [x] install当前内部模块；r10 clean canary 5/5，5次503均恢复，compiler v5 `COMPLETE`且逐attempt embedding事实完整。
 - [x] r10 full从头启动并在38/150的`fact-018`耗尽4次503后停止；剩余112条未调用，旧run不拼接。
-- [ ] 修复compiler对失败ask无raw响应时`observed_model`未初始化的异常，补回归测试并升级冻结身份；r10 full因`gitClean=false`及provider失败只作失败证据。
+- [x] 修复compiler对失败ask无raw响应时`observed_model`未初始化的异常，新增回归测试；冻结为`nemotron3-super-r7-failure-safe-compiler`/compiler v6，失败证据返回`INCOMPLETE`而非异常。
+- [x] Python全套290项通过；canary/full plan均`OFFLINE_VERIFIED`，预算136/5968及题目顺序不变；manifest/source hash自验证、diff检查通过。待本地提交形成clean HEAD。
 - [ ] 新身份clean canary完成并提交其摘要后，再从clean工作树启动完整full150；compiler COMPLETE后方可进行W4。

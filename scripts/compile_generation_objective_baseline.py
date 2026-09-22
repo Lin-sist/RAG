@@ -421,6 +421,7 @@ def _validate_sample(
         _reason(result, "claim_metric_incomplete_or_identity_mismatch")
         incomplete = True
     ask = sample.get("askRawResponse")
+    observed_model = None
     if isinstance(ask, dict):
         ask_metadata = ask.get("metadata")
         if not isinstance(ask_metadata, dict) or (

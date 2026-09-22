@@ -102,3 +102,10 @@
 - canary摘要生成后尚未提交即启动full，导致full metadata `gitClean=false`。full实际38/150，第38条`fact-018`连续4次503耗尽重试后停止，剩余112条未调用；不拼接、不验收。
 - compiler v5处理该失败样本时因`observed_model`未初始化抛`UnboundLocalError`，full安全摘要未生成；raw三件产物及哈希已在`docs/eval/reports/c18-r10-20260921-execution.md`登记。
 - 用户要求暂告一段落并准备关机；后端已停止。下次先离线修复compiler并形成新冻结身份，再按交接顺序执行新的clean canary/full。C18保持ACTIVE，未接受/归档/IDLE，无push/PR/deploy。
+
+## 2026-09-22 compiler v6离线修复中（最新状态）
+
+- 已用回归测试复现r10失败样本的`UnboundLocalError`，最小修复将未观测`observed_model`初始化为`None`；同一公开编译接口现在返回`INCOMPLETE`及既有reason codes。
+- 新冻结身份为`nemotron3-super-r7-failure-safe-compiler`/compiler v6；只改变离线compiler失败分类，不改provider、模型、题目/fixture/prompt、重试、预算、Java业务行为或旧raw。
+- 聚焦123项及全套290项Python测试通过；canary/full plan均`OFFLINE_VERIFIED`，预算仍136/5968，manifest/source hash自验证且diff检查通过。待本地提交形成clean HEAD；之后按既有授权执行新preflight→canary，必须先提交canary摘要恢复clean，再启动从头full150。
+- C18保持ACTIVE；未启动后端/provider调用，未验收/接受/归档/IDLE，无push/PR/deploy。

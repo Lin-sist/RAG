@@ -22,8 +22,8 @@ import eval_dataset_contract as dataset_contract
 
 
 SCHEMA_VERSION = "c18-generation-objective-v1"
-COMPILER_VERSION = "c18-generation-objective-compiler-v5"
-MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r6-attempt-embedding"
+COMPILER_VERSION = "c18-generation-objective-compiler-v6"
+MANIFEST_ID = "rag-eval-dev-v2-generation-objective-nemotron3-super-r7-failure-safe-compiler"
 TRANSIENT_RETRY_POLICY = {
     "version": "http-429-503-premature-close-v2",
     "maxRetries": 3,

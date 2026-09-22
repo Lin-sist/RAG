@@ -87,6 +87,10 @@ child runner在debug/ask/judge请求前统计预算，超限请求不进入`urlo
 
 NVIDIA权限恢复后，r8 canary 5/5最终成功但恢复6次HTTP503；compiler v4因失败attempt的embedding事实缺失而正确判为`INCOMPLETE`。新身份`nemotron3-super-r6-attempt-embedding`与compiler v5让同步ask的生成失败响应保留本次retrieval diagnostics，并由C18 runner逐attempt记录四项embedding计数。只有每个debug/ask attempt均具备非负完整计数、逐样本聚合与ledger一致且仍满足原预算时，带重试run才可`COMPLETE`；传输层无响应或任一计数缺失仍fail closed。既有429/503/PrematureCloseException范围、最多3次、5/10/20秒退避和20/600、136/5968预算不变。
 
+## 2026-09-22 失败样本编译安全修订
+
+r10 full在38/150耗尽503重试后产生合法的失败样本：`askRawResponse`缺失但执行事实仍保留generation model。compiler v5在该分支读取未初始化的`observed_model`并异常退出。新身份`nemotron3-super-r7-failure-safe-compiler`与compiler v6只修复离线证据分类：先将未观测模型初始化为`None`，使失败样本稳定返回`INCOMPLETE`及既有reason codes，不补写身份、不把partial run判为COMPLETE。provider模型、题目/fixture/prompt、重试范围、预算和Java业务行为均不变；旧r10 raw不以v6重编为正式baseline。
+
 ### 决策 11. 已退役免费模型的替代
 - **面临的选择**：继续调用退役Qwen端点；迁移到收费合作方；同NVIDIA端点使用已验证可用的Nemotron 3 Super。
 - **选了哪个 + 为什么**：选Nemotron 3 Super，新模型身份重冻结，维持用户已授权的目的地、免费原型账户与现有协议，合成检查200。
