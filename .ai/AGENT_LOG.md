@@ -2752,3 +2752,7 @@
 - compiler v6结果`COMPLETE`；debug/ask/generation attempts=`5/5/5`，embedding logical/cache/provider/fallback=`22/11/11/0`，模型`nvidia/nemotron-3-super-120b-a12b`，Git HEAD=`b2b117c`、clean=true。
 - tracked仅安全摘要`docs/eval/reports/c18-canary-r11-20260922-summary.json`；raw三件产物保留在ignored `tmp/eval/c18/`。未改题目/fixture/prompt、重试/预算、`.env.local`、C17或前端；未启动full，无push/PR/deploy。
 - Commit: pending
+
+## 2026-09-22 C18 r11 canary提交补录
+- 上一执行提交：`90e6210`（`docs(eval): 记录C18 r11干净canary`）。
+- 提交仅包含r11安全摘要与C18状态/任务/日志；raw仍在ignored目录，未包含问题、回答、context或凭据。
