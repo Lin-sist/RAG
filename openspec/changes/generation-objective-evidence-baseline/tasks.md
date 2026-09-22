@@ -124,3 +124,8 @@
 - [x] 修复compiler对失败ask无raw响应时`observed_model`未初始化的异常，新增回归测试；冻结为`nemotron3-super-r7-failure-safe-compiler`/compiler v6，失败证据返回`INCOMPLETE`而非异常。
 - [x] Python全套290项通过；canary/full plan均`OFFLINE_VERIFIED`，预算136/5968及题目顺序不变；manifest/source hash自验证、diff检查通过。待本地提交形成clean HEAD。
 - [ ] 新身份clean canary完成并提交其摘要后，再从clean工作树启动完整full150；compiler COMPLETE后方可进行W4。
+
+## 2026-09-22 r11 compiler v6执行
+- [x] compiler v6提交并补录，install当前内部模块；Docker healthy、preflight READY。
+- [x] clean canary固定5条全部完成，error/retry=0，compiler v6 `COMPLETE`；embedding事实`22/11/11/0`，安全摘要待本提交纳入Git。
+- [ ] 摘要提交形成clean HEAD后，重新full preflight并从头执行150条；不得复用或拼接r10的38条。

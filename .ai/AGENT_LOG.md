@@ -2745,3 +2745,10 @@
 ## 2026-09-22 C18 compiler v6提交补录
 - 上一执行提交：`18878a5`（`fix(eval): 修复C18失败样本编译异常`）。
 - 提交仅包含compiler v6失败分类、回归测试、新冻结身份及对应OpenSpec/指南/状态记录；无provider调用、业务配置、C17或前端改动。
+
+## 2026-09-22 C18 r11 clean canary
+- 上一补录提交：`b2b117c`（`docs(eval): 补录C18 compiler修复提交`）。当前内部模块install成功；Docker五项healthy，后端按导入`.env.local`后进程级覆盖Nemotron3 Super的正确顺序启动。
+- mutation-free preflight READY：vectors50/50、fixtures3/3、chunks11/14/25。正式canary固定5条全部完成，CLEAN/objective COMPLETE/judge SKIPPED，ask/retrieval errors=0、retry=0。
+- compiler v6结果`COMPLETE`；debug/ask/generation attempts=`5/5/5`，embedding logical/cache/provider/fallback=`22/11/11/0`，模型`nvidia/nemotron-3-super-120b-a12b`，Git HEAD=`b2b117c`、clean=true。
+- tracked仅安全摘要`docs/eval/reports/c18-canary-r11-20260922-summary.json`；raw三件产物保留在ignored `tmp/eval/c18/`。未改题目/fixture/prompt、重试/预算、`.env.local`、C17或前端；未启动full，无push/PR/deploy。
+- Commit: pending

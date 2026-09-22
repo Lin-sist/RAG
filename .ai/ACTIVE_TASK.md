@@ -109,3 +109,10 @@
 - 新冻结身份为`nemotron3-super-r7-failure-safe-compiler`/compiler v6；只改变离线compiler失败分类，不改provider、模型、题目/fixture/prompt、重试、预算、Java业务行为或旧raw。
 - 聚焦123项及全套290项Python测试通过；canary/full plan均`OFFLINE_VERIFIED`，预算仍136/5968，manifest/source hash自验证且diff检查通过。待本地提交形成clean HEAD；之后按既有授权执行新preflight→canary，必须先提交canary摘要恢复clean，再启动从头full150。
 - C18保持ACTIVE；未启动后端/provider调用，未验收/接受/归档/IDLE，无push/PR/deploy。
+
+## 2026-09-22 r11 canary完成（最新状态）
+
+- compiler v6修复提交`18878a5`、补录提交`b2b117c`形成clean HEAD；内部模块已install，Docker五项healthy，mutation-free preflight READY（50/50 vectors、3/3 fixtures、chunks 11/14/25）。
+- r11固定5条全部完成，CLEAN/objective COMPLETE/judge SKIPPED，error/retry=0；compiler v6 `COMPLETE`，模型Nemotron3 Super，embedding logical/cache/provider/fallback=`22/11/11/0`。
+- 安全摘要为`docs/eval/reports/c18-canary-r11-20260922-summary.json`；先提交该摘要恢复clean HEAD，再执行独立full preflight与从头150条。旧r10及此前run不拼接。
+- C18保持ACTIVE；full、验收、baseline接受、归档和IDLE尚未完成，无push/PR/deploy。
