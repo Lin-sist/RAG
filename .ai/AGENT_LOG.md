@@ -2741,3 +2741,7 @@
 - `python -B -m unittest discover -s scripts -p 'test_*.py'`：290项通过。
 - canary/full plan-only均`OFFLINE_VERIFIED`，新manifest SHA-256=`db1b80497a74dc4ad5edb1435ee86b93ecad95e692d71bc21ec37a53fb228694`；预算仍为canary query embedding≤136、full≤5968，debug/ask/generation≤20/600，judge/model rerank=0。
 - manifest及四项tooling source hash自验证；`git diff --check`无空白错误，仅AGENT_LOG既有CRLF转换提示。Java/frontend未改，按影响范围跳过相关测试。
+
+## 2026-09-22 C18 compiler v6提交补录
+- 上一执行提交：`18878a5`（`fix(eval): 修复C18失败样本编译异常`）。
+- 提交仅包含compiler v6失败分类、回归测试、新冻结身份及对应OpenSpec/指南/状态记录；无provider调用、业务配置、C17或前端改动。
