@@ -2774,3 +2774,25 @@
 - 验证命令与结果：本地 Node 运行 `node --test tests/*.test.mjs`，28/28 PASS；`vue-tsc -b` 与 `vite build` 两阶段正式构建 PASS，保留既有 >500 kB chunk 警告；`git diff --check` PASS。`npm` 不在 PATH，按预检提供的现有 Node/本地工具执行等价两阶段构建；首次 sandbox 写构建缓存被拒，获工具审批后重跑成功。
 - 跳过与剩余风险：Java/Python 未改，不重跑其测试；未发起真实新问答浏览器调用，R3b 接口级真实问答与 R3c 合成问答 UI 仍是该路径证据。反馈读取失败和重复提交错误路径由组件处理，但本轮浏览器未强制制造真实后端故障；已保存的测试评分会出现在该测试账号的反馈数据中。
 - 范围安全：未修改 Java、API/DTO、数据库、OpenSpec、C18、`.env.local`、`.agents/`、主工作树原有未跟踪文档；无 push、PR、发布或部署。
+
+## 2026-09-28 · frontend-demo-integration-r3-feedback 提交补录
+- 上一执行提交：`4e22ac5335e6dbf36982cbce43330c1c12482790`（`feat(前端): 完成R3历史反馈提交与回读`）。
+
+## 2026-09-28 · frontend-demo-integration-visual-login（Demo 登录视觉接入）
+- Commit: pending；本轮用户授权开始下一轮实现，未延用上一 R3 任务的 Agent 提交授权；本轮不暂存、不提交、push、PR、发布或部署。
+- 范围与修改：`rag-frontend/src/layouts/AuthLayout.vue` 将正式 `/login` 布局调整为原型的点阵背景、顶栏字标、双栏大标题与图形区域；新增 `rag-frontend/src/components/common/LoginPixelArt.vue`，以本地 Vue/CSS 格点循环展示原型图形，并尊重减少动画偏好；`rag-frontend/src/views/login/LoginView.vue` 将现有 Element Plus 表单对齐原型的标签、输入框与按钮视觉。登录校验、认证请求、token 与错误处理逻辑未改；本日志仅追加执行证据。视觉参考为 `prototype/chatgpt-ui-demo/login.html` 与 `css/login.css`，不导入其演示登录脚本或演示文案。
+- 已确认事实：正式前端继续位于独立分支 `codex/frontend-demo-integration`；主工作树 `ACTIVE_TASK=IDLE`，隔离分支活动指针为旧 C18 状态，本轮未接管或修改。该切片是既有登录能力的纯视觉调整，Type B，无 design 决策条目；Demo 的假登录与其他无 REST 的视图不进入正式前端。
+- 验证：本地 Node 执行 `vue-tsc -b` 与 `vite build` 两阶段正式构建 PASS（保留既有 >500 kB chunk 警告）。项目现有本机合成预览 5188 中，桌面布局与 390×844 窄屏均完成视觉检查，窄屏 `scrollWidth=clientWidth=384`、`innerWidth=390`，无横向溢出；空表单显示用户名和密码必填错误，合成登录成功跳转 `/chat`。预览只使用本地 fixture；无真实登录、ask、provider、embedding、rerank、generation、judge 或业务数据写入。
+- 跳过与剩余风险：本轮仅视觉/表单标记改动，既有前端 28/28 测试结果可复用，未重复运行；Java/Python 未改，未运行其测试。正式登录后端流程的既有 R1 证据可复用，本轮没有重新登录真实后端；像素动画在浏览器表现已目视检查，其他设备尺寸与浏览器仍未覆盖。Demo 聊天、历史、知识库的进一步视觉收口仍待后续切片。
+- 范围安全：未修改后端 API/DTO、认证语义、OpenSpec、C18、`.env.local`、`.agents/` 或主工作树原有未跟踪文档；`git diff --check` 待收尾执行。
+- 收尾：最终样式清理后重跑 `vue-tsc -b` 与 `vite build` PASS；`git diff --check` PASS。临时 5188 合成预览页和服务已关闭。
+
+## 2026-09-28 · frontend-demo-integration-r2b-r4（前端剩余接入）
+- Commit: pending；本轮用户授权实现和固定真实联调，未授权暂存或本地提交；无 push、PR、发布或部署。
+- 范围与修改：沿用既有 `DocUploader`、`DocList` 和知识库接口完成 R2b 联调，未改文档 API/DTO；新增 `openspec/changes/frontend-text-stream-r4/` 的 proposal、design、tasks、spec delta，并将隔离分支旧 C18 活动指针更新为 R4。`rag-frontend/src/composables/useSSE.ts`、`sseParser.ts` 修复文本 SSE 分帧、尾部、`[ERROR]`、`[DONE]` 和 abort；`ChatPanel.vue`/`qaPresentation.ts` 在正式聊天页提供显式纯文本流模式和传输状态，默认仍为同步问答。此前未提交的登录 Demo 视觉文件继续保留在同一隔离分支，未覆盖。
+- 设计引用：`design.md` 决策 1-4；仅标记本地传输状态，流式消息不显示同步 citations、不隐式补发同步 ask，停止接收不宣称服务端取消。
+- R2b 真实结果：现有测试账号 KB17 初始 1 篇文档、1 向量、2 次查询；经 UI 仅上传 `rag-r2b-ui-upload-20260928.txt` 一份短合成 TXT，202 接受后任务与文档最终为 `COMPLETED`、1 分块，KB 文档/向量均到 2；只删除该新文档，UI 回到原有 1 篇，未触碰既有文档。上传所用 embedding 配置身份为 `nvidia/nemotron-3-embed-1b`；前端无自动重试。上传端到端完成，provider 内部尝试次数未单独计量。
+- R4 真实结果：通过 `/chat` 选 KB17、显式选择纯文本流，仅发一次“北星令牌的代号是什么？”；UI 收到文本 `CEDAR-47` 并显示纯文本流结束、无来源或结构化最终状态。KB 查询次数 2→3，历史侧栏新增该问题；本地未发第二次 ask。后端进程配置生成模型 `nvidia/nemotron-3-super-120b-a12b`，现有 embedding/rerank 路径可能参与；传输成功不能单独证明 generation/citation/no-answer 质量。请求超时契约 120 秒；前端重试 0，后端内部实际 provider 尝试未单独计量，UI 未见错误类别。
+- 验证：`npm run test` 33/33 PASS，含文本分帧、流内错误优先级、客户端 abort；`npm run build` 通过 `vue-tsc -b` 与 Vite build，保留既有 >500 kB chunk 警告；真实 UI 上传/删除与纯文本流通过，390 像素窄屏聊天入口未见横向溢出；`git diff --check` PASS。
+- 跳过与风险：Java/Python 无代码改动，未重跑其测试；未执行额外真实 ask 或故障注入。C21 结构化 terminal/citations、可靠服务端取消与 history 语义仍未提供，spec delta 待接受和归档；真实流只验证一次当前环境成功路径。
+- 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、C18 代码或主工作树既有未跟踪文档；只写隔离前端分支计划内文件和本日志。临时合成 TXT 留在本机 TEMP，不含业务资料。

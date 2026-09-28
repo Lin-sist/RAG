@@ -50,13 +50,17 @@
 
               <span v-if="msg.loading && msg.content" class="typing-cursor"></span>
 
+              <p v-if="msg.responseMode === 'stream'" class="stream-state" role="status">
+                {{ streamStateLabel(msg) }}
+              </p>
+
               <div v-if="!msg.loading && msg.content && !msg.error" class="message-actions">
                 <button class="action-btn" title="复制" @click="copyToClipboard(msg.content)">
                   <Copy :size="14" />
                 </button>
               </div>
 
-              <div v-if="!msg.loading && !msg.error" class="citations-section">
+              <div v-if="!msg.loading && !msg.error && msg.responseMode !== 'stream'" class="citations-section">
                 <div class="citations-label">
                   <FileText :size="14" />
                   <span>引用来源</span>
@@ -96,6 +100,10 @@
     </div>
 
     <div class="input-wrapper">
+      <div v-if="!isHistoryDetail" class="response-mode" aria-label="回答方式">
+        <button type="button" :class="{ selected: responseMode === 'sync' }" :disabled="isSubmitting" @click="responseMode = 'sync'">同步问答 · 显示来源</button>
+        <button type="button" :class="{ selected: responseMode === 'stream' }" :disabled="isSubmitting" @click="responseMode = 'stream'">纯文本流 · 无来源</button>
+      </div>
       <div
         v-if="selectedKb"
         style="max-width: 720px; width: 100%; margin-bottom: 8px; display: flex; justify-content: flex-start;"
@@ -168,14 +176,12 @@
           v-model="inputText"
           type="text"
           class="pill-input"
-          :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : '请选择知识库后输入问题'"
+          :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : selectedKbId ? '输入你的问题' : '请选择知识库后输入问题'"
           :disabled="isHistoryDetail"
           @keydown="handleKeydown"
         />
 
-        <button class="mic-btn" title="语音输入">
-          <Mic :size="18" />
-        </button>
+        <button v-if="streaming" class="stop-receiving" type="button" @click="stopReceiving">停止接收</button>
         <button
           :class="['send-btn-pill', { active: canSend }]"
           :disabled="!canSend"
@@ -186,7 +192,7 @@
       </div>
 
       <p class="disclaimer">
-        {{ isHistoryDetail ? '这里展示的是一条历史问答记录，不代表多轮会话。' : 'AI 可能产生不准确内容，请核对引用来源' }}
+        {{ isHistoryDetail ? '这里展示的是一条历史问答记录，不代表多轮会话。' : responseMode === 'stream' ? '纯文本流不返回引用；停止接收不代表服务端已取消。' : 'AI 可能产生不准确内容，请核对引用来源' }}
       </p>
     </div>
   </main>
@@ -201,7 +207,6 @@ import {
   ArrowRight,
   Copy,
   FileText,
-  Mic,
   ArrowUp,
   Plus,
 } from 'lucide-vue-next'
@@ -209,6 +214,7 @@ import MarkdownIt from 'markdown-it'
 import { getHistoryById } from '@/api/history'
 import HistoryFeedback from '@/components/history/HistoryFeedback.vue'
 import { ask } from '@/api/qa'
+import { useSSE } from '@/composables/useSSE'
 import { normalizeError } from '@/api/errors'
 import { useChatStore } from '@/stores/chat'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
@@ -224,6 +230,9 @@ import {
 const messages = ref<Message[]>([])
 const inputText = ref('')
 const isSubmitting = ref(false)
+const responseMode = ref<'sync' | 'stream'>('sync')
+const streaming = ref(false)
+const sse = useSSE()
 const scrollAnchor = ref<HTMLElement>()
 const kbDropdownRoot = ref<HTMLElement>()
 const kbDropdownOpen = ref(false)
@@ -332,6 +341,7 @@ async function loadHistorySession(id: number) {
 }
 
 function resetNewChat() {
+  sse.disconnect()
   historyLoadSeq += 1
   historyLoading.value = false
   historyLoadError.value = ''
@@ -389,8 +399,25 @@ function handleSend() {
   inputText.value = ''
 }
 
+function streamStateLabel(message: Message): string {
+  switch (message.streamStatus) {
+    case 'CONNECTING': return '纯文本流 · 正在连接'
+    case 'STREAMING_TEXT': return '纯文本流 · 正在接收'
+    case 'STREAM_ERROR': return '纯文本流出错，已保留收到的文本；本次结果不可视为完整回答。'
+    case 'CLIENT_ABORTED': return '已停止接收；服务端是否取消及是否保存历史无法由此确认。'
+    case 'DONE_TEXT_ONLY': return message.streamDoneMarker
+      ? '纯文本流已结束；此接口未返回来源或结构化最终状态。'
+      : '连接已结束，但未收到结束标记；此接口未返回来源或结构化最终状态。'
+    default: return ''
+  }
+}
+
+function stopReceiving() {
+  sse.disconnect()
+}
+
 async function sendMessage(text: string) {
-  if (!text) return
+  if (!text || isSubmitting.value || historyLoading.value || isHistoryDetail.value) return
   const effectiveKbId = selectedKbId.value ?? chatStore.currentKbId
   if (!effectiveKbId) {
     ElMessage.warning('请先选择一个知识库')
@@ -409,6 +436,8 @@ async function sendMessage(text: string) {
     role: 'assistant',
     content: '',
     loading: true,
+    responseMode: responseMode.value,
+    ...(responseMode.value === 'stream' ? { streamStatus: 'CONNECTING' as const } : {}),
   })
   messages.value.push(aiMsg)
 
@@ -416,6 +445,36 @@ async function sendMessage(text: string) {
   isSubmitting.value = true
 
   try {
+    if (aiMsg.responseMode === 'stream') {
+      streaming.value = true
+      const result = await sse.connect('/api/qa/ask/stream', {
+        kbId: effectiveKbId,
+        question: text,
+        topK: chatStore.topK,
+      }, (chunk) => {
+        aiMsg.content += chunk
+        aiMsg.streamStatus = 'STREAMING_TEXT'
+        scrollToBottom()
+      })
+      aiMsg.streamStatus = result.status
+      aiMsg.streamDoneMarker = result.doneMarker
+      aiMsg.loading = false
+      aiMsg.citations = []
+      aiMsg.sourceHint = undefined
+      if (result.status === 'STREAM_ERROR' && !aiMsg.content) {
+        aiMsg.content = sse.error.value || '流式问答失败'
+        aiMsg.error = true
+      }
+      if (result.status === 'DONE_TEXT_ONLY' && !aiMsg.content) {
+        aiMsg.content = '未收到文本内容'
+        aiMsg.error = true
+        aiMsg.streamStatus = 'STREAM_ERROR'
+      }
+      if (result.status === 'DONE_TEXT_ONLY' && result.receivedChunks) {
+        window.dispatchEvent(new Event('rag-history-updated'))
+      }
+      return
+    }
     const response = await ask({
       kbId: effectiveKbId,
       question: text,
@@ -428,10 +487,12 @@ async function sendMessage(text: string) {
     aiMsg.content = apiError.message
     aiMsg.loading = false
     aiMsg.error = true
+    if (aiMsg.responseMode === 'stream') aiMsg.streamStatus = 'STREAM_ERROR'
     aiMsg.citations = []
     aiMsg.sourceHint = undefined
   } finally {
     isSubmitting.value = false
+    streaming.value = false
     scrollToBottom()
   }
 }
@@ -470,6 +531,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  sse.disconnect()
   document.removeEventListener('click', handleOutsideClick)
 })
 </script>
@@ -943,6 +1005,13 @@ onUnmounted(() => {
   color: var(--rag-text-placeholder);
   margin-top: 10px;
 }
+
+.response-mode { display: flex; gap: 6px; width: 100%; max-width: 720px; margin-bottom: 10px; }
+.response-mode button { border: 1px solid var(--rag-border); border-radius: 999px; background: transparent; color: var(--rag-text-secondary); padding: 6px 12px; font-size: 12px; cursor: pointer; }
+.response-mode button.selected { background: var(--rag-bg-user-msg); border-color: var(--rag-primary); color: var(--rag-text-primary); }
+.response-mode button:disabled { opacity: .5; cursor: not-allowed; }
+.stream-state { margin: 10px 0 0; font-size: 12px; color: var(--rag-text-secondary); }
+.stop-receiving { flex-shrink: 0; border: 1px solid var(--rag-border); border-radius: 999px; background: var(--rag-bg-surface); color: var(--rag-text-primary); padding: 5px 10px; font-size: 12px; cursor: pointer; }
 
 @media (max-width: 768px) {
   .user-content {

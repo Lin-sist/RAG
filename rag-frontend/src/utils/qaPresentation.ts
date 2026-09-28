@@ -10,6 +10,9 @@ export interface ChatPresentationMessage {
     citations?: Citation[]
     contexts?: RetrievedContext[]
     sourceHint?: string
+    responseMode?: 'sync' | 'stream'
+    streamStatus?: 'CONNECTING' | 'STREAMING_TEXT' | 'DONE_TEXT_ONLY' | 'STREAM_ERROR' | 'CLIENT_ABORTED'
+    streamDoneMarker?: boolean
 }
 
 export function normalizeCitations(citations: Citation[] | null | undefined): Citation[] {

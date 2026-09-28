@@ -1,110 +1,92 @@
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, getCurrentInstance } from 'vue'
 import { getToken } from '@/utils/storage'
+import { createTextSSEParser } from './sseParser'
 
-interface StreamResult {
-    completed: boolean
-    interrupted: boolean
-    receivedChunks: boolean
+export type StreamTransportStatus = 'DONE_TEXT_ONLY' | 'STREAM_ERROR' | 'CLIENT_ABORTED'
+
+export interface StreamResult {
+  status: StreamTransportStatus
+  completed: boolean
+  interrupted: boolean
+  receivedChunks: boolean
+  doneMarker: boolean
 }
 
 export function useSSE() {
-    const data = ref('')
-    const isConnected = ref(false)
-    const error = ref<string | null>(null)
-    let abortController: AbortController | null = null
+  const data = ref('')
+  const isConnected = ref(false)
+  const error = ref<string | null>(null)
+  let abortController: AbortController | null = null
 
-    async function connect(
-        url: string,
-        body: Record<string, unknown>,
-        onChunk: (chunk: string) => void,
-    ): Promise<StreamResult> {
-        abortController = new AbortController()
-        isConnected.value = true
-        error.value = null
-        data.value = ''
-        let buffer = ''
-        let receivedChunks = false
-        let interrupted = false
+  async function connect(
+    url: string,
+    body: Record<string, unknown>,
+    onChunk: (chunk: string) => void,
+  ): Promise<StreamResult> {
+    if (isConnected.value) throw new Error('已有流式请求正在进行')
+    const controller = new AbortController()
+    abortController = controller
+    isConnected.value = true
+    error.value = null
+    data.value = ''
+    const parser = createTextSSEParser((chunk) => {
+      data.value += chunk
+      onChunk(chunk)
+    })
+    let status: StreamTransportStatus = 'DONE_TEXT_ONLY'
 
-        try {
-            const token = getToken('accessToken')
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify(body),
-                signal: abortController.signal,
-            })
+    try {
+      const token = getToken('accessToken')
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-
-            const reader = response.body?.getReader()
-            const decoder = new TextDecoder()
-            if (!reader) throw new Error('响应体不可读')
-
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-                buffer += decoder.decode(value, { stream: true })
-                const lines = buffer.split(/\r?\n/)
-                buffer = lines.pop() ?? ''
-                receivedChunks = processLines(lines, onChunk) || receivedChunks
-            }
-
-            const finalChunk = decoder.decode()
-            if (finalChunk) {
-                buffer += finalChunk
-            }
-            if (buffer) {
-                receivedChunks = processLines([buffer], onChunk) || receivedChunks
-            }
-        } catch (e) {
-            if (e instanceof Error && e.name !== 'AbortError') {
-                error.value = e.message
-                interrupted = true
-            }
-        } finally {
-            isConnected.value = false
-        }
-
-        return {
-            completed: !interrupted,
-            interrupted,
-            receivedChunks,
-        }
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('响应体不可读')
+      const decoder = new TextDecoder()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        parser.push(decoder.decode(value, { stream: true }))
+      }
+      parser.push(decoder.decode())
+      parser.finish()
+      if (parser.streamError) {
+        error.value = parser.streamError
+        status = 'STREAM_ERROR'
+      }
+    } catch (cause) {
+      if (controller.signal.aborted) {
+        status = 'CLIENT_ABORTED'
+      } else {
+        status = 'STREAM_ERROR'
+        error.value = cause instanceof Error ? cause.message : '流式连接失败'
+      }
+    } finally {
+      if (abortController === controller) abortController = null
+      isConnected.value = false
     }
 
-    function disconnect() {
-        abortController?.abort()
-        isConnected.value = false
+    return {
+      status,
+      completed: status === 'DONE_TEXT_ONLY',
+      interrupted: status !== 'DONE_TEXT_ONLY',
+      receivedChunks: parser.receivedChunks,
+      doneMarker: parser.doneMarker,
     }
+  }
 
-    onUnmounted(() => disconnect())
+  function disconnect() {
+    abortController?.abort()
+  }
 
-    return { data, isConnected, error, connect, disconnect }
-
-    function processLines(lines: string[], onChunk: (chunk: string) => void): boolean {
-        let received = false
-
-        for (const line of lines) {
-            if (!line.startsWith('data:')) {
-                continue
-            }
-
-            // Spring SseEmitter 输出格式为 "data:chunk"（冒号后无空格）
-            // 必须只截掉 "data:" 这 5 个字符，否则 token 自带的前导空格会被误吞。
-            const chunk = line.slice(5)
-            if (!chunk || chunk.trim() === '[DONE]') {
-                continue
-            }
-
-            data.value += chunk
-            onChunk(chunk)
-            received = true
-        }
-
-        return received
-    }
+  if (getCurrentInstance()) onUnmounted(disconnect)
+  return { data, isConnected, error, connect, disconnect }
 }
