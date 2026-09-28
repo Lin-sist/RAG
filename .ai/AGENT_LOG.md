@@ -2739,3 +2739,7 @@
 - UI 验证：尝试使用 Codex in-app browser 只读登录并查看既有 history，但本地浏览器桥不可用；未绕过、未安装工具、未从 UI 再次提问。因此接口级真实联调通过，浏览器 E2E/视觉展示仍 `SKIPPED`。
 - 验证与范围：本轮没有前端/Java业务代码改动，复用 2026-09-26 已通过的前端 27/27、`vue-tsc -b` 和 Vite build；收尾执行 `git diff --check`。`.env.local` 未修改，C18/OpenSpec、KB15 与其他业务数据未触碰；本地 KB17、history646、后端/Vite/Docker 按授权边界保留。
 - 配置落盘补录：上一条“`.env.local` 未修改”仅描述诊断复验阶段。单变量复验成功后，为防止普通 `start-backend.ps1` 再次加载旧 Qwen，依据用户本轮对“修正 chat 模型配置”的明确授权，仅将 `.env.local` 的 `NVIDIA_CHAT_MODEL` 持久化为 `nvidia/nemotron-3-super-120b-a12b`；未读取、输出或改动 key、密码及其他配置。当前运行进程已使用相同模型，无需追加 provider 请求。
+
+## 2026-09-28 · frontend-demo-integration 提交补录
+
+- 上一执行提交：`57ac2829423b48da9ba887219c1e5944c2511abe`（`feat(前端): 完成认证知识库与同步问答对接`）。
