@@ -187,7 +187,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -391,12 +391,12 @@ async function sendMessage(text: string) {
   }
   messages.value.push(userMsg)
 
-  const aiMsg: Message = {
+  const aiMsg: Message = reactive({
     id: `msg_${Date.now()}_ai`,
     role: 'assistant',
     content: '',
     loading: true,
-  }
+  })
   messages.value.push(aiMsg)
 
   scrollToBottom()

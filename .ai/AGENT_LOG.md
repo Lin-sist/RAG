@@ -2743,3 +2743,11 @@
 ## 2026-09-28 · frontend-demo-integration 提交补录
 
 - 上一执行提交：`57ac2829423b48da9ba887219c1e5944c2511abe`（`feat(前端): 完成认证知识库与同步问答对接`）。
+## 2026-09-28 · frontend-demo-integration-r3c（浏览器 UI 合成验收与加载态修复）
+- Commit: pending；提交责任为用户手动提交，本轮未暂存、提交、push、PR 或部署。
+- 范围与修改：仅修改 `rag-frontend/src/components/chat/ChatPanel.vue`，使同步问答的待完成消息本身成为响应式对象，修复接口已成功返回但当前聊天气泡仍停在加载动画的问题。本条为执行日志追加；未修改后端 API/DTO、provider、C18、OpenSpec 或 `.env.local`。
+- 已确认事实：隔离分支 `codex/frontend-demo-integration` 是本轮前端源；主分支尚未合入该分支。浏览器合成服务对 `/ask` 返回成功后，修复前气泡持续 loading；修复后当前问答立即显示答案和独立来源卡片。业务错误响应显示错误文字且不展示来源；合成 history 列表、详情和刷新后回读均在浏览器呈现。历史详情只呈现单轮问答，不冒充 conversation。此为合成 UI 验证，不能替代 R3b 的真实接口级证据，也不能宣称真实浏览器 E2E 通过。
+- 验证：隔离分支前端 `node --test tests/*.test.mjs` 27/27 PASS；正式构建等价两阶段 `vue-tsc -b` 与 `vite build` PASS（保留既有 >500 kB chunk 警告）；浏览器合成登录、成功答案/来源、错误无来源、history 详情与刷新恢复 PASS；`git diff --check` 待收尾执行。
+- 跳过：真实后端浏览器回读与真实 `/ask` 未执行。本机 Docker Desktop 服务无法以当前权限启动，8080 真实后端不可用；本轮未获新增 provider 业务调用范围。Java/Python 未改，未重跑相应测试。
+- 剩余风险：真实浏览器 E2E 仍未验收；合成端点只证明 UI 状态转换。正式浏览器联调需恢复 Docker/后端，并在现有授权范围内使用已保存 history 做只读回读；任何新增真实 ask 须另核对出站与预算。
+- 收尾：`git diff --check` PASS；临时合成接口脚本已从主工作树精确删除，主工作树原有未跟踪文档保持原样。
