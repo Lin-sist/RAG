@@ -81,6 +81,12 @@
                 </div>
                 <p v-else class="source-empty">{{ msg.sourceHint || '本回答未返回可展示来源' }}</p>
               </div>
+
+              <HistoryFeedback
+                v-if="isHistoryDetail && historyRecordId && !msg.loading && !msg.error"
+                :key="historyRecordId"
+                :history-id="historyRecordId"
+              />
             </div>
           </div>
         </div>
@@ -201,6 +207,7 @@ import {
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
 import { getHistoryById } from '@/api/history'
+import HistoryFeedback from '@/components/history/HistoryFeedback.vue'
 import { ask } from '@/api/qa'
 import { normalizeError } from '@/api/errors'
 import { useChatStore } from '@/stores/chat'
@@ -224,6 +231,7 @@ const selectedKbId = ref<number | null>(null)
 const route = useRoute()
 const historyLoading = ref(false)
 const historyLoadError = ref('')
+const historyRecordId = ref<number | null>(null)
 let historyLoadSeq = 0
 const chatStore = useChatStore()
 const kbStore = useKnowledgeBaseStore()
@@ -278,6 +286,7 @@ async function loadHistorySession(id: number) {
 
   historyLoading.value = true
   historyLoadError.value = ''
+  historyRecordId.value = null
 
   messages.value = [
     {
@@ -295,6 +304,7 @@ async function loadHistorySession(id: number) {
     if (seq !== historyLoadSeq) return
 
     messages.value = buildHistoryMessages(record)
+    historyRecordId.value = record.id
     selectedKbId.value = record.kbId ?? null
 
     await loadKbListIfNeeded()
@@ -303,6 +313,7 @@ async function loadHistorySession(id: number) {
     if (seq !== historyLoadSeq) return
 
     historyLoadError.value = '历史记录加载失败'
+    historyRecordId.value = null
     messages.value = [
       {
         id: `history_${id}_error`,
@@ -324,6 +335,7 @@ function resetNewChat() {
   historyLoadSeq += 1
   historyLoading.value = false
   historyLoadError.value = ''
+  historyRecordId.value = null
   messages.value = []
   selectedKbId.value = null
 }

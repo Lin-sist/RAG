@@ -121,6 +121,16 @@ try {
     ])
   })
 
+  await test('feedback reads and submits against the selected history id', async () => {
+    calls.length = 0
+    await historyApi.getFeedback(12)
+    await historyApi.submitFeedback(12, { rating: 3, comment: '联调反馈' })
+    assert.deepEqual(calls, [
+      { method: 'get', url: '/api/history/12/feedback', config: undefined },
+      { method: 'post', url: '/api/history/12/feedback', data: { rating: 3, comment: '联调反馈' } },
+    ])
+  })
+
   await test('history grouping is newest-first and local filtering does not change records', () => {
     const records = [
       { id: 1, kbId: 7, question: 'older', createdAt: '2026-09-19T12:00:00' },

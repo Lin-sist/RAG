@@ -2766,3 +2766,11 @@
 
 ## 2026-09-28 · frontend-demo-integration-r3c 真实回读提交补录
 - 上一执行提交：`0de74df8092f12de083b63599d9897ee84a7d244`（`fix(前端): 收口真实历史回读错误态`）。
+
+## 2026-09-28 · frontend-demo-integration-r3-feedback（反馈提交与回读）
+- Commit: pending；用户明确授权本轮 Agent 本地提交。独立分支 `codex/frontend-demo-integration`；主工作树 `.ai/ACTIVE_TASK.md=IDLE`，本隔离分支的活动指针是分支起点遗留的 C18 状态，本轮不接管或修改该指针。现有反馈 REST、DTO 和旧弹窗已存在，本轮按既有契约内的正式入口接线修复处理，无 Type C design 决策条目。
+- 范围与修改：`rag-frontend/src/components/chat/ChatPanel.vue` 在成功加载的单条历史答案下挂载反馈组件，并随 history ID 切换卸载；新增 `rag-frontend/src/components/history/HistoryFeedback.vue`，先读已有反馈，未提交时提供 1–5 分与可选评论，POST 成功后锁定再次提交并回读，读取失败可重试，重复反馈错误单独处理；`rag-frontend/tests/qa-history.test.mjs` 验证 GET/POST 均绑定同一 history ID。本日志仅追加执行证据。
+- 真实验证：通过本地已登录浏览器对专用联调 KB17 的 history 646 先行 GET，确认无反馈；经 UI 仅提交一次评分 3、评论“R3 前端反馈联调（测试数据）”，真实 POST 成功，随后 GET 显示评分与评论；刷新 `/chat/646` 后仍可回读且不再展示提交入口。该测试反馈会保存在本地业务数据中。没有新问答、上传、删除或 provider、embedding、rerank、generation、judge 调用；模型不适用，业务调用重试 0。浏览器请求经本机 Vite 代理至现有后端，未发生业务数据对第三方模型出站。
+- 验证命令与结果：本地 Node 运行 `node --test tests/*.test.mjs`，28/28 PASS；`vue-tsc -b` 与 `vite build` 两阶段正式构建 PASS，保留既有 >500 kB chunk 警告；`git diff --check` PASS。`npm` 不在 PATH，按预检提供的现有 Node/本地工具执行等价两阶段构建；首次 sandbox 写构建缓存被拒，获工具审批后重跑成功。
+- 跳过与剩余风险：Java/Python 未改，不重跑其测试；未发起真实新问答浏览器调用，R3b 接口级真实问答与 R3c 合成问答 UI 仍是该路径证据。反馈读取失败和重复提交错误路径由组件处理，但本轮浏览器未强制制造真实后端故障；已保存的测试评分会出现在该测试账号的反馈数据中。
+- 范围安全：未修改 Java、API/DTO、数据库、OpenSpec、C18、`.env.local`、`.agents/`、主工作树原有未跟踪文档；无 push、PR、发布或部署。
