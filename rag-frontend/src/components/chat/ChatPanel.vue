@@ -50,7 +50,7 @@
 
               <span v-if="msg.loading && msg.content" class="typing-cursor"></span>
 
-              <div v-if="!msg.loading && msg.content" class="message-actions">
+              <div v-if="!msg.loading && msg.content && !msg.error" class="message-actions">
                 <button class="action-btn" title="复制" @click="copyToClipboard(msg.content)">
                   <Copy :size="14" />
                 </button>
@@ -309,6 +309,7 @@ async function loadHistorySession(id: number) {
         role: 'assistant',
         content: '历史记录加载失败，请返回历史记录页重试。',
         loading: false,
+        error: true,
       },
     ]
     ElMessage.error('历史记录加载失败')

@@ -2751,3 +2751,15 @@
 - 跳过：真实后端浏览器回读与真实 `/ask` 未执行。本机 Docker Desktop 服务无法以当前权限启动，8080 真实后端不可用；本轮未获新增 provider 业务调用范围。Java/Python 未改，未重跑相应测试。
 - 剩余风险：真实浏览器 E2E 仍未验收；合成端点只证明 UI 状态转换。正式浏览器联调需恢复 Docker/后端，并在现有授权范围内使用已保存 history 做只读回读；任何新增真实 ask 须另核对出站与预算。
 - 收尾：`git diff --check` PASS；临时合成接口脚本已从主工作树精确删除，主工作树原有未跟踪文档保持原样。
+
+## 2026-09-28 · frontend-demo-integration-r3c 提交补录
+- 上一执行提交：`666d9de72c34fcf6332e5c98c57c411d0072e976`（`fix(前端): 修复同步问答完成后持续加载`）。
+
+## 2026-09-28 · frontend-demo-integration-r3c（真实浏览器历史回读）
+- Commit: pending；用户本轮明确授权 Agent 在隔离前端分支本地提交。未 push、PR、发布或部署。
+- 范围与修改：`rag-frontend/src/components/layout/AppSidebar.vue` 将刷新后未知用户名的固定“Linsist”替换为中性“已登录用户”；`rag-frontend/src/components/chat/ChatPanel.vue` 将历史详情加载失败气泡标记为错误，并隐藏错误气泡上的来源区及复制操作；本日志仅追加执行证据。未改 API/DTO、后端、provider、C18/OpenSpec 或 `.env.local`。
+- 真实验证：Docker 五项现有依赖 healthy，main 后端以既有脚本启动；本地测试账号登录后只读回读 history 646（KB17，1 条 citation，列表包含该记录，总数 646）。隔离前端浏览器从历史列表打开 `/chat/646`，成功显示原问题、答案、来源标题/片段和后端返回的相关度；刷新后同一记录与来源恢复。不存在的 `/chat/999999999` 由真实后端返回错误，浏览器显示历史加载失败；修复后错误气泡不显示来源或复制，返回 `/chat/646` 仍显示成功记录。侧边栏刷新后显示中性账号状态，不再虚构用户名。
+- 调用与副作用：本轮有本机登录及 history/KB 只读 GET；没有发起新的 `/api/qa/ask`、embedding、rerank、generation 或 judge 调用，也没有上传、删除或反馈提交。历史总数在验收时为 646；未宣称新增生成质量或 citation 指标收益。
+- 验证命令：`vue-tsc -b` 与 `vite build` 的正式两阶段构建 PASS，保留既有 >500 kB chunk 警告；浏览器真实成功/刷新/缺失历史错误路径 PASS。此前 27/27 前端测试与同步问答合成浏览器验证可复用；本轮仅展示逻辑改动，未重复运行无对应覆盖的测试。`git diff --check` 待收尾执行。
+- 跳过与剩余风险：没有再执行真实新问答，因此当前输入框提交后的真实 provider UI 闭环仍以 R3b 接口级通过加 R3c 合成 UI 通过为证据；业务错误回答的真实 provider UI 路径未验证。Java/Python 未改，未运行对应测试。登录后的用户名不从后端恢复，刷新时显示中性状态；如要准确恢复用户名，需另行设计现有认证契约内的身份读取或会话持久化。
+- 收尾：`git diff --check` PASS；改动仅在隔离分支上述两处前端组件与本日志，主工作树原有未跟踪文档未触碰。

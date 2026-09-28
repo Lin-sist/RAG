@@ -222,7 +222,7 @@ const userMenuOpen = ref(false)
 const historyList = ref<HistoryItem[]>([])
 const HISTORY_UPDATED_EVENT = 'rag-history-updated'
 
-const username = computed(() => authStore.userInfo?.username || 'Linsist')
+const username = computed(() => authStore.userInfo?.username || '已登录用户')
 const userInitial = computed(() => username.value.charAt(0).toUpperCase())
 const knowledgeBases = computed(() => kbStore.list)
 const isNewChatActive = computed(() => route.path === '/chat' || route.path === '/chat-v2')
