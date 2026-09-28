@@ -485,13 +485,13 @@ onUnmounted(() => {
 
 .new-chat-btn:hover {
   background: var(--rag-bg-hover);
-  border-color: var(--rag-primary);
+  border-color: var(--rag-text-placeholder);
 }
 
 .new-chat-btn.active {
-  background: var(--rag-success-light);
-  border-color: var(--rag-primary);
-  color: var(--rag-primary-dark);
+  background: var(--rag-bg-hover);
+  border-color: var(--rag-border);
+  color: var(--rag-text-primary);
 }
 
 .chat-sidebar.collapsed .new-chat-btn {
@@ -524,7 +524,7 @@ onUnmounted(() => {
 }
 
 .section-header.active {
-  background: var(--rag-success-light);
+  background: var(--rag-bg-hover);
 }
 
 .section-toggle-btn {
@@ -571,7 +571,7 @@ onUnmounted(() => {
 .section-header.active .section-toggle-btn,
 .section-header.active .section-title-btn,
 .section-header.active .section-title {
-  color: var(--rag-primary-dark);
+  color: var(--rag-text-primary);
 }
 
 .chevron-icon {
@@ -621,8 +621,8 @@ onUnmounted(() => {
 }
 
 .collapsed-nav-btn.active {
-  background: var(--rag-success-light);
-  color: var(--rag-primary-dark);
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-primary);
 }
 
 .kb-list {
@@ -645,8 +645,8 @@ onUnmounted(() => {
 }
 
 .kb-item.active {
-  background: var(--rag-success-light);
-  color: var(--rag-primary-dark);
+  background: var(--rag-bg-hover);
+  color: var(--rag-text-primary);
 }
 
 .kb-icon {
@@ -655,7 +655,7 @@ onUnmounted(() => {
 }
 
 .kb-item.active .kb-icon {
-  color: var(--rag-primary-dark);
+  color: var(--rag-text-primary);
 }
 
 .kb-name {
@@ -672,7 +672,7 @@ onUnmounted(() => {
 }
 
 .kb-item.active .kb-doc-count {
-  color: var(--rag-primary-dark);
+  color: var(--rag-text-secondary);
   opacity: 0.7;
 }
 

@@ -1,24 +1,9 @@
 <template>
-  <main class="chat-panel">
+  <main :class="['chat-panel', { 'is-empty': messages.length === 0 }]">
     <div class="messages-container">
       <div v-if="messages.length === 0" class="welcome-screen">
-        <div class="welcome-icon">
-          <Sparkles :size="48" />
-        </div>
-        <h1 class="welcome-title">有什么可以帮助你的？</h1>
-        <p class="welcome-subtitle">基于你的知识库，为你提供精准的智能问答</p>
-
-        <div class="example-questions">
-          <div
-            v-for="(question, idx) in exampleQuestions"
-            :key="idx"
-            class="example-card"
-            @click="sendMessage(question)"
-          >
-            <span class="example-text">{{ question }}</span>
-            <ArrowRight :size="16" />
-          </div>
-        </div>
+        <h1 class="welcome-title">你好，准备好开始了吗？</h1>
+        <p class="welcome-subtitle">选择知识库，开始提问</p>
       </div>
 
       <template v-else>
@@ -172,14 +157,15 @@
           </div>
         </div>
 
-        <input
+        <textarea
+          ref="composerInput"
           v-model="inputText"
-          type="text"
+          rows="2"
           class="pill-input"
           :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : selectedKbId ? '输入你的问题' : '请选择知识库后输入问题'"
           :disabled="isHistoryDetail"
           @keydown="handleKeydown"
-        />
+        ></textarea>
 
         <button v-if="streaming" class="stop-receiving" type="button" @click="stopReceiving">停止接收</button>
         <button
@@ -188,6 +174,19 @@
           @click="handleSend"
         >
           <ArrowUp :size="18" />
+        </button>
+      </div>
+
+      <div v-if="messages.length === 0" class="example-questions" aria-label="示例问题">
+        <button
+          v-for="question in exampleQuestions"
+          :key="question"
+          type="button"
+          class="example-card"
+          @click="selectExample(question)"
+        >
+          <span class="example-text">{{ question }}</span>
+          <ArrowRight :size="16" aria-hidden="true" />
         </button>
       </div>
 
@@ -203,7 +202,6 @@ import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  Sparkles,
   ArrowRight,
   Copy,
   FileText,
@@ -229,6 +227,7 @@ import {
 
 const messages = ref<Message[]>([])
 const inputText = ref('')
+const composerInput = ref<HTMLTextAreaElement | null>(null)
 const isSubmitting = ref(false)
 const responseMode = ref<'sync' | 'stream'>('sync')
 const streaming = ref(false)
@@ -399,6 +398,12 @@ function handleSend() {
   inputText.value = ''
 }
 
+function selectExample(question: string) {
+  if (isHistoryDetail.value || isSubmitting.value) return
+  inputText.value = question
+  nextTick(() => composerInput.value?.focus())
+}
+
 function streamStateLabel(message: Message): string {
   switch (message.streamStatus) {
     case 'CONNECTING': return '纯文本流 · 正在连接'
@@ -542,7 +547,12 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  background: var(--rag-bg-surface);
+  background: var(--rag-bg-page);
+}
+
+.chat-panel.is-empty {
+  justify-content: center;
+  padding-bottom: min(9vh, 76px);
 }
 
 .messages-container {
@@ -551,81 +561,84 @@ onUnmounted(() => {
   scroll-behavior: smooth;
 }
 
+.is-empty .messages-container {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
 .welcome-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  padding: 48px 24px;
+  width: 100%;
+  padding: 0 24px;
   text-align: center;
 }
 
-.welcome-icon {
-  width: 80px;
-  height: 80px;
-  background: var(--rag-success-light);
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--rag-primary);
-  margin-bottom: 24px;
-}
-
 .welcome-title {
-  font-size: 28px;
-  font-weight: 600;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: .2px;
   color: var(--rag-text-primary);
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .welcome-subtitle {
   font-size: 14px;
   color: var(--rag-text-secondary);
-  margin: 0 0 32px;
+  margin: 0 0 26px;
   max-width: 400px;
 }
 
 .example-questions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   width: 100%;
-  max-width: 480px;
+  max-width: 820px;
+  margin-top: 22px;
 }
 
 .example-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  min-height: 52px;
+  padding: 12px 15px;
   background: var(--rag-bg-surface);
   border: 1px solid var(--rag-border);
-  border-radius: 12px;
+  border-radius: 14px;
+  color: var(--rag-text-secondary);
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 150ms, border-color 150ms, color 150ms;
 }
 
 .example-card:hover {
-  border-color: var(--rag-primary);
-  transform: translateY(-2px);
-  box-shadow: var(--rag-shadow-md);
+  background: var(--rag-bg-hover);
+  border-color: var(--rag-text-placeholder);
+}
+
+.example-card:focus-visible {
+  outline: 2px solid var(--rag-primary);
+  outline-offset: 2px;
 }
 
 .example-text {
-  font-size: 14px;
-  color: var(--rag-text-primary);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: inherit;
 }
 
 .example-card svg {
   color: var(--rag-text-secondary);
-  transition: transform 0.2s ease;
+  flex: none;
+  transition: color 150ms;
 }
 
 .example-card:hover svg {
-  transform: translateX(4px);
-  color: var(--rag-primary);
+  color: var(--rag-text-primary);
 }
 
 .message-wrapper {
@@ -633,11 +646,11 @@ onUnmounted(() => {
 }
 
 .message-wrapper.user {
-  background: var(--rag-bg-user-msg);
+  background: transparent;
 }
 
 .message-wrapper.assistant {
-  background: var(--rag-bg-ai-msg);
+  background: transparent;
 }
 
 .user-message {
@@ -650,12 +663,11 @@ onUnmounted(() => {
 
 .user-content {
   background: var(--rag-bg-surface);
-  border: 1px solid var(--rag-border);
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-size: 14px;
-  line-height: 1.6;
-  max-width: 70%;
+  border-radius: 24px;
+  padding: 11px 18px;
+  font-size: 15px;
+  line-height: 1.7;
+  max-width: 76%;
   word-break: break-word;
 }
 
@@ -897,41 +909,49 @@ onUnmounted(() => {
 .input-wrapper {
   position: sticky;
   bottom: 0;
-  padding: 16px 24px 24px;
-  background: linear-gradient(to top, var(--rag-bg-surface) 80%, transparent);
+  padding: 12px 24px 20px;
+  background: linear-gradient(to top, var(--rag-bg-page) 80%, transparent);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+.is-empty .input-wrapper {
+  position: static;
+  padding-top: 0;
+  background: none;
+}
+
 .input-container {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
-  max-width: 720px;
+  max-width: 820px;
   width: 100%;
   background: var(--rag-bg-input);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--rag-border);
-  border-radius: 9999px;
-  padding: 12px 16px;
+  border-radius: 28px;
+  padding: 10px 12px;
   box-shadow: var(--rag-shadow-sm);
 }
 
+.input-container:focus-within {
+  border-color: var(--rag-text-placeholder);
+}
+
 .attach-btn {
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: 50%;
-  background: var(--rag-border);
+  background: transparent;
   color: var(--rag-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: background-color 150ms, color 150ms;
 }
 
 .attach-btn:hover {
@@ -941,10 +961,16 @@ onUnmounted(() => {
 
 .pill-input {
   flex: 1;
+  min-width: 0;
+  min-height: 58px;
+  max-height: 180px;
   border: none;
   outline: none;
-  font-size: 15px;
-  line-height: 1.4;
+  resize: none;
+  overflow-y: auto;
+  padding: 7px 2px;
+  font-size: 16px;
+  line-height: 1.5;
   font-family: inherit;
   color: var(--rag-text-primary);
   background: transparent;
@@ -975,8 +1001,8 @@ onUnmounted(() => {
 }
 
 .send-btn-pill {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: 50%;
   background: var(--rag-border);
@@ -986,7 +1012,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: background-color 150ms, color 150ms, scale 150ms;
 }
 
 .send-btn-pill.active {
@@ -996,7 +1022,11 @@ onUnmounted(() => {
 }
 
 .send-btn-pill.active:hover {
-  background: var(--rag-bg-hover);
+  scale: 1.04;
+}
+
+.send-btn-pill.active:active {
+  scale: .96;
 }
 
 .disclaimer {
@@ -1006,7 +1036,7 @@ onUnmounted(() => {
   margin-top: 10px;
 }
 
-.response-mode { display: flex; gap: 6px; width: 100%; max-width: 720px; margin-bottom: 10px; }
+.response-mode { display: flex; gap: 6px; width: 100%; max-width: 820px; margin-bottom: 10px; }
 .response-mode button { border: 1px solid var(--rag-border); border-radius: 999px; background: transparent; color: var(--rag-text-secondary); padding: 6px 12px; font-size: 12px; cursor: pointer; }
 .response-mode button.selected { background: var(--rag-bg-user-msg); border-color: var(--rag-primary); color: var(--rag-text-primary); }
 .response-mode button:disabled { opacity: .5; cursor: not-allowed; }
@@ -1014,6 +1044,12 @@ onUnmounted(() => {
 .stop-receiving { flex-shrink: 0; border: 1px solid var(--rag-border); border-radius: 999px; background: var(--rag-bg-surface); color: var(--rag-text-primary); padding: 5px 10px; font-size: 12px; cursor: pointer; }
 
 @media (max-width: 768px) {
+  .chat-panel.is-empty { padding-bottom: 0; }
+  .welcome-title { font-size: 24px; }
+  .welcome-screen { padding: 0 16px; }
+  .input-wrapper { padding: 10px 16px 16px; }
+  .example-questions { grid-template-columns: 1fr; }
+  .example-card { min-height: 46px; }
   .user-content {
     max-width: 85%;
   }

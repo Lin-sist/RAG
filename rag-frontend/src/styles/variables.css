@@ -103,21 +103,21 @@
         --rag-text-primary: #ECECEC;
         --rag-text-regular: #D1D1D1;
         --rag-text-secondary: #B4B4B4;
-        --rag-text-placeholder: #6B6B6B;
+        --rag-text-placeholder: #8D8D8D;
 
         /* Backgrounds */
-        --rag-bg-primary: #212121;
-        --rag-bg-page: #212121;
-        --rag-bg-sidebar: #171717;
-        --rag-bg-hover: #2F2F2F;
-        --rag-bg-surface: #2F2F2F;
+        --rag-bg-primary: #000000;
+        --rag-bg-page: #000000;
+        --rag-bg-sidebar: #0A0A0A;
+        --rag-bg-hover: #242424;
+        --rag-bg-surface: #161616;
         --rag-bg-ai-msg: transparent;
         --rag-bg-user-msg: #2F2F2F;
-        --rag-bg-input: #2F2F2F;
+        --rag-bg-input: #161616;
         --rag-bg-card: rgba(255, 255, 255, 0.05);
 
         /* Borders */
-        --rag-border: rgba(255, 255, 255, 0.1);
+        --rag-border: rgba(255, 255, 255, 0.075);
         --rag-border-light: rgba(255, 255, 255, 0.05);
 
         /* Shadows — 暗色下阴影更重 */
@@ -138,18 +138,18 @@
         --el-color-primary-dark-2: #0D7A60;
 
         /* Element Plus 全局暗色覆盖 */
-        --el-bg-color: #212121;
-        --el-bg-color-page: #171717;
-        --el-bg-color-overlay: #2F2F2F;
+        --el-bg-color: #161616;
+        --el-bg-color-page: #000000;
+        --el-bg-color-overlay: #1C1C1C;
         --el-text-color-primary: #ECECEC;
         --el-text-color-regular: #D1D1D1;
         --el-text-color-secondary: #B4B4B4;
-        --el-text-color-placeholder: #6B6B6B;
-        --el-border-color: rgba(255, 255, 255, 0.1);
+        --el-text-color-placeholder: #8D8D8D;
+        --el-border-color: rgba(255, 255, 255, 0.075);
         --el-border-color-light: rgba(255, 255, 255, 0.05);
-        --el-fill-color: #2F2F2F;
-        --el-fill-color-light: #383838;
-        --el-fill-color-blank: #212121;
+        --el-fill-color: #242424;
+        --el-fill-color-light: #2A2A2A;
+        --el-fill-color-blank: #161616;
     }
 }
 
@@ -166,21 +166,21 @@ html.dark {
     --rag-text-primary: #ECECEC;
     --rag-text-regular: #D1D1D1;
     --rag-text-secondary: #B4B4B4;
-    --rag-text-placeholder: #6B6B6B;
+    --rag-text-placeholder: #8D8D8D;
 
     /* Backgrounds */
-    --rag-bg-primary: #212121;
-    --rag-bg-page: #212121;
-    --rag-bg-sidebar: #171717;
-    --rag-bg-hover: #2F2F2F;
-    --rag-bg-surface: #2F2F2F;
+    --rag-bg-primary: #000000;
+    --rag-bg-page: #000000;
+    --rag-bg-sidebar: #0A0A0A;
+    --rag-bg-hover: #242424;
+    --rag-bg-surface: #161616;
     --rag-bg-ai-msg: transparent;
     --rag-bg-user-msg: #2F2F2F;
-    --rag-bg-input: #2F2F2F;
+    --rag-bg-input: #161616;
     --rag-bg-card: rgba(255, 255, 255, 0.05);
 
     /* Borders */
-    --rag-border: rgba(255, 255, 255, 0.1);
+    --rag-border: rgba(255, 255, 255, 0.075);
     --rag-border-light: rgba(255, 255, 255, 0.05);
 
     /* Shadows — 暗色下阴影更重 */
@@ -201,16 +201,16 @@ html.dark {
     --el-color-primary-dark-2: #0D7A60;
 
     /* Element Plus 全局暗色覆盖 */
-    --el-bg-color: #212121;
-    --el-bg-color-page: #171717;
-    --el-bg-color-overlay: #2F2F2F;
+    --el-bg-color: #161616;
+    --el-bg-color-page: #000000;
+    --el-bg-color-overlay: #1C1C1C;
     --el-text-color-primary: #ECECEC;
     --el-text-color-regular: #D1D1D1;
     --el-text-color-secondary: #B4B4B4;
-    --el-text-color-placeholder: #6B6B6B;
-    --el-border-color: rgba(255, 255, 255, 0.1);
+    --el-text-color-placeholder: #8D8D8D;
+    --el-border-color: rgba(255, 255, 255, 0.075);
     --el-border-color-light: rgba(255, 255, 255, 0.05);
-    --el-fill-color: #2F2F2F;
-    --el-fill-color-light: #383838;
-    --el-fill-color-blank: #212121;
+    --el-fill-color: #242424;
+    --el-fill-color-light: #2A2A2A;
+    --el-fill-color-blank: #161616;
 }

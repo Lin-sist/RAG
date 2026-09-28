@@ -2796,3 +2796,13 @@
 - 验证：`npm run test` 33/33 PASS，含文本分帧、流内错误优先级、客户端 abort；`npm run build` 通过 `vue-tsc -b` 与 Vite build，保留既有 >500 kB chunk 警告；真实 UI 上传/删除与纯文本流通过，390 像素窄屏聊天入口未见横向溢出；`git diff --check` PASS。
 - 跳过与风险：Java/Python 无代码改动，未重跑其测试；未执行额外真实 ask 或故障注入。C21 结构化 terminal/citations、可靠服务端取消与 history 语义仍未提供，spec delta 待接受和归档；真实流只验证一次当前环境成功路径。
 - 范围安全：未修改 `.env.local`、`application-dev.yml`、`.agents/`、C18 代码或主工作树既有未跟踪文档；只写隔离前端分支计划内文件和本日志。临时合成 TXT 留在本机 TEMP，不含业务资料。
+
+## 2026-09-28 · frontend-demo-integration-r2b-r4 提交补录
+- 上一执行提交：`6e134a10306a7b0a4b41888e41084bddb1e0866d`（`feat(前端): 接入Demo登录视觉与纯文本流问答`）。
+
+## 2026-09-28 · frontend-demo-integration-visual-chat（Demo 聊天视觉收口）
+- Commit: pending；本轮用户授权本地提交；无 push、PR、发布或部署。
+- 范围与修改：`ChatPanel.vue` 将空态改为居中欢迎区、双列示例按钮和多行输入框；示例仅填入问题并聚焦，不自动发起真实问答。`AppSidebar.vue` 将当前导航态调整为中性深色。`variables.css` 对齐 Demo 黑色页面、侧栏和卡片层级；未改变 API/DTO、问答模式与后端行为。
+- 验证：`npm run build` PASS（`vue-tsc -b && vite build`，保留既有大 chunk 警告）；`npm run test` 33/33 PASS；本地浏览器检查聊天首页、KB17 详情和历史列表可见且加载正常，示例按钮填入输入框；390 像素窄屏无横向溢出，欢迎区、输入框及示例均在视口内；`git diff --check` PASS。
+- 跳过与风险：本轮未运行 Java/Python 测试，因为没有相关代码改动；未发起新问答、上传或 provider 调用。其他设备和浏览器未覆盖，C21 结构化流来源与服务端取消仍在既有边界外。
+- 范围安全：仅隔离前端分支的聊天、侧栏、样式和执行日志；未修改 `.env.local`、`application-dev.yml`、`.agents/`、主工作树或既有 KB/历史数据。
