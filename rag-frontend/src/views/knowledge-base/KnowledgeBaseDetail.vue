@@ -1,5 +1,5 @@
 <template>
-  <div class="kb-detail-view" v-loading="kbStore.loading">
+  <div class="kb-detail-view" v-loading="detailLoading">
     <div class="detail-header">
       <button class="back-btn" @click="router.push('/kb')">
         <ArrowLeft :size="18" />
@@ -13,7 +13,7 @@
           {{ kbStore.current.isPublic ? '公开' : '私有' }}
         </span>
       </div>
-      <div class="header-actions">
+      <div v-if="kbStore.current && !detailError" class="header-actions">
         <button class="action-btn primary" @click="editDialogVisible = true">
           <Edit :size="16" />
           <span>编辑</span>
@@ -25,7 +25,9 @@
       </div>
     </div>
 
-    <div v-if="kbStore.current" class="detail-content">
+    <el-alert v-if="detailError" :title="detailError" type="error" :closable="false" show-icon />
+    <el-button v-if="detailError" @click="loadDetail">重新加载</el-button>
+    <div v-if="kbStore.current && !detailError && !detailLoading" class="detail-content">
       <div class="info-card-v2">
         <div class="card-header-v2">
           <InfoFilled class="header-icon" />
@@ -74,7 +76,12 @@
         </div>
       </div>
 
-      <KBStatsPanel :stats="kbStore.statistics" :loading="statsLoading" />
+      <el-alert v-if="kbStore.statisticsError" :title="'统计暂不可用：' + kbStore.statisticsError" type="warning" :closable="false" />
+      <KBStatsPanel v-else :stats="kbStore.statistics" :loading="statsLoading" />
+      <details class="vector-identity">
+        <summary>向量索引信息</summary>
+        <dl><template v-for="(value, label) in vectorIdentity" :key="label"><dt>{{ label }}</dt><dd>{{ value ?? '未返回' }}</dd></template></dl>
+      </details>
 
       <div class="info-card-v2">
         <div class="card-header-v2 doc-header">
@@ -90,16 +97,18 @@
 
         <div v-show="uploadVisible" class="upload-section">
           <DocUploader
-            :kb-id="getKbId()"
+            :kb-id="getKbId()" :key="getKbId()"
             @uploaded="handleDocUploaded"
             @all-done="handleAllUploadDone"
           />
           <div class="section-divider"></div>
         </div>
 
-        <DocProgress :tasks="progressTasks" />
+        <DocProgress :tasks="progressTasks" @retry="retryTask" />
+        <el-alert v-if="docsError" :title="docsError" type="error" :closable="false" />
+        <el-button v-if="docsError" @click="loadDocuments">重试文档加载</el-button>
 
-        <DocList
+        <DocList v-if="!docsError"
           :kb-id="getKbId()"
           :documents="documents"
           :loading="docsLoading"
@@ -117,178 +126,100 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Edit, Delete, Upload, ArrowLeft, InfoFilled } from '@element-plus/icons-vue'
 import { FileText } from 'lucide-vue-next'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
+import { useTaskPolling } from '@/composables/useTaskPolling'
+import { normalizeError } from '@/api/errors'
 import { formatDate } from '@/utils/format'
 import { listDocuments } from '@/api/knowledgeBase'
-import { getTaskStatus } from '@/api/task'
 import KBStatsPanel from '@/components/knowledge-base/KBStatsPanel.vue'
 import KBCreateDialog from '@/components/knowledge-base/KBCreateDialog.vue'
 import DocUploader from '@/components/document/DocUploader.vue'
 import DocList from '@/components/document/DocList.vue'
 import DocProgress from '@/components/document/DocProgress.vue'
-import type { DocumentInfo } from '@/types/document'
-import type { DocumentUploadResponse } from '@/types/document'
-import type { TaskStatusResponse } from '@/types/task'
+import type { ProgressTask } from '@/components/document/DocProgress.vue'
+import type { DocumentInfo, DocumentUploadResponse } from '@/types/document'
 
-interface ProgressTask {
-  taskId: string
-  fileName: string
-  status: TaskStatusResponse | null
-}
-
-const router = useRouter()
-const route = useRoute()
-const kbStore = useKnowledgeBaseStore()
-
-const editDialogVisible = ref(false)
-const statsLoading = ref(false)
-const uploadVisible = ref(false)
-
-const documents = ref<DocumentInfo[]>([])
-const docsLoading = ref(false)
-
+const router = useRouter(), route = useRoute(), kbStore = useKnowledgeBaseStore()
+const polling = useTaskPolling()
+const editDialogVisible = ref(false), statsLoading = ref(false), uploadVisible = ref(false)
+const detailLoading = ref(false), detailError = ref(''), docsError = ref('')
+const documents = ref<DocumentInfo[]>([]), docsLoading = ref(false)
 const progressTasks = reactive<ProgressTask[]>([])
-const pollingTimers = new Map<string, ReturnType<typeof setInterval>>()
-
-function getKbId(): number {
-  return Number(route.params.id)
-}
-
+let pageSequence = 0, docsSequence = 0
+const vectorIdentity = computed(() => ({
+  '提供方': kbStore.current?.vectorProviderFamily, '模型': kbStore.current?.vectorModel,
+  '维度': kbStore.current?.vectorDimension, '端点身份': kbStore.current?.vectorEndpointIdentity,
+  '请求契约': kbStore.current?.vectorRequestContract, '代次': kbStore.current?.vectorGeneration,
+  '身份指纹': kbStore.current?.vectorIdentityFingerprint,
+}))
+function getKbId() { return Number(route.params.id) }
 async function loadDocuments() {
-  const id = getKbId()
-  if (!id || isNaN(id)) return
-  docsLoading.value = true
+  const seq = ++docsSequence, id = getKbId()
+  docsLoading.value = true; docsError.value = ''
   try {
     const res = await listDocuments(id)
-    documents.value = res.data.data
-  } catch {
-    ElMessage.error('获取文档列表失败')
-  } finally {
-    docsLoading.value = false
-  }
+    if (seq === docsSequence && id === getKbId()) documents.value = res.data.data
+  } catch (error) {
+    if (seq === docsSequence && id === getKbId()) docsError.value = normalizeError(error).message
+  } finally { if (seq === docsSequence) docsLoading.value = false }
 }
-
-function handleDocUploaded(data: DocumentUploadResponse) {
-  const task: ProgressTask = {
-    taskId: data.taskId,
-    fileName: data.fileName,
-    status: null,
-  }
-  progressTasks.push(task)
-  startTaskPolling(task)
-}
-
-function handleAllUploadDone() {
-  loadDocuments()
-}
-
 function startTaskPolling(task: ProgressTask) {
-  pollTaskOnce(task)
-
-  const timer = setInterval(() => {
-    pollTaskOnce(task)
-  }, 2000)
-
-  pollingTimers.set(task.taskId, timer)
+  const seq = pageSequence
+  task.pollError = ''
+  polling.start(task.taskId, {
+    update: status => { task.status = status },
+    error: error => { task.pollError = normalizeError(error).message },
+    terminal: () => {
+      if (seq !== pageSequence) return
+      void loadDocuments()
+      const id = getKbId()
+      void kbStore.fetchStatistics(id).then(stats => {
+        if (seq === pageSequence && stats && kbStore.current?.id === id) kbStore.current.documentCount = stats.documentCount
+      })
+    },
+  })
 }
-
-async function pollTaskOnce(task: ProgressTask) {
-  try {
-    const res = await getTaskStatus(task.taskId)
-    task.status = res.data.data
-    const state = res.data.data.state
-
-    if (state === 'COMPLETED' || state === 'FAILED' || state === 'CANCELLED') {
-      stopTaskPolling(task.taskId)
-
-      if (state === 'COMPLETED') {
-        ElMessage.success(`「${task.fileName}」处理完成`)
-      } else {
-        const reason = task.status?.error || task.status?.message || '处理失败'
-        ElMessage.error(`「${task.fileName}」处理失败：${reason}`)
-      }
-
-      loadDocuments()
-      kbStore.fetchStatistics(getKbId())
-      kbStore.fetchById(getKbId())
-
-      setTimeout(() => {
-        const idx = progressTasks.findIndex(t => t.taskId === task.taskId)
-        if (idx !== -1) progressTasks.splice(idx, 1)
-      }, 3000)
-    }
-  } catch {
-    // 轮询出错时不立即停止，等下次重试
-  }
+function retryTask(id: string) {
+  const task = progressTasks.find(item => item.taskId === id)
+  if (task) startTaskPolling(task)
 }
-
-function stopTaskPolling(taskId: string) {
-  const timer = pollingTimers.get(taskId)
-  if (timer) {
-    clearInterval(timer)
-    pollingTimers.delete(taskId)
-  }
+function handleDocUploaded(data: DocumentUploadResponse) {
+  if (progressTasks.some(task => task.taskId === data.taskId)) return
+  const task = reactive<ProgressTask>({ taskId: data.taskId, fileName: data.fileName, status: null })
+  progressTasks.push(task); startTaskPolling(task)
 }
-
-function stopAllPolling() {
-  pollingTimers.forEach((timer) => clearInterval(timer))
-  pollingTimers.clear()
-}
-
+function handleAllUploadDone() { void loadDocuments() }
 async function loadDetail() {
-  const id = getKbId()
-  if (!id || isNaN(id)) {
-    ElMessage.error('无效的知识库 ID')
-    router.push('/kb')
-    return
-  }
+  const seq = ++pageSequence, id = getKbId()
+  polling.stopAll(); progressTasks.splice(0); docsSequence++
+  documents.value = []; detailError.value = ''; docsError.value = ''; detailLoading.value = true
+  if (!Number.isInteger(id) || id <= 0) { detailError.value = '无效的知识库 ID'; detailLoading.value = false; return }
   try {
     await kbStore.fetchById(id)
+    if (seq !== pageSequence) return
     statsLoading.value = true
-    await kbStore.fetchStatistics(id)
-    statsLoading.value = false
-    await loadDocuments()
-  } catch {
-    router.push('/kb')
+    await Promise.all([kbStore.fetchStatistics(id), loadDocuments()])
+  } catch (error) {
+    if (seq === pageSequence) detailError.value = normalizeError(error).message
+  } finally {
+    if (seq === pageSequence) { detailLoading.value = false; statsLoading.value = false }
   }
 }
-
-onMounted(loadDetail)
-
-watch(() => route.params.id, () => {
-  if (route.params.id) {
-    stopAllPolling()
-    progressTasks.splice(0)
-    loadDetail()
-  }
-})
-
-onUnmounted(() => {
-  stopAllPolling()
-})
-
-function handleEditSuccess() {
-  loadDetail()
-}
-
+watch(() => route.params.id, loadDetail, { immediate: true })
+onUnmounted(() => { pageSequence++; docsSequence++; polling.stopAll() })
+function handleEditSuccess() { void loadDetail() }
 async function confirmDelete() {
   if (!kbStore.current) return
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除知识库「${kbStore.current.name}」吗？\n该操作不可恢复！`,
-      '删除确认',
-      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning', confirmButtonClass: 'el-button--danger' }
-    )
-    await kbStore.remove(kbStore.current.id)
-    router.push('/kb')
-  } catch {
-    // 用户取消
-  }
+  const id = kbStore.current.id
+  try { await ElMessageBox.confirm(`确定要删除知识库「${kbStore.current.name}」及其文档吗？`, '删除确认', { type: 'warning' }) }
+  catch { return }
+  try { await kbStore.remove(id); await router.push('/kb') }
+  catch (error) { ElMessage.error(normalizeError(error).message) }
 }
 </script>
 
@@ -550,5 +481,19 @@ async function confirmDelete() {
   margin-left: 8px;
   margin-right: 8px;
   margin-top: var(--rag-space-4);
+}
+
+.vector-identity { padding: 16px 24px; border: 1px solid var(--rag-border); border-radius: 12px; }
+.vector-identity summary { cursor: pointer; font-weight: 500; }
+.vector-identity dl { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 12px 24px; }
+.vector-identity dt { color: var(--rag-text-secondary); }
+.vector-identity dd { margin: 0; overflow-wrap: anywhere; }
+.info-value, .title-text { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .kb-detail-view { padding: 16px; }
+  .detail-header { flex-wrap: wrap; max-height: none; }
+  .header-actions { width: 100%; }
+  .info-row { grid-template-columns: minmax(0, 1fr); }
+  .info-card-v2 { padding: 16px; }
 }
 </style>

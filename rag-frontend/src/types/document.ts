@@ -10,7 +10,7 @@ export interface DocumentInfo {
     updatedAt: string
 }
 
-export type DocumentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+export type DocumentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'RECONCILIATION_REQUIRED'
 
 export interface DocumentUploadResponse {
     documentId: number

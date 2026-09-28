@@ -6,7 +6,7 @@ export interface QAHistoryDTO {
     kbId: number
     question: string
     answer: string
-    citations: Citation[]
+    citations: Citation[] | null
     traceId: string
     latencyMs: number
     createdAt: string

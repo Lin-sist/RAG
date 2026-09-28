@@ -9,7 +9,3 @@ export function login(data: LoginRequest) {
 export function logout() {
     return request.post<ApiResponse<void>>('/auth/logout')
 }
-
-export function refreshToken(token: string) {
-    return request.post<ApiResponse<AuthResponse>>('/auth/refresh', { refreshToken: token })
-}

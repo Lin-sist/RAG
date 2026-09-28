@@ -5,6 +5,7 @@
       ref="uploadRef"
       drag
       :auto-upload="false"
+      :disabled="uploading"
       :file-list="fileList"
       :accept="acceptTypes"
       :on-change="handleFileChange"
@@ -48,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { UploadFilled, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile, UploadInstance } from 'element-plus'
@@ -69,6 +70,8 @@ const emit = defineEmits<{
 const uploadRef = ref<UploadInstance>()
 const fileList = ref<UploadFile[]>([])
 const uploading = ref(false)
+let disposed = false
+onUnmounted(() => { disposed = true })
 
 // 支持的文件类型
 const acceptTypes = '.pdf,.md,.markdown,.docx,.txt,.java,.py,.js,.ts,.go,.c,.cpp,.h,.vue,.json,.yml,.yaml,.xml,.html,.css'
@@ -99,19 +102,22 @@ function clearFiles() {
 
 /** 逐个上传文件，每个成功后发射 uploaded 事件 */
 async function submitUpload() {
-  if (fileList.value.length === 0) return
+  if (uploading.value || fileList.value.length === 0) return
 
   uploading.value = true
   uploadResults.value = []
 
   for (const item of fileList.value) {
+    if (disposed) return
     const rawFile = item.raw
     if (!rawFile) continue
 
     try {
       const res = await uploadDocument(props.kbId, rawFile, rawFile.name)
+      if (disposed) return
       const data = res.data.data
-      uploadResults.value.push({ success: true, message: `「${rawFile.name}」上传成功，任务已提交` })
+      if (res.status !== 202 || !data?.taskId) throw new Error('上传响应缺少已接受任务信息')
+      uploadResults.value.push({ success: true, message: `「${rawFile.name}」已接受，等待处理` })
       emit('uploaded', data)
     } catch (err: any) {
       const msg = err?.message || '上传失败'

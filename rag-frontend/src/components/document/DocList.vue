@@ -9,7 +9,6 @@
     <el-table
       v-if="documents.length > 0"
       :data="documents"
-      stripe
       style="width: 100%"
       v-loading="loading"
     >
@@ -97,6 +96,7 @@ function statusTagType(status: DocumentStatus): 'warning' | 'primary' | 'success
     PROCESSING: 'primary',
     COMPLETED: 'success',
     FAILED: 'danger',
+    RECONCILIATION_REQUIRED: 'warning',
   }
   return map[status] ?? 'info'
 }
@@ -108,6 +108,7 @@ function statusLabel(status: DocumentStatus): string {
     PROCESSING: '处理中',
     COMPLETED: '已完成',
     FAILED: '处理失败',
+    RECONCILIATION_REQUIRED: '需要核对',
   }
   return map[status] ?? status
 }

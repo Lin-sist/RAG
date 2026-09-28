@@ -237,7 +237,7 @@ async function doSyncAsk(question: string) {
     })
     const qaResp = res.data.data
     chatStore.updateLastAssistantMessage(qaResp.answer)
-    chatStore.setLastAssistantMeta(qaResp.citations, qaResp.contexts)
+    chatStore.setLastAssistantMeta(qaResp.citations ?? undefined, qaResp.contexts ?? undefined)
     chatStore.patchLastAssistant({
       loading: false,
       error: false,

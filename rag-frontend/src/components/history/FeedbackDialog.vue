@@ -83,7 +83,7 @@ async function handleSubmit() {
     visible.value = false
     emit('success')
   } catch (e: any) {
-    const msg = e?.response?.data?.message || '提交失败，请稍后重试'
+    const msg = e?.message || '提交失败，请稍后重试'
     ElMessage.error(msg)
   } finally {
     submitting.value = false

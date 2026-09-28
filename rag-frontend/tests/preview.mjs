@@ -1,0 +1,30 @@
+// Local synthetic preview only. No proxy or real backend; unknown API calls fail closed.
+import { createServer } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { fileURLToPath } from 'node:url'
+const root = fileURLToPath(new URL('../', import.meta.url))
+const kb = { id: 901, name: '合成知识库 · 项目文档', description: '仅用于前端验证，不连接真实后端', documentCount: 2, isPublic: false, vectorCollection: 'fixture_collection', vectorModel: 'fixture-model', vectorDimension: 1024, createdAt: '2026-09-20T10:00:00', updatedAt: '2026-09-20T10:00:00' }
+const server = await createServer({ root, configFile: false, plugins: [vue(), {
+  name: 'synthetic-api', configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const url = req.url?.split('?')[0]
+      if (!url?.startsWith('/api/') && !url?.startsWith('/auth/')) return next()
+      let data, status = 200
+      if (req.method !== 'GET' && url !== '/auth/login') {
+        res.statusCode = 405; res.end('Synthetic preview is read-only'); return
+      }
+      if (url === '/auth/login') data = { accessToken: 'fixture-access', refreshToken: 'fixture-refresh', userInfo: { id: 901, username: '合成验收', email: '' } }
+      else if (url === '/api/knowledge-bases') data = [kb]
+      else if (url === '/api/knowledge-bases/901') data = kb
+      else if (url === '/api/knowledge-bases/901/statistics') data = { kbId: 901, documentCount: 2, vectorCount: 12, queryCount: 0 }
+      else if (url === '/api/knowledge-bases/901/documents') data = ['COMPLETED', 'RECONCILIATION_REQUIRED'].map((state, i) => ({ id: i + 1, kbId: 901, title: ['合成说明文档', '需要核对的合成文档'][i], status: state, fileType: 'txt', chunkCount: 6, createdAt: kb.createdAt }))
+      else if (url === '/api/history') data = { records: [], total: 0, page: 1, size: 20, totalPages: 0 }
+      else status = 404
+      res.statusCode = status
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.end(JSON.stringify(status === 200 ? { code: 200, data } : { errorCode: 'FIXTURE_ONLY', message: '合成预览不支持此操作' }))
+    })
+  },
+}], resolve: { alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } }, server: { host: '127.0.0.1', port: 5188, strictPort: true } })
+await server.listen()
+console.log('Synthetic preview: http://127.0.0.1:5188/login')

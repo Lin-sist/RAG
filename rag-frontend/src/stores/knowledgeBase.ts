@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { KnowledgeBaseDTO, CreateKBRequest, UpdateKBRequest, KnowledgeBaseStatistics } from '@/types/knowledgeBase'
+import { normalizeError } from '@/api/errors'
 import * as kbApi from '@/api/knowledgeBase'
 
 export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
@@ -9,34 +10,44 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     const list = ref<KnowledgeBaseDTO[]>([])
     const current = ref<KnowledgeBaseDTO | null>(null)
     const statistics = ref<KnowledgeBaseStatistics | null>(null)
-    const loading = ref(false)
+    const listLoading = ref(false)
+    const detailLoading = ref(false)
+    const loading = computed(() => listLoading.value || detailLoading.value)
+    const listError = ref('')
+    const detailError = ref('')
+    const statisticsError = ref('')
+    let listSequence = 0, detailSequence = 0, statsSequence = 0
 
     // ---------- 加载知识库列表 ----------
     async function fetchList() {
-        loading.value = true
+        const seq = ++listSequence
+        listLoading.value = true
+        listError.value = ''
         try {
             const res = await kbApi.listKB()
-            list.value = res.data.data
-        } catch (e: any) {
-            ElMessage.error('获取知识库列表失败')
-            throw e
+            if (seq === listSequence) list.value = res.data.data
+        } catch (error) {
+            if (seq === listSequence) listError.value = normalizeError(error).message
+            throw error
         } finally {
-            loading.value = false
+            if (seq === listSequence) listLoading.value = false
         }
     }
 
-    // ---------- 加载单个知识库详情 ----------
     async function fetchById(id: number) {
-        loading.value = true
+        const seq = ++detailSequence
+        detailLoading.value = true
+        detailError.value = ''
+        current.value = null
         try {
             const res = await kbApi.getKBById(id)
-            current.value = res.data.data
+            if (seq === detailSequence) current.value = res.data.data
             return res.data.data
-        } catch (e: any) {
-            ElMessage.error('获取知识库详情失败')
-            throw e
+        } catch (error) {
+            if (seq === detailSequence) detailError.value = normalizeError(error).message
+            throw error
         } finally {
-            loading.value = false
+            if (seq === detailSequence) detailLoading.value = false
         }
     }
 
@@ -72,12 +83,15 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
 
     // ---------- 加载统计信息 ----------
     async function fetchStatistics(id: number) {
+        const seq = ++statsSequence
+        statistics.value = null
+        statisticsError.value = ''
         try {
             const res = await kbApi.getKBStatistics(id)
-            statistics.value = res.data.data
+            if (seq === statsSequence) statistics.value = res.data.data
             return res.data.data
-        } catch {
-            statistics.value = null
+        } catch (error) {
+            if (seq === statsSequence) statisticsError.value = normalizeError(error).message
         }
     }
 
@@ -85,7 +99,7 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     function setCurrent(kb: KnowledgeBaseDTO | null) { current.value = kb }
 
     return {
-        list, current, statistics, loading,
+        list, current, statistics, loading, listLoading, detailLoading, listError, detailError, statisticsError,
         fetchList, fetchById, create, update, remove, fetchStatistics, setCurrent,
     }
 })

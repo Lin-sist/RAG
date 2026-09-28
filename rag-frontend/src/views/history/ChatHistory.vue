@@ -8,7 +8,7 @@
     <header class="history-header">
       <div class="header-left">
         <Clock :size="28" class="header-icon" />
-        <h1 class="header-title">历史记录</h1>
+        <h1 class="header-title">历史问答记录</h1>
       </div>
       <div class="header-right">
         <!-- 主题切换按钮 -->
@@ -28,7 +28,7 @@
             <Moon :size="16" />
           </button>
         </div>
-        <button class="clear-all-btn" @click="handleClearAll">
+        <button class="clear-all-btn" :disabled="loading || deletingIds.size > 0 || totalItemCount === 0" @click="handleClearAll">
           清空全部
         </button>
       </div>
@@ -41,12 +41,23 @@
         v-model="searchQuery"
         type="text"
         class="search-input"
-        placeholder="搜索对话..."
+        placeholder="搜索历史问题或知识库 ID..."
       />
     </div>
 
     <!-- History List -->
-    <div class="history-list">
+    <div class="history-list" :aria-busy="loading">
+      <div v-if="loading" class="state-panel">
+        <span class="state-spinner" />
+        <p>正在加载历史记录...</p>
+      </div>
+
+      <div v-else-if="loadError" class="state-panel error-state">
+        <p>{{ loadError }}</p>
+        <button class="retry-btn" @click="loadHistoryGroups">重新加载</button>
+      </div>
+
+      <template v-else>
       <template v-for="group in filteredGroups" :key="group.label">
         <div v-if="group.items.length > 0" class="history-group">
           <div class="group-label">{{ group.label }}</div>
@@ -71,6 +82,7 @@
               <button
                 v-else
                 class="delete-btn"
+                :disabled="deletingIds.has(item.id)"
                 @click.stop="handleDelete(item)"
                 title="删除"
               >
@@ -84,16 +96,17 @@
       <!-- Empty State -->
       <div v-if="filteredGroups.every(g => g.items.length === 0)" class="empty-state">
         <MessageSquareText :size="48" class="empty-icon" />
-        <p>暂无历史记录</p>
+        <p>{{ searchQuery.trim() ? '没有匹配的历史问答记录' : '暂无历史问答记录' }}</p>
       </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Clock,
   Sun,
@@ -105,23 +118,15 @@ import {
 } from 'lucide-vue-next'
 import { getHistoryPage, deleteHistory } from '@/api/history'
 import type { QAHistoryDTO } from '@/types/history'
-
-type DateGroupLabel = '今天' | '昨天' | '更早'
-
-interface HistoryItem {
-  id: number
-  title: string
-  knowledgeBase: string
-  time: string
-}
-
-interface HistoryGroup {
-  label: DateGroupLabel
-  items: HistoryItem[]
-}
+import {
+  createEmptyHistoryGroups,
+  filterHistoryGroups,
+  groupHistoryRecords,
+  type HistoryPresentationItem as HistoryItem,
+  type HistoryPresentationGroup as HistoryGroup,
+} from '@/utils/historyPresentation'
 
 const HISTORY_PAGE_SIZE = 100
-const GROUP_LABELS: DateGroupLabel[] = ['今天', '昨天', '更早']
 const HISTORY_UPDATED_EVENT = 'rag-history-updated'
 const router = useRouter()
 
@@ -132,67 +137,10 @@ const isDark = ref(false)
 const searchQuery = ref('')
 const hoveredItemId = ref<number | null>(null)
 
-function createEmptyGroups(): HistoryGroup[] {
-  return GROUP_LABELS.map(label => ({ label, items: [] }))
-}
-
-const historyGroups = ref<HistoryGroup[]>(createEmptyGroups())
-
-function getDateBucket(date: Date, now: Date): DateGroupLabel {
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterdayStart = new Date(todayStart)
-  yesterdayStart.setDate(yesterdayStart.getDate() - 1)
-
-  if (date >= todayStart) return '今天'
-  if (date >= yesterdayStart && date < todayStart) return '昨天'
-  return '更早'
-}
-
-function formatTwoDigits(n: number): string {
-  return n.toString().padStart(2, '0')
-}
-
-function formatItemTime(date: Date, bucket: DateGroupLabel, fallback: string): string {
-  if (Number.isNaN(date.getTime())) return fallback
-  const hhmm = `${formatTwoDigits(date.getHours())}:${formatTwoDigits(date.getMinutes())}`
-
-  if (bucket === '今天') return hhmm
-  if (bucket === '昨天') return `昨天 ${hhmm}`
-
-  const y = date.getFullYear()
-  const m = formatTwoDigits(date.getMonth() + 1)
-  const d = formatTwoDigits(date.getDate())
-  return `${y}-${m}-${d}`
-}
-
-function convertRecordsToGroups(records: QAHistoryDTO[]): HistoryGroup[] {
-  const grouped: Record<DateGroupLabel, HistoryItem[]> = {
-    今天: [],
-    昨天: [],
-    更早: [],
-  }
-
-  const now = new Date()
-  const sorted = [...records].sort((a, b) => {
-    const ta = new Date(a.createdAt).getTime()
-    const tb = new Date(b.createdAt).getTime()
-    return tb - ta
-  })
-
-  for (const record of sorted) {
-    const createdAtDate = new Date(record.createdAt)
-    const bucket = Number.isNaN(createdAtDate.getTime()) ? '更早' : getDateBucket(createdAtDate, now)
-
-    grouped[bucket].push({
-      id: record.id,
-      title: record.question || `历史记录 #${record.id}`,
-      knowledgeBase: `知识库#${record.kbId}`,
-      time: formatItemTime(createdAtDate, bucket, record.createdAt),
-    })
-  }
-
-  return GROUP_LABELS.map(label => ({ label, items: grouped[label] }))
-}
+const historyGroups = ref<HistoryGroup[]>(createEmptyHistoryGroups())
+const loading = ref(false)
+const loadError = ref('')
+const deletingIds = ref(new Set<number>())
 
 async function fetchAllHistoryRecords(): Promise<QAHistoryDTO[]> {
   let page = 1
@@ -211,12 +159,16 @@ async function fetchAllHistoryRecords(): Promise<QAHistoryDTO[]> {
 }
 
 async function loadHistoryGroups() {
+  loading.value = true
+  loadError.value = ''
   try {
     const records = await fetchAllHistoryRecords()
-    historyGroups.value = convertRecordsToGroups(records)
+    historyGroups.value = groupHistoryRecords(records)
   } catch {
-    historyGroups.value = createEmptyGroups()
-    ElMessage.error('获取历史记录失败')
+    historyGroups.value = createEmptyHistoryGroups()
+    loadError.value = '获取历史记录失败，请稍后重试'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -244,18 +196,9 @@ function openHistoryItem(item: HistoryItem) {
 
 // Filtered groups based on search query
 const filteredGroups = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return historyGroups.value
-  }
-  const query = searchQuery.value.toLowerCase()
-  return historyGroups.value.map(group => ({
-    ...group,
-    items: group.items.filter(item =>
-      item.title.toLowerCase().includes(query) ||
-      item.knowledgeBase.toLowerCase().includes(query)
-    )
-  }))
+  return filterHistoryGroups(historyGroups.value, searchQuery.value)
 })
+const totalItemCount = computed(() => historyGroups.value.reduce((total, group) => total + group.items.length, 0))
 
 // Theme functions
 function applyTheme(dark: boolean) {
@@ -272,12 +215,23 @@ function setTheme(dark: boolean) {
 // Action handlers
 async function handleDelete(item: HistoryItem) {
   try {
+    await ElMessageBox.confirm('确定删除这条历史问答记录吗？', '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    deletingIds.value = new Set(deletingIds.value).add(item.id)
     await deleteHistory(item.id)
     removeLocalHistoryItem(item.id)
     notifyHistoryUpdated()
     ElMessage.success('删除成功')
-  } catch {
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
     ElMessage.error('删除失败，请稍后重试')
+  } finally {
+    const next = new Set(deletingIds.value)
+    next.delete(item.id)
+    deletingIds.value = next
   }
 }
 
@@ -285,15 +239,30 @@ async function handleClearAll() {
   const ids = getAllHistoryIds()
   if (ids.length === 0) return
 
+  try {
+    await ElMessageBox.confirm(`确定删除全部 ${ids.length} 条历史问答记录吗？`, '清空确认', {
+      confirmButtonText: '全部删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+
   let failedCount = 0
   let successCount = 0
   for (const id of ids) {
     try {
+      deletingIds.value = new Set(deletingIds.value).add(id)
       await deleteHistory(id)
       removeLocalHistoryItem(id)
       successCount += 1
     } catch {
       failedCount += 1
+    } finally {
+      const next = new Set(deletingIds.value)
+      next.delete(id)
+      deletingIds.value = next
     }
   }
 
@@ -308,6 +277,10 @@ async function handleClearAll() {
   }
 }
 
+function handleHistoryUpdated() {
+  void loadHistoryGroups()
+}
+
 onMounted(async () => {
   // Restore theme from localStorage
   const savedTheme = localStorage.getItem('theme')
@@ -320,7 +293,12 @@ onMounted(async () => {
   }
   applyTheme(isDark.value)
 
+  window.addEventListener(HISTORY_UPDATED_EVENT, handleHistoryUpdated)
   await loadHistoryGroups()
+})
+
+onUnmounted(() => {
+  window.removeEventListener(HISTORY_UPDATED_EVENT, handleHistoryUpdated)
 })
 </script>
 
@@ -413,6 +391,12 @@ onMounted(async () => {
   background: #DC2626;
 }
 
+.clear-all-btn:disabled,
+.delete-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 /* ========== Search Bar ========== */
 .search-bar {
   display: flex;
@@ -448,6 +432,42 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.state-panel {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--rag-text-secondary);
+}
+
+.state-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--rag-border);
+  border-top-color: var(--rag-primary);
+  border-radius: 50%;
+  animation: history-spin 0.8s linear infinite;
+}
+
+@keyframes history-spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-state {
+  color: var(--rag-danger);
+}
+
+.retry-btn {
+  border: 1px solid var(--rag-border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: var(--rag-bg-surface);
+  color: var(--rag-text-primary);
+  cursor: pointer;
 }
 
 .history-group {

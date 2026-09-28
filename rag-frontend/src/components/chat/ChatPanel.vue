@@ -42,7 +42,11 @@
                 <span></span>
               </div>
 
-              <div v-else class="ai-content" v-html="renderMarkdown(msg.content)"></div>
+              <div
+                v-else
+                :class="['ai-content', { 'is-error': msg.error }]"
+                v-html="renderMarkdown(msg.content)"
+              ></div>
 
               <span v-if="msg.loading && msg.content" class="typing-cursor"></span>
 
@@ -50,23 +54,14 @@
                 <button class="action-btn" title="复制" @click="copyToClipboard(msg.content)">
                   <Copy :size="14" />
                 </button>
-                <button class="action-btn" title="重新生成" @click="regenerateMessage(msg.id)">
-                  <RefreshCw :size="14" />
-                </button>
-                <button class="action-btn" title="有帮助" @click="thumbUp(msg.id)">
-                  <ThumbsUp :size="14" />
-                </button>
-                <button class="action-btn" title="无帮助" @click="thumbDown(msg.id)">
-                  <ThumbsDown :size="14" />
-                </button>
               </div>
 
-              <div v-if="msg.citations && msg.citations.length > 0 && !msg.loading" class="citations-section">
+              <div v-if="!msg.loading && !msg.error" class="citations-section">
                 <div class="citations-label">
                   <FileText :size="14" />
-                  <span>Sources</span>
+                  <span>引用来源</span>
                 </div>
-                <div class="citations-grid">
+                <div v-if="msg.citations && msg.citations.length > 0" class="citations-grid">
                   <div
                     v-for="(cite, cidx) in msg.citations"
                     :key="cidx"
@@ -76,12 +71,15 @@
                       <FileText :size="16" />
                     </div>
                     <div class="cite-info">
-                      <span class="cite-filename">{{ cite.source }}</span>
+                      <span class="cite-filename">{{ citationLabel(cite) }}</span>
                       <span v-if="cite.snippet" class="cite-snippet">{{ cite.snippet }}</span>
-                      <span class="cite-score">{{ Math.round(cite.score * 100) }}% Match</span>
+                      <span v-if="formatRelevanceScore(cite.score)" class="cite-score">
+                        检索相关度 {{ formatRelevanceScore(cite.score) }}
+                      </span>
                     </div>
                   </div>
                 </div>
+                <p v-else class="source-empty">{{ msg.sourceHint || '本回答未返回可展示来源' }}</p>
               </div>
             </div>
           </div>
@@ -164,7 +162,8 @@
           v-model="inputText"
           type="text"
           class="pill-input"
-          placeholder="Ask about company knowledge..."
+          :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : '请选择知识库后输入问题'"
+          :disabled="isHistoryDetail"
           @keydown="handleKeydown"
         />
 
@@ -180,7 +179,9 @@
         </button>
       </div>
 
-      <p class="disclaimer">AI 可能产生不准确内容，请核对引用来源</p>
+      <p class="disclaimer">
+        {{ isHistoryDetail ? '这里展示的是一条历史问答记录，不代表多轮会话。' : 'AI 可能产生不准确内容，请核对引用来源' }}
+      </p>
     </div>
   </main>
 </template>
@@ -193,9 +194,6 @@ import {
   Sparkles,
   ArrowRight,
   Copy,
-  RefreshCw,
-  ThumbsUp,
-  ThumbsDown,
   FileText,
   Mic,
   ArrowUp,
@@ -203,29 +201,22 @@ import {
 } from 'lucide-vue-next'
 import MarkdownIt from 'markdown-it'
 import { getHistoryById } from '@/api/history'
-import { useSSE } from '@/composables/useSSE'
+import { ask } from '@/api/qa'
+import { normalizeError } from '@/api/errors'
 import { useChatStore } from '@/stores/chat'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
-import type { QAHistoryDTO } from '@/types/history'
 import type { KnowledgeBaseDTO } from '@/types/knowledgeBase'
-
-interface Citation {
-  source: string
-  snippet: string
-  score: number
-}
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  loading?: boolean
-  citations?: Citation[]
-}
+import {
+  applySyncResponse,
+  buildHistoryMessages,
+  citationLabel,
+  formatRelevanceScore,
+  type ChatPresentationMessage as Message,
+} from '@/utils/qaPresentation'
 
 const messages = ref<Message[]>([])
 const inputText = ref('')
-const isStreaming = ref(false)
+const isSubmitting = ref(false)
 const scrollAnchor = ref<HTMLElement>()
 const kbDropdownRoot = ref<HTMLElement>()
 const kbDropdownOpen = ref(false)
@@ -234,7 +225,6 @@ const route = useRoute()
 const historyLoading = ref(false)
 const historyLoadError = ref('')
 let historyLoadSeq = 0
-const sse = useSSE()
 const chatStore = useChatStore()
 const kbStore = useKnowledgeBaseStore()
 
@@ -252,9 +242,16 @@ const md = new MarkdownIt({
   breaks: true,
 })
 
-const canSend = computed(() => inputText.value.trim().length > 0 && !isStreaming.value)
+const canSend = computed(() => (
+  inputText.value.trim().length > 0
+  && selectedKbId.value !== null
+  && !isSubmitting.value
+  && !historyLoading.value
+  && route.name !== 'ChatSession'
+))
 const kbList = computed(() => kbStore.list)
 const selectedKb = computed(() => kbList.value.find(kb => kb.id === selectedKbId.value) ?? null)
+const isHistoryDetail = computed(() => route.name === 'ChatSession')
 
 async function loadKbListIfNeeded() {
   if (kbStore.list.length > 0) return
@@ -274,36 +271,6 @@ function parseRouteHistoryId(): number | null {
 
   const id = Number(raw)
   return Number.isInteger(id) && id > 0 ? id : null
-}
-
-function normalizeCitations(citations: QAHistoryDTO['citations'] | null | undefined = []): Citation[] {
-  return (citations ?? []).map((cite) => {
-    const citeWithScore = cite as unknown as { score?: number; relevanceScore?: number }
-    const rawScore = citeWithScore.score ?? citeWithScore.relevanceScore
-
-    return {
-      source: cite.source || '未知来源',
-      snippet: cite.snippet || '',
-      score: typeof rawScore === 'number' && Number.isFinite(rawScore) ? rawScore : 1,
-    }
-  })
-}
-
-function buildMessagesFromHistory(record: QAHistoryDTO): Message[] {
-  return [
-    {
-      id: `history_${record.id}_user`,
-      role: 'user',
-      content: record.question || '历史问题为空',
-    },
-    {
-      id: `history_${record.id}_assistant`,
-      role: 'assistant',
-      content: record.answer || '历史回答为空',
-      loading: false,
-      citations: normalizeCitations(record.citations),
-    },
-  ]
 }
 
 async function loadHistorySession(id: number) {
@@ -327,7 +294,7 @@ async function loadHistorySession(id: number) {
 
     if (seq !== historyLoadSeq) return
 
-    messages.value = buildMessagesFromHistory(record)
+    messages.value = buildHistoryMessages(record)
     selectedKbId.value = record.kbId ?? null
 
     await loadKbListIfNeeded()
@@ -409,7 +376,7 @@ function handleSend() {
   inputText.value = ''
 }
 
-function sendMessage(text: string) {
+async function sendMessage(text: string) {
   if (!text) return
   const effectiveKbId = selectedKbId.value ?? chatStore.currentKbId
   if (!effectiveKbId) {
@@ -433,36 +400,25 @@ function sendMessage(text: string) {
   messages.value.push(aiMsg)
 
   scrollToBottom()
-  simulateStreamResponse(aiMsg.id, text, effectiveKbId)
-}
-
-async function simulateStreamResponse(msgId: string, question: string, kbId: number) {
-  isStreaming.value = true
-  const msg = messages.value.find(m => m.id === msgId)
-  if (!msg) {
-    isStreaming.value = false
-    return
-  }
+  isSubmitting.value = true
 
   try {
-    await sse.connect(
-      '/api/qa/ask/stream',
-      {
-        kbId,
-        question,
-        topK: chatStore.topK,
-      },
-      (chunk: string) => {
-        msg.content += chunk
-        scrollToBottom()
-      },
-    )
+    const response = await ask({
+      kbId: effectiveKbId,
+      question: text,
+      topK: chatStore.topK,
+    })
+    applySyncResponse(aiMsg, response.data.data)
+    window.dispatchEvent(new Event('rag-history-updated'))
+  } catch (error) {
+    const apiError = normalizeError(error)
+    aiMsg.content = apiError.message
+    aiMsg.loading = false
+    aiMsg.error = true
+    aiMsg.citations = []
+    aiMsg.sourceHint = undefined
   } finally {
-    msg.loading = false
-    if (sse.error.value && !msg.content) {
-      msg.content = sse.error.value
-    }
-    isStreaming.value = false
+    isSubmitting.value = false
     scrollToBottom()
   }
 }
@@ -471,18 +427,6 @@ function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text).then(() => {
     console.log('Copied!')
   })
-}
-
-function regenerateMessage(id: string) {
-  console.log('Regenerate:', id)
-}
-
-function thumbUp(id: string) {
-  console.log('Thumb up:', id)
-}
-
-function thumbDown(id: string) {
-  console.log('Thumb down:', id)
 }
 
 watch(
@@ -678,6 +622,10 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
+.ai-content.is-error {
+  color: var(--rag-danger);
+}
+
 .ai-content :deep(p) {
   margin: 0 0 12px;
 }
@@ -859,6 +807,16 @@ onUnmounted(() => {
   padding: 2px 6px;
   border-radius: 4px;
   width: fit-content;
+}
+
+.source-empty {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--rag-border);
+  border-radius: 8px;
+  color: var(--rag-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .input-wrapper {

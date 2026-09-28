@@ -4,6 +4,13 @@ export interface KnowledgeBaseDTO {
     description: string
     ownerId: number
     vectorCollection: string
+    vectorProviderFamily?: string | null
+    vectorModel?: string | null
+    vectorEndpointIdentity?: string | null
+    vectorRequestContract?: string | null
+    vectorDimension?: number | null
+    vectorGeneration?: string | null
+    vectorIdentityFingerprint?: string | null
     documentCount: number
     isPublic: boolean
     createdAt: string
@@ -24,6 +31,13 @@ export interface UpdateKBRequest {
 
 export interface KnowledgeBaseStatistics {
     kbId: number
+    vectorProviderFamily?: string | null
+    vectorModel?: string | null
+    vectorEndpointIdentity?: string | null
+    vectorRequestContract?: string | null
+    vectorDimension?: number | null
+    vectorGeneration?: string | null
+    vectorIdentityFingerprint?: string | null
     documentCount: number
     vectorCount: number
     queryCount: number

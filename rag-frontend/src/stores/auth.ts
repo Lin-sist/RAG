@@ -7,9 +7,11 @@ export const useAuthStore = defineStore('auth', () => {
     const refreshToken = ref<string>(getToken('refreshToken') || '')
     const userInfo = ref<{ id: number; username: string; email: string } | null>(null)
 
+    const sessionRevision = ref(0)
     const isLoggedIn = computed(() => !!accessToken.value)
 
-    function setAuthTokens(access: string, refresh: string) {
+    function setAuthTokens(access: string, refresh: string, rotating = false) {
+        if (!rotating) sessionRevision.value++
         accessToken.value = access
         refreshToken.value = refresh
         setToken('accessToken', access)
@@ -21,6 +23,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     function clearAuth() {
+        sessionRevision.value++
         accessToken.value = ''
         refreshToken.value = ''
         userInfo.value = null
@@ -28,5 +31,5 @@ export const useAuthStore = defineStore('auth', () => {
         removeToken('refreshToken')
     }
 
-    return { accessToken, refreshToken, userInfo, isLoggedIn, setAuthTokens, setUserInfo, clearAuth }
+    return { accessToken, refreshToken, userInfo, sessionRevision, isLoggedIn, setAuthTokens, setUserInfo, clearAuth }
 })

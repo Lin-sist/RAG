@@ -2689,3 +2689,53 @@
 - 范围安全：未修改`.ai/ACTIVE_TASK.md`、C18 OpenSpec/eval/代码、Java、`.env.local`或前端业务代码；保留用户已有`AGENTS.md`及共享日志其他增量，未暂存、commit、push/PR/deploy。
 - 剩余风险：新worktree不会继承当前未提交的`AGENTS.md`治理更新；开始实现前必须在新对话读取交接、复核worktree规则并明确前端切片提交责任。
 - Commit: pending
+
+## 2026-09-20 · frontend-demo-integration-r1（Type B）
+
+- Commit: pending；无 Agent 暂存/提交授权，本轮未执行暂存/commit/push/PR/deploy。
+- 范围：独立 worktree `C:/Users/Lin/.codex/worktrees/frontend-demo-integration/RAG`，分支 `codex/frontend-demo-integration`，起点 `708bd7c5021d6f490dd5c2ab22637a94dc6e148e`。按 `docs/roadmap/frontend-demo-backend-integration-plan.md` R0/R1 执行；Type B 无 design 决策条目。
+- 修改文件：`rag-frontend/package.json`、`src/api/{auth,request,requestClient,errors}.ts`、`src/composables/useAuth.ts`、`src/stores/auth.ts`、`src/types/api.ts`、`src/views/login/LoginView.vue`、`src/components/history/FeedbackDialog.vue`、`tests/auth-request.test.mjs`（以上 src/tests 相对 rag-frontend），以及规划执行记录与本日志。
+- 已确认事实：旧实现刷新失败时等待队列不 reject、重发无 401 上限、refresh 仅写 storage 不更新 Pinia。现统一请求错误、双 token 轮换及单飞刷新；失败释放全部等待者、最多一次重发；401 登录/退出不刷新；客户端会话版本防止旧请求跨登录重发；登录防重复提交并只消费标准错误。反馈弹窗仅修改旧响应体错误读取。
+- 验证：环境 Preflight 报告可用 Node、主工作树 node_modules；隔离 worktree 使用 `C:/Program Files/nodejs/npm.cmd ci --offline --no-audit --no-fund` 安装既有 lockfile 110 packages，无新增依赖；`npm test` 14 tests/14 PASS；`npm run build` 包含 vue-tsc -b 与 vite build，PASS；`git diff --check` PASS。
+- 执行中测试入口初次因待实现模块缺失而失败；早期构建暴露类型声明与未使用 import，已修复。测试 Vite 扫描退出噪声已通过关闭测试依赖发现消除；最终测试无该噪声。
+- 外部集成：合成 Axios adapter，无真实 backend/provider/embedding/rerank/ask/generation/judge 调用，无业务数据出站，无 query count/history 写入。client timeout 30 秒，401 最多刷新后重发一次，其他 HTTP/network 错误不自动重试；覆盖 401/403/404/429/503/network/timeout。
+- 跳过：真实认证与浏览器 E2E 未授权且本切片以离线请求测试验收；Java/Python 未改，未运行对应测试；未测试后续 R2/R3/R4 能力。
+- 范围检查：未改 `.ai/ACTIVE_TASK.md`、OpenSpec/C18、Java、eval/fixtures/profile、prototype、锁文件或本地配置；暂存区为空，主工作树另行只读核验。
+- 剩余风险：合成通过不等于真实认证联调；构建存在 chunk > 500 kB 警告；其他页面状态适配按后续切片推进，未扩大本轮范围。
+
+## 2026-09-21 · frontend-demo-integration-r3a（Type B）
+
+- Commit: pending；本轮没有 Agent 暂存/提交授权，未执行暂存、commit、push、PR、发布或部署。
+- 范围：继续使用独立 worktree `C:/Users/Lin/.codex/worktrees/frontend-demo-integration/RAG` 与分支 `codex/frontend-demo-integration`；只推进 R3a 同步问答、来源和扁平历史的离线适配，不接管仍为 ACTIVE 的 C18 change。
+- 修改文件：`rag-frontend/src/components/chat/ChatPanel.vue`、`src/views/chat/ChatView.vue`、`src/views/history/ChatHistory.vue`、`src/types/{qa,history}.ts`、`src/utils/{qaPresentation,historyPresentation}.ts`、`tests/qa-history.test.mjs`，以及本规划执行记录和本日志。
+- 已确认事实：后端同步问答是 `POST /api/qa/ask`，成功响应独立返回 `citations`/`contexts`；Citation 已有文档标题、文件名、文档/chunk ID 和可空 score；history 是按记录 ID 查询的一问一答，不存在 conversation 实体。本轮正式聊天页改走同步主链，不静默重试；来源缺失或 score 缺失时不造假；历史详情禁用继续提问并标注非多轮会话。
+- 验证：`node --test tests/*.test.mjs` 为 26/26 PASS；`vue-tsc -b` PASS；`vite build` PASS；`git diff --check` PASS。因 shell 无 `npm`，按 Preflight 报告使用已存在 Node 和 `node_modules/.bin` 直接执行等价命令，未安装或升级依赖。
+- 外部与副作用：新增测试全部使用合成 request fixture；未启动前后端，backend/provider/embedding/rerank/ask/generation/judge calls=0，业务数据出站=false，query count/history 写入=0；没有读取或修改 `.env.local`。
+- 跳过：R3b 真实 `/ask` 和 history 联调未获该范围授权；反馈闭环不在用户指定的本切片；R4/C21 的 SSE terminal、流式 citations、可靠 cancel/history 语义未进入；Java/Python 未改，因此未运行对应测试。
+- 范围安全：未修改 `.ai/ACTIVE_TASK.md`、C18 OpenSpec/eval/Java/fixtures/profile、prototype 或锁文件；保留 worktree 中 R1/R2a 既有未提交改动，未混入主工作树。
+- 剩余风险：合成测试与构建不代表真实后端联调通过；正式构建仍有既有 >500 kB chunk 警告；R3b 会触发 provider 调用、query count/history 写入，必须使用非 C18 账号/KB/数据并另行披露授权。
+
+## 2026-09-26 · frontend-demo-integration-r3b（真实单题联调，generation 410）
+
+- Commit: pending；无 Agent 暂存/提交授权，本轮未执行暂存、commit、push、PR、发布或部署。
+- 授权与范围：用户明确授权使用现有唯一启用的 `admin` 账号、专用 KB `frontend-r3b-smoke-20260926`、单份合成文本和单次同步问答；embedding/chat 模型分别为 `nvidia/nemotron-3-embed-1b`、`qwen/qwen3.5-122b-a10b`，timeout 120 秒、retry 0。未授权 cleanup、删除、替换模型或第二次问答。
+- 真实执行：创建 KB `17`、上传文档 `60`，解析任务 `affd332b-fd1d-4e0f-91b8-a49352359bcb` 完成，vector count 为 1。经 Vite 代理完成真实登录及唯一一次 `/api/qa/ask`；检索、query embedding、合并和 rerank 成功，generation 的 `/chat/completions` 返回 HTTP 410 Gone，trace id `001a0dbe92c3b181c3f62f6108a71437`。失败即停，没有 provider 重试。
+- 持久化副作用：query count `0→1`，history `0→0`，document/vector 保持 `1/1`。真实响应是 HTTP 200 envelope 内 `QAResponse.metadata.status=error`，因此成功答案、citations 展示与 history 回读仍未确认。
+- 修改文件：`rag-frontend/src/utils/qaPresentation.ts`、`tests/qa-history.test.mjs`、`docs/roadmap/frontend-demo-backend-integration-plan.md` 与本日志。前端现将业务层 `status=error` 映射为错误态并清空 citations/contexts，避免把 provider 失败文案当普通答案展示；Type B 内无 design 决策条目。
+- 验证：待本记录写入后执行前端聚焦测试、含 `vue-tsc` 的正式 build 与 `git diff --check`，结果在本轮最终说明；真实 provider 调用不再重复。
+- 跳过：浏览器 UI 自动化因 Playwright 前置检查无可用 `npx` 且 Node 安装目录不可读而跳过，未安装工具；Java/Python 未改，不运行相应测试；不以真实 retrieval 成功宣称 generation/citation/history 通过。
+- 范围安全：`.env.local` 仅由运行时加载，未修改且未输出凭据/token；未修改 Java、C18/OpenSpec、KB15、题目/fixture 或其他业务数据；主工作树保持隔离。专用 KB/文档及本地服务按授权边界保留，未清理。
+- 剩余风险：当前 chat 模型/endpoint 返回 410，原因至少表明现配置不再被服务端接受，但未在本授权内替换模型验证；下一次真实问答需要新的明确授权。后端错误响应仍使用 HTTP 200 envelope，其他消费者若只看 HTTP/envelope code 也可能误判。
+- 验证补录：`node --test tests/*.test.mjs` 为 27/27 PASS；`vue-tsc -b` PASS；`vite build` PASS；`git diff --check` PASS。首次沙箱内执行因隔离 worktree 权限无法写 `tsconfig.tsbuildinfo`/读取 Vite 配置而未完成，随后仅在沙箱外重跑同一组本地检查；未安装依赖、未调用 backend/provider。构建保留既有 >500 kB chunk 警告。
+
+## 2026-09-28 · frontend-demo-integration-r3b（模型修正后真实联调通过）
+
+- Commit: pending；用户明确授权修正 chat 模型、重启后端和执行一次新的 R3b 合成问答，但未授权暂存/提交、cleanup、push、PR、发布或部署。
+- 诊断与修正：复核确认 `.env.local` 仍为已 Deprecated 的 `qwen/qwen3.5-122b-a10b`；不修改受保护本地配置，只在本次后端进程覆盖 `NVIDIA_CHAT_MODEL=nvidia/nemotron-3-super-120b-a12b`。其余 KB、文档、问题、请求参数、timeout 120 秒和 retry 0 保持不变，以单变量复验 410 根因。
+- 运行准备：重新启动 Docker compose 五项依赖，均进入 healthy；安装当前 `rag-common/rag-auth/rag-document/rag-core` 内部模块后启动后端 8080，并启动隔离前端 worktree 的 Vite 代理 5173。未执行模型目录或合成探测请求。
+- 真实结果：经 Vite 代理执行唯一一次 `/api/qa/ask`，HTTP/envelope 200，约 4.38 秒；回答 `CEDAR-47`，citations=1、contexts=1，trace `001a0e56f612d503665e01ffe78b8aa1`。后端记录两个 query variant embedding、合并/rerank 1 context、generation 成功并保存 history id `646`；无 provider 重试。
+- 副作用与回读：document/vector `1/1` 不变，query count `1→2`，history `0→1`；只读回读 history 646，问题、答案、trace 一致，citation=1，documentTitle/sourceFileName 均为“Frontend R3b 合成联调资料”。同步问答、来源字段与扁平历史真实链路判定 `confirmed`。
+- 根因：同一请求链仅替换 chat model 后由 410 转为成功，结合仓库已有 Deprecated 证据，确认旧 Qwen 模型端点退役是上一轮失败的直接原因；检索、Vite 代理及 history 保存不构成该 410 的原因。
+- UI 验证：尝试使用 Codex in-app browser 只读登录并查看既有 history，但本地浏览器桥不可用；未绕过、未安装工具、未从 UI 再次提问。因此接口级真实联调通过，浏览器 E2E/视觉展示仍 `SKIPPED`。
+- 验证与范围：本轮没有前端/Java业务代码改动，复用 2026-09-26 已通过的前端 27/27、`vue-tsc -b` 和 Vite build；收尾执行 `git diff --check`。`.env.local` 未修改，C18/OpenSpec、KB15 与其他业务数据未触碰；本地 KB17、history646、后端/Vite/Docker 按授权边界保留。
+- 配置落盘补录：上一条“`.env.local` 未修改”仅描述诊断复验阶段。单变量复验成功后，为防止普通 `start-backend.ps1` 再次加载旧 Qwen，依据用户本轮对“修正 chat 模型配置”的明确授权，仅将 `.env.local` 的 `NVIDIA_CHAT_MODEL` 持久化为 `nvidia/nemotron-3-super-120b-a12b`；未读取、输出或改动 key、密码及其他配置。当前运行进程已使用相同模型，无需追加 provider 请求。

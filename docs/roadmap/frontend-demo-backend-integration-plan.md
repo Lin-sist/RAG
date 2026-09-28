@@ -343,3 +343,44 @@ REQUESTING
 - C21 未接受前，不实现或宣称完整 structured terminal、流式 citations 或可靠 cancel/history 语义。
 
 R1、R2a、R3a 不依赖 C21，也不要求 C18 先归档；R2b、R3b受真实联调边界约束。R4 是否提前取决于用户是否接受 text-only 降级。完整流式产品体验必须等待 C21，不以 C18 完成代替 C21。
+
+## 11. R0/R1 首切片执行记录（2026-09-20）
+
+- 状态：`confirmed`（离线认证请求测试与正式构建）；真实认证联调 `unknown`，R2/R3/R4 `planned`，真实 provider 调用 `out_of_scope`。
+- 隔离分支：`codex/frontend-demo-integration`，起点 `708bd7c5021d6f490dd5c2ab22637a94dc6e148e`；独立 worktree，不改主工作树或 C18 活动指针。
+- 已实现：单一 request client 的 typed error；HTTP status 优先并兼容两种错误 envelope；无 data 成功类型；single-flight refresh、双 token 轮换、所有等待者失败收敛、一次重发上限、登录/退出端点不触发刷新；Pinia/storage 同步更新；客户端会话版本阻止跨登录重发；登录防重复提交和单处错误提示。
+- 原始 `ErrorResponse` 消费者仅发现反馈弹窗一处，已将错误读取对齐到标准 `message`，不改变反馈业务。
+- 验证：`rag-frontend/` 下 `npm test` 14/14 PASS；`npm run build`（`vue-tsc -b && vite build`）PASS；`git diff --check` PASS。无新增/升级依赖。
+- 验证边界：全部请求使用合成 Axios adapter，真实 backend/provider 调用均为 0；未运行浏览器端到端或真实登录/登出验收，不以合成测试宣称后端联调通过。
+- 剩余项：构建有大于 500 kB chunk 警告；其他业务页面的完整状态适配留在各自阶段。未暂存、提交、合并或发布，提交责任为用户手动提交。
+
+## 12. R3a 离线适配执行记录（2026-09-21）
+
+- 状态：同步问答、独立来源卡片和扁平历史前端适配为 `confirmed`（合成契约测试与正式构建）；真实 `/ask`、真实 history 写入及 provider 效果仍为 `unknown`，R3b 未执行。
+- 正式 `/chat` 主链改为单次 `POST /api/qa/ask`，失败不静默重试；不再由正式聊天页默认进入 text-only SSE，也不为补来源额外调用 `/ask`。
+- `Citation` 前端类型对齐后端已有 `sourceFileName`、`documentTitle`、`documentId`、`chunkId`、`score` 等字段；来源标题按真实返回字段降级，缺失 score 时不展示假相关度，空 citations 明示未返回可展示来源。
+- `/chat/:id` 仅构造一条问题和一条回答，并禁用继续提问，明确不是 conversation；历史列表具备 loading、error/retry、empty、filtered-empty 和 deleting 状态，删除前确认。
+- 验证：`node --test tests/*.test.mjs` 26/26 PASS；`vue-tsc -b` PASS；`vite build` PASS；`git diff --check` PASS。构建仍有既有的 >500 kB chunk 警告。
+- 验证边界：全部新增问答/历史测试使用合成 request fixture；backend/provider/embedding/rerank/ask/generation/judge 调用均为 0，业务数据出站为 false，query count/history 写入为 0。
+- 未进入：R3b 真实联调、反馈闭环、R4 文本流修复、C21 structured terminal/citations/cancel-history；未修改 Java、C18、OpenSpec、`.env.local`，未暂存、提交、push、PR、发布或部署。
+
+## 13. R3b 单题真实联调记录（2026-09-26）
+
+- 用户明确授权固定范围：使用现有唯一启用的 `admin` 账号，在专用知识库 `frontend-r3b-smoke-20260926` 上传一份无敏感信息的合成文本，执行一次同步问答；模型为 `nvidia/nemotron-3-embed-1b` 与 `qwen/qwen3.5-122b-a10b`，timeout 120 秒、retry 0，不清理、不删除、不提交。
+- 创建专用 KB `17`、文档 `60`，解析任务完成；问答前确认 document/vector/query/history 为 `1/1/0/0`。上传首次仅因本地沙箱拒绝读取文件而未发出请求，确认服务端仍为 0 文档后才重发一次上传；该重发不是 provider 重试。
+- 通过前端 Vite `/auth`、`/api` 代理完成真实登录与唯一一次 `POST /api/qa/ask`。检索链成功：查询变体完成 embedding、每路返回 1 个结果，合并/rerank 后保留 1 个 context；随后 chat provider `/chat/completions` 返回 HTTP 410 Gone，响应为 HTTP 200 envelope 内 `metadata.status=error`，trace id 为 `001a0dbe92c3b181c3f62f6108a71437`。
+- 失败即停，没有重试或替换模型。问答后 query count `0→1`，history `0→0`，专用 KB vector count 保持 1；因此真实成功回答、citations 展示和 history 回读仍未验收。
+- 根据真实响应修正前端错误适配：`metadata.status=error` 现在进入错误态并清空 citations/contexts，不再把 provider 失败文案渲染为普通成功答案；增加合成回归测试。
+- 浏览器 UI 自动化未执行：Playwright 前置检查发现当前 shell 无可用 `npx`，且不能读取现有 Node 安装目录；未安装工具。联调证据来自真实 Vite 代理 HTTP 链路、后端 trace 与持久化计数。
+- 范围安全：未修改 `.env.local`、Java/C18/OpenSpec、KB15 或其他业务数据；未 cleanup、暂存、commit、push、PR、发布或部署。下一次真实问答必须单独授权模型修正和新调用，不能复用本次已耗尽的一次性授权。
+- 本地验证：`node --test tests/*.test.mjs` 27/27 PASS，`vue-tsc -b`、`vite build` 与 `git diff --check` 均 PASS；构建仍有既有 >500 kB chunk 警告。
+
+## 14. R3b 模型修正与成功复验（2026-09-28）
+
+- 用户针对上一轮停止点明确授权修正 chat 模型、重启后端并执行一次新的真实合成问答；继续使用 KB `17`、文档 `60`、同一问题、`topK=5`、`enableCache=false`、timeout 120 秒、retry 0，失败即停。
+- 诊断先只改变一个变量：本次后端进程覆盖为已通过 C18 验收的 `nvidia/nemotron-3-super-120b-a12b`，embedding 仍为 `nvidia/nemotron-3-embed-1b`。单题成功后，依据用户对模型配置修正的明确授权，将 `.env.local` 的唯一 `NVIDIA_CHAT_MODEL` 从已 Deprecated 的旧 Qwen 持久化为同一已验证模型，避免普通启动脚本重新加载旧值；未修改密钥或其他配置。Docker 五项依赖重新创建并健康，当前内部模块安装后启动后端，Vite 代理启动于 5173。
+- 唯一一次 `POST /api/qa/ask` 成功：HTTP/envelope 均为 200，耗时约 4.38 秒，回答“北星令牌的代号是 CEDAR-47。”，citations/contexts 均为 1，trace `001a0e56f612d503665e01ffe78b8aa1`。后端 trace 显示两个查询变体 embedding、1 个合并/rerank context 和一次成功 generation；没有重试或额外模型探测。
+- 持久化结果：document/vector 保持 `1/1`，query count `1→2`，history `0→1`；新 history id `646`，回读得到同一问题、答案、trace 及 1 条 citation，标题/文件名均为“Frontend R3b 合成联调资料”。这确认同步回答、独立 citation 与 flat history 的真实后端链路通过。
+- 根因结论：在账号、KB、文档、问题和请求参数不变时，仅替换已 Deprecated 的 Qwen 模型标识即可消除 410；因此上一轮 generation 失败由旧模型端点退役直接导致，而非检索、Vite 代理或 history 保存故障。
+- 浏览器 UI E2E 仍为 `SKIPPED`：Codex in-app browser 的本地桥不可用，未绕过、未安装工具，也未从界面再次发送问答。当前结论是接口级真实前后端联调通过，不扩张为浏览器视觉验收。
+- 本轮无前端/Java业务代码修改，仅追加本记录与 AGENT_LOG；复用 2026-09-26 的 27/27 前端测试及正式 build 结果，收尾执行 `git diff --check`。未 cleanup、暂存、commit、push、PR、发布或部署。

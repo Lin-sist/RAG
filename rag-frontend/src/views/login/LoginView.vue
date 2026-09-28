@@ -22,6 +22,7 @@ import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuth } from '@/composables/useAuth'
+import { normalizeError } from '@/api/errors'
 
 const router = useRouter()
 const route = useRoute()
@@ -35,15 +36,16 @@ const loginRules: FormRules = {
 }
 
 async function handleLogin() {
-  const valid = await loginFormRef.value?.validate().catch(() => false)
-  if (!valid) return
+  if (loading.value) return
   loading.value = true
+  const valid = await loginFormRef.value?.validate().catch(() => false)
+  if (!valid) { loading.value = false; return }
   try {
     await login({ username: loginForm.username, password: loginForm.password })
     ElMessage.success('登录成功')
     router.push((route.query.redirect as string) || '/')
-  } catch {
-    ElMessage.error('登录失败，请检查用户名和密码')
+  } catch (error) {
+    ElMessage.error(normalizeError(error).message)
   } finally {
     loading.value = false
   }
