@@ -5,11 +5,21 @@
 - 同一 `POST /api/qa/ask/stream` 默认保持 legacy 文本格式；客户端显式请求 `X-RAG-Stream-Contract: structured-v1` 才接收具名 `text` 增量与唯一具名 `terminal` event。未知版本在问答执行前拒绝。
 - terminal 包含协议版本、`finalState`、稳定 `reason`、`citations[]`、必要安全 metadata、classifier/strategy/policy identity、budget outcome 与实际 usage。缺失观测显式标记不可用，不伪填零。新协议不以 `[DONE]` 表示业务成功。
 - `ANSWER / NO_ANSWER / UNSUPPORTED / ERROR / CANCELLED` 可区分；服务端 timeout 归入 `ERROR` 并带稳定 timeout reason。网络断流而无 terminal 时，客户端只判定 incomplete。连接已断时不能保证送达 `CANCELLED`。
-- 字段 nullability、Router-off identity、稳定 reason 枚举及最后一块后断连时的线性化次序，在首个实现切片前以契约测试锁定并同步更新 spec delta。
+- 字段 nullability、Router-off identity 与稳定 reason 已由第二切片锁定并同步更新 spec delta；最后一块后断连时的线性化次序仍待后续竞态测试验证。
+
+## 已锁定的 wire v1 字段（第二切片）
+
+- 请求头 `X-RAG-Stream-Contract` 缺失或空白时使用 legacy；精确值 `structured-v1` 启用新格式；其他非空值在 query count、retrieval 和 generation 前以 `UNSUPPORTED_STREAM_CONTRACT`/HTTP 400 拒绝。
+- 新格式的增量事件名为 `text`，其 `data` 是原始文本片段；最后最多一个 `terminal`，其 `data` 是 JSON。新格式不发送 `[DONE]` 或 `[ERROR]` 文本标记。终态无法发送时，客户端只能看到 incomplete。
+- terminal JSON 字段固定为 `schemaVersion`, `finalState`, `reason`, `citations`, `metadata`, `classifierVersion`, `effectiveStrategy`, `policyVersion`, `routeReason`, `budgetOutcome`, `usage`。`schemaVersion=structured-v1`。`citations` 在非 `ANSWER` 和错误时为空数组；`metadata` 只允许 citation 计数/coverage 与明确标名的 estimated token 字段。
+- Router 关闭时三项 identity 为 `legacy`，`routeReason=LEGACY`。缺少预算账本时 `usage` 和 `budgetOutcome` 为 JSON null；不得写零。`usage` 有值时沿用 `QueryBudgetUsage` 的字段名，其中 token 值是估计值，不是 provider 返回的实耗 token。
+- `reason` 对完整回答为 `NONE`；无证据或拒答使用现有 `NoAnswerReason`；不支持或无效输入使用既有 route reason，后者保持 C16 的 `INVALID/INVALID_INPUT`，不压成 `UNSUPPORTED`。流异常为 `STREAM_FAILED`，已识别超时为 `TIMEOUT`，核心结果缺失为 `RESULT_UNAVAILABLE`。这些错误码不包含异常原文。`CANCELLED` 仅保留为服务端可确认且连接仍可发送时的状态；当前断连不发送该 event。
 
 ## 单次执行和副作用
 
 当前 `Flux<String>` 不能交付校验后的引用与最终状态。核心层应形成一次流执行的结构化结果，供文本发送、terminal 和历史保存使用；不得为补引用再调用一次 `/ask`。只有完整 `ANSWER` 且满足交付条件才保存正常 QA history，引用来自同次执行。`NO_ANSWER / UNSUPPORTED / ERROR / CANCELLED`、timeout、部分输出、断连或发送失败不写正常成功历史。已接受请求的 query count 至多增加一次；MCP 仍不写 history/query count。
+
+第二切片将 Controller 的保存条件收紧为：核心结果为完整 `ANSWER`，且 SseEmitter 发送 terminal（legacy 为 `[DONE]`）未抛错、未观测到连接关闭。保存的答案与 citations 来自同一次结果。发送调用成功仍不等于客户端应用确认收到；最后一块后的竞态与发送失败将继续用后续测试审查。
 
 ## 验证矩阵
 

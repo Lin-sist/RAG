@@ -481,7 +481,7 @@ public class RAGServiceImpl implements RAGService {
         if (routePlan.isPresent() && routePlan.get().intent() != QueryIntent.FACT) {
             QueryRoutePlan plan = routePlan.get();
             recordStreamRoute(terminalSignal, plan, plan.intent().name());
-            recordStreamResult(terminalSignal, "UNSUPPORTED", plan.reason().name(),
+            recordStreamResult(terminalSignal, plan.intent().name(), plan.reason().name(),
                     "当前有界路由仅支持事实型问题，请改为单一事实查询。", List.of(), Map.of());
             askSpan.detach();
             return finishStream(

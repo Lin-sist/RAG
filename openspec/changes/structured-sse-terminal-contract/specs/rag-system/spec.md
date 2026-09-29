@@ -2,7 +2,9 @@
 
 ### Requirement: Versioned Structured SSE Terminal
 
-系统 SHALL 在现有 `POST /api/qa/ask/stream` 提供显式版本协商的结构化 SSE 契约，同时使未选择新版本的客户端继续接收既有纯文本格式。未知版本 MUST 在检索或 generation 前拒绝。新契约 SHALL 输出文本增量与最多一个具名 terminal event；terminal SHALL 包含协议版本、`ANSWER / NO_ANSWER / UNSUPPORTED / ERROR / CANCELLED` final state、稳定 reason、该次有效 citations、必要安全 metadata、classifier/strategy/policy identity、budget outcome 和实际 usage。无法观测的 usage MUST 显式标记不可用，不得伪造为零。未收到 terminal 的客户端 MUST 将传输视为 incomplete，不得推断业务成功。
+系统 SHALL 在现有 `POST /api/qa/ask/stream` 提供显式版本协商的结构化 SSE 契约，同时使未选择新版本的客户端继续接收既有纯文本格式。未知版本 MUST 在检索或 generation 前拒绝。新契约 SHALL 输出文本增量与最多一个具名 terminal event；terminal SHALL 包含协议版本、`ANSWER / NO_ANSWER / UNSUPPORTED / ERROR / CANCELLED` 可区分的 final state，并保留 C16 已有的 `INVALID` 无效输入状态，以及稳定 reason、该次有效 citations、必要安全 metadata、classifier/strategy/policy identity、budget outcome 和实际 usage。无法观测的 usage MUST 显式标记不可用，不得伪造为零。未收到 terminal 的客户端 MUST 将传输视为 incomplete，不得推断业务成功。
+
+新版本通过 `X-RAG-Stream-Contract: structured-v1` 精确协商，缺失/空白值维持 legacy；其他值 SHALL 在 query count、retrieval 与 generation 前以 `UNSUPPORTED_STREAM_CONTRACT`/HTTP 400 拒绝。新版本使用具名 `text` 与 `terminal` event，不发送 `[DONE]`/`[ERROR]` 文本标记。terminal JSON 的字段为 `schemaVersion/finalState/reason/citations/metadata/classifierVersion/effectiveStrategy/policyVersion/routeReason/budgetOutcome/usage`。Router 关闭的 identity 为 `legacy`，`routeReason=LEGACY`；无法观测的 budget outcome/usage 为 JSON null。usage 中的估计 token 字段 MUST 保留 estimated 命名，不得声明为 provider 实耗 token。metadata MUST 使用安全白名单，不得包含 provider body、原始异常、凭据或任意检索上下文。
 
 #### Scenario: 旧客户端兼容
 - GIVEN 客户端未请求结构化版本

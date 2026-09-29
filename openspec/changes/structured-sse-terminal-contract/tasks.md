@@ -8,8 +8,9 @@
 ## 后端契约与验证
 
 - [x] 首切片：单次流执行形成内部结构化结果及有效 citations/已观测的预算 usage；legacy 未建预算账本时保留 `null`。聚焦测试证明不重发问答、不伪造零值。此项尚不输出新 SSE wire，也不修正 Controller 历史写入。
-- [ ] 次切片：显式版本协商、具名 text/terminal event 与 legacy 兼容；测试错误、超时、断连及唯一终态。
-- [ ] 次切片：按最终结果和交付状态约束 history/cache/query-count；覆盖最后一块后断连、发送失败及租户隔离。
+- [x] 次切片：显式版本协商、具名 text/terminal event、legacy wire 兼容与安全载荷；MockMvc 覆盖完整回答、无答案、部分文本后错误及唯一终态。
+- [ ] 后续验证：补服务端 timeout、断连与最后一块后发送失败的竞态测试；确认不可送达 terminal 时客户端为 incomplete。
+- [ ] 后续切片：按最终结果和交付状态约束 history/cache/query-count；当前已将正常历史限定为可发送的 `ANSWER` 并保存同次 citations，仍需覆盖最后一块后断连、发送失败及租户隔离。
 - [ ] 对齐同步/SSE/MCP 语义，运行 Java 聚焦测试和风险相称的全仓测试；记录未验证的真实 provider 情形。
 - [ ] 汇总后端验收证据；整个 C21 完成后再按授权归档并置 `ACTIVE_TASK` 为 `IDLE`。
 

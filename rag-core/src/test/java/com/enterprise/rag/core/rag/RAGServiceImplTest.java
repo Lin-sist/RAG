@@ -560,6 +560,28 @@ class RAGServiceImplTest {
     }
 
     @Test
+    void enabledStreamKeepsInvalidInputDistinctFromUnsupported() {
+        RouterProperties properties = new RouterProperties();
+        properties.setEnabled(true);
+        RAGServiceImpl routedService = new RAGServiceImpl(
+                queryEngine, answerGenerator, redisUtil, new ObjectMapper(),
+                new BoundedQueryRouter(properties, new DeterministicFactIntentClassifier()));
+        com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal signal =
+                new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
+
+        routedService.askStream(QARequest.stream("x".repeat(513), SCOPE))
+                .contextWrite(context -> context.put(
+                        com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY,
+                        signal))
+                .collectList().block();
+
+        assertEquals("INVALID", signal.executionResult().finalState());
+        assertEquals("INVALID_INPUT", signal.executionResult().reason());
+        verify(queryEngine, never()).retrieveWithDiagnostics(any(), any());
+        verify(answerGenerator, never()).generateStream(any(), any());
+    }
+
+    @Test
     void enabledFactStreamUsesSingleBoundedRetrievalAndRecordsNoAnswer() {
         doReturn(new RetrievalResult(
                 List.of(),

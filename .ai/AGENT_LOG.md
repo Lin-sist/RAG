@@ -2977,3 +2977,17 @@
 - 跳过：未改 SSE wire、Controller 历史写入或前端；未做真实 provider/ask/embedding/rerank/judge 调用，故未做真实联调。未运行全仓 Maven 测试，聚焦链已覆盖当前 core 与 Controller 接口。
 - 剩余风险：Controller 仍按旧完成回调保存空 citations 的历史；terminal event、交付/断连竞态和 legacy usage 的进一步归因属于后续切片。当前结果是内部执行事实，不代表客户端已收到结构化终态。
 - Commit: pending
+
+## 2026-09-29 · C21 首切片提交补录
+
+- 上一执行提交：`76b1a06`（`feat(C21): 建立流式执行结果与终态契约规划`）。本条仅补录真实 hash，不回改历史记录。
+
+## 2026-09-29 · C21 版本化 SSE wire 切片
+
+- 任务/change：`structured-sse-terminal-contract`（C21）。
+- 范围与文件：`rag-admin` 新增 `StreamTerminalEvent`、修改 `QAController` 及对应测试；`RAGServiceImpl` 保持 Router 无效输入的 `INVALID` 终态并补聚焦测试；同步更新本 change 的 design、spec delta、tasks 与 `.ai/ACTIVE_TASK.md`。
+- 已确认事实与结果：显式 `structured-v1` 使用具名 `text`/唯一 `terminal` 事件，未知版本在 query count 前拒绝；legacy wire 保持原文本标记。终态仅放行安全 metadata，非 `ANSWER` 不带 citations，缺失 usage 保留 null。历史仅在完整 `ANSWER` 且发送未报错、连接未观测关闭时保存同次答案与 citations。依据 C21 design 决策 1、2、3、5、6。
+- 验证：`mvn --% -q -pl rag-admin -am -Dtest=RAGServiceImplTest,QAControllerTest,StreamTerminalEventTest -Dsurefire.failIfNoSpecifiedTests=false test` 通过，25+21+3=49 tests、零失败；`git diff --check` 通过。
+- 跳过：未运行真实 provider 或前端联调；未运行全仓 Maven 测试，聚焦链已覆盖本轮 core/controller/wire 改动。
+- 剩余风险：`SseEmitter.send` 返回不等于客户端收到 terminal；timeout、最后一块后断连/发送失败、租户隔离和 cache/query-count 完整矩阵待后续切片验证。C21 仍为 ACTIVE。
+- Commit: pending

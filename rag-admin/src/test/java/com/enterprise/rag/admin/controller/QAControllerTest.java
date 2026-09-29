@@ -2,6 +2,7 @@ package com.enterprise.rag.admin.controller;
 
 import com.enterprise.rag.admin.kb.dto.KnowledgeBaseDTO;
 import com.enterprise.rag.admin.kb.entity.Document;
+import com.enterprise.rag.common.exception.BusinessException;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
@@ -9,6 +10,7 @@ import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
 import com.enterprise.rag.admin.security.RequestIdentity;
 import com.enterprise.rag.core.rag.model.QARequest;
+import com.enterprise.rag.core.rag.model.Citation;
 import com.enterprise.rag.core.rag.query.QueryEngine;
 import com.enterprise.rag.core.rag.query.RetrievalResult;
 import com.enterprise.rag.core.rag.model.QAResponse;
@@ -18,6 +20,12 @@ import com.enterprise.rag.core.rag.service.RAGService;
 import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.security.core.userdetails.UserDetails;
 import reactor.core.publisher.Flux;
 
@@ -30,9 +38,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -42,6 +52,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 class QAControllerTest {
 
@@ -191,7 +204,14 @@ class QAControllerTest {
 
         @Test
         void askStreamShouldIncrementQueryCount() {
-                when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.just("chunk-1", "chunk-2", "[DONE]"));
+                Citation citation = Citation.of("chunk-1", "validated snippet");
+                when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.deferContextual(context -> {
+                        RAGService.StreamTerminalSignal signal = context.get(
+                                        RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY);
+                        signal.recordExecutionResult("ANSWER", "NONE", "chunk-1chunk-2",
+                                        List.of(citation), Map.of("validCitations", 1));
+                        return Flux.just("chunk-1", "chunk-2");
+                }));
 
                 QAController.AskRequest request = new QAController.AskRequest(
                                 10L,
@@ -212,7 +232,8 @@ class QAControllerTest {
                 verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
                 verify(qaHistoryService, times(1)).save(any(RequestIdentity.class), argThat(saveReq -> saveReq != null
                                 && "什么是RAG".equals(saveReq.getQuestion())
-                                && "chunk-1chunk-2".equals(saveReq.getAnswer())));
+                                && "chunk-1chunk-2".equals(saveReq.getAnswer())
+                                && List.of(citation).equals(saveReq.getCitations())));
         }
 
         @Test
@@ -232,6 +253,150 @@ class QAControllerTest {
 
                 verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
                 verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void unknownStreamContractFailsBeforeAnyQuestionSideEffect() {
+                QAController.AskRequest request = new QAController.AskRequest(
+                                10L, "什么是RAG", 5, null, Map.of(), false);
+
+                BusinessException error = assertThrows(BusinessException.class,
+                                () -> qaController.askStream(request, "structured-v2", userDetails));
+
+                assertEquals("UNSUPPORTED_STREAM_CONTRACT", error.getErrorCode());
+                verify(ragService, never()).askStream(any());
+                verify(knowledgeBaseService, never()).incrementQueryCount(anyLong(), anyLong());
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void structuredNoAnswerDoesNotSaveNormalHistory() {
+                when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.deferContextual(context -> {
+                        RAGService.StreamTerminalSignal signal = context.get(
+                                        RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY);
+                        signal.recordExecutionResult("NO_ANSWER", "INSUFFICIENT_EVIDENCE",
+                                        "未找到证据", List.of(), Map.of());
+                        return Flux.just("未找到证据");
+                }));
+                QAController.AskRequest request = new QAController.AskRequest(
+                                10L, "什么是RAG", 5, null, Map.of(), false);
+
+                qaController.askStream(request, "structured-v1", userDetails);
+
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void structuredWireUsesNamedTextAndOneTerminalWithoutLegacyDone() throws Exception {
+                when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.deferContextual(context -> {
+                        RAGService.StreamTerminalSignal signal = context.get(
+                                        RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY);
+                        signal.recordExecutionResult("NO_ANSWER", "INSUFFICIENT_EVIDENCE",
+                                        "未找到证据", List.of(), Map.of("validCitations", 0));
+                        return Flux.just("未找到证据");
+                }));
+                String wire = streamWire("structured-v1");
+
+                assertTrue(wire.contains("event:text"));
+                assertTrue(wire.contains("event:terminal"));
+                assertEquals(1, wire.split("event:terminal", -1).length - 1);
+                assertTrue(wire.contains("\"finalState\":\"NO_ANSWER\""));
+                assertTrue(wire.contains("\"reason\":\"INSUFFICIENT_EVIDENCE\""));
+                assertFalse(wire.contains("[DONE]"));
+        }
+
+        @Test
+        void legacyWireKeepsTextAndDoneWithoutTerminalEvent() throws Exception {
+                when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.deferContextual(context -> {
+                        RAGService.StreamTerminalSignal signal = context.get(
+                                        RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY);
+                        signal.recordExecutionResult("ANSWER", "NONE", "answer", List.of(), Map.of());
+                        return Flux.just("answer");
+                }));
+
+                String wire = streamWire(null);
+
+                assertTrue(wire.contains("data:answer"));
+                assertTrue(wire.contains("[DONE]"));
+                assertFalse(wire.contains("event:terminal"));
+        }
+
+        @Test
+        void structuredAnswerWireCarriesSameRunCitationAndSavesItOnce() throws Exception {
+                Citation citation = Citation.of("chunk-1", "validated snippet");
+                when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.deferContextual(context -> {
+                        RAGService.StreamTerminalSignal signal = context.get(
+                                        RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY);
+                        signal.recordExecutionResult("ANSWER", "NONE", "answer", List.of(citation),
+                                        Map.of("validCitations", 1));
+                        return Flux.just("answer");
+                }));
+
+                String wire = streamWire("structured-v1");
+
+                assertTrue(wire.contains("event:text"));
+                assertEquals(1, wire.split("event:terminal", -1).length - 1);
+                assertTrue(wire.contains("\"finalState\":\"ANSWER\""));
+                assertTrue(wire.contains("\"source\":\"chunk-1\""));
+                assertTrue(wire.contains("\"snippet\":\"validated snippet\""));
+                assertFalse(wire.contains("[DONE]"));
+                verify(qaHistoryService, times(1)).save(any(RequestIdentity.class),
+                                argThat(saveReq -> List.of(citation).equals(saveReq.getCitations())));
+        }
+
+        @Test
+        void structuredWireReportsOneSafeErrorAfterPartialText() throws Exception {
+                when(ragService.askStream(any(QARequest.class))).thenReturn(
+                                Flux.concat(Flux.just("partial"),
+                                                Flux.error(new RuntimeException("secret provider body"))));
+
+                String wire = streamWire("structured-v1");
+
+                assertTrue(wire.contains("event:text"));
+                assertTrue(wire.contains("partial"));
+                assertEquals(1, wire.split("event:terminal", -1).length - 1);
+                assertTrue(wire.contains("\"finalState\":\"ERROR\""));
+                assertTrue(wire.contains("\"reason\":\"STREAM_FAILED\""));
+                assertFalse(wire.contains("secret provider body"));
+                assertFalse(wire.contains("[DONE]"));
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void structuredWireClassifiesStreamTimeoutWithoutSuccessfulHistory() throws Exception {
+                when(ragService.askStream(any(QARequest.class))).thenReturn(
+                                Flux.error(new RuntimeException(new java.util.concurrent.TimeoutException("private"))));
+
+                String wire = streamWire("structured-v1");
+
+                assertEquals(1, wire.split("event:terminal", -1).length - 1);
+                assertTrue(wire.contains("\"finalState\":\"ERROR\""));
+                assertTrue(wire.contains("\"reason\":\"TIMEOUT\""));
+                assertFalse(wire.contains("private"));
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        private String streamWire(String contract) throws Exception {
+                MockMvc mvc = MockMvcBuilders.standaloneSetup(qaController)
+                                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                                .build();
+                SecurityContextHolder.getContext().setAuthentication(
+                                new UsernamePasswordAuthenticationToken(userDetails, null, List.of()));
+                try {
+                        var builder = post("/api/qa/ask/stream")
+                                        .contentType("application/json")
+                                        .content("{\"kbId\":10,\"question\":\"什么是RAG\"}");
+                        if (contract != null) {
+                                builder.header("X-RAG-Stream-Contract", contract);
+                        }
+                        MvcResult started = mvc.perform(builder)
+                                        .andExpect(request().asyncStarted()).andReturn();
+                        return mvc.perform(asyncDispatch(started)).andReturn()
+                                        .getResponse().getContentAsString();
+                } finally {
+                        SecurityContextHolder.clearContext();
+                }
         }
 
         @Test

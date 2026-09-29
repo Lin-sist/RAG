@@ -4,6 +4,7 @@ import com.enterprise.rag.admin.kb.entity.Document;
 import com.enterprise.rag.admin.kb.service.DocumentService;
 import com.enterprise.rag.admin.kb.service.KnowledgeBaseService;
 import com.enterprise.rag.admin.qa.dto.SaveQAHistoryRequest;
+import com.enterprise.rag.admin.qa.dto.StreamTerminalEvent;
 import com.enterprise.rag.admin.qa.service.QAHistoryService;
 import com.enterprise.rag.admin.security.AuthorizationService;
 import com.enterprise.rag.admin.security.CurrentUserService;
@@ -52,6 +53,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 问答 API 控制器
@@ -174,7 +176,14 @@ public class QAController {
     })
     public SseEmitter askStream(
             @Valid @RequestBody AskRequest request,
+            @RequestHeader(value = "X-RAG-Stream-Contract", required = false) String streamContract,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (streamContract != null && !streamContract.isBlank()
+                && !StreamTerminalEvent.VERSION.equals(streamContract)) {
+            throw new BusinessException("UNSUPPORTED_STREAM_CONTRACT", "不支持的流式契约版本");
+        }
+        boolean structured = StreamTerminalEvent.VERSION.equals(streamContract);
 
         RequestIdentity identity = currentUserService.requireIdentity(userDetails);
         Long userId = identity.userId();
@@ -205,6 +214,7 @@ public class QAController {
         StringBuffer answerBuffer = new StringBuffer();
         StreamDeliveryDiagnostics diagnostics = new StreamDeliveryDiagnostics(startTime, STREAM_GAP_WARN_THRESHOLD_MS);
         RAGService.StreamTerminalSignal terminalSignal = new RAGService.StreamTerminalSignal();
+        AtomicBoolean deliveryClosed = new AtomicBoolean();
 
         Disposable.Swap subscription = Disposables.swap();
         subscription.update(ragService.askStream(qaRequest)
@@ -213,14 +223,25 @@ public class QAController {
                         RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY, terminalSignal))
                 .subscribe(
                         chunk -> {
+                            if (deliveryClosed.get()) {
+                                return;
+                            }
                             if (!"[DONE]".equals(chunk)) {
                                 answerBuffer.append(chunk);
                                 diagnostics.recordChunk(chunk);
                             }
                             try {
-                                // SseEmitter.send() 会自动格式化为 "data:chunk\n\n"
-                                emitter.send(chunk, MediaType.TEXT_PLAIN);
-                            } catch (IOException e) {
+                                if (structured) {
+                                    if (!"[DONE]".equals(chunk)) {
+                                        emitter.send(SseEmitter.event().name("text")
+                                                .data(chunk, MediaType.TEXT_PLAIN));
+                                    }
+                                } else {
+                                    // Legacy 格式保持 data:chunk 与 [DONE] 兼容。
+                                    emitter.send(chunk, MediaType.TEXT_PLAIN);
+                                }
+                            } catch (IOException | IllegalStateException e) {
+                                deliveryClosed.set(true);
                                 log.warn("SSE发送失败: errorType={}", e.getClass().getSimpleName());
                                 logStreamDiagnostics("stream_delivery_send_failed", traceId, request.kbId(), userId,
                                         diagnostics, answerBuffer.length(), System.currentTimeMillis() - startTime);
@@ -235,12 +256,22 @@ public class QAController {
                                     error.getClass().getSimpleName());
                             logStreamDiagnostics("stream_delivery_error", traceId, request.kbId(), userId,
                                     diagnostics, answerBuffer.length(), latencyMs);
+                            if (deliveryClosed.get()) {
+                                return;
+                            }
                             try {
-                                String clientError = toStreamClientErrorMessage(error);
-                                emitter.send("[ERROR] " + clientError, MediaType.TEXT_PLAIN);
-                                emitter.send("[DONE]", MediaType.TEXT_PLAIN);
+                                if (structured) {
+                                    emitter.send(SseEmitter.event().name("terminal")
+                                            .data(StreamTerminalEvent.error(terminalSignal,
+                                                    streamErrorReason(error)), MediaType.APPLICATION_JSON));
+                                } else {
+                                    String clientError = toStreamClientErrorMessage(error);
+                                    emitter.send("[ERROR] " + clientError, MediaType.TEXT_PLAIN);
+                                    emitter.send("[DONE]", MediaType.TEXT_PLAIN);
+                                }
                                 emitter.complete();
-                            } catch (IOException ioException) {
+                            } catch (IOException | IllegalStateException ioException) {
+                                deliveryClosed.set(true);
                                 log.warn("SSE错误消息发送失败: errorType={}",
                                         ioException.getClass().getSimpleName());
                                 emitter.complete();
@@ -248,39 +279,62 @@ public class QAController {
                         },
                         () -> {
                             long latencyMs = System.currentTimeMillis() - startTime;
-                            saveStreamHistory(identity, request.kbId(), request.question(), answerBuffer.toString(),
-                                    startTime);
                             logStreamDiagnostics("stream_delivery_complete", traceId, request.kbId(), userId,
                                     diagnostics, answerBuffer.length(), latencyMs);
+                            if (deliveryClosed.get()) {
+                                return;
+                            }
                             try {
-                                emitter.send("[DONE]", MediaType.TEXT_PLAIN);
+                                RAGService.StreamTerminalSignal.ExecutionResult result =
+                                        terminalSignal.executionResult();
+                                if (structured) {
+                                    emitter.send(SseEmitter.event().name("terminal")
+                                            .data(StreamTerminalEvent.completed(terminalSignal),
+                                                    MediaType.APPLICATION_JSON));
+                                } else {
+                                    emitter.send("[DONE]", MediaType.TEXT_PLAIN);
+                                }
+                                if (!deliveryClosed.get() && result != null
+                                        && "ANSWER".equals(result.finalState())) {
+                                    saveStreamHistory(identity, request.kbId(), request.question(),
+                                            result.answer(), result.citations(), startTime);
+                                }
                                 emitter.complete();
                                 log.info("流式问答完成: traceId={}, kbId={}, userId={}, latencyMs={}, answerLength={}",
                                         traceId, request.kbId(), userId, latencyMs, answerBuffer.length());
-                            } catch (IOException e) {
+                            } catch (IOException | IllegalStateException e) {
+                                deliveryClosed.set(true);
                                 emitter.complete();
                             }
                         }));
 
         emitter.onCompletion(() -> {
+            deliveryClosed.set(true);
             if (!subscription.isDisposed()) {
                 subscription.dispose();
             }
         });
         emitter.onTimeout(() -> {
             terminalSignal.markTimeout();
+            deliveryClosed.set(true);
             if (!subscription.isDisposed()) {
                 subscription.dispose();
             }
             emitter.complete();
         });
         emitter.onError(error -> {
+            deliveryClosed.set(true);
             if (!subscription.isDisposed()) {
                 subscription.dispose();
             }
         });
 
         return emitter;
+    }
+
+    /** Direct callers keep the legacy format; Spring MVC uses the annotated overload. */
+    public SseEmitter askStream(AskRequest request, UserDetails userDetails) {
+        return askStream(request, null, userDetails);
     }
 
     /**
@@ -491,20 +545,35 @@ public class QAController {
     }
 
     private void saveStreamHistory(RequestIdentity identity, Long kbId, String question, String answer,
-            long startTime) {
+            List<Citation> citations, long startTime) {
         try {
             qaHistoryService.save(identity, SaveQAHistoryRequest.builder()
                     .userId(identity.userId())
                     .kbId(kbId)
                     .question(question)
                     .answer(answer)
-                    .citations(List.of())
+                    .citations(citations)
                     .traceId(TraceContext.getTraceId())
                     .latencyMs((int) (System.currentTimeMillis() - startTime))
                     .build());
         } catch (Exception e) {
             log.warn("保存流式问答历史失败: errorType={}", e.getClass().getSimpleName());
         }
+    }
+
+    private String streamErrorReason(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof java.util.concurrent.TimeoutException) {
+                return "TIMEOUT";
+            }
+            if (current instanceof LLMException llm
+                    && "timeout".equals(String.valueOf(llm.diagnostics().get("errorCategory")))) {
+                return "TIMEOUT";
+            }
+            current = current.getCause();
+        }
+        return "STREAM_FAILED";
     }
 
     private String toStreamClientErrorMessage(Throwable error) {
