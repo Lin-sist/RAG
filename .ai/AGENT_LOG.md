@@ -2901,3 +2901,14 @@
 
 ## 2026-09-29 · frontend-demo-integration-login-dark 提交补录
 - 上一执行提交：`a6fa49c`（`feat(前端): 补齐Demo暗色登录页`）。
+
+## 2026-09-29 · frontend-demo-integration-main-sync 提交补录
+- 上一执行提交：`9f8a5fa`（`chore(前端): 同步主分支C18归档状态`）；合并冲突仅涉及 `.ai/ACTIVE_TASK.md` 与 `.ai/AGENT_LOG.md`，已保留 R4 活动指针和双方执行记录。
+
+## 2026-09-29 · frontend-text-stream-r4 验收与归档
+- 范围与文件：接受 R4 纯文本 SSE 的 1 项 requirement、3 个 scenarios 至 `openspec/specs/rag-system/spec.md`；新增 `openspec/changes/archive/2026-09-29-frontend-text-stream-r4/acceptance.md`，归档该 change，并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。本条为执行证据，技术边界沿用归档 change 的 `design.md` 决策记录。
+- 已确认：正式 `/chat` 默认同步问答，纯文本流需显式选择；UI 只报告文本和本地传输结果。此前授权的 KB17 单次 UI 流问答已返回 `CEDAR-47`，查询次数 2→3 且 history 新增记录；这只证明一次实际路径可用。
+- 验证：本轮 `npm run test` 33/33 PASS；登录双主题代码变更后 `npm run build`（含 `vue-tsc -b`）PASS；本次仅治理文件变更，`git diff --check` 与 delta 接受核对通过。
+- 跳过：无新增 ask、embedding、rerank、generation、judge 调用；未改 Java/Python，未重跑对应测试；未重复真实 provider 问答或故障注入。
+- 剩余风险：C21 的结构化业务终态、流式 citations 与可靠服务端取消尚未实现；本次真实调用不证明 generation、citation 或 no-answer 指标。
+- Commit: pending
