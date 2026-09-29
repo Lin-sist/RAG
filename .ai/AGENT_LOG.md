@@ -2912,3 +2912,11 @@
 - 跳过：无新增 ask、embedding、rerank、generation、judge 调用；未改 Java/Python，未重跑对应测试；未重复真实 provider 问答或故障注入。
 - 剩余风险：C21 的结构化业务终态、流式 citations 与可靠服务端取消尚未实现；本次真实调用不证明 generation、citation 或 no-answer 指标。
 - Commit: pending
+
+## 2026-09-29 · frontend-text-stream-r4 提交与主分支合并补录
+- 上一执行提交：`8bd3cea`（`docs(前端): 验收归档R4纯文本流契约`）。
+- 范围与文件：仅追加本条至 `.ai/AGENT_LOG.md`；前端分支 `codex/frontend-demo-integration` 已以 `git merge --ff-only` 快进合并到本地 `main`，HEAD 指向 `8bd3cea`，无冲突。
+- 验证：合并前 `main` 无已跟踪改动且为功能分支祖先；`docs/RAG_RETRIEVAL_OPTIONS_2026.md` 为既有未跟踪文件且无目标路径冲突。合并后两分支 HEAD 一致、`ACTIVE_TASK=IDLE`；此前当前组合代码的 33/33 前端测试与包含 `vue-tsc` 的正式 build 均通过。
+- 跳过：本次合并未改 Java/Python 代码、未发起 provider 业务调用，故未重跑对应测试或真实问答；无 push、PR、部署。
+- 剩余风险：C21 结构化 SSE、流式来源和可靠取消仍待独立 change；原有未跟踪文档保持未处理。
+- Commit: pending
