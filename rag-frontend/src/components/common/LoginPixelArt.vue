@@ -72,16 +72,16 @@ onUnmounted(() => {
 .pixel {
   aspect-ratio: 1;
   border-radius: 26%;
-  background: #d97757;
+  background: var(--auth-pixel-0);
   opacity: 0;
   transform: scale(.2);
   transition: opacity .42s ease, transform .42s ease;
 }
 .pixel.lit { opacity: 1; transform: scale(.86); }
-.tone-1 { background: #c15f3c; }
-.tone-2 { background: #b4552d; }
-.tone-3 { background: #e5a184; }
-.tone-4 { background: #edcdb9; }
+.tone-1 { background: var(--auth-pixel-1); }
+.tone-2 { background: var(--auth-pixel-2); }
+.tone-3 { background: var(--auth-pixel-3); }
+.tone-4 { background: var(--auth-pixel-4); }
 @media (prefers-reduced-motion: reduce) {
   .pixel { transition: none; }
 }

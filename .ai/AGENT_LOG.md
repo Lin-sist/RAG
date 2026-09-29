@@ -2806,3 +2806,13 @@
 - 验证：`npm run build` PASS（`vue-tsc -b && vite build`，保留既有大 chunk 警告）；`npm run test` 33/33 PASS；本地浏览器检查聊天首页、KB17 详情和历史列表可见且加载正常，示例按钮填入输入框；390 像素窄屏无横向溢出，欢迎区、输入框及示例均在视口内；`git diff --check` PASS。
 - 跳过与风险：本轮未运行 Java/Python 测试，因为没有相关代码改动；未发起新问答、上传或 provider 调用。其他设备和浏览器未覆盖，C21 结构化流来源与服务端取消仍在既有边界外。
 - 范围安全：仅隔离前端分支的聊天、侧栏、样式和执行日志；未修改 `.env.local`、`application-dev.yml`、`.agents/`、主工作树或既有 KB/历史数据。
+
+## 2026-09-29 · frontend-demo-integration-visual-chat 提交补录
+- 上一执行提交：`57b9b69`（`feat(前端): 收口Demo聊天首页视觉`）。
+
+## 2026-09-29 · frontend-demo-integration-login-dark（登录双主题视觉）
+- Commit: pending；本轮未获新任务的 Agent 提交授权，未暂存、提交、push、创建 PR 或部署。
+- 范围与修改：`AuthLayout.vue` 在正式登录页增加米白版/暗黑版切换，复用主界面的 `theme` 本地偏好与系统深色默认；暗色值对照 `prototype/chatgpt-ui-demo/login-dark.html` 和 `css/login-dark.css`。`LoginView.vue` 表单颜色改由局部主题变量提供；`LoginPixelArt.vue` 的五级色块随主题切换。登录 API、认证逻辑、表单校验未改。
+- 验证：`npm run build` PASS（`vue-tsc -b && vite build`，仍有既有大 chunk 警告）；独立本地 5189 登录页目视检查暗色与米白色，切换和刷新后偏好保持正常；窄屏无横向溢出，表单与切换按钮可见；`git diff --check` PASS。
+- 跳过与风险：本轮无登录行为、provider 调用或后端变更；既有前端测试未重跑，因为改动仅为视觉和主题状态，正式构建及浏览器操作覆盖本轮风险。未覆盖其他浏览器和设备。
+- 范围安全：仅隔离前端分支的登录布局、登录表单、像素动画及执行日志；未修改 `.env.local`、`application-dev.yml`、`.agents/` 或主工作树数据。
