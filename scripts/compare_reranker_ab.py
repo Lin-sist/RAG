@@ -565,7 +565,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--model-details", action="append", required=True)
     parser.add_argument("--output-json", required=True)
     parser.add_argument("--output-markdown", required=True)
-    parser.add_argument("--no-overwrite", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--no-overwrite", action="store_true", default=True)
+    parser.add_argument("--overwrite", dest="no_overwrite", action="store_false")
     return parser.parse_args(argv)
 
 

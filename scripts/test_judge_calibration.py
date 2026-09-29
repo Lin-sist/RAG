@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -71,10 +72,15 @@ class JudgeCalibrationTest(unittest.TestCase):
         self.assertNotIn("answer", plan)
 
     def test_absolute_manifest_path_is_rejected_without_echoing_local_path(self) -> None:
+        fake_path = (
+            Path("C:/Users/private/calibration.json")
+            if os.name == "nt"
+            else Path("/Users/private/calibration.json")
+        )
         with self.assertRaises(calibration.CalibrationContractError) as raised:
             calibration.validate_calibration_release(
                 Path(__file__).resolve().parents[1],
-                Path("C:/Users/private/calibration.json"),
+                fake_path,
             )
 
         self.assertEqual("invalid_artifact_path", raised.exception.code)

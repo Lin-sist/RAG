@@ -2920,3 +2920,28 @@
 - 跳过：本次合并未改 Java/Python 代码、未发起 provider 业务调用，故未重跑对应测试或真实问答；无 push、PR、部署。
 - 剩余风险：C21 结构化 SSE、流式来源和可靠取消仍待独立 change；原有未跟踪文档保持未处理。
 - Commit: pending
+
+## 2026-09-09 Ubuntu开发环境跨平台适配与本地配置
+- 范围：.env.local（本地忽略）、start_backend.sh、scripts/compare_reranker_ab.py、scripts/test_judge_calibration.py 与本日志。
+- 确认事实与决策：
+  1. 用户自 Windows 迁移至 Ubuntu 26.04，宿主机已存在占用 3306 的 dev-mysql（MySQL 8.4）与占用 6379 的 dev-redis；决策采用本地 .env.local 端口隔离方案（映射至 3307 与 6380），解耦宿主机现有容器并由 docker-compose 一键自举完整的 rag-mysql/redis/etcd/minio/milvus 基础设施。
+  2. Windows 下 start_backend.sh 缺少 Unix 执行权限（100644），已补充 chmod +x 为 100755。
+  3. 系统自带 Python 3.14.4 针对 argparse.BooleanOptionalAction 实行严格校验，禁止传含 --no- 的参数名；compare_reranker_ab.py 改用标准的 store_true / store_false，保留 --no-overwrite 默认生效与 --overwrite 覆盖能力。
+  4. test_judge_calibration.py 的绝对路径拒绝用例原硬编码 Windows 盘符 C:/，在 Linux 下识别为相对路径导致断言失败；已调整为跨平台适配。
+- 验证命令与结果：
+  1. `mvn test-compile`：全模块 Reactor 构建 SUCCESS。
+  2. `npm --prefix rag-frontend run build`：vue-tsc -b 与 vite build 验证 SUCCESS。
+  3. `python3 -B -m unittest discover -s scripts -p 'test_*.py'`：244/244 全部 PASS（0 failures, 0 errors）。
+  4. `python3 scripts/check_sensitive_logs.py --root .`：375 个源码文件 PASS。
+  5. `git diff --check`：PASS（无空白符与格式异常）。
+- 跳过项及原因：未启动完整端到端后端 HTTP 运行时与真实外调（避免未经独立授权产生调用与环境副作用）。
+- 剩余风险：.env.local 为本地文件，尚未执行 `docker compose --env-file .env.local up -d` 启动全部容器；若宿主机代理 7897 端口后续离线，需显式设置 PROXY_ENABLED=false。
+- Commit: pending
+
+## 2026-09-29 · 合并远端 Linux 跨平台提交
+- 范围与文件：解决 `git pull` 在 `.ai/AGENT_LOG.md` 的唯一内容冲突，保留本地 2922 行及远端新增 17 行有效记录；远端 `scripts/compare_reranker_ab.py`、`scripts/test_judge_calibration.py` 与 `start_backend.sh` 按其原提交接入，无额外业务改动。
+- 已确认：共同基线在双方日志前 2407 行完全一致；冲突仅由双方在同一末尾追加触发。远端提交为 `991d960`，本地原 HEAD 为 `8933ee0`。
+- 验证：合并后日志与双方追加内容精确一致、冲突标记 0、`git diff --check` 通过；`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 290/290 PASS。
+- 跳过：Java/前端代码未因本次远端提交改变，未重跑 Maven/frontend build；未执行 Docker 启动、真实 provider 或业务数据调用。
+- 剩余风险：尚未在 Windows 验证 `start_backend.sh` 运行流程；原有未跟踪文档 `docs/RAG_RETRIEVAL_OPTIONS_2026.md` 不纳入合并提交或推送。
+- Commit: pending
