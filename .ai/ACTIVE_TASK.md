@@ -5,7 +5,7 @@
 `ACTIVE`
 
 - Change ID：`structured-sse-terminal-contract`（C21）
-- 阶段：C21 首个执行结果切片已提交；第二个结构化 SSE wire 切片正在验证。timeout/断连竞态、租户与完整副作用验收及前端接入仍待后续切片。未执行真实 provider 调用。
+- 阶段：C21 执行结果与结构化 SSE wire 两个切片已提交；第三个超时/断连/发送失败切片正在验证。租户与完整副作用验收及前端接入仍待后续切片。未执行真实 provider 调用。
 - 推进顺序：C21 后端契约与验证 → 前端接入和联调 → C19 校准 → C20 门禁。后续阶段分别验收。
 
 ## Last Completed Change

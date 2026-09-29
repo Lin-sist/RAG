@@ -2991,3 +2991,17 @@
 - 跳过：未运行真实 provider 或前端联调；未运行全仓 Maven 测试，聚焦链已覆盖本轮 core/controller/wire 改动。
 - 剩余风险：`SseEmitter.send` 返回不等于客户端收到 terminal；timeout、最后一块后断连/发送失败、租户隔离和 cache/query-count 完整矩阵待后续切片验证。C21 仍为 ACTIVE。
 - Commit: pending
+
+## 2026-09-29 · C21 第二切片提交补录
+
+- 上一执行提交：`24d450f`（`feat(C21): 增加版本化流式终态事件`）。本条仅补录真实 hash，不回改历史记录。
+
+## 2026-09-29 · C21 交付关闭与超时切片
+
+- 任务/change：`structured-sse-terminal-contract`（C21）。
+- 范围与文件：`rag-admin/src/main/java/com/enterprise/rag/admin/controller/QAController.java` 与 `QAControllerTest.java`；同步更新本 change 的 `design.md`、`tasks.md` 及 `.ai/ACTIVE_TASK.md`。
+- 已确认事实与结果：将 SseEmitter 完成、超时、错误回调注册移到流订阅之前；用可控 emitter 验证最后一块文本后断连、terminal 发送 I/O 失败都不写正常成功历史；超时取消上游并标记 timeout。三种场景的 query count 各一次。依据 C21 design 决策 3，以及第三切片交付条件说明。
+- 验证：`mvn --% -q -pl rag-admin -am -Dtest=QAControllerTest -Dsurefire.failIfNoSpecifiedTests=false test` 通过，24 tests、零失败；`git diff --check` 通过。`mvn --% -q test` 在 rag-core 阶段 186 tests 中 2 errors，具体为未改动的 `QueryEngineTelemetryTest` 两个用例：embedding mock 的 `embed(...)` stub 未覆盖实际 `embedObserved(...)` 路径，`observed` 为 null；该命令未运行到 rag-admin。
+- 跳过：未执行真实 provider、前端联调；全仓测试失败后未扩展到真实业务外调，也未把全仓验证写作通过。
+- 剩余风险：`SseEmitter.send` 无客户端确认语义；文本发送失败、租户隔离、cache/query-count 完整矩阵仍待验证。全仓 Java 测试有上述独立错误，C21 仍为 ACTIVE。
+- Commit: pending

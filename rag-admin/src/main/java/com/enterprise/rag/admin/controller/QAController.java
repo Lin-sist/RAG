@@ -210,13 +210,34 @@ public class QAController {
         // 原因：Flux<String> + text/event-stream 会触发 Tomcat 异步分发，
         // 导致 Spring Security 的 OncePerRequestFilter 在异步线程中丢失安全上下文，
         // 抛出 AccessDeniedException。SseEmitter 直接写入响应流，完全避免这个问题。
-        SseEmitter emitter = new SseEmitter(120_000L); // 120秒超时
+        SseEmitter emitter = createStreamEmitter();
         StringBuffer answerBuffer = new StringBuffer();
         StreamDeliveryDiagnostics diagnostics = new StreamDeliveryDiagnostics(startTime, STREAM_GAP_WARN_THRESHOLD_MS);
         RAGService.StreamTerminalSignal terminalSignal = new RAGService.StreamTerminalSignal();
         AtomicBoolean deliveryClosed = new AtomicBoolean();
 
         Disposable.Swap subscription = Disposables.swap();
+        emitter.onCompletion(() -> {
+            deliveryClosed.set(true);
+            if (!subscription.isDisposed()) {
+                subscription.dispose();
+            }
+        });
+        emitter.onTimeout(() -> {
+            terminalSignal.markTimeout();
+            deliveryClosed.set(true);
+            if (!subscription.isDisposed()) {
+                subscription.dispose();
+            }
+            emitter.complete();
+        });
+        emitter.onError(error -> {
+            deliveryClosed.set(true);
+            if (!subscription.isDisposed()) {
+                subscription.dispose();
+            }
+        });
+
         subscription.update(ragService.askStream(qaRequest)
                 .doOnSubscribe(s -> log.debug("流式问答开始: kbId={}", request.kbId()))
                 .contextWrite(context -> context.put(
@@ -308,28 +329,11 @@ public class QAController {
                             }
                         }));
 
-        emitter.onCompletion(() -> {
-            deliveryClosed.set(true);
-            if (!subscription.isDisposed()) {
-                subscription.dispose();
-            }
-        });
-        emitter.onTimeout(() -> {
-            terminalSignal.markTimeout();
-            deliveryClosed.set(true);
-            if (!subscription.isDisposed()) {
-                subscription.dispose();
-            }
-            emitter.complete();
-        });
-        emitter.onError(error -> {
-            deliveryClosed.set(true);
-            if (!subscription.isDisposed()) {
-                subscription.dispose();
-            }
-        });
-
         return emitter;
+    }
+
+    SseEmitter createStreamEmitter() {
+        return new SseEmitter(120_000L);
     }
 
     /** Direct callers keep the legacy format; Spring MVC uses the annotated overload. */

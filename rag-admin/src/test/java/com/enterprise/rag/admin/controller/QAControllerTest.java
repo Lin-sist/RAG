@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -34,7 +35,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,8 +50,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -375,6 +380,94 @@ class QAControllerTest {
                 assertTrue(wire.contains("\"reason\":\"TIMEOUT\""));
                 assertFalse(wire.contains("private"));
                 verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void disconnectAfterLastTextPreventsTerminalAndSuccessfulHistory() throws Exception {
+                SseEmitter emitter = mockStreamEmitter();
+                AtomicReference<Runnable> completion = new AtomicReference<>();
+                AtomicInteger sends = new AtomicInteger();
+                doAnswer(invocation -> {
+                        completion.set(invocation.getArgument(0));
+                        return null;
+                }).when(emitter).onCompletion(any(Runnable.class));
+                doAnswer(invocation -> {
+                        sends.incrementAndGet();
+                        assertNotNull(completion.get());
+                        completion.get().run();
+                        return null;
+                }).when(emitter).send(any(SseEmitter.SseEventBuilder.class));
+                when(ragService.askStream(any(QARequest.class))).thenReturn(completedAnswerStream());
+
+                qaController.askStream(streamRequest(), "structured-v1", userDetails);
+
+                assertEquals(1, sends.get());
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void terminalSendFailurePreventsSuccessfulHistory() throws Exception {
+                SseEmitter emitter = mockStreamEmitter();
+                AtomicInteger sends = new AtomicInteger();
+                doAnswer(invocation -> {
+                        if (sends.incrementAndGet() == 2) {
+                                throw new IOException("synthetic terminal delivery failure");
+                        }
+                        return null;
+                }).when(emitter).send(any(SseEmitter.SseEventBuilder.class));
+                when(ragService.askStream(any(QARequest.class))).thenReturn(completedAnswerStream());
+
+                qaController.askStream(streamRequest(), "structured-v1", userDetails);
+
+                assertEquals(2, sends.get());
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void serverTimeoutCancelsUpstreamAndPreventsHistory() {
+                SseEmitter emitter = mockStreamEmitter();
+                AtomicReference<Runnable> timeout = new AtomicReference<>();
+                AtomicReference<RAGService.StreamTerminalSignal> signalRef = new AtomicReference<>();
+                AtomicBoolean cancelled = new AtomicBoolean();
+                doAnswer(invocation -> {
+                        timeout.set(invocation.getArgument(0));
+                        return null;
+                }).when(emitter).onTimeout(any(Runnable.class));
+                when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.deferContextual(context -> {
+                        signalRef.set(context.get(RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY));
+                        return Flux.<String>never().doOnCancel(() -> cancelled.set(true));
+                }));
+
+                qaController.askStream(streamRequest(), "structured-v1", userDetails);
+                assertNotNull(timeout.get());
+                timeout.get().run();
+
+                assertTrue(cancelled.get());
+                assertTrue(signalRef.get().isTimeout());
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        private SseEmitter mockStreamEmitter() {
+                qaController = spy(qaController);
+                SseEmitter emitter = mock(SseEmitter.class);
+                doReturn(emitter).when(qaController).createStreamEmitter();
+                return emitter;
+        }
+
+        private Flux<String> completedAnswerStream() {
+                return Flux.deferContextual(context -> {
+                        RAGService.StreamTerminalSignal signal = context.get(
+                                        RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY);
+                        signal.recordExecutionResult("ANSWER", "NONE", "answer", List.of(), Map.of());
+                        return Flux.just("answer");
+                });
+        }
+
+        private QAController.AskRequest streamRequest() {
+                return new QAController.AskRequest(10L, "什么是RAG", 5, null, Map.of(), false);
         }
 
         private String streamWire(String contract) throws Exception {
