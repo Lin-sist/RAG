@@ -1,0 +1,163 @@
+{
+  "schemaVersion": "c18-generation-objective-evidence-v1",
+  "status": "COMPLETE",
+  "reasonCodes": [],
+  "compiler": {
+    "version": "c18-generation-objective-compiler-v6",
+    "mode": "full"
+  },
+  "manifest": {
+    "id": "rag-eval-dev-v2-generation-objective-nemotron3-super-r7-failure-safe-compiler",
+    "sha256": "db1b80497a74dc4ad5edb1435ee86b93ecad95e692d71bc21ec37a53fb228694"
+  },
+  "dataset": {
+    "releaseVersion": "rag-eval-dev-v2",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
+    "questionSetSha256": "cdbcc42986f83f1b3bfe659828de38f7fc93f640a8ebaa375ef750074696a06d",
+    "sampleCount": 150,
+    "orderedIdsSha256": "5baac0884a917ae20bf6e584207127f5d0e084569c5c07aa0c08d00fd986b67e"
+  },
+  "runIdentity": {
+    "mode": "generation/objective",
+    "slice": "full",
+    "repeat": 1,
+    "runIndex": 1
+  },
+  "expected": {
+    "sampleCount": 150,
+    "orderedIdsSha256": "5baac0884a917ae20bf6e584207127f5d0e084569c5c07aa0c08d00fd986b67e",
+    "callBudget": {
+      "debugRetrieve": 600,
+      "ask": 600,
+      "generationUpperBound": 600,
+      "queryEmbeddingUpperBound": 5968,
+      "modelRerank": 0,
+      "llmJudge": 0
+    }
+  },
+  "actual": {
+    "sampleCount": 150,
+    "orderedIdsSha256": "5baac0884a917ae20bf6e584207127f5d0e084569c5c07aa0c08d00fd986b67e",
+    "runCounts": {
+      "askErrors": 0,
+      "retrieveErrors": 0,
+      "skippedAsk": 0,
+      "judgeErrors": 0,
+      "skippedJudge": 150,
+      "rateLimitErrors": 0,
+      "retryCount": 31
+    }
+  },
+  "identity": {
+    "gitHead": "bbab928097c996453cce8b6cb7ad72c0e51a1a5f",
+    "gitClean": true,
+    "runtime": {
+      "provider": "openai",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "requestContractVersion": "openai-compatible-chat-json-v1"
+    },
+    "runtimeFingerprintSha256": "e66f366eb0c676cccc7f196f722911c809f9c3f696eb96d97c9d66d31d78287f"
+  },
+  "providerAttribution": {
+    "generationModels": {
+      "nvidia/nemotron-3-super-120b-a12b": 150
+    },
+    "algorithmFallbackCount": 0,
+    "providerFallbackCount": 0,
+    "answerCacheHitCount": 0
+  },
+  "callFacts": {
+    "debugRetrieveHttpAttempts": 150,
+    "httpRetryCount": 31,
+    "retrievalRetryCount": 0,
+    "askRetryCount": 31,
+    "recoveredFailureCount": 31,
+    "failedAttemptStatuses": {
+      "503": 31
+    },
+    "knownGenerationHttpAttempts": 181,
+    "unknownGenerationHttpAttemptCount": 0,
+    "askHttpAttempts": 181,
+    "generationCalls": 150,
+    "generationBypassCount": 0,
+    "answerCacheHitCount": 0,
+    "algorithmFallbackCount": 0,
+    "providerFallbackCount": 0,
+    "automaticRetryCount": 31,
+    "queryEmbeddingLogicalCallCount": 973,
+    "queryEmbeddingCacheHitCount": 552,
+    "queryEmbeddingProviderCallCount": 421,
+    "queryEmbeddingProviderFallbackCount": 0,
+    "queryEmbeddingUpperBound": 5968,
+    "queryEmbeddingObservation": "DIRECT_RUNTIME_DIAGNOSTICS",
+    "llmJudgeHttpAttempts": 0
+  },
+  "channels": {
+    "retrieval": "COMPLETE",
+    "generation": "COMPLETE",
+    "citation": "COMPLETE",
+    "objectiveClaim": "COMPLETE",
+    "noAnswer": "COMPLETE",
+    "judge": "SKIPPED"
+  },
+  "metrics": {
+    "retrieval": {
+      "recall_at_3": 0.44368600682593856,
+      "recall_at_5": 0.47440273037542663,
+      "mrr": 0.5261538461538462,
+      "top1_source_accuracy": 0.9230769230769231
+    },
+    "generation": {
+      "answer_keyword_hit_rate": 0.7974413646055437,
+      "answer_keyword_hits": 374,
+      "answer_keyword_total": 469,
+      "answerable_ask_success_samples": 130
+    },
+    "citation": {
+      "citation_hit_rate": 0.9191176470588235,
+      "citation_source_hit_rate": 0.9191176470588235,
+      "citation_snippet_hit_rate": 1.0,
+      "citation_source_hits": 125,
+      "citation_source_total": 136,
+      "citation_snippet_hits": 336,
+      "citation_snippet_total": 336,
+      "unsupported_citation_count": 0,
+      "no_answer_citation_violation_count": 1
+    },
+    "claim": {
+      "claim_metric_status": "COMPLETE",
+      "claim_total": 441,
+      "supported_claim_count": 23,
+      "unsupported_claim_count": 418,
+      "objective_claim_support_rate": 0.05215419501133787
+    },
+    "noAnswer": {
+      "no_answer_accuracy": 0.95,
+      "no_answer_ok_count": 19,
+      "no_answer_evaluable_total": 20
+    },
+    "latency": {
+      "retrieval_latency_millis": {
+        "count": 150,
+        "min": 391.0,
+        "p50": 2219.0,
+        "p95": 5797.0,
+        "max": 11125.0
+      }
+    }
+  },
+  "artifacts": {
+    "detailsSha256": "f63c065ef075a161d00ab6fced64973f7b9a2658d79f451a74712a4c03af9300",
+    "detailsBytes": 5453890,
+    "metadataSha256": "4682b2fa9714db24dd9a19f0ac4bfc29ee40242f8940dac2a872ee4bf7750c58",
+    "metadataBytes": 13910
+  },
+  "privacy": {
+    "rawArtifactsLocalIgnored": true,
+    "rawQuestionAnswerContextsTracked": false,
+    "credentialsTracked": false,
+    "numericKnowledgeBaseIdsTracked": false,
+    "absolutePathsTracked": false,
+    "noOverwrite": true
+  }
+}

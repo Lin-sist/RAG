@@ -134,8 +134,14 @@ class RAGServiceImplTest {
                 "springboot-basics.md",
                 0.91f,
                 Map.of("title", "Spring Boot"));
-        when(queryEngine.retrieve(eq("Spring Boot 的核心特性有哪些？"), org.mockito.ArgumentMatchers.<RetrieveOptions>any()))
-                .thenReturn(List.of(context));
+        doReturn(new RetrievalResult(List.of(context), Map.of(
+                "queryEmbeddingLogicalCallCount", 2,
+                "queryEmbeddingCacheHitCount", 1,
+                "queryEmbeddingProviderCallCount", 1,
+                "queryEmbeddingProviderFallbackCount", 0)))
+                .when(queryEngine).retrieveWithDiagnostics(
+                        eq("Spring Boot 的核心特性有哪些？"),
+                        org.mockito.ArgumentMatchers.<RetrieveOptions>any());
         when(answerGenerator.generate(eq("Spring Boot 的核心特性有哪些？"), org.mockito.ArgumentMatchers.anyList()))
                 .thenThrow(new LLMException(
                         "synthetic provider secret marker",
@@ -161,6 +167,10 @@ class RAGServiceImplTest {
         assertEquals(3, response.metadata().get("llmRetryCount"));
         assertEquals(true, response.metadata().get("llmRetryExhausted"));
         assertEquals("timeout", response.metadata().get("llmErrorCategory"));
+        assertEquals(2, response.metadata().get("queryEmbeddingLogicalCallCount"));
+        assertEquals(1, response.metadata().get("queryEmbeddingCacheHitCount"));
+        assertEquals(1, response.metadata().get("queryEmbeddingProviderCallCount"));
+        assertEquals(0, response.metadata().get("queryEmbeddingProviderFallbackCount"));
         assertEquals("抱歉，处理您的问题时发生错误：模型服务响应超时，请稍后重试", response.answer());
         assertTrue(!response.answer().contains("synthetic provider secret marker"));
         assertTrue(response.citations().isEmpty());

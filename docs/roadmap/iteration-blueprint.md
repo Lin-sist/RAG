@@ -141,17 +141,17 @@
 
 ### C18. `generation-objective-evidence-baseline`
 
-2026-09-10已建立独立C18规划，待审阅；当前仅文档。下列300次embedding是冻结蓝图的旧估计，不能作为live授权上限：实际ask还有解释回退，需W0枚举全部variants并冻结精确预算。详见[当前C18规划](../../openspec/changes/generation-objective-evidence-baseline/proposal.md)。
+2026-09-22已验收归档。r11在clean HEAD完成固定5条canary与一次完整v2/150 full；compiler v6=`COMPLETE`，judge=`SKIPPED`。正式证据见[安全摘要](../eval/reports/c18-generation-objective-review-v1.json)与[归档验收](../../openspec/changes/archive/2026-09-22-generation-objective-evidence-baseline/acceptance.md)。
 
 **目标**：在 judge 关闭的条件下，为 v2 建立真实 generation、citation、objective claim support 与 no-answer 基线，并为未来独立 objective profile 固定 evidence identity。
 
-**首轮正式边界**：
+**已完成首轮正式边界**：
 
-- v2 full 150 条，先执行 1 个完整 baseline run；
-- 最多 150 次 debug retrieval、150 次 ask、300 次 query embedding、150 次 generation；
-- judge calls=0；
+- v2 full 150 条，1个完整 baseline run；
+- 实际debug=150、ask/generation HTTP attempts=181（31次503均恢复），query embedding logical/cache/provider/fallback=`973/552/421/0`；
+- judge/model rerank calls=0；
 - 只使用 tracked 开发问题和 fixture，不使用真实业务数据；
-- retrieval、generation、citation、claim support、no-answer、error/retry 分开报告。
+- retrieval、generation、citation、claim support、no-answer、error/retry 分开报告；objective lexical claim support=5.22%、no-answer=95%，低值保持原样。
 
 如果未来要建立 objective release gate，必须创建新的 profile/version，并用独立批准的重复 evidence 决定阈值；不得用一次 baseline 或 retrieval profile 冒充。
 

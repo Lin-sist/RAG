@@ -2816,3 +2816,88 @@
 - 验证：`npm run build` PASS（`vue-tsc -b && vite build`，仍有既有大 chunk 警告）；独立本地 5189 登录页目视检查暗色与米白色，切换和刷新后偏好保持正常；窄屏无横向溢出，表单与切换按钮可见；`git diff --check` PASS。
 - 跳过与风险：本轮无登录行为、provider 调用或后端变更；既有前端测试未重跑，因为改动仅为视觉和主题状态，正式构建及浏览器操作覆盖本轮风险。未覆盖其他浏览器和设备。
 - 范围安全：仅隔离前端分支的登录布局、登录表单、像素动画及执行日志；未修改 `.env.local`、`application-dev.yml`、`.agents/` 或主工作树数据。
+
+## 2026-09-21 C18权限恢复、r7/r8与compiler v5逐attempt观测
+- 用户授权：明确同意canary5及通过后的full150，将固定开发题、确定性variants、fixture contexts和prompts发往NVIDIA integrate endpoint；允许query count/history；沿用429/503/PrematureCloseException最多3次、既定预算、验收/归档和Agent本地提交。
+- 运行事实：models/embedding探针200；chat先连续503后恢复200；Docker五项healthy，mutation-free preflight READY（vectors50/50、fixtures3/3、chunks11/14/25）。r7首条ask为410，定位为`start-backend.ps1`重新导入`.env.local`覆盖进程前置Nemotron变量，实际用了退役Qwen；raw保留，后4条/full未调用。改为导入后进程级覆盖，r8使用Nemotron3 Super完成5/5、最终CLEAN/objective COMPLETE/judge SKIPPED，但恢复6次503；compiler v4因失败attempt embedding不可观测判INCOMPLETE，full未启动。
+- 修改：RAGServiceImpl生成失败响应合并已完成的retrieval diagnostics；C18 runner逐debug/ask attempt记录四项embedding事实；compiler v5逐attempt校验并从ledger重算聚合，缺失/不一致仍INCOMPLETE。manifest身份升级为`nemotron3-super-r6-attempt-embedding`，同步schema、W0源码hash、OpenSpec与指南；重试范围、预算、题目/fixture/prompt及C17门禁不变。
+- 验证：Java `RAGServiceImplTest,C18BudgetAuditTest`通过，新W0 audit样本逐项一致且预算仍canary34/full1492；Python聚焦37项通过。全套Python与diff检查待本记录后的验证补录。
+- 验证补录：全套Python `289 tests/OK`；canary/full budget plan均`PLAN_VALID`且仍为34/1492；`git diff --check`仅报告AGENT_LOG既有CRLF转换提示，无空白错误。
+- 范围安全：未修改`.env.local`、业务默认模型、数据集、fixture、C17 profile/reference；未拼接旧run、未启动full、未清理KB/history；无frontend改动，无push/PR/deploy。
+- 剩余风险：provider持续503；compiler v5尚需clean HEAD上的真实canary/full验证。r7/r8 raw和r8安全摘要保留。
+- Commit: pending
+
+## 2026-09-21 C18 compiler v5提交补录
+- 上一执行提交：`4b143b2dd808b1aa2aeab97901d8f6d4fa65e1c2`（`fix(eval): 补齐C18重试调用观测`）。
+- 提交包含compiler v5、逐attempt embedding观测、r8安全摘要及对应OpenSpec/测试/指南更新；未包含前端、`.env.local`、题目/fixture、C17门禁或push/PR/deploy。
+
+## 2026-09-21 C18 r9旧内部JAR运行证据
+- 范围：在clean提交`4b143b2`、正确Nemotron3 Super进程变量和READY preflight后执行新canary；保留raw并生成`docs/eval/reports/c18-canary-r9-20260921-summary.json`。未启动full。
+- 结果：5/5最终成功、askErrors/retrieveErrors均0，恢复1次HTTP503；compiler v5为`INCOMPLETE`，原因码为`embedding_execution_facts_missing`、`attempt_embedding_facts_missing`、`query_embedding_budget_exceeded`。该run不作为正式canary通过证据。
+- 根因：`mvn -f rag-admin/pom.xml spring-boot:run`解析到本机仓库中的旧版`rag-core` JAR；本轮只运行过源码测试、未先install内部模块，因此成功响应含旧diagnostics，失败503 attempt缺少v5新增的embedding事实。证据支持启动工序缺口，不改写raw或compiler结果。
+- 验证与边界：r9 identity为clean=true、Git HEAD=`4b143b2`、固定5条和正确模型；安全摘要不含raw题目/回答/context、凭据、数字KB或绝对路径。后端已停止；未改`.env.local`、题目/fixture/prompt、重试范围/预算、C17或前端，未清理KB/history，无push/PR/deploy。
+- 下一步：先install当前`rag-common/rag-auth/rag-document/rag-core`，再以新身份执行canary；仅当compiler COMPLETE才启动full150。
+- Commit: pending
+
+## 2026-09-21 C18 r9证据提交补录
+- 上一执行提交：`9aa96c6`（`docs(eval): 保留C18 r9运行时装载缺口证据`）。
+- 当前内部模块已使用`mvn -q -f pom.xml -pl rag-common,rag-auth,rag-document,rag-core -am -DskipTests install`成功安装到本机仓库；下一次后端启动将加载compiler v5对应的当前`rag-core`实现。
+
+## 2026-09-21 C18 r9补录提交与r10暂停收口
+- 上一补录提交：`cc399842a6880497c90ecf9d105c5c303cd910d2`（`docs(eval): 补录C18 r9证据提交`）。
+- r10 preflight READY；canary固定5条全部完成，恢复5次HTTP503，compiler v5 `COMPLETE`，clean=true，逐attempt embedding事实完整。安全摘要为`docs/eval/reports/c18-canary-r10-20260921-summary.json`。
+- full从头运行38/150，第38条`fact-018`初次及3次重试均为HTTP503/ServiceUnavailable，retry总数24，askErrors1、retrieveErrors0，剩余112条未调用。canary摘要在full前尚未提交，故full metadata clean=false，不能接受为正式baseline。
+- full compiler暴露失败样本分支`observed_model`未初始化并抛`UnboundLocalError`；未生成full安全摘要。一次最小试改因会改变冻结源码hash而撤回，工作区无该试改残留；旧raw不重编为正式结果。执行详情和raw SHA-256见`docs/eval/reports/c18-r10-20260921-execution.md`。
+- 用户要求暂告一段落准备关机；未重跑。后端已停止；未接受delta、归档或置IDLE，未改`.env.local`、题目/fixture/prompt、重试预算、C17、Java业务语义或前端，无push/PR/deploy。
+- 验证：r10 canary compiler COMPLETE；full runner按错误即停。compiler修复及Python全套留到下次新冻结身份切片，当前不虚报通过。
+- Commit: pending
+
+## 2026-09-21 C18 r10暂停交接提交补录
+- 上一执行提交：`2cff78d`（`docs(eval): 固化C18 r10暂停交接证据`）。
+- 本补录同时移除交接文档EOF多余空行；不改变任何运行事实、raw证据或C18契约。
+
+## 2026-09-22 C18 compiler v6失败样本安全修复
+- 上一补录提交：`c863e4b`（`docs(eval): 补录C18 r10交接提交`）。用户要求继续上次任务，沿用已披露的C18 canary/full、NVIDIA载荷、REST副作用、重试/预算、验收归档和Agent本地提交授权；无push/PR/deploy。
+- TDD RED：新增失败ask无`askRawResponse`回归，公开`compile_evidence`稳定复现`UnboundLocalError: observed_model`。GREEN：在读取raw前初始化未观测模型为`None`，结果为`INCOMPLETE`并保留`sample_error`、`sample_observation_missing`，不补写模型或升级partial evidence。
+- 冻结新身份`nemotron3-super-r7-failure-safe-compiler`/compiler v6，同步manifest、两份schema和四项tooling source hash；依据design决策16，旧r10 raw保持原样且不重编为正式baseline。provider/model、题目/fixture/prompt、429/503/PrematureCloseException范围、最多3次、预算和Java业务行为均不变。
+- 验证：单条RED失败后GREEN通过；compiler/contract/runner聚焦123项Python tests/OK。全套Python、budget plan与diff检查待本记录后补录。
+- 外部边界：本切片backend/provider/KB/SQL/Milvus calls=0，业务数据出站=false；未读取/修改`.env.local`，未启动canary/full，未改C17或前端。
+- Commit: pending
+
+### 验证补录
+- `python -B -m unittest discover -s scripts -p 'test_*.py'`：290项通过。
+- canary/full plan-only均`OFFLINE_VERIFIED`，新manifest SHA-256=`db1b80497a74dc4ad5edb1435ee86b93ecad95e692d71bc21ec37a53fb228694`；预算仍为canary query embedding≤136、full≤5968，debug/ask/generation≤20/600，judge/model rerank=0。
+- manifest及四项tooling source hash自验证；`git diff --check`无空白错误，仅AGENT_LOG既有CRLF转换提示。Java/frontend未改，按影响范围跳过相关测试。
+
+## 2026-09-22 C18 compiler v6提交补录
+- 上一执行提交：`18878a5`（`fix(eval): 修复C18失败样本编译异常`）。
+- 提交仅包含compiler v6失败分类、回归测试、新冻结身份及对应OpenSpec/指南/状态记录；无provider调用、业务配置、C17或前端改动。
+
+## 2026-09-22 C18 r11 clean canary
+- 上一补录提交：`b2b117c`（`docs(eval): 补录C18 compiler修复提交`）。当前内部模块install成功；Docker五项healthy，后端按导入`.env.local`后进程级覆盖Nemotron3 Super的正确顺序启动。
+- mutation-free preflight READY：vectors50/50、fixtures3/3、chunks11/14/25。正式canary固定5条全部完成，CLEAN/objective COMPLETE/judge SKIPPED，ask/retrieval errors=0、retry=0。
+- compiler v6结果`COMPLETE`；debug/ask/generation attempts=`5/5/5`，embedding logical/cache/provider/fallback=`22/11/11/0`，模型`nvidia/nemotron-3-super-120b-a12b`，Git HEAD=`b2b117c`、clean=true。
+- tracked仅安全摘要`docs/eval/reports/c18-canary-r11-20260922-summary.json`；raw三件产物保留在ignored `tmp/eval/c18/`。未改题目/fixture/prompt、重试/预算、`.env.local`、C17或前端；未启动full，无push/PR/deploy。
+- Commit: pending
+
+## 2026-09-22 C18 r11 canary提交补录
+- 上一执行提交：`90e6210`（`docs(eval): 记录C18 r11干净canary`）。
+- 提交仅包含r11安全摘要与C18状态/任务/日志；raw仍在ignored目录，未包含问题、回答、context或凭据。
+
+## 2026-09-22 C18 r11完整full、验收与归档
+- 上一补录提交：`bbab928`（`docs(eval): 补录C18 r11 canary提交`）。full前mutation-free preflight READY，Git clean=true；后端按正确模型覆盖顺序运行并在证据编译后停止。
+- r11 full从头完成150/150：CLEAN/objective COMPLETE/judge SKIPPED，ask/retrieval errors=0、retry=31；全部为已恢复HTTP503，无未恢复失败。compiler v6=`COMPLETE`，Git HEAD=`bbab928097c996453cce8b6cb7ad72c0e51a1a5f`。
+- 调用事实：debug=150、ask/generation HTTP attempts=181、最终generation=150；embedding logical/cache/provider/fallback=`973/552/421/0`，judge/model rerank/provider fallback/answer cache hit=0，预算合规。
+- 正式指标：Recall@3=44.37%、Recall@5=47.44%、MRR=0.52615、Top1=92.31%；generation keyword hit=79.74%（374/469）；citation source=91.91%（125/136）、snippet=100%（336/336）；lexical claim support=5.22%（23/441）；no-answer=95%（19/20），no-answer citation violation=1。低值如实保留，未优化题目/prompt/检索/阈值。
+- 安全摘要`docs/eval/reports/c18-generation-objective-review-v1.json` SHA-256=`06dd7458e4950e6d61de7aa8a408570cb06a5524fa4786fa9d67612d7d8f30ae`；raw report/details/metadata哈希与验收边界见归档`acceptance.md`。tracked摘要不含raw内容、凭据、数字KB、collection或绝对路径。
+- 用户已授权验收、归档及本地提交。C18 delta接受进baseline，roadmap/debt同步，change归档至`openspec/changes/archive/2026-09-22-generation-objective-evidence-baseline/`，ACTIVE_TASK恢复IDLE。
+- 边界：只接受一次固定开发态基线；不激活objective/judge gate，不改C17，不证明judge、语义faithfulness、稳定性、生产SLA或Agentic RAG。未改`.env.local`、业务默认配置、前端代码，无push/PR/deploy。
+- 验证：Python290项此前通过并复用；本轮新增正式compiler COMPLETE、exact150/ordered hash、schema/隐私/链接/diff与archive结构检查。Java/frontend无改动不重跑。
+- Commit: pending
+
+## 2026-09-22 C18验收归档提交补录
+- 上一执行提交：`9113945`（`docs(eval): 验收归档C18生成基线`）。
+- 提交仅包含C18正式安全摘要、验收记录、approved delta接受、归档、roadmap/debt与ACTIVE_TASK收尾；无业务配置、C17、Java或前端代码改动，无push/PR/deploy。
+
+## 2026-09-29 · frontend-demo-integration-login-dark 提交补录
+- 上一执行提交：`a6fa49c`（`feat(前端): 补齐Demo暗色登录页`）。

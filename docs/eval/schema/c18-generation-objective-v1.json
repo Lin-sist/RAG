@@ -22,8 +22,8 @@
   ],
   "properties": {
     "schemaVersion": {"const": "c18-generation-objective-v1"},
-    "manifestId": {"const": "rag-eval-dev-v2-generation-objective-nemotron3-super-r5-quality-hardening"},
-    "compilerVersion": {"const": "c18-generation-objective-compiler-v4"},
+    "manifestId": {"const": "rag-eval-dev-v2-generation-objective-nemotron3-super-r7-failure-safe-compiler"},
+    "compilerVersion": {"const": "c18-generation-objective-compiler-v6"},
     "toolingSourceSha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
     "dataset": {"$ref": "#/$defs/dataset"},
     "budgetAudit": {"$ref": "#/$defs/budgetAudit"},

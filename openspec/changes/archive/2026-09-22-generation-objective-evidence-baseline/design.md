@@ -158,3 +158,13 @@ compiler v4不再把离线query embedding上限标成实际调用：`EmbeddingSe
 - **面临的选择**：把最终成功响应的embedding计数当作整条重试链实际值；继续只报告离线上限；保留重试ledger但将该run判为`INCOMPLETE`。
 - **选了哪个 + 为什么**：选择保留重试证据并降为`INCOMPLETE`；失败响应当前不能完整返回其内部缓存/provider调用，严格摘要不能虚构全程实际值。
 - **放弃的代价**：只看最终响应会系统性漏计失败attempt；只报上限仍回答不了实际调用问题；降级会使发生过可恢复503的run不能成为v4 COMPLETE基线，需要一轮无重试的clean run。
+
+### 决策 15. 瞬态失败attempt的embedding观测闭环
+- **面临的选择**：继续要求完整run零重试；只按最终成功响应估算失败attempt；让生成失败响应携带已经完成的retrieval/embedding diagnostics并由runner逐attempt记账。
+- **选了哪个 + 为什么**：选择第三项；r8 canary在5条最终成功时仍恢复6次503，证明零重试不是稳定可执行前提。服务端已有本次检索diagnostics，只把四项非敏感计数合并进错误metadata，runner和compiler逐attempt校验后才能恢复`COMPLETE`，不改变重试范围、预算、题目、prompt或业务答案语义。
+- **放弃的代价**：坚持零重试会使高负载provider下150条完整run几乎不可达；估算会漏计失败attempt；逐attempt观测增加Java错误响应和证据契约版本，但能保留真实调用事实。
+
+### 决策 16. 失败ask缺少raw响应时的证据分类
+- **面临的选择**：让compiler异常退出；把执行失败导致的raw缺失一律标成结构非法`INVALID`；把它稳定分类为`INCOMPLETE`并保留既有错误与调用账本。
+- **选了哪个 + 为什么**：选择`INCOMPLETE`；r10证明provider重试耗尽可合法地产生无`askRawResponse`的部分证据，这时compiler应给出可审计降级结论，而不是崩溃或伪造观测模型。
+- **放弃的代价**：异常退出无法形成安全摘要；一律`INVALID`会混淆真实执行失败与文件结构篡改；`INCOMPLETE`要求新compiler/manifest身份和回归测试，旧run也不能借此升级为正式baseline。

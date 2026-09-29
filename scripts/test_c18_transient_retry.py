@@ -16,14 +16,21 @@ class TransientRetryTest(unittest.TestCase):
         return value, guard.attempts, call.call_count, sleep.call_args_list
 
     def test_provider_503_recovers_with_full_ledger(self):
-        failure = {"data": {"metadata": {"status": "error", "llmHttpStatus": 503}}}
-        success = {"data": {"metadata": {"status": "success", "model": c18.EXPECTED_RUNTIME["model"]}}}
+        embedding = {
+            "queryEmbeddingLogicalCallCount": 1,
+            "queryEmbeddingCacheHitCount": 0,
+            "queryEmbeddingProviderCallCount": 1,
+            "queryEmbeddingProviderFallbackCount": 0,
+        }
+        failure = {"data": {"metadata": {"status": "error", "llmHttpStatus": 503, **embedding}}}
+        success = {"data": {"metadata": {"status": "success", "model": c18.EXPECTED_RUNTIME["model"], **embedding}}}
         value, events, count, sleeps = self.run_calls([failure, failure, success])
         self.assertEqual(value, success)
         self.assertEqual(count, 3)
         self.assertEqual([e["retry"] for e in events], [True, True, False])
         self.assertEqual([c.args[0] for c in sleeps], [5, 10])
         self.assertEqual(sum(e["generationHttpAttempts"] for e in events), 3)
+        self.assertTrue(all(e["queryEmbeddingFacts"] == embedding for e in events))
 
     def test_fourth_failure_stops(self):
         error = runner.ApiCallError("busy", 503)
