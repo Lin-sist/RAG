@@ -208,6 +208,20 @@ class QAControllerTest {
         }
 
         @Test
+        void askDoesNotSaveNoAnswerOrUnsupportedAsSuccessfulHistory() {
+                when(ragService.ask(any(QARequest.class)))
+                                .thenReturn(QAResponse.noResult("什么是RAG"))
+                                .thenReturn(QAResponse.unsupported("什么是RAG", "fact-intent-v1",
+                                                "evidence-no-answer-v1", "UNSUPPORTED", "MULTI_HOP_CUE"));
+
+                qaController.ask(streamRequest(), userDetails);
+                qaController.ask(streamRequest(), userDetails);
+
+                verify(knowledgeBaseService, times(2)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
         void askStreamShouldIncrementQueryCount() {
                 Citation citation = Citation.of("chunk-1", "validated snippet");
                 when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.deferContextual(context -> {
@@ -422,6 +436,56 @@ class QAControllerTest {
 
                 assertEquals(2, sends.get());
                 verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void textSendFailureCancelsDeliveryWithoutTerminalOrHistory() throws Exception {
+                SseEmitter emitter = mockStreamEmitter();
+                AtomicInteger sends = new AtomicInteger();
+                doAnswer(invocation -> {
+                        sends.incrementAndGet();
+                        throw new IOException("synthetic text delivery failure");
+                }).when(emitter).send(any(SseEmitter.SseEventBuilder.class));
+                when(ragService.askStream(any(QARequest.class))).thenReturn(completedAnswerStream());
+
+                qaController.askStream(streamRequest(), "structured-v1", userDetails);
+
+                assertEquals(1, sends.get());
+                verify(knowledgeBaseService, times(1)).incrementQueryCount(11L, 10L);
+                verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void streamUsesAuthenticatedTenantScopeForExecutionCountAndHistory() {
+                RequestIdentity tenant = new RequestIdentity(2002L, 22L);
+                TenantVectorScope scope = new TenantVectorScope(22L, 10L, "kb_tenant_22");
+                when(currentUserService.requireIdentity(any())).thenReturn(tenant);
+                when(knowledgeBaseService.requireReadyVectorScope(10L, tenant)).thenReturn(scope);
+                when(ragService.askStream(any(QARequest.class))).thenReturn(completedAnswerStream());
+
+                qaController.askStream(streamRequest(), "structured-v1", userDetails);
+
+                verify(authorizationService).requireKnowledgeBaseReadAccess(10L, tenant);
+                verify(ragService).askStream(argThat(request -> scope.equals(request.scope())));
+                verify(knowledgeBaseService).incrementQueryCount(22L, 10L);
+                verify(qaHistoryService).save(argThat(tenant::equals),
+                                argThat(saved -> saved.getUserId() == 2002L
+                                                && saved.getKbId() == 10L));
+        }
+
+        @Test
+        void unauthorizedStreamFailsBeforeCountingOrRetrieval() {
+                doAnswer(invocation -> {
+                        throw new BusinessException("AUTH_004", "forbidden");
+                }).when(authorizationService).requireKnowledgeBaseReadAccess(anyLong(),
+                                any(RequestIdentity.class));
+
+                assertThrows(BusinessException.class,
+                                () -> qaController.askStream(streamRequest(), "structured-v1", userDetails));
+
+                verify(knowledgeBaseService, never()).incrementQueryCount(anyLong(), anyLong());
+                verify(ragService, never()).askStream(any());
                 verify(qaHistoryService, never()).save(any(RequestIdentity.class), any());
         }
 

@@ -3005,3 +3005,17 @@
 - 跳过：未执行真实 provider、前端联调；全仓测试失败后未扩展到真实业务外调，也未把全仓验证写作通过。
 - 剩余风险：`SseEmitter.send` 无客户端确认语义；文本发送失败、租户隔离、cache/query-count 完整矩阵仍待验证。全仓 Java 测试有上述独立错误，C21 仍为 ACTIVE。
 - Commit: pending
+
+## 2026-09-29 · C21 第三切片提交补录
+
+- 上一执行提交：`183bfca`（`fix(C21): 收紧流式断连与超时交付边界`）。本条仅补录真实 hash，不回改历史记录。
+
+## 2026-09-29 · C21 后端契约验收与归档
+
+- 任务/change：`structured-sse-terminal-contract`（C21）。
+- 范围与文件：修正 `QAController` 同步非 `ANSWER` history 条件及流式发送失败/租户测试；`McpExternalReadService` 将 `UNSUPPORTED/INVALID` 映射为 `no_result` 并保留 errorCategory；补流式 QA cache 无读写测试，修正 `QueryEngineTelemetryTest` 两处过期 `embed` mock；更新本 change 的 design/spec delta/tasks/acceptance，将两项 requirement 接受进 `openspec/specs/rag-system/spec.md`，归档到 `openspec/changes/archive/2026-09-29-structured-sse-terminal-contract/`，`.ai/ACTIVE_TASK.md` 置 `IDLE`。依据 C21 design 决策 1-8。
+- 已确认事实与结果：C21 后端 `structured-v1` 契约在本地确定性范围内完成；同步非答案不保存正常历史，MCP 不将不支持/无效输入标 `ok`，SSE text/terminal 发送失败、断连或超时不写成功历史；流式 QA cache 无读写。归档 delta 与 baseline 的两项 requirement 内容核对一致。
+- 验证：聚焦 `RAGServiceImplTest` 26、`QAControllerTest` 28、`StreamTerminalEventTest` 3、`C16McpRouterIntegrationTest` 1、`QueryEngineTelemetryTest` 2，共 60 tests 零失败；`mvn -q test` exit 0，本次 Surefire 报告 672 tests、0 failures、0 errors、21 skipped；`git diff --check` 通过。归档路径、tasks 无未完成项与 baseline 接受内容已核对。
+- 跳过：未做真实 provider/embedding/rerank/ask/judge 外调或前端真实联调；21 个 skipped 不作为已验证集成结论。`openspec` CLI 在当前环境不可用，采用文件结构、delta/baseline 内容及 Git diff 检查。
+- 剩余风险：`SseEmitter.send` 无客户端确认语义；断流无 terminal 时客户端只能判 incomplete，不能声称 `CANCELLED` 已送达或 provider 零费用。前端 R5、C19、C20 需分别建变更与验收；真实 provider 联调需单独披露和授权。
+- Commit: pending

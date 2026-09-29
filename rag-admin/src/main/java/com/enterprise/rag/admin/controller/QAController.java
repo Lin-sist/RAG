@@ -144,7 +144,10 @@ public class QAController {
                 traceId, request.kbId(), userId, latencyMs, response.hasResult());
 
         // 只保存完整成功答案；generation failure 仍计数，但不伪装成正常历史。
-        if (response.isSuccess()) {
+        if (response.isSuccess() && response.hasResult()
+                && !"unsupported".equals(response.metadata().get("status"))
+                && (response.metadata().get("routeFinalState") == null
+                        || "ANSWER".equals(response.metadata().get("routeFinalState")))) {
             try {
                 qaHistoryService.save(identity, SaveQAHistoryRequest.builder()
                         .userId(userId)

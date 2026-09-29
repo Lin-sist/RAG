@@ -2,18 +2,17 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
-- Change ID：`structured-sse-terminal-contract`（C21）
-- 阶段：C21 执行结果与结构化 SSE wire 两个切片已提交；第三个超时/断连/发送失败切片正在验证。租户与完整副作用验收及前端接入仍待后续切片。未执行真实 provider 调用。
+- 当前无 active change。C21 后端契约已在本地确定性范围内验收并归档；未执行真实 provider 调用。
 - 推进顺序：C21 后端契约与验证 → 前端接入和联调 → C19 校准 → C20 门禁。后续阶段分别验收。
 
 ## Last Completed Change
 
-- Change ID：`frontend-text-stream-r4`
-- 归档路径：`openspec/changes/archive/2026-09-29-frontend-text-stream-r4/`
-- 阶段：R4 已在纯文本流边界内验收并归档。
+- Change ID：`structured-sse-terminal-contract`（C21）
+- 归档路径：`openspec/changes/archive/2026-09-29-structured-sse-terminal-contract/`
+- 阶段：C21 结构化 SSE 后端契约与本地确定性验收完成；详见归档 `acceptance.md`。
 
 ## Current Boundary
 
-- R4 仅提供显式纯文本流及本地传输状态；C21 结构化终态、流式来源与可靠服务端取消不在此 change 范围。
+- 下一阶段前端 R5 可接入已接受的 `structured-v1` wire；真实前后端联调及 C19/C20 均需按各自契约与外调授权推进。客户端断流仍只可判定 incomplete，不能宣称服务端取消或无 provider 费用。

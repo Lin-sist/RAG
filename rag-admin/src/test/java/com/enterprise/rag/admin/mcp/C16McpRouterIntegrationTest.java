@@ -113,6 +113,15 @@ class C16McpRouterIntegrationTest {
         assertFalse(diagnostics.containsKey("routeEffectiveStrategy"));
         assertFalse(diagnostics.containsKey("budget"));
         assertFalse(diagnostics.containsKey("provider"));
+        Map<String, Object> unsupported = facade.ask(new RequestIdentity(5L, 7L), 11L,
+                "比较 JWT 与 OAuth，并总结它们的共同点", 5, QARequest.DEFAULT_MIN_SCORE);
+        assertEquals("no_result", unsupported.get("status"));
+        assertEquals("UNSUPPORTED", unsupported.get("errorCategory"));
+        assertEquals(List.of(), unsupported.get("citations"));
+        Map<String, Object> invalid = facade.ask(new RequestIdentity(5L, 7L), 11L,
+                "x".repeat(513), 5, QARequest.DEFAULT_MIN_SCORE);
+        assertEquals("no_result", invalid.get("status"));
+        assertEquals("INVALID", invalid.get("errorCategory"));
         verify(queryEngine, times(2)).retrieveWithDiagnostics(eq("什么是 JWT？"), any());
     }
 }

@@ -5,7 +5,7 @@
 - 同一 `POST /api/qa/ask/stream` 默认保持 legacy 文本格式；客户端显式请求 `X-RAG-Stream-Contract: structured-v1` 才接收具名 `text` 增量与唯一具名 `terminal` event。未知版本在问答执行前拒绝。
 - terminal 包含协议版本、`finalState`、稳定 `reason`、`citations[]`、必要安全 metadata、classifier/strategy/policy identity、budget outcome 与实际 usage。缺失观测显式标记不可用，不伪填零。新协议不以 `[DONE]` 表示业务成功。
 - `ANSWER / NO_ANSWER / UNSUPPORTED / ERROR / CANCELLED` 可区分；服务端 timeout 归入 `ERROR` 并带稳定 timeout reason。网络断流而无 terminal 时，客户端只判定 incomplete。连接已断时不能保证送达 `CANCELLED`。
-- 字段 nullability、Router-off identity 与稳定 reason 已由第二切片锁定并同步更新 spec delta；最后一块后断连时的线性化次序仍待后续竞态测试验证。
+- 字段 nullability、Router-off identity 与稳定 reason 已由第二切片锁定并同步更新 spec delta；第三切片用可控 emitter 验证最后一块后断连的服务端处理顺序。
 
 ## 已锁定的 wire v1 字段（第二切片）
 
@@ -19,9 +19,11 @@
 
 当前 `Flux<String>` 不能交付校验后的引用与最终状态。核心层应形成一次流执行的结构化结果，供文本发送、terminal 和历史保存使用；不得为补引用再调用一次 `/ask`。只有完整 `ANSWER` 且满足交付条件才保存正常 QA history，引用来自同次执行。`NO_ANSWER / UNSUPPORTED / ERROR / CANCELLED`、timeout、部分输出、断连或发送失败不写正常成功历史。已接受请求的 query count 至多增加一次；MCP 仍不写 history/query count。
 
-第二切片将 Controller 的保存条件收紧为：核心结果为完整 `ANSWER`，且 SseEmitter 发送 terminal（legacy 为 `[DONE]`）未抛错、未观测到连接关闭。保存的答案与 citations 来自同一次结果。发送调用成功仍不等于客户端应用确认收到；最后一块后的竞态与发送失败将继续用后续测试审查。
+第二切片已将 Controller 的保存条件收紧为：核心结果为完整 `ANSWER`，且 SseEmitter 发送 terminal（legacy 为 `[DONE]`）未抛错、未观测到连接关闭。保存的答案与 citations 来自同一次结果。发送调用成功仍不等于客户端应用确认收到；第三切片已测试最后一块后的断连与发送失败。
 
-第三切片将完成、超时、错误回调注册移到订阅之前，使同步完成或很快关闭的流也能及时标记交付关闭并取消上游。可控 emitter 测试在最后一块文本发送期间触发断连，以及在 terminal 发送时抛出 I/O 错误，均不得保存成功历史；超时测试确认取消上游并标记 timeout。上述测试只证明服务端已观察到的关闭/发送失败，不等于网络层客户端确认送达。
+第三切片已将完成、超时、错误回调注册移到订阅之前，使同步完成或很快关闭的流也能及时标记交付关闭并取消上游。可控 emitter 测试在最后一块文本发送期间触发断连，以及在 terminal 发送时抛出 I/O 错误，均不得保存成功历史；超时测试确认取消上游并标记 timeout。上述测试只证明服务端已观察到的关闭/发送失败，不等于网络层客户端确认送达。
+
+收尾验证进一步覆盖 text 发送失败、认证租户作用域、拒绝访问时零 query count，以及流式执行即使请求 `enableCache=true` 也不读写 QA cache 的现有行为。同步 Controller 只在 `ANSWER` 时写正常历史；MCP 继续复用同一个核心同步结果，`UNSUPPORTED/INVALID` 映射到现有 `no_result` 状态并通过 `errorCategory` 区分，不把它们包装成 `ok`。MCP 不写 history/query count，原有 diagnostics 白名单保持不变。
 
 ## 验证矩阵
 
@@ -67,3 +69,13 @@
 - **面临的选择**：根据文本长度或预设配置推算调用量；保持预算 usage 为不可用，并仅保存已有 finalization metadata。
 - **选了哪个 + 为什么**：保持不可用，legacy 路径没有与 Router 相同的预算账本，推算值不能充当实际观测。
 - **放弃的代价**：推算会把估计误报成真实 provider usage，影响后续 terminal 和评测判断。
+
+### 决策 7：同步入口如何判定可保存的历史
+- **面临的选择**：沿用 `QAResponse.isSuccess()`；全局修改其含义；在 Controller 的 history 边界检查业务 final state。
+- **选了哪个 + 为什么**：在 Controller 检查 `ANSWER`，使 `NO_ANSWER/UNSUPPORTED/INVALID` 不写正常历史，同时保留其他既有调用对 `isSuccess()` 的解释。
+- **放弃的代价**：只用 `isSuccess()` 会保存拒答和不支持提示；全局改动会改变其他消费方的行为，需要扩大本 change 的回归面。
+
+### 决策 8：MCP 如何表达不支持与无效输入
+- **面临的选择**：保留 `status=ok`；扩展 MCP output schema；复用现有 `no_result` 和 `errorCategory`。
+- **选了哪个 + 为什么**：复用现有字段，避免把没有业务答案的结果标成 `ok`，也不改变 C15 MCP output schema 和 diagnostics 白名单。
+- **放弃的代价**：`ok` 会误导调用方；扩展 schema 会增加 C15 契约与互操作验证范围。

@@ -856,6 +856,22 @@ class RAGServiceImplTest {
     }
 
     @Test
+    void streamingAskDoesNotReadOrWriteQaCacheEvenWhenRequested() {
+        RetrievedContext context = new RetrievedContext("JWT evidence", "chunk-1", 0.91f, Map.of());
+        when(queryEngine.retrieve(any(), any(RetrieveOptions.class))).thenReturn(List.of(context));
+        when(answerGenerator.generateStream(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(reactor.core.publisher.Flux.just("JWT 是令牌"));
+        when(answerGenerator.finalizeStream(eq("什么是 JWT？"), eq("JWT 是令牌"), eq(List.of(context))))
+                .thenReturn(GeneratedAnswer.of("JWT 是令牌", List.of(), Map.of()));
+
+        ragService.askStream(QARequest.stream("什么是 JWT？", SCOPE, 5, Map.of(), true))
+                .collectList().block();
+
+        verify(redisUtil, never()).getString(anyString());
+        verify(redisUtil, never()).setString(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
     void legacyStreamKeepsRefusalTextButRecordsNoAnswerWithoutCitations() {
         RetrievedContext context = new RetrievedContext("JWT evidence", "chunk-1", 0.91f, Map.of());
         when(queryEngine.retrieve(any(), any(RetrieveOptions.class))).thenReturn(List.of(context));

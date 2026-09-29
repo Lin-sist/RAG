@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag.query;
 
 import com.enterprise.rag.common.trace.GenAiTelemetry;
 import com.enterprise.rag.core.embedding.EmbeddingService;
+import com.enterprise.rag.core.embedding.ObservedEmbedding;
 import com.enterprise.rag.core.rag.keyword.KeywordIndex;
 import com.enterprise.rag.core.rag.model.RetrievedContext;
 import com.enterprise.rag.core.rag.model.RetrieveOptions;
@@ -52,7 +53,8 @@ class QueryEngineTelemetryTest {
         KeywordIndex keywordIndex = mock(KeywordIndex.class);
         RetrievalProperties properties = new RetrievalProperties();
         RerankerRegistry registry = new RerankerRegistry(List.of(new HeuristicReranker()), properties);
-        when(embedding.embed(org.mockito.ArgumentMatchers.anyLong(), any())).thenReturn(new float[] {0.1f});
+        when(embedding.embedObserved(org.mockito.ArgumentMatchers.anyLong(), any()))
+                .thenReturn(new ObservedEmbedding(new float[] {0.1f}, false, 1, 0));
         when(vectorStore.search(any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class),
                 any(float[].class), any(SearchOptions.class)))
                 .thenReturn(List.of(new SearchResult("shared", "content", 0.8f, Map.of())));
@@ -86,7 +88,8 @@ class QueryEngineTelemetryTest {
         properties.getHybrid().setEnabled(false);
         properties.getRerank().setProvider("nvidia");
         RerankerRegistry registry = new RerankerRegistry(List.of(new HeuristicReranker()), properties);
-        when(embedding.embed(org.mockito.ArgumentMatchers.anyLong(), any())).thenReturn(new float[] {0.1f});
+        when(embedding.embedObserved(org.mockito.ArgumentMatchers.anyLong(), any()))
+                .thenReturn(new ObservedEmbedding(new float[] {0.1f}, false, 1, 0));
         when(vectorStore.search(any(com.enterprise.rag.core.vectorstore.TenantVectorScope.class),
                 any(float[].class), any(SearchOptions.class)))
                 .thenReturn(List.of(new SearchResult("doc", "content", 0.8f, Map.of())));

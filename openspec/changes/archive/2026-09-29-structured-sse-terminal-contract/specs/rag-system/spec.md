@@ -34,6 +34,8 @@
 
 系统 SHALL 从一次流执行形成最终状态、有效 citations、路由与预算事实，并用该结果决定 SSE terminal 与正常成功历史。只有完整 `ANSWER` 且满足交付条件才可保存正常 QA history，并保存同一次执行的有效 citations；`NO_ANSWER / UNSUPPORTED / ERROR / CANCELLED`、timeout、部分输出、断连或发送失败 MUST NOT 保存为正常成功历史。已接受请求的 query count 至多增加一次，retry 不得重复计数；同步、SSE 与 MCP 的 final state/reason 语义 SHALL 对齐，同时保留 MCP 无 history/query-count 副作用的边界。
 
+同步 REST 入口的正常成功历史也 SHALL 排除 `NO_ANSWER/UNSUPPORTED/INVALID/ERROR`。MCP `rag.ask` 对 `UNSUPPORTED/INVALID` SHALL 使用现有 `status=no_result` 并以 `errorCategory` 区分，不得标为 `ok`；MCP 不新增业务写入。当前流式路径即使请求 `enableCache=true` 也不读写 QA cache，不能以其证明同步缓存命中语义。
+
 #### Scenario: 最后一块之后断连
 - GIVEN 最后一块文本已生成但 terminal 尚未送达
 - WHEN 客户端断开或发送失败

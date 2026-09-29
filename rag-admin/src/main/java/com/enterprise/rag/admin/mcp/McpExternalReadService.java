@@ -174,7 +174,10 @@ final class McpExternalReadService {
         if ("error".equals(upstreamStatus) || !response.isSuccess()) {
             throw new McpToolExecutionException("MCP_DEPENDENCY_UNAVAILABLE");
         }
-        String status = "no_result".equals(upstreamStatus) ? "no_result" : "ok";
+        String routeFinalState = response.metadata() == null
+                ? null : String.valueOf(response.metadata().get("routeFinalState"));
+        boolean unsupported = "UNSUPPORTED".equals(routeFinalState) || "INVALID".equals(routeFinalState);
+        String status = "no_result".equals(upstreamStatus) || unsupported ? "no_result" : "ok";
         McpUtf8Bounder.BoundedText answer;
         try {
             answer = McpUtf8Bounder.bound(
@@ -229,7 +232,7 @@ final class McpExternalReadService {
         payload.put("answer", answer.text());
         payload.put("citations", List.copyOf(citations));
         if ("no_result".equals(status)) {
-            payload.put("errorCategory", "NO_RESULT");
+            payload.put("errorCategory", unsupported ? routeFinalState : "NO_RESULT");
         }
         payload.put("diagnostics", Map.copyOf(diagnostics));
         return Map.copyOf(payload);
