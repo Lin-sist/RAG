@@ -2,7 +2,11 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
+
+- Change ID：`structured-sse-terminal-contract`（C21）
+- 阶段：C21 首个后端切片已实现并完成聚焦测试；结构化 SSE wire、Controller 副作用修正及前端接入仍待后续切片。未执行真实 provider 调用。
+- 推进顺序：C21 后端契约与验证 → 前端接入和联调 → C19 校准 → C20 门禁。后续阶段分别验收。
 
 ## Last Completed Change
 

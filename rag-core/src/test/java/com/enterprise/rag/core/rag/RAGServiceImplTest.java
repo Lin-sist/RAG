@@ -551,6 +551,10 @@ class RAGServiceImplTest {
         assertEquals("MULTI_HOP_CUE", terminalSignal.routeReason());
         assertEquals("none", terminalSignal.effectiveStrategy());
         assertEquals("evidence-no-answer-v1", terminalSignal.policyVersion());
+        assertEquals("UNSUPPORTED", terminalSignal.executionResult().finalState());
+        assertEquals("MULTI_HOP_CUE", terminalSignal.executionResult().reason());
+        assertEquals(List.of(), terminalSignal.executionResult().citations());
+        assertEquals(null, terminalSignal.executionResult().usage());
         verify(queryEngine, never()).retrieveWithDiagnostics(any(), any());
         verify(answerGenerator, never()).generateStream(any(), any());
     }
@@ -582,6 +586,8 @@ class RAGServiceImplTest {
         assertEquals(List.of("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。"), chunks);
         assertEquals("NO_ANSWER", terminalSignal.finalState());
         assertEquals("INSUFFICIENT_EVIDENCE", terminalSignal.noAnswerReason());
+        assertEquals("NO_ANSWER", terminalSignal.executionResult().finalState());
+        assertEquals(0, terminalSignal.executionResult().usage().generationCalls());
         assertEquals("fact-v1", terminalSignal.effectiveStrategy());
         verify(queryEngine).retrieveWithDiagnostics(
                 eq("什么是 JWT？"),
@@ -641,6 +647,9 @@ class RAGServiceImplTest {
         assertEquals("ANSWER", terminalSignal.finalState());
         assertEquals("NONE", terminalSignal.noAnswerReason());
         assertEquals("fact-v1", terminalSignal.effectiveStrategy());
+        assertEquals("ANSWER", terminalSignal.executionResult().finalState());
+        assertEquals(List.of(citation), terminalSignal.executionResult().citations());
+        assertEquals(1, terminalSignal.executionResult().usage().generationCalls());
     }
 
     @Test
@@ -675,6 +684,7 @@ class RAGServiceImplTest {
         subscription.dispose();
 
         assertEquals("CANCELLED", terminalSignal.transportOutcome());
+        assertEquals(null, terminalSignal.executionResult());
         assertEquals("ERROR", terminalSignal.finalState());
         assertEquals("NONE", terminalSignal.noAnswerReason());
         assertEquals(1, terminalSignal.budgetUsage().generationCalls());
@@ -792,5 +802,60 @@ class RAGServiceImplTest {
                 signal.budgetUsage().estimatedContextTokens());
         assertEquals(sync.metadata().get("routeEstimatedOutputTokens"),
                 signal.budgetUsage().estimatedOutputTokens());
+        assertEquals(List.of(citation), signal.executionResult().citations());
+        assertEquals(signal.budgetUsage(), signal.executionResult().usage());
+    }
+
+    @Test
+    void legacyStreamFinalizesOnceWithoutAnotherGenerationCall() {
+        RetrievedContext context = new RetrievedContext("JWT evidence", "chunk-1", 0.91f, Map.of());
+        when(queryEngine.retrieve(any(), any(RetrieveOptions.class))).thenReturn(List.of(context));
+        when(answerGenerator.generateStream(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(reactor.core.publisher.Flux.just("JWT 是", "令牌"));
+        Citation citation = Citation.of("chunk-1", "JWT evidence");
+        when(answerGenerator.finalizeStream(eq("什么是 JWT？"), eq("JWT 是令牌"), eq(List.of(context))))
+                .thenReturn(GeneratedAnswer.of("JWT 是令牌", List.of(citation),
+                        Map.of("estimatedOutputTokens", 4)));
+        com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal signal =
+                new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
+
+        List<String> chunks = ragService.askStream(QARequest.stream("什么是 JWT？", SCOPE))
+                .contextWrite(contextView -> contextView.put(
+                        com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY,
+                        signal))
+                .collectList().block();
+
+        assertEquals(List.of("JWT 是", "令牌"), chunks);
+        assertEquals("ANSWER", signal.executionResult().finalState());
+        assertEquals(List.of(citation), signal.executionResult().citations());
+        assertEquals(null, signal.executionResult().usage());
+        verify(answerGenerator).finalizeStream("什么是 JWT？", "JWT 是令牌", List.of(context));
+        verify(answerGenerator, never()).generate(any(), any());
+    }
+
+    @Test
+    void legacyStreamKeepsRefusalTextButRecordsNoAnswerWithoutCitations() {
+        RetrievedContext context = new RetrievedContext("JWT evidence", "chunk-1", 0.91f, Map.of());
+        when(queryEngine.retrieve(any(), any(RetrieveOptions.class))).thenReturn(List.of(context));
+        when(answerGenerator.generateStream(eq("什么是 JWT？"), eq(List.of(context))))
+                .thenReturn(reactor.core.publisher.Flux.just("现有资料不足，无法回答。"));
+        when(answerGenerator.finalizeStream(eq("什么是 JWT？"),
+                eq("现有资料不足，无法回答。"), eq(List.of(context))))
+                .thenReturn(GeneratedAnswer.of("现有资料不足，无法回答。", List.of(),
+                        Map.of("status", "no_result")));
+        com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal signal =
+                new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
+
+        List<String> chunks = ragService.askStream(QARequest.stream("什么是 JWT？", SCOPE))
+                .contextWrite(contextView -> contextView.put(
+                        com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY,
+                        signal))
+                .collectList().block();
+
+        assertEquals(List.of("现有资料不足，无法回答。"), chunks);
+        assertEquals("NO_ANSWER", signal.executionResult().finalState());
+        assertEquals("MODEL_REFUSAL", signal.executionResult().reason());
+        assertEquals(List.of(), signal.executionResult().citations());
+        verify(answerGenerator, never()).generate(any(), any());
     }
 }

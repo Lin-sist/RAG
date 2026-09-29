@@ -49,6 +49,12 @@ public interface AnswerGenerator {
         return GeneratedAnswer.of(answer, List.of(), java.util.Map.of());
     }
 
+    default GeneratedAnswer finalizeStream(String query,
+            String answer,
+            List<RetrievedContext> contexts) {
+        return GeneratedAnswer.of(answer, List.of(), java.util.Map.of());
+    }
+
     /**
      * 获取当前使用的模型名称
      *

@@ -2323,6 +2323,21 @@
 - 剩余风险：预算契约需修订并重新授权；失败证据不能作为质量参考，profile仍DRAFT。
 - Commit: pending
 
+## 2026-09-29 · 上轮合并提交补录
+
+- 上一条“合并远端 Linux 跨平台提交”执行记录的本地提交：`4e54d91`。本条仅补录真实 hash，不回改历史记录。
+
+## 2026-09-29 · C21 结构化 SSE 事前规划
+
+- 任务/change：`structured-sse-terminal-contract`（C21）。
+- 范围与修改文件：新增 `openspec/changes/structured-sse-terminal-contract/{proposal.md,design.md,tasks.md,specs/rag-system/spec.md}`；将 `.ai/ACTIVE_TASK.md` 指向 C21；本日志仅追加。
+- 已确认事实：R4 纯文本流已验收归档；当前 Controller 使用 `Flux<String>`，完成回调按文本写入 citations 为空的历史；`StreamTerminalSignal` 仅含部分路由/预算事实。C18 完成一次 generation/objective 基线，C19 live judge 与 C20 profile 未完成。设计决策见 C21 `design.md` 决策 1–4。
+- 执行结果：形成后端契约与验证的事前审查稿，固定后续顺序为 C21 后端 → 前端 R5/联调 → C19 → C20；未修改业务代码或 accepted baseline。
+- 验证：`git status --short --branch` 检查原有未跟踪文档；规划文件旧路径/链接扫描及 `git diff --check` 待本记录写入后执行。
+- 跳过：未做 Java/Python/frontend 测试，因本轮只写契约规划；未启动服务、未执行 ask/embedding/rerank/generation/judge 或其他 provider 调用。
+- 剩余风险：wire 字段/nullability、稳定 reason 枚举、Router-off identity、terminal/历史写入竞态仍需事前契约闸门锁定；真实联调和 C19 外调分别需要明确授权。
+- Commit: pending
+
 
 ## 2026-09-08 C17提交补录
 - 上一执行提交：d060f83（docs(eval): 记录预检及查询变体预算缺口）。
@@ -2944,4 +2959,21 @@
 - 验证：合并后日志与双方追加内容精确一致、冲突标记 0、`git diff --check` 通过；`python -B -m unittest discover -s scripts -p 'test_*.py'` 为 290/290 PASS。
 - 跳过：Java/前端代码未因本次远端提交改变，未重跑 Maven/frontend build；未执行 Docker 启动、真实 provider 或业务数据调用。
 - 剩余风险：尚未在 Windows 验证 `start_backend.sh` 运行流程；原有未跟踪文档 `docs/RAG_RETRIEVAL_OPTIONS_2026.md` 不纳入合并提交或推送。
+- Commit: pending
+
+## 2026-09-29 · C21 日志位置更正说明
+
+- 本轮 C21 规划记录与上一提交 hash 补录误插入在本日志第 2326 行附近，未位于文件末尾；记录内容仍保留，不删除或重排。
+- 本条只追加以标明实际发生顺序：上一轮合并提交 `4e54d91`，随后建立 C21 规划文件与活动指针。历史日志未被回退或覆盖。
+- 自动审批拒绝了删除并重排那段记录的修正操作，理由是 AGENT_LOG 只追加；后续若需物理移动，应由用户明确授权处理。
+- Commit: pending
+
+## 2026-09-29 · C21 首个后端实现切片
+
+- 任务/change：`structured-sse-terminal-contract`（C21）。
+- 范围与文件：`rag-core/src/main/java/com/enterprise/rag/core/rag/generator/AnswerGenerator.java`、`AnswerGeneratorImpl.java`、`service/RAGService.java`、`RAGServiceImpl.java`，对应两份 core 测试；更新本 change 的 `design.md`、`tasks.md` 和 `.ai/ACTIVE_TASK.md`。
+- 已确认事实与结果：legacy 流在同次文本完成后通过现有 finalizer 得到有效 citations 与 metadata；Router 流复用既有 finalization 和预算快照。`StreamTerminalSignal.ExecutionResult` 保存终态、原因、答案、有效引用及已观测 usage；legacy 无预算账本时 usage 为 null。错误或取消时丢弃结果。设计依据见 C21 design 决策 2、5、6。
+- 验证：`scripts/run_local_quality_gates.ps1 -Mode Preflight` 报告 Java/Maven 可用；`mvn --% -q -pl rag-admin -am -Dtest=RAGServiceImplTest,AnswerGeneratorImplCitationFallbackTest,QAControllerTest -Dsurefire.failIfNoSpecifiedTests=false test` 通过，24+9+14=47 tests，零失败；`git diff --check` 通过。
+- 跳过：未改 SSE wire、Controller 历史写入或前端；未做真实 provider/ask/embedding/rerank/judge 调用，故未做真实联调。未运行全仓 Maven 测试，聚焦链已覆盖当前 core 与 Controller 接口。
+- 剩余风险：Controller 仍按旧完成回调保存空 citations 的历史；terminal event、交付/断连竞态和 legacy usage 的进一步归因属于后续切片。当前结果是内部执行事实，不代表客户端已收到结构化终态。
 - Commit: pending

@@ -481,6 +481,8 @@ public class RAGServiceImpl implements RAGService {
         if (routePlan.isPresent() && routePlan.get().intent() != QueryIntent.FACT) {
             QueryRoutePlan plan = routePlan.get();
             recordStreamRoute(terminalSignal, plan, plan.intent().name());
+            recordStreamResult(terminalSignal, "UNSUPPORTED", plan.reason().name(),
+                    "当前有界路由仅支持事实型问题，请改为单一事实查询。", List.of(), Map.of());
             askSpan.detach();
             return finishStream(
                     Flux.just("当前有界路由仅支持事实型问题，请改为单一事实查询。"),
@@ -544,6 +546,8 @@ public class RAGServiceImpl implements RAGService {
                         "NO_ANSWER",
                         noAnswerReason));
                 budgetLedger.ifPresent(ledger -> recordStreamBudget(terminalSignal, ledger));
+                recordStreamResult(terminalSignal, "NO_ANSWER", noAnswerReason,
+                        QAResponse.noResult(question).answer(), List.of(), Map.of());
                 askSpan.detach();
                 return finishStream(
                         Flux.just("抱歉，未能找到与您问题相关的信息。请尝试换一种方式提问或提供更多细节。"),
@@ -573,6 +577,19 @@ public class RAGServiceImpl implements RAGService {
                         budgetLedger.orElseThrow(),
                         terminalSignal,
                         askSpan);
+            } else if (terminalSignal != null) {
+                StringBuilder streamedText = new StringBuilder();
+                stream = stream
+                        .doOnNext(streamedText::append)
+                        .doOnComplete(() -> {
+                            GeneratedAnswer finalized = answerGenerator.finalizeStream(
+                                    question, streamedText.toString(), contexts);
+                            String state = "no_result".equals(finalized.metadata().get("status"))
+                                    ? "NO_ANSWER" : "ANSWER";
+                            String reason = "NO_ANSWER".equals(state) ? "MODEL_REFUSAL" : "NONE";
+                            recordStreamResult(terminalSignal, state, reason,
+                                    finalized.answer(), finalized.citations(), finalized.metadata());
+                        });
             }
             return finishStream(stream, askSpan, generation, "SUCCESS", terminalSignal);
 
@@ -613,6 +630,9 @@ public class RAGServiceImpl implements RAGService {
                     }
                     if (terminalSignal != null) {
                         terminalSignal.recordTransportOutcome(outcome);
+                        if (signal != reactor.core.publisher.SignalType.ON_COMPLETE) {
+                            terminalSignal.discardExecutionResult();
+                        }
                     }
                     askSpan.finish(outcome);
                 });
@@ -659,6 +679,12 @@ public class RAGServiceImpl implements RAGService {
                     decision.finalState().name(),
                     decision.noAnswerReason().name());
             recordStreamBudget(terminalSignal, ledger);
+            String deliveredAnswer = decision.finalState() == QueryFinalState.ANSWER
+                    ? finalized.answer() : QAResponse.noResult(question).answer();
+            recordStreamResult(terminalSignal, decision.finalState().name(),
+                    decision.noAnswerReason().name(), deliveredAnswer,
+                    decision.finalState() == QueryFinalState.ANSWER ? finalized.citations() : List.of(),
+                    finalized.metadata());
             recordRouteTelemetry(
                     askSpan,
                     plan,
@@ -690,6 +716,14 @@ public class RAGServiceImpl implements RAGService {
             QueryBudgetLedger ledger) {
         if (terminalSignal != null) {
             terminalSignal.recordBudgetUsage(ledger.snapshot());
+        }
+    }
+
+    private void recordStreamResult(RAGService.StreamTerminalSignal terminalSignal,
+            String state, String reason, String answer, List<Citation> citations,
+            Map<String, Object> metadata) {
+        if (terminalSignal != null) {
+            terminalSignal.recordExecutionResult(state, reason, answer, citations, metadata);
         }
     }
 

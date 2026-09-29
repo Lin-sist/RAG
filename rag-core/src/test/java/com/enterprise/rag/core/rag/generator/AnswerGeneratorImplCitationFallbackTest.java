@@ -194,6 +194,25 @@ class AnswerGeneratorImplCitationFallbackTest {
         assertThat(resolution.validation().droppedCitations()).isEmpty();
     }
 
+    @Test
+    void legacyStreamFinalizationUsesExistingTextAndValidatedContexts() {
+        RetrievedContext context = context(
+                "chunk-stream-1",
+                "JWT 使用签名验证令牌内容，服务端据此检查声明是否可信。",
+                61L,
+                Map.of("sourceFileName", "jwt.md", "documentTitle", "JWT 指南"));
+
+        GeneratedAnswer result = generator.finalizeStream(
+                "JWT 如何验证？",
+                "JWT 使用签名验证令牌内容。",
+                List.of(context));
+
+        assertThat(result.answer()).isEqualTo("JWT 使用签名验证令牌内容。");
+        assertThat(result.citations()).hasSize(1);
+        assertThat(result.citations().get(0).documentId()).isEqualTo(61L);
+        assertThat(result.metadata()).containsKey("estimatedOutputTokens");
+    }
+
     private RetrievedContext context(String source, String content, Long documentId, Map<String, Object> metadata) {
         java.util.HashMap<String, Object> values = new java.util.HashMap<>(metadata);
         values.put("documentId", documentId);

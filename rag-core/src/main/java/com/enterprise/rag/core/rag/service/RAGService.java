@@ -2,6 +2,7 @@ package com.enterprise.rag.core.rag.service;
 
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.rag.model.QAResponse;
+import com.enterprise.rag.core.rag.model.Citation;
 import com.enterprise.rag.core.rag.router.QueryBudgetUsage;
 import com.enterprise.rag.core.vectorstore.TenantVectorScope;
 import reactor.core.publisher.Flux;
@@ -16,6 +17,20 @@ public interface RAGService {
 
     /** SSE adapter 可在取消订阅前标记真实 timeout，避免与主动断连混淆。 */
     final class StreamTerminalSignal {
+        /** Core execution result; delivery and persistence are decided by the SSE adapter. */
+        public record ExecutionResult(
+                String finalState,
+                String reason,
+                String answer,
+                java.util.List<Citation> citations,
+                java.util.Map<String, Object> metadata,
+                QueryBudgetUsage usage) {
+            public ExecutionResult {
+                citations = citations == null ? java.util.List.of() : java.util.List.copyOf(citations);
+                metadata = metadata == null ? java.util.Map.of() : java.util.Map.copyOf(metadata);
+            }
+        }
+
         private final java.util.concurrent.atomic.AtomicBoolean timeout =
                 new java.util.concurrent.atomic.AtomicBoolean();
         private final java.util.concurrent.atomic.AtomicReference<String> classifierVersion =
@@ -33,6 +48,8 @@ public interface RAGService {
         private final java.util.concurrent.atomic.AtomicReference<String> transportOutcome =
                 new java.util.concurrent.atomic.AtomicReference<>("UNKNOWN");
         private final java.util.concurrent.atomic.AtomicReference<QueryBudgetUsage> budgetUsage =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        private final java.util.concurrent.atomic.AtomicReference<ExecutionResult> executionResult =
                 new java.util.concurrent.atomic.AtomicReference<>();
 
         public void markTimeout() {
@@ -95,6 +112,20 @@ public interface RAGService {
 
         public QueryBudgetUsage budgetUsage() {
             return budgetUsage.get();
+        }
+
+        public void recordExecutionResult(String state, String reason, String answer,
+                java.util.List<Citation> citations, java.util.Map<String, Object> metadata) {
+            executionResult.set(new ExecutionResult(state, reason, answer, citations, metadata, budgetUsage.get()));
+            finalState.set(state);
+        }
+
+        public ExecutionResult executionResult() {
+            return executionResult.get();
+        }
+
+        public void discardExecutionResult() {
+            executionResult.set(null);
         }
     }
 

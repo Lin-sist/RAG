@@ -176,6 +176,15 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     @Override
     public GeneratedAnswer finalizeStream(String query,
             String streamedAnswer,
+            List<RetrievedContext> contexts) {
+        return finalizeStream(query, streamedAnswer, contexts, new GenerationBudget(
+                PromptBuilder.DEFAULT_CONTEXT_TOKEN_BUDGET,
+                configuredMaxOutputTokens()));
+    }
+
+    @Override
+    public GeneratedAnswer finalizeStream(String query,
+            String streamedAnswer,
             List<RetrievedContext> contexts,
             GenerationBudget budget) {
         String answer = sanitizeAnswerText(streamedAnswer);
