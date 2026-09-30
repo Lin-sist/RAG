@@ -1,10 +1,116 @@
-# 前端 Demo 迁移与真实后端对接规划
+# 前端 Demo 接入总说明与分阶段推进规划
+
+## 现行推进规则（2026-09-29 修订）
+
+本节是后续前端接入的现行入口。下方原第 1–10 节保留为早期规划，涉及 C18 活跃、等待 C21、未修复契约缺口和历史授权的描述不得直接作为当前启动条件；第 11–15 节为历史执行证据。当前事实仍按 AGENTS.md、ACTIVE_TASK、active change、accepted specs 和代码核验。
+
+### A. 采用总说明与 OpenSpec 分工推进
+
+采用第二种方案：本文维护目标、现状、顺序与验收边界；Type B 独立小修复直接按仓库规则实施；Type C 先完成 proposal、design、tasks 和相关 spec delta，再进入实现。本文不替代 active change，也不构成所有后续功能、业务调用、提交或发布的授权。
+
+整体 Demo 对齐涉及多个页面、共享样式和多个独立提交，推荐作为 Type C 规划，不能拆成多个 Type B 来绕过重大变更流程。独立的局部样式、文案和已有契约内小 bugfix 仍可按 Type B 推进，不必每次新建 change。
+
+2026-09-30：已按用户要求建立 [frontend-demo-experience-alignment](../../openspec/changes/frontend-demo-experience-alignment/proposal.md) 规划，活动指针已指向该 change，阶段为待事前审查，尚未实施。design 按 AGENTS.md 包含真实技术取舍的三行式“决策记录”，不在本文或 AGENT_LOG 重复保存设计决策。
+
+本地提交整理补充：R5 已固定为 `0024e92`；下文未提交状态是规划时快照。用户授权整理与本地提交，不包含新规划的业务实现或 push。
+
+### B. 与 C19/C20 的顺序
+
+用户当前优先级为：C21/R5 已完成范围 → 前端 Demo 对齐和业务闭环 → C19 judge 校准 → C20 门禁。该顺序与当前 ACTIVE_TASK 一致。
+
+- C19/C20 未完成不阻塞已有 REST 和 structured-v1 契约内的视觉、知识库、历史、反馈接入。
+- 前端验收不能代替 generation、citation、no-answer 的质量评测；不得宣称 C19/C20 或质量门禁已通过。
+- 一次只推进一个 active change。若 C19/C20 已启动，应先协调顺序；不接管其任务。独立 Type B 维护仅在职责、文件及工作区隔离成立时进行。
+- 不改评测数据集、阈值、profile、provider/model、检索或 prompt 默认行为；需要跨越边界时单独明确 Type C 范围。
+
+### C. 当前模块快照
+
+以下为 2026-09-29 工作区事实；分类仅针对所述范围，不代表模块所有场景均通过。
+
+| 模块 | 分类 | 已完成与剩余项 |
+| --- | --- | --- |
+| 登录/请求基础层 | partial | typed error、single-flight refresh、token rotate 已有实现及合成测试，有真实登录记录；正式侧栏退出仅清本地态，未调用现有 logout API |
+| 应用框架/侧栏/主题 | partial | 正式路由、真实 KB/最近历史、深浅切换已存在；仍是旧布局，弹窗主题不统一，侧栏错误与空态区分不足 |
+| 知识库列表/详情 | partial | 已接 CRUD、统计、文档、本地筛选与局部表格视觉；未完整对齐 Demo 资料库布局 |
+| 上传/任务 | partial | 已接上传和任务轮询，专用 KB 上传解析已有真实证据；删除、失败恢复及完整浏览器路径不能据此外推通过 |
+| 同步问答 | confirmed | 指定合成问题的真实回答、独立 citation、history 写入与回读通过，不代表整体生成质量 |
+| R5 结构化 SSE | partial | Chrome 单题 ANSWER、terminal citation 与 history 回读通过；39/39 合成测试及正式 build 通过；真实非答案/断连矩阵未完整验证 |
+| 历史记录 | partial | 列表、分组、筛选、详情和删除接线存在，真实成功记录可回读；仍为单轮 history |
+| 历史反馈 | confirmed | 真实评分/评论提交、回读及刷新后保留已验证 |
+| 设置 | partial | mock 资料、保存空函数、改密码仅清输入、API 密钥占位；不能算作账号管理已接入 |
+| 完整外观/搜索体验 | planned | 正式版未完整迁移；已加载列表筛选和全量服务端搜索必须区分 |
+| 多轮 conversation/重命名 | out_of_scope | 本轮不新增会话实体，不以 history id 伪装 conversation id |
+| 引用原文精确定位 | unknown | 可展示现有 citation 片段；原文定位需另核查接口 |
+| 评测/MCP/可观测/知识源/研究任务工作台 | out_of_scope | 不在当前迁移范围，Demo 样例不等于真实管理接口 |
+
+证据入口：[正式路由](../../rag-frontend/src/router/index.ts)、[正式聊天页](../../rag-frontend/src/components/chat/ChatPanel.vue)、[设置](../../rag-frontend/src/components/settings/SettingsModal.vue)、[反馈](../../rag-frontend/src/components/history/HistoryFeedback.vue)、[R5 验收](../../openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/acceptance.md)、[执行日志](../../.ai/AGENT_LOG.md)。本轮只读核查这些事实，没有新增真实联调。
+
+### D. 迁移目标
+
+唯一正式落点为 `rag-frontend/`。保留 `prototype/chatgpt-ui-demo/` 原型作为参考，不给原型新增真实 API，也不建立第二套正式前端。
+
+迁移应覆盖品牌、配色、字体层级、间距、侧栏、主区宽度、输入框、消息、来源、资料库、弹窗与响应式布局。仅接真实列表或换背景色不能算作视觉迁移完成。
+
+- `/login`：在 design 明确采用哪个 Demo 登录版本；不新增注册。
+- shell/侧栏：首页导航、最近记录和品牌对齐 Demo；未接工作台不伪装成可用入口。
+- `/chat`：迁移输入、范围 chip、建议、消息和来源交互；同步仍是当前默认，改变默认须纳入设计和验收。
+- `/kb`、`/kb/:id`：对齐资料库和详情布局，不补假大小、假进度或本地假归档。
+- `/history`、`/chat/:id`：统一历史及反馈体验，保持一条记录一问一答。
+- 设置：展示真实身份与实际生效的外观项；未接密码/API 密钥管理不能模拟成功。隐藏或删除既有入口涉及能力变化时纳入 Type C。
+- 引用：来源来自实际返回字段，不自行建立答案句子与引用的对应关系；检索相关度不是正确率。
+
+Demo 网格切换、搜索、强调色等在 proposal 逐项确定保留、适配或延后。新增用户可见能力按 Type C 定义。截图中的暗色页面/浅色弹窗须做浏览器计算样式定位，尚不能把特定 CSS 选择器认定为根因。
+
+### E. 推荐切片与顺序
+
+F1–F6 为 R5 后的新阶段，不替换历史 R 编号，也不是自动实施授权。
+
+| 阶段 | 范围与产出 | 流程与验收 |
+| --- | --- | --- |
+| F1 独立缺口修复 | logout 接线、侧栏错误/空态等已有契约内缺陷；登记设置占位问题 | 独立小修复可 Type B；隐藏/删除能力入口纳入 F2 Type C，不顺手重构 shell |
+| F2 应用框架与视觉系统 | 品牌、主题变量、侧栏、共享控件/弹窗、首页和设置适配 | 推荐下一个 Type C；先逐页差异表和保留/适配/延后清单，再按区域实现；验收深浅主题和窄屏 |
+| F3 聊天与来源 | 输入区、消息排版、代码块操作、长回答滚动、来源展开及终态提示 | 整体迁移按 Type C；保留 R5 parser 和单一网络入口；覆盖非答案、断流、非法 terminal 和 abort |
+| F4 知识库与上传闭环 | 列表/详情/编辑/统计/上传任务一致性及失败恢复 | 多页迁移按 Type C；专用数据验证创建→上传→解析→问答→来源/历史，真实调用和删除按授权范围 |
+| F5 历史、反馈与查找 | 侧栏/历史页刷新、分页浏览、反馈和查找体验 | 新搜索等能力按 Type C；反馈绑定真实 history id；不把局部过滤宣传为全量搜索 |
+| F6 整体验收与分流 | 对纳入范围的页面作视觉、交互和业务状态验收，登记延后功能 | 每个 change 独立收口；之后推进 C19/C20；多轮/账号管理/工作台另立规划 |
+
+已创建 change：`frontend-demo-experience-alignment`，首批 F2 覆盖侧栏、品牌、主题、首页和设置，proposal、design、tasks 与 spec delta 已落盘，待事前审查。F3 正文/引用迁移不在本 change 内；F1 logout 接线修复单独保留。精确范围以该 change 为准，不能实施中扩张为所有前端愿望。
+
+### F. 启动、隔离与授权复用
+
+1. 每次先核对 AGENTS.md、Git、ACTIVE_TASK 和相关代码，不默认加载全部后端历史材料。
+2. 明确切片目标、允许路径、排除项、依赖契约、测试和停止条件。复用已有明确授权，不逐轮重复询问同一范围。
+3. 本次 main 快照领先 origin/main 4 个提交且包含 R5 等未提交增量。不能覆盖或混入，也不能擅自提交以获得 clean 状态。
+4. 优先复用合适隔离工作区；新 checkout 必须确认包含 R5 代码和 accepted spec，不能从缺少未提交 R5 的旧 HEAD 开始却声称继承当前能力。
+5. Type B 不接管活动指针；Type C 需无其他 active change，先建立完整规划和活动指针并完成事前审查，再写业务代码。
+6. 不新增第二套 HTTP client、SSE parser、task poller 或正式聊天页。重复组件先查引用图，再决定是否删除。
+
+### G. 验收与完成标准
+
+- 工程：前端改动运行含 `vue-tsc -b` 的 `npm run build`，逻辑改动运行受影响测试；纯样式不编写镜像实现的测试。保持 Markdown `html: false`，核查来源/链接渲染边界。
+- 视觉：design 固定 Demo 参考版本、视口、主题及数据状态；逐页对比桌面/窄屏、深色/浅色、正常/长内容及适用的 loading/empty/error/中断状态。记录“已对齐 / 契约要求的适配 / 延后”，build 不能替代视觉验收。
+- 交互：覆盖焦点、键盘关闭、弹窗/下拉菜单、滚动、截断、按钮状态，不能只验收首页。
+- 真实链路：静态/合成、本地真实 API、真实 provider、质量评测分层报告。复用不受改动影响的现有证据，只重跑受影响且获授权路径。
+- 调用边界：披露 provider/模型、最大调用量、数据出站、费用/限流、timeout/retry 和 KB/query/history 副作用；同范围有效授权可复用，一次性授权不能延长。cleanup/删除不默认包含。
+- SSE：不为来源重发 ask；客户端 abort 只证明停止接收，不承诺服务端取消、未写历史或零费用。
+- 文档：检查受影响链接、旧路径和 `git diff --check`；日志只追加。既有相同代码/依赖/环境的成功验证可复用。
+- 收口：完整 change 验收后，按覆盖该动作的用户授权接受 spec/归档；单片完成不清空整个 change 指针。未授权 Agent 提交时不暂存、不提交；push/PR/部署另行授权。
+
+---
+
+## 早期规划与执行记录（历史材料）
+
+以下内容保留当时规划及执行语境。后续实施先使用上面的现行推进规则，再按需要查询历史，不沿用已过时的启动条件。
 
 > 文档性质：前端并行实施规划与边界；不构成 Type C、真实后端联调、provider 调用、提交、发布或部署授权。
 > 状态日期：2026-09-22。
 > 当前事实基线：前端规划初始提交 `24f1be2`；C18已完成正式full、验收和归档，`.ai/ACTIVE_TASK.md`恢复`IDLE`。下文关于“C18活跃期间”的隔离规则保留为当时实施边界，不再表示当前阻断。
 > 唯一正式落点：`rag-frontend/`。`prototype/chatgpt-ui-demo/` 仅作为视觉、信息架构和交互参考，不改造成第二套生产前端。
-> 当前授权：用户已要求在新对话直接开始既有契约内、零外调的前端 Type B 首切片；该授权不覆盖 Type C、真实 ask/upload/provider 调用、暂存、commit、push、PR、发布或部署。
+> 启动时授权：用户要求在新对话直接开始既有契约内、零外调的前端 Type B 首切片；该次授权不覆盖 Type C、真实 ask/upload/provider 调用、暂存、commit、push、PR、发布或部署。后续 R3b/R5 外调与 R5 归档分别取得授权，见下方执行记录。
+
+## 最新状态（2026-09-29）
+
+上述表格与阶段说明保留当时规划语境。R1-R4 已分别推进；C21 后端 `structured-v1` 契约已在本地确定性范围内验收归档。R5 正式 `/chat` 结构化文本、终态与有效来源接入已完成，合成测试、正式构建及 Chrome 单题真实 `ANSWER` 联调通过；用户授权后已接受 baseline 并归档，`.ai/ACTIVE_TASK.md` 为 `IDLE`。首次代理连接失败与成功复验均保留证据。浏览器停止接收不证明服务端已取消或无费用。R5 的当前事实以归档 change、代码和执行日志为准。
 
 ## 1. 目标与边界
 
@@ -384,3 +490,12 @@ R1、R2a、R3a 不依赖 C21，也不要求 C18 先归档；R2b、R3b受真实�
 - 根因结论：在账号、KB、文档、问题和请求参数不变时，仅替换已 Deprecated 的 Qwen 模型标识即可消除 410；因此上一轮 generation 失败由旧模型端点退役直接导致，而非检索、Vite 代理或 history 保存故障。
 - 浏览器 UI E2E 仍为 `SKIPPED`：Codex in-app browser 的本地桥不可用，未绕过、未安装工具，也未从界面再次发送问答。当前结论是接口级真实前后端联调通过，不扩张为浏览器视觉验收。
 - 本轮无前端/Java业务代码修改，仅追加本记录与 AGENT_LOG；复用 2026-09-26 的 27/27 前端测试及正式 build 结果，收尾执行 `git diff --check`。未 cleanup、暂存、commit、push、PR、发布或部署。
+
+## 15. R5 结构化流式前端联调（2026-09-29）
+
+- C21 后端 `structured-v1` 已验收；R5 在正式 `/chat` 显式流式模式使用同一次请求展示文本、完整终态及 terminal 引用，同步问答仍为默认。离线 39/39 合成测试与包含 `vue-tsc` 的正式 build 通过。
+- 首次 Chrome 页面发送时 Vite 代理对后端 `ECONNREFUSED`，返回 HTTP 500，前端显示 incomplete；根因是本轮误判监听并再次重启后端，造成短暂不可用。KB17 queryCount 仍为 3，未见新 history。失败证据保留。
+- 用户授权继续测试后，只读确认 KB17、文档 60 和模型身份，再从 Chrome 正式 `/chat` 页面发送同一合成问题一次。页面收到 `ANSWER`、文本 `CEDAR-47` 与文档 60 的一条来源。后端 trace `001a0edbb414b4a9da4ef99e3d556ba6` 记录 `POST /api/qa/ask/stream` HTTP 200、检索 contextCount=1、流交付完成及保存 history id 648；无业务自动重试。
+- 后置只读核对：KB17 document/vectorCount 保持 `1/1`、queryCount `3→4`，全局 history `647→648`；history 648 的问题、答案、kbId 与 citation 的 documentId/snippet 均与页面一致。真实 `ANSWER` 主链为 `confirmed`；实际非答案和断流仍只由合成测试覆盖。
+- 本轮未改 Java、provider、评测、`.env.local` 或其他业务数据；未暂存、提交、push、PR、发布或部署。R5 详细边界与剩余风险见 change 的 `acceptance.md`。
+- 用户已明确授权将 R5 spec delta 接受进 baseline 并归档；`Frontend Structured SSE Presentation` 已逐字加入 `openspec/specs/rag-system/spec.md`，change 归档于 `openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/`，活动指针置为 `IDLE`。

@@ -2323,6 +2323,17 @@
 - 剩余风险：预算契约需修订并重新授权；失败证据不能作为质量参考，profile仍DRAFT。
 - Commit: pending
 
+## 2026-09-29 · 前端 R5 结构化流离线接入
+
+- 任务/change：`frontend-structured-stream-r5`。
+- 范围与文件：新增 `openspec/changes/frontend-structured-stream-r5/{proposal,design,tasks,specs/rag-system/spec}.md`，更新 `.ai/ACTIVE_TASK.md`、`docs/roadmap/frontend-demo-backend-integration-plan.md`、`rag-frontend/src/composables/{sseParser,useSSE}.ts`、`rag-frontend/src/utils/qaPresentation.ts`、`rag-frontend/src/components/chat/ChatPanel.vue` 与对应两份前端测试；本条日志仅追加。
+- 已确认事实与结果：主分支已包含 R4，C21 后端 `structured-v1` accepted spec 和 Java wire 已归档；正式聊天页保持同步默认，显式流式请求携带版本头，仅从唯一有效 terminal 判定业务终态与本次 citations，只有 `ANSWER` 通知历史刷新。无 terminal、协议异常和客户端停止分别保守展示；依据 R5 design 决策 1-4。
+- 验证：预检报告 Node 与现有 `node_modules` 可用、`npm` 命令缺失；`node --test tests/*.test.mjs` 39/39 PASS；直接执行项目 build 脚本的两个组成命令 `vue-tsc -b` 与 `vite build` 均 PASS；`git diff --check` PASS。Vite 保留既有 >500 kB chunk 警告。
+- 跳过：没有真实 `/api/qa/ask/stream`、provider、embedding、rerank、generation、judge 调用，也没有真实登录、history 写入或浏览器 UI E2E；这些不由合成测试证明。Java/Python 未改，不重跑其测试。
+- 剩余风险：真实后端与浏览器联调、服务端断流后的实际 history/query count 尚未验收；即使客户端收到 `ANSWER` terminal，也不能把历史列表刷新动作本身当作写入证明。真实业务调用需要单独授权。
+- 范围安全：未触碰未跟踪的 `docs/RAG_RETRIEVAL_OPTIONS_2026.md`、`.env.local`、Java、C19/C20 或 C21 归档；未暂存、提交、push、PR、发布或部署。
+- Commit: pending
+
 ## 2026-09-29 · 上轮合并提交补录
 
 - 上一条“合并远端 Linux 跨平台提交”执行记录的本地提交：`4e54d91`。本条仅补录真实 hash，不回改历史记录。
@@ -3019,3 +3030,77 @@
 - 跳过：未做真实 provider/embedding/rerank/ask/judge 外调或前端真实联调；21 个 skipped 不作为已验证集成结论。`openspec` CLI 在当前环境不可用，采用文件结构、delta/baseline 内容及 Git diff 检查。
 - 剩余风险：`SseEmitter.send` 无客户端确认语义；断流无 terminal 时客户端只能判 incomplete，不能声称 `CANCELLED` 已送达或 provider 零费用。前端 R5、C19、C20 需分别建变更与验收；真实 provider 联调需单独披露和授权。
 - Commit: pending
+
+## 2026-09-29 · R5 日志位置补充
+
+- 本轮 `frontend-structured-stream-r5` 执行记录已追加在本文件较早位置（标题“前端 R5 结构化流离线接入”），插入点早于后续 C21 既有记录，实际时间顺序以本条说明为准；原记录和历史记录均保留。
+- 自动审批拒绝了删除并移动该记录的补丁，理由是 AGENT_LOG 只追加、删除会损坏审计证据。本条按审批建议追加说明，不改写已存在内容。
+- R5 当前离线状态为 39/39 前端测试、`vue-tsc -b`、`vite build` 通过；真实联调仍待单独授权与环境前置核查。Commit: pending。
+
+## 2026-09-29 · R5 真实联调前置核查
+
+- 任务/change：`frontend-structured-stream-r5`。用户随后明确授权专用 KB 17、文档 60 的一次 `structured-v1` 合成问题联调；尚未发出问答请求，授权次数未消耗。
+- 范围与执行：只读 `docker ps` 核对 MySQL、Redis、Milvus、etcd、MinIO 五项 healthy；检查 `.env.local` 中 chat 模型标识匹配 `nvidia/nemotron-3-super-120b-a12b`，未输出凭据。首次沙箱内运行现有 `start-backend.ps1` 时 Maven 父 POM 解析遭权限拒绝，脚本仍返回 0；本机权限重跑后四个内部模块 install 成功，后端 8080 启动，Flyway 13 migrations 已验证且无迁移。启动日志确认 KB17 的 1 个 BM25 块与 `nvidia/nemotron-3-embed-1b` active embedding。
+- 只读 Vite 代理核对：现有测试凭据本地登录后仅 GET KB17、文档列表、统计；KB 名 `frontend-r3b-smoke-20260926`、文档60 `COMPLETED`、vectorCount=1、问答前 queryCount=3。正式前端 Vite 在 5173 可用，浏览器旧登录态失效并跳登录页；已请求用户在本地页面登录，页面级发送待登录完成。
+- 验证与跳过：前端 39/39 合成测试及 `vue-tsc -b`、`vite build` 成功证据沿用；本轮前置核查没有 `/api/qa/ask/stream`、embedding、rerank、generation 或 judge 调用，真实 SSE terminal、citations、history/query-count 后置状态和浏览器 UI 仍未验收。
+- 剩余风险：后端启动脚本未对 Maven 失败 fail fast，不能以其 exit code 代替日志与 8080 监听；测试账号登录完成前不得消耗一次性问答预算。未修改 `.env.local`、业务数据、Java/C21、用户未跟踪文档，未暂存、提交或发布。Commit: pending。
+
+## 2026-09-29 · R5 首次真实流式尝试失败归因
+
+- 任务/change：`frontend-structured-stream-r5`。范围与文件：更新 `.ai/ACTIVE_TASK.md`、本 change 的 `tasks.md`、`docs/roadmap/frontend-demo-backend-integration-plan.md`，并追加本执行记录；未改业务代码。
+- 已确认事实与结果：用户已登录并从正式前端对 KB17 发送唯一一次合成问题“北星令牌的代号是什么？”，页面显示 `HTTP 500: Internal Server Error` 与“流式连接未交付有效终态”；该 incomplete 呈现符合 R5 design 决策 1、2。Vite 代理日志在 22:44:04 对 `/api/qa/ask/stream` 报 `AggregateError [ECONNREFUSED]`，重启后的 Java 后端直到 22:44:09.646 才启动完成。此前我误判监听状态并再次运行启动脚本，造成后端不可用窗口；此次 500 的直接原因是代理连接被拒，不是已验证的 SSE/provider 错误。
+- 后置只读核对：通过 Vite 代理登录并 GET KB17 statistics，documentCount=1、vectorCount=1、queryCount=3，与发送前一致；GET history 最近 20 条，总数 647，其中同题的两条记录创建于 2026-09-28，早于此次尝试。依据代理在连接阶段被拒与计数未变，本次请求未到达后端问答处理链；没有观察到 NVIDIA embedding/rerank/generation 调用或新 history。计划模型为 `nvidia/nemotron-3-super-120b-a12b`、embedding 为 `nvidia/nemotron-3-embed-1b`，预定超时 120 秒、前端 retry=0；实际失败类别为本地代理至后端的 `ECONNREFUSED`。
+- 验证：只读 GET 能在后端重新启动后通过代理返回 KB17 statistics/history；`git diff --check` 及受影响文档检查在本记录追加后执行。既有 39/39 合成测试和包含 `vue-tsc` 的正式 build 沿用，未修改前端代码。
+- 跳过：未重发问答，也未执行额外 provider、embedding、rerank 或 judge 调用；一次性授权以页面发送为消耗边界。真实 SSE terminal、引用展示和本次成功 history 尚未验收。
+- 剩余风险：后端虽恢复可读，真实流式前后端/provider 链路仍未验证；若要再次发送，需在服务持续可用且身份匹配的前提下取得新的单次授权。未修改 `.env.local`、Java/C21、业务数据或用户未跟踪文档，未暂存、提交、push、PR、发布或部署。Commit: pending。
+
+## 2026-09-29 · R5 正式页面流式成功复验
+
+- 任务/change：`frontend-structured-stream-r5`。用户明确授权继续为其测试业务调用且无需逐次请示，以尽快完成前端 Demo 接入；本轮只发送一条专用 KB17 的合成问题。范围与文件：新增本 change 的 `acceptance.md`，更新 `tasks.md`、`.ai/ACTIVE_TASK.md`、`docs/roadmap/frontend-demo-backend-integration-plan.md`，并追加本记录；未改业务代码。依据 R5 design 决策 1、2、3、4。
+- 前置只读核对：通过 Vite 代理确认 KB17 名称 `frontend-r3b-smoke-20260926`、文档60 `COMPLETED`、document/vector/queryCount `1/1/3`；配置的 chat/embedding 模型分别为 `nvidia/nemotron-3-super-120b-a12b`、`nvidia/nemotron-3-embed-1b`。正式前端聊天页已登录、选定该 KB 和显式流式模式，topK 默认 5。合成问题与文档片段可能发往 NVIDIA，存在费用/限流及 query/history 副作用；后端 `SseEmitter` 超时 120 秒，前端无自动业务重试。
+- 真实执行：从 Chrome 正式 `/chat` 页面发送一次“北星令牌的代号是什么？”。页面收到 `CEDAR-47`、完整回答终态及文档60“Frontend R3b 合成联调资料”的一条来源。后端 `POST /api/qa/ask/stream` HTTP 200，trace `001a0edbb414b4a9da4ef99e3d556ba6`；检索 contextCount=1，流交付完成 chunkCount=2、answerLength=8、totalLatencyMs=4263，并保存 history id 648。未见错误类别或重试，未执行 judge。
+- 后置只读核对：KB17 document/vector/queryCount 为 `1/1/4`，queryCount `3→4`；全局 history `647→648`。GET `/api/history/648` 返回同一问题、答案 `CEDAR-47`、kbId17、1 条 citation，citation 的 documentId=60、snippet 含同一代号。浏览器 UI、服务端交付日志与持久化读回一致。
+- 验证：本 change 已有 39/39 合成测试、`npm run build`（含 `vue-tsc -b` 和 `vite build`）通过；本轮业务代码、依赖与环境配置未改变，按第 8 节复用。`git diff --check` 与受影响文档扫描在本记录追加后执行。
+- 跳过与剩余风险：真实非答案、断连、用户中止后的服务端取消/费用语义未做外调矩阵，仍以合成测试约束前端；未进行 C19/C20、批量 ask 或 judge。OpenSpec baseline 接受与归档尚未授权，R5 保持 ACTIVE。未修改 `.env.local`、Java/C21、用户未跟踪文档，未暂存、提交、push、PR、发布或部署。Commit: pending。
+
+## 2026-09-29 · R5 契约接受与归档
+
+- 任务/change：`frontend-structured-stream-r5`。用户在查看 R5 正式页面、后端与持久化验收结果后，明确授权接受 spec delta、归档 change 并将 `.ai/ACTIVE_TASK.md` 置为 `IDLE`。
+- 范围与文件：将 `Frontend Structured SSE Presentation` requirement 加入 `openspec/specs/rag-system/spec.md`；完成原 change 的 `tasks.md` 与 `acceptance.md`；移动 5 个 change 文件至 `openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/`；更新 `.ai/ACTIVE_TASK.md` 和 `docs/roadmap/frontend-demo-backend-integration-plan.md`，追加本记录。依据 R5 design 决策 1-4，不改变业务代码、后端 wire 或数据。
+- 已确认事实与结果：baseline 中该 requirement 仅出现一次，接受段落与 delta 逐字一致；归档目录的 5 个文件完整，任务全部完成，活动指针为 `IDLE`。首次默认沙箱 `Move-Item` 拒绝目标路径访问；核对源/目标仍完整且目标不存在后，经自动审批的提权执行同一精确目录移动成功，没有复制或删除其他路径。
+- 验证：R5 既有 39/39 合成测试、包含 `vue-tsc -b` 的正式 build 与单题浏览器真实联调证据沿用；归档后执行 spec 一致性、目录/任务、旧路径与 `git diff --check` 检查。
+- 跳过与剩余风险：未重复运行相同代码/依赖下的前端测试，未执行新的 provider 调用、C19/C20 或真实断连矩阵；客户端停止接收仍不能证明服务端取消或零费用。未修改 `.env.local`、Java/C21、用户未跟踪文档，未暂存、提交、push、PR、发布或部署。Commit: pending。
+
+## 2026-09-29 · R5 归档措辞一致性补充
+
+- 任务/change：`frontend-structured-stream-r5`。归档后核对发现初始 proposal/design 仍以“本轮不做真实联调”描述离线启动范围，容易与后续单独授权的真实复验混淆。
+- 范围与文件：仅更新归档 change 的 `proposal.md`、`design.md` 决策 4 及前端规划的“启动时授权”措辞，明确先离线实施、后另获授权联调和归档；不改原技术取舍、spec delta、代码或验收结果。
+- 验证：受影响文档旧措辞扫描、归档完整性及 `git diff --check` 在本条追加后执行；合成/真实业务验证沿用，未再发 provider 请求。
+- 剩余风险与范围：真实非答案及断连链路仍未验证；未修改 `.env.local`、Java/C21、用户未跟踪文档，未暂存、提交、push、PR、发布或部署。Commit: pending。
+
+## 2026-09-29 · 前端 Demo 总说明与后续分级路线修订
+
+- 任务类型：Type B 文档维护；用户要求修订后续前端接入总说明，并比较直接执行与 OpenSpec 分级推进。Commit: pending。
+- 范围与文件：仅在 `docs/roadmap/frontend-demo-backend-integration-plan.md` 前部新增现行推进规则并标明旧正文为历史材料，保留原有执行记录；追加本日志。不创建 active change，本轮无 Type C design 决策条目。
+- 已确认事实：当前 ACTIVE_TASK 为 IDLE，C21/R5 已完成指定范围验收；R5 工作区增量尚未提交。文档区分当前模块证据与未接设置入口，列明 F1–F6 切片、总说明与 Type B/Type C 职责、前端先行及 C19/C20 独立验收边界。
+- 执行结果：整体跨页面迁移列为 Type C 候选，小范围独立修复保留 Type B；新增视觉对照、工程和真实业务证据分层验收要求。首次 PowerShell WriteAllText 被文件访问权限拒绝，未写入；改用 apply_patch 成功完成精确增量编辑。
+- 验证：对本轮增量执行文档链接存在性、历史后缀保留、旧条件历史隔离和 `git diff --check` 检查，结果见本轮工具输出。
+- 跳过：未改业务代码，不运行 Maven/npm/Python 测试；不启动服务，不新增 provider/ask/upload/judge 或业务数据修改。
+- 范围安全与剩余风险：保留全部既有 R5 及其他工作区改动；未改活动指针、spec、Java、前端源码或本地配置，未暂存/提交/push/PR/发布。候选 OpenSpec 尚未创建；历史正文仍保留，启动必须以顶部现行规则和实时事实为准。
+
+## 2026-09-30 · frontend-demo-experience-alignment 事前规划
+
+- Commit: pending。用户授权为指定 change 完成 OpenSpec 规划，首批为侧栏、品牌、主题、首页和设置；本次未获业务实现授权。
+- 范围与文件：新增该 change 的 proposal.md、design.md、tasks.md、specs/rag-system/spec.md；将 ACTIVE_TASK 指向该 change，状态 ACTIVE/待事前审查；同步总说明并追加本日志。既有 R5 实现、accepted baseline、归档及用户未跟踪文件未编辑。
+- 已确认事实：2026-09-29 核查 HEAD 为 2a69509，工作区含 R5 等未提交增量；2026-09-30 恢复后指针仍为 IDLE 且新 change 仅有空目录。现已完成四份文档、5 requirements、14 scenarios 和 8 条 design 决策；对应 design 决策 1–8，仅记录规划交付，不宣称实现或视觉效果通过。
+- 验证：run_local_quality_gates.ps1 -Mode Preflight 报告 node 可用、npm 缺失、现有前端直接构建入口可用；OpenSpec CLI 在 PATH/常用用户 npm 入口未发现。PowerShell 结构检查确认四文件、规范关键词、每项可观察场景、8 组三行决策及9个 change/指针链接通过；新增 requirement 名称与 baseline 无冲突；Demo 四项 git hash-object 与 design 相符；过时“尚未创建”等措辞扫描无匹配；git diff --check 通过（既有 CRLF 提示）。日志追加后再次检查格式与指针。
+- 执行异常：首次 apply_patch 因无法创建父目录失败，未生成规划文件；经权限审批仅创建指定 change 目录后用 apply_patch 落盘。两次中断后重新核对部分执行状态，没有重写业务文件。
+- 跳过：未安装 OpenSpec/npm，不宣称官方 openspec validate 通过；文档规划未运行前端 build、Maven/Python 测试或浏览器验证；backend/provider/ask/upload/delete/judge 调用为0。
+- 剩余风险与范围：实施仍待事前审查；实施前须保全并继承 R5 未提交基线。设置主题根因和视觉结果待运行时检查；C19/C20、logout 接线和其他后续能力仍未完成。不修改模型、配置或业务数据，不暂存/提交/push/PR/部署/接受 baseline/归档。
+
+## 2026-09-30 · R5 提交补录与前端规划整理
+
+- 用户明确授权整理并本地提交。R5 代码、测试、accepted spec 与五份归档文档已提交为 `0024e924cd3b8c57de196ec0cd71c843f8b95359`，message：`feat(前端): 完成R5结构化流式接入与验收归档`。
+- 本笔范围：前端总说明、首批体验对齐 OpenSpec 四文件、ACTIVE_TASK 与此前前端执行日志增量；补充 R5 已提交基线，保留规划时快照和历史记录。Commit: pending。
+- 验证：提交前工作区及暂存区 diff --check 通过；复用 R5 39/39 合成测试、含 vue-tsc 的正式 build 和指定真实 ANSWER 验收；规划复用5 requirements/14 scenarios/8决策、链接和版本检查。业务代码、依赖未新增变化，不重复运行测试或外调。
+- 范围与剩余风险：仅提交本会话相关文件；`docs/RAG_RETRIEVAL_OPTIONS_2026.md` 保持未跟踪。前端新 change 仍待事前审查，未实施；未修改后端/模型/本地配置/业务数据，不 push、PR 或部署。规划提交 hash 按规则于下一次仓库写操作补录，不递归生成日志提交。
