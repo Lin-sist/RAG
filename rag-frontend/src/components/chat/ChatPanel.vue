@@ -39,13 +39,13 @@
                 {{ streamStateLabel(msg) }}
               </p>
 
-              <div v-if="!msg.loading && msg.content && !msg.error" class="message-actions">
+              <div v-if="!msg.loading && msg.content && !msg.error && (msg.responseMode !== 'stream' || msg.streamStatus === 'ANSWER')" class="message-actions">
                 <button class="action-btn" title="复制" @click="copyToClipboard(msg.content)">
                   <Copy :size="14" />
                 </button>
               </div>
 
-              <div v-if="!msg.loading && !msg.error && msg.responseMode !== 'stream'" class="citations-section">
+              <div v-if="!msg.loading && !msg.error && (msg.responseMode !== 'stream' || msg.streamStatus === 'ANSWER')" class="citations-section">
                 <div class="citations-label">
                   <FileText :size="14" />
                   <span>引用来源</span>
@@ -87,7 +87,7 @@
     <div class="input-wrapper">
       <div v-if="!isHistoryDetail" class="response-mode" aria-label="回答方式">
         <button type="button" :class="{ selected: responseMode === 'sync' }" :disabled="isSubmitting" @click="responseMode = 'sync'">同步问答 · 显示来源</button>
-        <button type="button" :class="{ selected: responseMode === 'stream' }" :disabled="isSubmitting" @click="responseMode = 'stream'">纯文本流 · 无来源</button>
+        <button type="button" :class="{ selected: responseMode === 'stream' }" :disabled="isSubmitting" @click="responseMode = 'stream'">流式问答 · 显示终态与来源</button>
       </div>
       <div
         v-if="selectedKb"
@@ -191,7 +191,7 @@
       </div>
 
       <p class="disclaimer">
-        {{ isHistoryDetail ? '这里展示的是一条历史问答记录，不代表多轮会话。' : responseMode === 'stream' ? '纯文本流不返回引用；停止接收不代表服务端已取消。' : 'AI 可能产生不准确内容，请核对引用来源' }}
+        {{ isHistoryDetail ? '这里展示的是一条历史问答记录，不代表多轮会话。' : responseMode === 'stream' ? '仅完整回答终态展示来源；停止接收不代表服务端已取消。' : 'AI 可能产生不准确内容，请核对引用来源' }}
       </p>
     </div>
   </main>
@@ -219,6 +219,7 @@ import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
 import type { KnowledgeBaseDTO } from '@/types/knowledgeBase'
 import {
   applySyncResponse,
+  applyStructuredResponse,
   buildHistoryMessages,
   citationLabel,
   formatRelevanceScore,
@@ -405,14 +406,20 @@ function selectExample(question: string) {
 }
 
 function streamStateLabel(message: Message): string {
+  const reason = message.streamReason && message.streamReason !== 'NONE'
+    ? `（原因：${message.streamReason}）`
+    : ''
   switch (message.streamStatus) {
-    case 'CONNECTING': return '纯文本流 · 正在连接'
-    case 'STREAMING_TEXT': return '纯文本流 · 正在接收'
-    case 'STREAM_ERROR': return '纯文本流出错，已保留收到的文本；本次结果不可视为完整回答。'
+    case 'CONNECTING': return '流式问答 · 正在连接'
+    case 'STREAMING_TEXT': return '流式问答 · 正在接收'
+    case 'ANSWER': return '完整回答 · 来源来自本次流式问答'
+    case 'NO_ANSWER': return `未获得可用答案${reason}`
+    case 'UNSUPPORTED': return `当前问题不受支持${reason}`
+    case 'INVALID': return `输入无效${reason}`
+    case 'ERROR': return `本次问答失败${reason}；已收到的文本不构成完整回答。`
+    case 'CANCELLED': return `服务端报告本次问答已取消${reason}`
+    case 'INCOMPLETE': return '流式连接未交付有效终态；已收到的文本不构成完整回答。'
     case 'CLIENT_ABORTED': return '已停止接收；服务端是否取消及是否保存历史无法由此确认。'
-    case 'DONE_TEXT_ONLY': return message.streamDoneMarker
-      ? '纯文本流已结束；此接口未返回来源或结构化最终状态。'
-      : '连接已结束，但未收到结束标记；此接口未返回来源或结构化最终状态。'
     default: return ''
   }
 }
@@ -452,7 +459,7 @@ async function sendMessage(text: string) {
   try {
     if (aiMsg.responseMode === 'stream') {
       streaming.value = true
-      const result = await sse.connect('/api/qa/ask/stream', {
+      const result = await sse.connectStructured('/api/qa/ask/stream', {
         kbId: effectiveKbId,
         question: text,
         topK: chatStore.topK,
@@ -461,21 +468,7 @@ async function sendMessage(text: string) {
         aiMsg.streamStatus = 'STREAMING_TEXT'
         scrollToBottom()
       })
-      aiMsg.streamStatus = result.status
-      aiMsg.streamDoneMarker = result.doneMarker
-      aiMsg.loading = false
-      aiMsg.citations = []
-      aiMsg.sourceHint = undefined
-      if (result.status === 'STREAM_ERROR' && !aiMsg.content) {
-        aiMsg.content = sse.error.value || '流式问答失败'
-        aiMsg.error = true
-      }
-      if (result.status === 'DONE_TEXT_ONLY' && !aiMsg.content) {
-        aiMsg.content = '未收到文本内容'
-        aiMsg.error = true
-        aiMsg.streamStatus = 'STREAM_ERROR'
-      }
-      if (result.status === 'DONE_TEXT_ONLY' && result.receivedChunks) {
+      if (applyStructuredResponse(aiMsg, result, sse.error.value)) {
         window.dispatchEvent(new Event('rag-history-updated'))
       }
       return
@@ -492,7 +485,7 @@ async function sendMessage(text: string) {
     aiMsg.content = apiError.message
     aiMsg.loading = false
     aiMsg.error = true
-    if (aiMsg.responseMode === 'stream') aiMsg.streamStatus = 'STREAM_ERROR'
+    if (aiMsg.responseMode === 'stream') aiMsg.streamStatus = 'INCOMPLETE'
     aiMsg.citations = []
     aiMsg.sourceHint = undefined
   } finally {

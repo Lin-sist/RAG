@@ -92,6 +92,40 @@ try {
     assert.equal(message.sourceHint, undefined)
   })
 
+  await test('structured stream displays sources and refreshes history only for ANSWER', () => {
+    const citation = { source: 'doc-1', snippet: '证据', startIndex: 0, endIndex: 2 }
+    const answered = { id: 'answer', role: 'assistant', content: '回答', loading: true }
+    const refresh = qaPresentation.applyStructuredResponse(answered, {
+      status: 'TERMINAL', terminal: { finalState: 'ANSWER', reason: 'NONE', citations: [citation] }, receivedChunks: true,
+    }, null)
+    assert.equal(refresh, true)
+    assert.equal(answered.streamStatus, 'ANSWER')
+    assert.deepEqual(answered.citations, [citation])
+
+    for (const finalState of ['NO_ANSWER', 'UNSUPPORTED', 'INVALID', 'ERROR', 'CANCELLED']) {
+      const message = { id: finalState, role: 'assistant', content: '部分文本', loading: true }
+      const shouldRefresh = qaPresentation.applyStructuredResponse(message, {
+        status: 'TERMINAL', terminal: { finalState, reason: 'TEST_REASON', citations: [] }, receivedChunks: true,
+      }, null)
+      assert.equal(shouldRefresh, false)
+      assert.equal(message.streamStatus, finalState)
+      assert.deepEqual(message.citations, [])
+      assert.equal(message.streamReason, 'TEST_REASON')
+    }
+  })
+
+  await test('incomplete or client-aborted stream never becomes a completed answer', () => {
+    for (const status of ['INCOMPLETE', 'CLIENT_ABORTED']) {
+      const message = { id: status, role: 'assistant', content: '部分文本', loading: true }
+      assert.equal(qaPresentation.applyStructuredResponse(message, {
+        status, terminal: null, receivedChunks: true,
+      }, '连接中断'), false)
+      assert.equal(message.streamStatus, status)
+      assert.equal(message.content, '部分文本')
+      assert.deepEqual(message.citations, [])
+    }
+  })
+
   await test('history detail is adapted as one question and one answer, not a conversation', () => {
     const record = {
       id: 12,

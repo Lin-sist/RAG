@@ -13,7 +13,13 @@ const server = await createServer({
 })
 
 try {
-  const { createTextSSEParser } = await server.ssrLoadModule('/src/composables/sseParser.ts')
+  const { createTextSSEParser, createStructuredSSEParser } = await server.ssrLoadModule('/src/composables/sseParser.ts')
+  const terminal = (finalState = 'ANSWER', citations = []) => ({
+    schemaVersion: 'structured-v1', finalState, reason: 'NONE', citations,
+    metadata: {}, classifierVersion: 'legacy', effectiveStrategy: 'legacy',
+    policyVersion: 'legacy', routeReason: 'LEGACY', budgetOutcome: null, usage: null,
+  })
+  const event = (name, data) => `event:${name}\ndata:${data}\n\n`
 
   await test('split frames retain UTF-8 text, leading spaces and tail event', () => {
     const chunks = []
@@ -45,6 +51,36 @@ try {
     assert.equal(parser.doneMarker, true)
   })
 
+  await test('structured parser keeps split UTF-8 text and accepts one ANSWER terminal with citations', () => {
+    const chunks = []
+    const parser = createStructuredSSEParser(chunk => chunks.push(chunk))
+    const citation = { source: 'doc-1', snippet: '证据', startIndex: 0, endIndex: 2 }
+    const wire = event('text', '  北星') + event('terminal', JSON.stringify(terminal('ANSWER', [citation])))
+    for (const part of [wire.slice(0, 9), wire.slice(9, 16), wire.slice(16, 31), wire.slice(31)]) parser.push(part)
+    parser.finish()
+    assert.deepEqual(chunks, ['  北星'])
+    assert.deepEqual(parser.terminal.citations, [citation])
+    assert.equal(parser.protocolError, null)
+  })
+
+  await test('structured parser rejects missing, malformed or duplicate terminal and post-terminal text', () => {
+    const cases = [
+      event('text', '部分'),
+      event('terminal', '{bad json}'),
+      event('terminal', JSON.stringify(terminal())) + event('terminal', JSON.stringify(terminal())),
+      event('terminal', JSON.stringify(terminal())) + event('text', 'late'),
+      event('terminal', JSON.stringify(terminal('NO_ANSWER', [{ source: 'x', snippet: 'x', startIndex: 0, endIndex: 1 }]))),
+      event('unknown', 'x'),
+      `event:terminal\ndata:${JSON.stringify(terminal())}`,
+    ]
+    for (const wire of cases) {
+      const parser = createStructuredSSEParser(() => {})
+      parser.push(wire)
+      parser.finish()
+      assert.equal(parser.terminal, null)
+    }
+  })
+
   const { useSSE } = await server.ssrLoadModule('/src/composables/useSSE.ts')
   const originalFetch = globalThis.fetch
   const originalStorage = globalThis.localStorage
@@ -74,6 +110,42 @@ try {
       assert.deepEqual(received, ['部分'])
       assert.equal(result.status, 'STREAM_ERROR')
       assert.equal(result.doneMarker, true)
+    })
+
+    await test('structured request negotiates v1 and returns terminal without a second ask', async () => {
+      let calls = 0
+      globalThis.fetch = async (_url, options) => {
+        calls++
+        assert.equal(options.headers['X-RAG-Stream-Contract'], 'structured-v1')
+        const wire = event('text', '回答') + event('terminal', JSON.stringify(terminal()))
+        return new Response(new ReadableStream({
+          start(controller) { controller.enqueue(new TextEncoder().encode(wire)); controller.close() },
+        }), { status: 200 })
+      }
+      const received = []
+      const result = await useSSE().connectStructured('/api/qa/ask/stream', { kbId: 17, question: 'synthetic' }, chunk => received.push(chunk))
+      assert.equal(calls, 1)
+      assert.deepEqual(received, ['回答'])
+      assert.equal(result.status, 'TERMINAL')
+      assert.equal(result.terminal.finalState, 'ANSWER')
+    })
+
+    await test('structured stream without terminal is incomplete; abort is only client-local', async () => {
+      globalThis.fetch = async () => new Response(new ReadableStream({
+        start(controller) { controller.enqueue(new TextEncoder().encode(event('text', '部分'))); controller.close() },
+      }), { status: 200 })
+      const incomplete = await useSSE().connectStructured('/api/qa/ask/stream', { kbId: 17 }, () => {})
+      assert.equal(incomplete.status, 'INCOMPLETE')
+      assert.equal(incomplete.terminal, null)
+      globalThis.fetch = (_url, { signal }) => new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })))
+      })
+      const sse = useSSE()
+      const pending = sse.connectStructured('/api/qa/ask/stream', { kbId: 17 }, () => {})
+      sse.disconnect()
+      const aborted = await pending
+      assert.equal(aborted.status, 'CLIENT_ABORTED')
+      assert.equal(aborted.terminal, null)
     })
   } finally {
     globalThis.fetch = originalFetch

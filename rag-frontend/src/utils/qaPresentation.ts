@@ -1,5 +1,7 @@
 import type { QAHistoryDTO } from '@/types/history'
 import type { Citation, QAResponse, RetrievedContext } from '@/types/qa'
+import type { StreamFinalState } from '@/composables/sseParser'
+import type { StructuredStreamResult } from '@/composables/useSSE'
 
 export interface ChatPresentationMessage {
     id: string
@@ -11,8 +13,8 @@ export interface ChatPresentationMessage {
     contexts?: RetrievedContext[]
     sourceHint?: string
     responseMode?: 'sync' | 'stream'
-    streamStatus?: 'CONNECTING' | 'STREAMING_TEXT' | 'DONE_TEXT_ONLY' | 'STREAM_ERROR' | 'CLIENT_ABORTED'
-    streamDoneMarker?: boolean
+    streamStatus?: 'CONNECTING' | 'STREAMING_TEXT' | 'INCOMPLETE' | 'CLIENT_ABORTED' | StreamFinalState
+    streamReason?: string
 }
 
 export function normalizeCitations(citations: Citation[] | null | undefined): Citation[] {
@@ -57,6 +59,35 @@ export function applySyncResponse(message: ChatPresentationMessage, response: QA
     message.citations = citations
     message.contexts = normalizeContexts(response.contexts)
     message.sourceHint = citations.length > 0 ? undefined : '本回答未返回可展示来源'
+}
+
+/** Returns true only when the same stream delivered a valid ANSWER terminal. */
+export function applyStructuredResponse(
+    message: ChatPresentationMessage,
+    result: StructuredStreamResult,
+    transportError: string | null,
+): boolean {
+    message.streamStatus = result.status === 'TERMINAL'
+        ? result.terminal!.finalState
+        : result.status
+    message.streamReason = result.terminal?.reason
+    message.loading = false
+    message.error = false
+    const answered = result.terminal?.finalState === 'ANSWER'
+    message.citations = answered ? normalizeCitations(result.terminal?.citations) : []
+    message.sourceHint = answered && message.citations.length === 0
+        ? '本回答未返回可展示来源'
+        : undefined
+    if (!message.content) {
+        message.content = result.status === 'INCOMPLETE'
+            ? transportError || '未收到完整回答'
+            : result.status === 'CLIENT_ABORTED'
+                ? '已停止接收'
+                : answered
+                    ? '未收到文本内容'
+                    : '本次问答未返回回答文本'
+    }
+    return answered
 }
 
 export function buildHistoryMessages(record: QAHistoryDTO): ChatPresentationMessage[] {
