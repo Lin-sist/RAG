@@ -9,8 +9,7 @@
 html,
 body {
     height: 100%;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-        'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    font-family: var(--rag-font-family);
     font-size: var(--rag-font-body);
     line-height: var(--rag-line-height);
     color: var(--rag-text-primary);
@@ -64,3 +63,5 @@ body {
     padding: var(--rag-space-6);
     transition: var(--rag-transition);
 }
+button, input, textarea, select { font-family: inherit; }
+button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--rag-text-secondary); outline-offset: 3px; }

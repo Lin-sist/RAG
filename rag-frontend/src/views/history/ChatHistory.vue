@@ -105,6 +105,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useThemeStore } from '@/stores/theme'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -131,7 +132,8 @@ const HISTORY_UPDATED_EVENT = 'rag-history-updated'
 const router = useRouter()
 
 // Theme state
-const isDark = ref(false)
+const theme = useThemeStore()
+const isDark = computed(() => theme.effectiveTheme === 'dark')
 
 // Search state
 const searchQuery = ref('')
@@ -201,15 +203,8 @@ const filteredGroups = computed(() => {
 const totalItemCount = computed(() => historyGroups.value.reduce((total, group) => total + group.items.length, 0))
 
 // Theme functions
-function applyTheme(dark: boolean) {
-  document.documentElement.classList.toggle('dark', dark)
-  document.documentElement.classList.toggle('light', !dark)
-}
-
 function setTheme(dark: boolean) {
-  isDark.value = dark
-  applyTheme(dark)
-  localStorage.setItem('theme', dark ? 'dark' : 'light')
+  theme.setPreference(dark ? 'dark' : 'light')
 }
 
 // Action handlers
@@ -282,17 +277,6 @@ function handleHistoryUpdated() {
 }
 
 onMounted(async () => {
-  // Restore theme from localStorage
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark') {
-    isDark.value = true
-  } else if (savedTheme === 'light') {
-    isDark.value = false
-  } else {
-    isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
-  }
-  applyTheme(isDark.value)
-
   window.addEventListener(HISTORY_UPDATED_EVENT, handleHistoryUpdated)
   await loadHistoryGroups()
 })

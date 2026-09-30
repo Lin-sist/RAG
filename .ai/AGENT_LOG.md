@@ -3104,3 +3104,25 @@
 - 本笔范围：前端总说明、首批体验对齐 OpenSpec 四文件、ACTIVE_TASK 与此前前端执行日志增量；补充 R5 已提交基线，保留规划时快照和历史记录。Commit: pending。
 - 验证：提交前工作区及暂存区 diff --check 通过；复用 R5 39/39 合成测试、含 vue-tsc 的正式 build 和指定真实 ANSWER 验收；规划复用5 requirements/14 scenarios/8决策、链接和版本检查。业务代码、依赖未新增变化，不重复运行测试或外调。
 - 范围与剩余风险：仅提交本会话相关文件；`docs/RAG_RETRIEVAL_OPTIONS_2026.md` 保持未跟踪。前端新 change 仍待事前审查，未实施；未修改后端/模型/本地配置/业务数据，不 push、PR 或部署。规划提交 hash 按规则于下一次仓库写操作补录，不递归生成日志提交。
+
+## 2026-09-30 · 前端规划提交补录
+
+- 上一规划整理提交为 `e415068c1672a542dfe0d5c875a2e49b43f76c21`，message：`docs(前端): 建立Demo首批体验对齐规划`；补录此前 pending 记录的真实 hash，不改写历史。本条随本轮工程日志追加，非新的提交授权。
+
+## 2026-09-30 · frontend-demo-experience-alignment 首批工程
+
+- Commit: pending。用户明确要求“根据规划，开始前端demo的接入工程”，授权首批侧栏、品牌、主题、首页和设置实施；本轮默认用户手动提交，未借用此前 Git 提交、真实联调或归档授权。
+- 基线与范围：HEAD `e415068c1672a542dfe0d5c875a2e49b43f76c21` 完整包含 R5 `0024e924cd3b8c57de196ec0cd71c843f8b95359`；在当前 checkout 按 design 允许路径隔离。16 个前端源码/资源/测试文件，加 ACTIVE_TASK、总说明、tasks、acceptance 与本日志，共 21 个计划内文件。保留用户未跟踪的 `docs/RAG_RETRIEVAL_OPTIONS_2026.md`。适用 design 决策 1–8，不在日志复述取舍。
+- 已确认结果：单一主题 store 在挂载前应用 system/light/dark，兼容旧值与 storage 失败；统一侧栏/设置/历史页消费。品牌 SVG/favicon 复用冻结原稿。侧栏固定导航、最近 20 条及加载/错误/空/重试、代次/sessionRevision/卸载保护；折叠和窄屏抽屉。首页接入问候、胶囊输入、范围 chip、四条仅填入建议、KB 失败重试。设置仅常规外观和只读 auth.userInfo，身份缺失中性显示，删除假资料/密钥/密码操作。未改变 ask、SSE、正文/引用和 history 写入契约。
+- 聚焦修复与浏览器验证：关闭窄屏抽屉/设置归还“打开侧栏”焦点，修复触发按钮被卸载及焦点切换时序；设置 Tab 约束、Escape、Teleport 深浅样式、背景 inert/滚动恢复通过交互检查。合成验证还覆盖最近记录错误/20 条长标题、KB 加载/错误/重试、无 KB 禁发、建议填入、180px 长输入、system 刷新、历史只读、已有回答在折叠/设置开关后保留，以及 /kb、/history、/chat/901、/chat、/login 深浅兼容。OS 主题变化与存储失败使用逻辑测试，未修改真实 OS 设置。
+- 验证命令与结果：Preflight 报告 node/现有 node_modules 可用、npm 不在 PATH；未安装工具/依赖。在 rag-frontend 内 `node --test tests/*.test.mjs` 47/47 通过，包括既有 R5 回归；最终源码 `node node_modules/vue-tsc/bin/vue-tsc.js -b` 与 `node node_modules/vite/bin/vite.js build` 通过，保留既有 >500 kB chunk 警告。最后仅字号/建议卡片 CSS 修改，复用不受影响的逻辑测试并重新构建；收尾文档不触发重复全套测试。
+- 封闭预览：`node rag-frontend/tests/preview.mjs` 仅监听 127.0.0.1:5188，configFile:false、无真实 proxy；login/ask 返回固定 fixture。`node --check rag-frontend/tests/preview.mjs` 通过；本地探测已知 KB GET 200、未知 GET 404、未知 POST/stream/DELETE 405。Demo 参考通过四文件只读白名单提供。真实 backend/provider/embedding/rerank/ask/judge 调用为 0，不修改真实业务数据。
+- 资源/文档检查：Demo 四项 blob 与 design 冻结值一致，favicon 与原稿字节相同；受影响文档 14 个相对链接存在。最终精确路径检查与 `git diff --check` 在本条追加后执行；未出现禁外修改，结果见本轮工具输出。
+- 视觉证据：截图位于本轮登记的 `C:/Users/Lin/.codex/visualizations/2026/09/30/01a0f1ae-a262-7e50-84be-8fef9fe1a180/`。三个固定视口、深浅、四状态共 24 张正式页，12 张冻结 Demo 参考及 10 张兼容页，记录 manifest 与六张联系表；均为合成数据。初次上一帧残留已通过稳定截图重采。CSS/PNG 尺寸、visualViewport.scale=1 和无 DOM 横向溢出通过，但工具 DPR 在 1/1.2 间变化，部分图像内部仍有缩放与留白，严格 100% 缩放视觉未确认；tasks 6.2 保持未完成，不以构建/DOM 检查冒充严格视觉 QA。
+- 执行限制：浏览器旧入口出现权限管道错误，使用可用 IAB 控制完成合成交互；尝试保存额外基线文件遇访问拒绝，未生成文件，沿用明确 Git HEAD/R5 哈希保全。无须扩大权限或修改本地配置。
+- 跳过与剩余风险：Java/评测未变，不运行 Maven/Python；OpenSpec CLI 未发现、不安装、不宣称官方 validate；未做新的真实业务联调、C19/C20 或真实取消矩阵。严格视觉复核、用户验收及授权后的 baseline 接受/归档仍待完成，change 保持 ACTIVE。未修改后端、API/DTO/auth/request/SSE/parser、accepted specs、依赖/锁文件、prototype、.env.local 或其他本地配置；未暂存/提交/push/PR/发布/部署。
+
+## 2026-09-30 · 首批工程收尾核对补充
+
+- 实时核对修正上述描述中的两处计数/标题笔误：本轮为 15 个前端文件加 5 个工程文档，共 20 个计划内改动；上一规划提交 `e415068c1672a542dfe0d5c875a2e49b43f76c21` 的完整 message 为 `docs(前端): 建立Demo首批体验对齐规划与推进路线`。
+- 精确路径检查通过，用户未跟踪文档保留、暂存区为空；`git diff --check` exit 0，仅既有 CRLF 提示。未改变实现或验证边界。Commit: pending。

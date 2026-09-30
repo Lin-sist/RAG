@@ -10,9 +10,9 @@
 
 整体 Demo 对齐涉及多个页面、共享样式和多个独立提交，推荐作为 Type C 规划，不能拆成多个 Type B 来绕过重大变更流程。独立的局部样式、文案和已有契约内小 bugfix 仍可按 Type B 推进，不必每次新建 change。
 
-2026-09-30：已按用户要求建立 [frontend-demo-experience-alignment](../../openspec/changes/frontend-demo-experience-alignment/proposal.md) 规划，活动指针已指向该 change，阶段为待事前审查，尚未实施。design 按 AGENTS.md 包含真实技术取舍的三行式“决策记录”，不在本文或 AGENT_LOG 重复保存设计决策。
+2026-09-30：已按用户“根据规划，开始前端demo的接入工程”指令实施 [frontend-demo-experience-alignment](../../openspec/changes/frontend-demo-experience-alignment/proposal.md) 的侧栏、品牌、主题、首页与设置。工程与交互验证完成：47/47 合成测试、vue-tsc 与 Vite build 通过；24 张首批正式页与 12 张 Demo 参考已采集，截图工具 DPI 缩放/留白仍需严格复核，不能据此宣布视觉完全验收。详见 [工程验收记录](../../openspec/changes/frontend-demo-experience-alignment/acceptance.md)。design 中的决策记录保持原规划，不在本文或 AGENT_LOG 重复保存设计决策。
 
-本地提交整理补充：R5 已固定为 `0024e92`；下文未提交状态是规划时快照。用户授权整理与本地提交，不包含新规划的业务实现或 push。
+本地提交整理补充：R5 已固定为 `0024e92`；下文未提交状态是规划时快照。规划阶段的本地提交授权不包含新规划的业务实现或 push；本次实现授权来自上述新指令，提交责任为用户手动提交。未执行真实业务调用、baseline 接受、归档或推送。
 
 ### B. 与 C19/C20 的顺序
 
@@ -74,7 +74,7 @@ F1–F6 为 R5 后的新阶段，不替换历史 R 编号，也不是自动实�
 | F5 历史、反馈与查找 | 侧栏/历史页刷新、分页浏览、反馈和查找体验 | 新搜索等能力按 Type C；反馈绑定真实 history id；不把局部过滤宣传为全量搜索 |
 | F6 整体验收与分流 | 对纳入范围的页面作视觉、交互和业务状态验收，登记延后功能 | 每个 change 独立收口；之后推进 C19/C20；多轮/账号管理/工作台另立规划 |
 
-已创建 change：`frontend-demo-experience-alignment`，首批 F2 覆盖侧栏、品牌、主题、首页和设置，proposal、design、tasks 与 spec delta 已落盘，待事前审查。F3 正文/引用迁移不在本 change 内；F1 logout 接线修复单独保留。精确范围以该 change 为准，不能实施中扩张为所有前端愿望。
+已创建 change：`frontend-demo-experience-alignment`，首批 F2 覆盖侧栏、品牌、主题、首页和设置，已获授权并完成工程接入，严格视觉收口仍待复核。F3 正文/引用迁移不在本 change 内；F1 logout 接线修复单独保留。精确范围以该 change 为准，不能实施中扩张为所有前端愿望。
 
 ### F. 启动、隔离与授权复用
 

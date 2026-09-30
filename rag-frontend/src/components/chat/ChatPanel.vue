@@ -2,8 +2,7 @@
   <main :class="['chat-panel', { 'is-empty': messages.length === 0 }]">
     <div class="messages-container">
       <div v-if="messages.length === 0" class="welcome-screen">
-        <h1 class="welcome-title">你好，准备好开始了吗？</h1>
-        <p class="welcome-subtitle">选择知识库，开始提问</p>
+        <h1 class="welcome-title">你好{{ authStore.userInfo?.username ? '，' + authStore.userInfo.username : '' }}。准备好开始了吗？</h1>
       </div>
 
       <template v-else>
@@ -91,15 +90,17 @@
       </div>
       <div
         v-if="selectedKb"
-        style="max-width: 720px; width: 100%; margin-bottom: 8px; display: flex; justify-content: flex-start;"
+        class="kb-scope-row"
       >
         <div
-          style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--rag-border); border-radius: 999px; background: var(--rag-bg-surface); color: var(--rag-text-secondary); font-size: 12px;"
+          class="kb-scope-chip"
         >
-          <span>知识库：{{ selectedKb.name }}</span>
+          <span :title="selectedKb.name">知识库：{{ selectedKb.name }}</span>
           <button
             type="button"
             title="取消选择"
+            aria-label="取消选择知识库"
+            :disabled="isHistoryDetail"
             @click="clearSelectedKb"
             style="border: none; background: transparent; color: var(--rag-text-secondary); cursor: pointer; font-size: 14px; line-height: 1; padding: 0;"
           >
@@ -110,20 +111,22 @@
 
       <div class="input-container">
         <div ref="kbDropdownRoot" style="position: relative; display: flex;">
-          <button class="attach-btn" title="选择知识库" @click.stop="toggleKbDropdown">
+          <button class="attach-btn" title="选择知识库" aria-label="选择知识库" :aria-expanded="kbDropdownOpen" :disabled="isHistoryDetail" @click.stop="toggleKbDropdown">
             <Plus :size="16" />
           </button>
           <div
             v-if="kbDropdownOpen"
             @click.stop
-            style="position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 30; min-width: 280px; max-height: 280px; overflow-y: auto; border: 1px solid var(--rag-border); border-radius: 12px; background: var(--rag-bg-surface); box-shadow: var(--rag-shadow-md); padding: 8px;"
+            class="kb-dropdown"
           >
             <div
-              v-if="kbList.length === 0"
+              v-if="kbLoading"
               style="padding: 10px 12px; color: var(--rag-text-secondary); font-size: 13px;"
             >
-              暂无知识库
+              正在加载知识库…
             </div>
+            <div v-else-if="kbLoadError" class="kb-load-status" role="status">知识库加载失败<button type="button" @click="loadKbListIfNeeded">重试知识库</button></div>
+            <div v-else-if="kbList.length === 0" class="kb-load-status">暂无知识库</div>
             <button
               v-for="kb in kbList"
               :key="kb.id"
@@ -160,9 +163,9 @@
         <textarea
           ref="composerInput"
           v-model="inputText"
-          rows="2"
+          rows="1"
           class="pill-input"
-          :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : selectedKbId ? '输入你的问题' : '请选择知识库后输入问题'"
+          :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : selectedKbId ? '问问 RAG 知识库' : '请选择知识库后输入问题'"
           :disabled="isHistoryDetail"
           @keydown="handleKeydown"
         ></textarea>
@@ -171,6 +174,7 @@
         <button
           :class="['send-btn-pill', { active: canSend }]"
           :disabled="!canSend"
+          aria-label="发送问题"
           @click="handleSend"
         >
           <ArrowUp :size="18" />
@@ -216,6 +220,7 @@ import { useSSE } from '@/composables/useSSE'
 import { normalizeError } from '@/api/errors'
 import { useChatStore } from '@/stores/chat'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
+import { useAuthStore } from '@/stores/auth'
 import type { KnowledgeBaseDTO } from '@/types/knowledgeBase'
 import {
   applySyncResponse,
@@ -244,6 +249,9 @@ const historyRecordId = ref<number | null>(null)
 let historyLoadSeq = 0
 const chatStore = useChatStore()
 const kbStore = useKnowledgeBaseStore()
+const authStore = useAuthStore()
+const kbLoading = ref(false)
+const kbLoadError = ref(false)
 
 const exampleQuestions = [
   '这个知识库包含哪些主要内容？',
@@ -269,13 +277,23 @@ const canSend = computed(() => (
 const kbList = computed(() => kbStore.list)
 const selectedKb = computed(() => kbList.value.find(kb => kb.id === selectedKbId.value) ?? null)
 const isHistoryDetail = computed(() => route.name === 'ChatSession')
+watch(inputText, async () => {
+  await nextTick()
+  if (!composerInput.value) return
+  composerInput.value.style.height = 'auto'
+  composerInput.value.style.height = Math.min(composerInput.value.scrollHeight, 180) + 'px'
+})
 
 async function loadKbListIfNeeded() {
-  if (kbStore.list.length > 0) return
+  if (kbStore.list.length > 0 || kbLoading.value) return
+  kbLoading.value = true
+  kbLoadError.value = false
   try {
     await kbStore.fetchList()
   } catch {
-    // keep panel usable even if dropdown list loading fails
+    kbLoadError.value = true
+  } finally {
+    kbLoading.value = false
   }
 }
 
@@ -574,7 +592,8 @@ onUnmounted(() => {
   font-weight: 500;
   letter-spacing: .2px;
   color: var(--rag-text-primary);
-  margin: 0 0 6px;
+  margin: 0 0 30px;
+  overflow-wrap: anywhere;
 }
 
 .welcome-subtitle {
@@ -589,8 +608,8 @@ onUnmounted(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
-  max-width: 820px;
-  margin-top: 22px;
+  max-width: 760px;
+  margin-top: 16px;
 }
 
 .example-card {
@@ -598,7 +617,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   min-height: 52px;
-  padding: 12px 15px;
+  gap: 11px;
+  padding: 13px 15px;
   background: var(--rag-bg-surface);
   border: 1px solid var(--rag-border);
   border-radius: 14px;
@@ -919,7 +939,7 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  max-width: 820px;
+  max-width: 760px;
   width: 100%;
   background: var(--rag-bg-input);
   border: 1px solid var(--rag-border);
@@ -955,7 +975,7 @@ onUnmounted(() => {
 .pill-input {
   flex: 1;
   min-width: 0;
-  min-height: 58px;
+  min-height: 36px;
   max-height: 180px;
   border: none;
   outline: none;
@@ -1029,12 +1049,18 @@ onUnmounted(() => {
   margin-top: 10px;
 }
 
-.response-mode { display: flex; gap: 6px; width: 100%; max-width: 820px; margin-bottom: 10px; }
+.response-mode { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; max-width: 760px; margin-bottom: 10px; }
 .response-mode button { border: 1px solid var(--rag-border); border-radius: 999px; background: transparent; color: var(--rag-text-secondary); padding: 6px 12px; font-size: 12px; cursor: pointer; }
-.response-mode button.selected { background: var(--rag-bg-user-msg); border-color: var(--rag-primary); color: var(--rag-text-primary); }
+.response-mode button.selected { background: var(--rag-bg-user-msg); border-color: var(--rag-text-secondary); color: var(--rag-text-primary); }
 .response-mode button:disabled { opacity: .5; cursor: not-allowed; }
 .stream-state { margin: 10px 0 0; font-size: 12px; color: var(--rag-text-secondary); }
 .stop-receiving { flex-shrink: 0; border: 1px solid var(--rag-border); border-radius: 999px; background: var(--rag-bg-surface); color: var(--rag-text-primary); padding: 5px 10px; font-size: 12px; cursor: pointer; }
+.kb-scope-row { width: 100%; max-width: 760px; margin-bottom: 8px; display: flex; }
+.kb-scope-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--rag-border); border-radius: 999px; background: var(--rag-bg-hover); color: var(--rag-text-secondary); font-size: 12px; max-width: 100%; }
+.kb-scope-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-dropdown { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 30; width: min(300px, calc(100vw - 60px)); max-height: 280px; overflow-y: auto; border: 1px solid var(--rag-border); border-radius: 12px; background: var(--rag-bg-overlay); box-shadow: var(--rag-shadow-md); padding: 8px; }
+.kb-load-status { padding: 10px 12px; color: var(--rag-text-secondary); font-size: 13px; }
+.kb-load-status button { display: block; margin-top: 8px; color: inherit; background: transparent; border: none; cursor: pointer; text-decoration: underline; }
 
 @media (max-width: 768px) {
   .chat-panel.is-empty { padding-bottom: 0; }

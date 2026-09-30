@@ -23,9 +23,9 @@ import AppSidebar from '@/components/layout/AppSidebar.vue'
 import SettingsModal from '@/components/settings/SettingsModal.vue'
 
 const settingsOpen = ref(false)
-const settingsInitialTab = ref<'profile' | 'security' | 'apiKey'>('profile')
+const settingsInitialTab = ref<'general' | 'profile'>('general')
 
-function openSettings(tab: 'profile' | 'security' | 'apiKey') {
+function openSettings(tab: 'general' | 'profile') {
   settingsInitialTab.value = tab
   settingsOpen.value = true
 }
@@ -35,7 +35,7 @@ function openSettings(tab: 'profile' | 'security' | 'apiKey') {
 .app-shell {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  height: 100dvh;
   width: 100%;
   background: var(--rag-bg-surface);
   overflow: hidden;
@@ -44,7 +44,7 @@ function openSettings(tab: 'profile' | 'security' | 'apiKey') {
 .shell-content {
   flex: 1;
   min-width: 0;
-  height: 100vh;
+  height: 100dvh;
   background: var(--rag-bg-page);
   overflow-y: auto;
   overflow-x: hidden;
