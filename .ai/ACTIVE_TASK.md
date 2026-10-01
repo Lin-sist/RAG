@@ -5,7 +5,7 @@
 `ACTIVE`
 
 - 当前 change：`frontend-demo-experience-alignment`。
-- 阶段：2026-09-30 用户已授权按既定五区域规划实施；首批工程与交互验证完成，严格视觉收口待复核。详见 [acceptance](../openspec/changes/frontend-demo-experience-alignment/acceptance.md)。
+- 阶段：2026-10-01 首批工程、交互与固定 CSS 视口视觉复核完成，待用户接受及授权归档；窄屏截图底边 1 像素取整限制见 [acceptance](../openspec/changes/frontend-demo-experience-alignment/acceptance.md)。后续 [F3 规划](../openspec/changes/frontend-chat-source-alignment/proposal.md) 已准备，尚未启用或实施。
 - 入口：[proposal](../openspec/changes/frontend-demo-experience-alignment/proposal.md)、[design](../openspec/changes/frontend-demo-experience-alignment/design.md)、[tasks](../openspec/changes/frontend-demo-experience-alignment/tasks.md)、[spec delta](../openspec/changes/frontend-demo-experience-alignment/specs/rag-system/spec.md)。
 - 推进顺序：C21 后端契约与验证 → 前端接入和联调 → C19 校准 → C20 门禁。后续阶段分别验收。
 

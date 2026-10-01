@@ -3126,3 +3126,19 @@
 
 - 实时核对修正上述描述中的两处计数/标题笔误：本轮为 15 个前端文件加 5 个工程文档，共 20 个计划内改动；上一规划提交 `e415068c1672a542dfe0d5c875a2e49b43f76c21` 的完整 message 为 `docs(前端): 建立Demo首批体验对齐规划与推进路线`。
 - 精确路径检查通过，用户未跟踪文档保留、暂存区为空；`git diff --check` exit 0，仅既有 CRLF 提示。未改变实现或验证边界。Commit: pending。
+
+## 2026-10-01 · 首批工程提交补录
+
+- 当前 checkout 已包含 `cc8d98e18be5122be975af77cd171666621658c7`，message：`feat(前端): 接入Demo首批界面与统一主题`。补录上一首批 pending 记录的实际提交，不改写历史，不视为本轮 Agent 提交授权；该已有提交中的其他文档未由本轮修改。
+
+## 2026-10-01 · frontend-demo-experience-alignment 视觉复核与 F3 规划
+
+- Commit: pending。用户要求按规划继续前端接入；本轮推进首批剩余视觉验收，并准备后续 F3 事前审查包，不执行新业务实现、真实调用、baseline 接受或归档。
+- 范围与文件：ACTIVE_TASK 保留当前 change，仅更新阶段；首批 tasks/acceptance、总说明、本日志追加；新增 frontend-chat-source-alignment 的 proposal/design/tasks/specs/rag-system/spec.md 四份规划。适用首批 design 决策1–8及新F3 design决策1–6；不在日志复述取舍。
+- 实时事实：起始工作区干净，HEAD cc8d98e 完整包含 R5 0024e92；Demo 四个blob与冻结参考一致。F3正式路由仍使用ChatPanel、html:false和现有适配，正文/复制/来源/滚动差异来自直接代码核查；未修改这些源码。
+- 视觉结果：127.0.0.1:5188 封闭 fixture 预览。旧浏览器连接失败，IAB 重现尺度留白；Chrome视口输入按DPR换算并核对CSS。多标签和旧对象绑定使部分保存图像与记录尺寸不符，保留失败帧，最终改用固定单标签对象及连续一致截图。只接受visual-evidence.json列出的24张verified-*.jpg与demo-reference-evidence.json的12张参考；名称唯一，图像/DOM尺寸校验、SHA-256记录、六组正式联系表及完整Demo联系表已查看，未见此前整体缩小留白或状态错帧。桌面1440×900/1024×768、侧栏300px；窄屏CSS390×844、原图390×843底边1px取整，所有正式帧scale=1且横向溢出0。图像绝对尺度与DOM共同核验，不声明像素匹配率或独立读取浏览器UI缩放百分比。
+- 截图目录：C:/Users/Lin/.codex/visualizations/2026/10/01/01a0f557-b647-7452-a4b7-63041f461a4e/。早期错误尺寸、旧状态、测试图不在最终清单；截图均为fixture/缺失身份中性态，无真实用户/凭据。临时浏览器视口已reset，未修改OS设置。
+- 验证：本地只读图像检查24正式/12参考、各自名称唯一、正式overflow=0；原稿blob一致。前端源码、依赖与preview未变，沿用首批47/47合成测试、vue-tsc与Vite正式build，不因收尾重跑。新增文档相对链接、三项F3requirements/六项scenarios/六项决策和唯一ACTIVE指针检查、git diff --check在下述收尾执行；不是官方OpenSpec validate。
+- 跳过：OpenSpec CLI仍未发现，不安装；Java/评测未改，不运行Maven/Python；真实backend/provider/ask/embedding/rerank/judge调用0，没有query/history写入。未新增真实非答案/断流证据，不宣称C19/C20或完整Demo迁移完成。
+- 范围安全与剩余风险：无前端业务源码、prototype、Java/API/auth/request/SSE/parser、依赖/锁文件、本地配置、accepted specs或C19/C20改动；未暂存/提交/push/PR/发布/部署。首批6.2完成、6.6待用户接受与授权归档，ACTIVE仍保留首批；F3仅PLANNED，事前审查待确认。窄屏底边1px、既有大chunk警告和后续页面/真实矩阵仍如实保留。
+- 收尾验证补录：21个受影响相对链接有效，F3为3项requirements/6项scenarios/6项决策，日志diff为纯追加（15行新增、0行删除，补录本行前），`git diff --check` exit 0，仅既有CRLF提示。新增四份规划另执行no-index whitespace检查，最终九文件边界与空暂存区复核见本轮工具输出；不把链接/结构检查称为官方OpenSpec validate。
