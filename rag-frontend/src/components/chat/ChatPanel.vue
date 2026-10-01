@@ -1,6 +1,6 @@
 <template>
   <main :class="['chat-panel', { 'is-empty': messages.length === 0 }]">
-    <div class="messages-container">
+    <div ref="messageViewport" class="messages-container" @scroll="updateScrollPosition" @wheel="pauseUpwardScroll" @touchstart="pauseTouchScroll">
       <div v-if="messages.length === 0" class="welcome-screen">
         <h1 class="welcome-title">你好{{ authStore.userInfo?.username ? '，' + authStore.userInfo.username : '' }}。准备好开始了吗？</h1>
       </div>
@@ -16,59 +16,39 @@
           </div>
 
           <div v-else class="ai-message">
-            <div class="ai-avatar">
-              <span>AI</span>
-            </div>
+            <div class="ai-avatar"><BrandMark compact /></div>
             <div class="ai-body">
-              <div v-if="msg.loading && !msg.content" class="loading-dots">
+              <div v-if="msg.loading && !msg.content" class="loading-dots" role="status" aria-label="正在生成回答">
                 <span></span>
                 <span></span>
                 <span></span>
               </div>
 
-              <div
+              <AnswerContent
                 v-else
-                :class="['ai-content', { 'is-error': msg.error }]"
-                v-html="renderMarkdown(msg.content)"
-              ></div>
+                :content="msg.content"
+                :error="msg.error"
+              />
 
-              <span v-if="msg.loading && msg.content" class="typing-cursor"></span>
+              <span v-if="msg.loading && msg.content" class="typing-cursor" aria-hidden="true"></span>
 
               <p v-if="msg.responseMode === 'stream'" class="stream-state" role="status">
                 {{ streamStateLabel(msg) }}
               </p>
 
               <div v-if="!msg.loading && msg.content && !msg.error && (msg.responseMode !== 'stream' || msg.streamStatus === 'ANSWER')" class="message-actions">
-                <button class="action-btn" title="复制" @click="copyToClipboard(msg.content)">
+                <button class="action-btn" title="复制回答" aria-label="复制回答" :disabled="copyingAnswer === msg.id" @click="copyToClipboard(msg)">
                   <Copy :size="14" />
                 </button>
+                <span class="answer-copy-status" role="status" aria-live="polite">{{ answerCopyStatus[msg.id] }}</span>
               </div>
 
-              <div v-if="!msg.loading && !msg.error && (msg.responseMode !== 'stream' || msg.streamStatus === 'ANSWER')" class="citations-section">
-                <div class="citations-label">
-                  <FileText :size="14" />
-                  <span>引用来源</span>
-                </div>
-                <div v-if="msg.citations && msg.citations.length > 0" class="citations-grid">
-                  <div
-                    v-for="(cite, cidx) in msg.citations"
-                    :key="cidx"
-                    class="citation-card"
-                  >
-                    <div class="cite-icon">
-                      <FileText :size="16" />
-                    </div>
-                    <div class="cite-info">
-                      <span class="cite-filename">{{ citationLabel(cite) }}</span>
-                      <span v-if="cite.snippet" class="cite-snippet">{{ cite.snippet }}</span>
-                      <span v-if="formatRelevanceScore(cite.score)" class="cite-score">
-                        检索相关度 {{ formatRelevanceScore(cite.score) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <p v-else class="source-empty">{{ msg.sourceHint || '本回答未返回可展示来源' }}</p>
-              </div>
+              <AnswerSources
+                v-if="!msg.loading && !msg.error && (msg.responseMode !== 'stream' || msg.streamStatus === 'ANSWER')"
+                :citations="msg.citations"
+                :hint="msg.sourceHint"
+                :reset-key="messages.length"
+              />
 
               <HistoryFeedback
                 v-if="isHistoryDetail && historyRecordId && !msg.loading && !msg.error"
@@ -80,10 +60,10 @@
         </div>
       </template>
 
-      <div ref="scrollAnchor"></div>
     </div>
 
     <div class="input-wrapper">
+      <button v-if="showScrollBottom && messages.length" class="scroll-bottom" aria-label="回到底部" @click="scrollToBottom(true)"><ArrowDown :size="18" /></button>
       <div v-if="!isHistoryDetail" class="response-mode" aria-label="回答方式">
         <button type="button" :class="{ selected: responseMode === 'sync' }" :disabled="isSubmitting" @click="responseMode = 'sync'">同步问答 · 显示来源</button>
         <button type="button" :class="{ selected: responseMode === 'stream' }" :disabled="isSubmitting" @click="responseMode = 'stream'">流式问答 · 显示终态与来源</button>
@@ -208,11 +188,14 @@ import { ElMessage } from 'element-plus'
 import {
   ArrowRight,
   Copy,
-  FileText,
   ArrowUp,
+  ArrowDown,
   Plus,
 } from 'lucide-vue-next'
-import MarkdownIt from 'markdown-it'
+import BrandMark from '@/components/common/BrandMark.vue'
+import AnswerContent from './AnswerContent.vue'
+import AnswerSources from './AnswerSources.vue'
+import { copyText, clipboardMessage } from '@/utils/clipboard'
 import { getHistoryById } from '@/api/history'
 import HistoryFeedback from '@/components/history/HistoryFeedback.vue'
 import { ask } from '@/api/qa'
@@ -226,8 +209,6 @@ import {
   applySyncResponse,
   applyStructuredResponse,
   buildHistoryMessages,
-  citationLabel,
-  formatRelevanceScore,
   type ChatPresentationMessage as Message,
 } from '@/utils/qaPresentation'
 
@@ -238,7 +219,11 @@ const isSubmitting = ref(false)
 const responseMode = ref<'sync' | 'stream'>('sync')
 const streaming = ref(false)
 const sse = useSSE()
-const scrollAnchor = ref<HTMLElement>()
+const messageViewport = ref<HTMLElement>()
+const followBottom = ref(true)
+const showScrollBottom = ref(false)
+const answerCopyStatus = ref<Record<string, string>>({})
+const copyingAnswer = ref<string | null>(null)
 const kbDropdownRoot = ref<HTMLElement>()
 const kbDropdownOpen = ref(false)
 const selectedKbId = ref<number | null>(null)
@@ -259,13 +244,6 @@ const exampleQuestions = [
   '帮我解释一下核心概念',
   '有哪些实际应用场景？',
 ]
-
-const md = new MarkdownIt({
-  html: false,
-  linkify: true,
-  typographer: true,
-  breaks: true,
-})
 
 const canSend = computed(() => (
   inputText.value.trim().length > 0
@@ -366,6 +344,9 @@ function resetNewChat() {
   historyRecordId.value = null
   messages.value = []
   selectedKbId.value = null
+  followBottom.value = true
+  showScrollBottom.value = false
+  answerCopyStatus.value = {}
 }
 
 function toggleKbDropdown() {
@@ -389,14 +370,33 @@ function handleOutsideClick(event: MouseEvent) {
   kbDropdownOpen.value = false
 }
 
-function renderMarkdown(content: string): string {
-  if (!content) return ''
-  return md.render(content)
+function updateScrollPosition() {
+  const viewport = messageViewport.value
+  if (!viewport) return
+  const nearBottom = viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop < 80
+  followBottom.value = nearBottom
+  showScrollBottom.value = !nearBottom
 }
 
-function scrollToBottom() {
+function pauseUpwardScroll(event: WheelEvent) {
+  if (event.deltaY < 0) followBottom.value = false
+}
+
+function pauseTouchScroll() {
+  followBottom.value = false
+}
+
+function scrollToBottom(force = false) {
+  if (force) followBottom.value = true
   nextTick(() => {
-    scrollAnchor.value?.scrollIntoView({ behavior: 'smooth' })
+    const viewport = messageViewport.value
+    if (!viewport) return
+    if (followBottom.value) {
+      viewport.scrollTop = viewport.scrollHeight
+      showScrollBottom.value = false
+    } else {
+      showScrollBottom.value = viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop >= 80
+    }
   })
 }
 
@@ -471,7 +471,7 @@ async function sendMessage(text: string) {
   })
   messages.value.push(aiMsg)
 
-  scrollToBottom()
+  scrollToBottom(true)
   isSubmitting.value = true
 
   try {
@@ -513,10 +513,14 @@ async function sendMessage(text: string) {
   }
 }
 
-function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text).then(() => {
-    console.log('Copied!')
-  })
+async function copyToClipboard(message: Message) {
+  if (copyingAnswer.value) return
+  const id = message.id
+  copyingAnswer.value = id
+  answerCopyStatus.value[id] = '正在复制…'
+  const result = await copyText(message.content)
+  if (messages.value.some(item => item.id === id)) answerCopyStatus.value[id] = clipboardMessage(result)
+  copyingAnswer.value = null
 }
 
 watch(
@@ -558,6 +562,7 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100%;
   min-width: 0;
+  min-height: 0;
   background: var(--rag-bg-page);
 }
 
@@ -569,7 +574,8 @@ onUnmounted(() => {
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  min-height: 0;
+  overflow-x: hidden;
 }
 
 .is-empty .messages-container {
@@ -655,7 +661,7 @@ onUnmounted(() => {
 }
 
 .message-wrapper {
-  padding: 24px 0;
+  padding: 18px 24px;
 }
 
 .message-wrapper.user {
@@ -667,27 +673,28 @@ onUnmounted(() => {
 }
 
 .user-message {
-  max-width: 800px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0;
   display: flex;
   justify-content: flex-end;
 }
 
 .user-content {
-  background: var(--rag-bg-surface);
+  background: var(--rag-bg-user-msg);
   border-radius: 24px;
   padding: 11px 18px;
   font-size: 15px;
   line-height: 1.7;
   max-width: 76%;
   word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .ai-message {
-  max-width: 800px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0;
   display: flex;
   gap: 16px;
 }
@@ -695,19 +702,13 @@ onUnmounted(() => {
 .ai-avatar {
   width: 32px;
   height: 32px;
-  background: var(--rag-primary);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.ai-avatar span {
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-}
+.ai-avatar :deep(svg) { width: 32px; height: 32px; }
 
 .ai-body {
   flex: 1;
@@ -715,46 +716,6 @@ onUnmounted(() => {
   position: relative;
 }
 
-.ai-content {
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--rag-text-primary);
-  word-break: break-word;
-}
-
-.ai-content.is-error {
-  color: var(--rag-danger);
-}
-
-.ai-content :deep(p) {
-  margin: 0 0 12px;
-}
-
-.ai-content :deep(p:last-child) {
-  margin-bottom: 0;
-}
-
-.ai-content :deep(strong) {
-  font-weight: 600;
-}
-
-.ai-content :deep(ul),
-.ai-content :deep(ol) {
-  margin: 8px 0;
-  padding-left: 20px;
-}
-
-.ai-content :deep(li) {
-  margin: 4px 0;
-}
-
-.ai-content :deep(code) {
-  background: var(--rag-bg-user-msg);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'SF Mono', Consolas, monospace;
-  font-size: 13px;
-}
 
 .loading-dots {
   display: flex;
@@ -796,8 +757,8 @@ onUnmounted(() => {
   display: flex;
   gap: 4px;
   margin-top: 12px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .message-wrapper:hover .message-actions {
@@ -808,116 +769,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--rag-border);
-  background: var(--rag-bg-surface);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
   border-radius: 6px;
   cursor: pointer;
   color: var(--rag-text-secondary);
   transition: all 0.2s ease;
 }
+
+.action-btn:focus-visible, .scroll-bottom:focus-visible { outline: 2px solid var(--rag-primary); outline-offset: 3px; }
+.answer-copy-status { font-size: 12px; color: var(--rag-text-secondary); }
+.scroll-bottom { position: absolute; top: -42px; left: calc(50% - 18px); width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--rag-border); background: var(--rag-bg-surface); color: var(--rag-text-primary); cursor: pointer; box-shadow: 0 3px 12px #0002; }
 
 .action-btn:hover {
   border-color: var(--rag-primary);
   color: var(--rag-primary);
 }
 
-.citations-section {
-  margin-top: 16px;
-}
-
-.citations-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--rag-text-secondary);
-  margin-bottom: 10px;
-}
-
-.citations-grid {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.citation-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: var(--rag-bg-surface);
-  border: 1px solid var(--rag-border);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 180px;
-}
-
-.citation-card:hover {
-  border-color: var(--rag-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-
-.cite-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--rag-bg-user-msg);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--rag-text-secondary);
-  flex-shrink: 0;
-}
-
-.cite-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.cite-filename {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--rag-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cite-snippet {
-  font-size: 12px;
-  color: var(--rag-text-secondary);
-  line-height: 1.4;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.cite-score {
-  font-size: 11px;
-  color: var(--rag-primary);
-  background: var(--rag-success-light);
-  padding: 2px 6px;
-  border-radius: 4px;
-  width: fit-content;
-}
-
-.source-empty {
-  margin: 0;
-  padding: 12px 14px;
-  border: 1px dashed var(--rag-border);
-  border-radius: 8px;
-  color: var(--rag-text-secondary);
-  font-size: 12px;
-  line-height: 1.5;
-}
 
 .input-wrapper {
   position: sticky;
@@ -1073,13 +943,9 @@ onUnmounted(() => {
     max-width: 85%;
   }
 
-  .citations-grid {
-    flex-direction: column;
-  }
-
-  .citation-card {
-    min-width: auto;
-    width: 100%;
-  }
+  .message-wrapper { padding: 16px; }
+  .ai-message { gap: 10px; }
+  .ai-avatar { width: 26px; height: 28px; }
+  .ai-avatar :deep(svg) { width: 26px; height: 26px; }
 }
 </style>

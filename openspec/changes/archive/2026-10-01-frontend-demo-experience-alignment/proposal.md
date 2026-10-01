@@ -3,7 +3,7 @@
 ## 状态与问题
 
 - Change ID：`frontend-demo-experience-alignment`。
-- 日期：2026-09-30；Type C；本轮仅规划，实施待事前审查。
+- 初始规划日期：2026-09-30；Type C；当前 `ARCHIVED`（2026-10-01 用户接受并授权 baseline 接受/归档），实施与视觉结果见 [acceptance](acceptance.md)。
 - 用户指定首批：侧栏、品牌、主题、首页、设置。
 
 正式前端已具备同步问答和 R5 结构化流式主链，但应用外层仍与 Demo 有明显差异：侧栏全量知识库挤占历史区域、品牌不同、主题多处管理，设置含 mock 资料和未接通操作。本 change 迁移这五个区域的视觉与交互，不将核心接口接通等同于完整 Demo 迁移。
@@ -43,4 +43,4 @@
 
 ## 关联
 
-[设计](design.md) · [任务](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总说明](../../../docs/roadmap/frontend-demo-backend-integration-plan.md) · [R5 验收](../archive/2026-09-29-frontend-structured-stream-r5/acceptance.md)
+[设计](design.md) · [任务](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总说明](../../../../docs/roadmap/frontend-demo-backend-integration-plan.md) · [R5 验收](../2026-09-29-frontend-structured-stream-r5/acceptance.md)

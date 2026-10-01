@@ -2140,3 +2140,136 @@ C16 acceptance SHALL 只证明固定 `fact-intent-v1`、`fact-v1`、`evidence-no
 - WHEN 流结束或用户停止接收
 - THEN 页面标记 incomplete 或本地停止接收，保留已收到的部分文本
 - AND 不宣称业务成功或服务端已取消
+
+### Requirement: Frontend Demo-Aligned Navigation And Brand
+
+正式前端 SHALL 使用本地 Demo 箭刃与一致词标，提供新问答、知识库、历史固定入口和最多 20 条真实最近记录。移除侧栏全量 KB 展开后 SHALL 保留列表和输入框选库能力。侧栏 MUST 区分加载、错误、空和成功，不暴露未接工作台或搜索入口。
+
+#### Scenario: 记录与知识库访问
+- GIVEN 用户已登录且列表读取成功
+- WHEN 查看最近记录或进入知识库
+- THEN 使用真实 history id 打开单轮详情，KB 经原路由及输入框访问，不冒充多轮 conversation
+
+#### Scenario: 读取失败
+- GIVEN 最近请求失败
+- WHEN 侧栏呈现
+- THEN 显示错误和手动重试而非空记录，旧会话结果不得覆盖新会话
+
+#### Scenario: 窄屏和折叠
+- GIVEN 用户处于窄屏或桌面折叠布局
+- WHEN 打开关闭侧栏
+- THEN 入口可识别可操作，无横向溢出，不因展开折叠清空当前消息
+
+### Requirement: Unified Frontend Theme Preference
+
+前端 SHALL 由唯一状态所有者管理 system/light/dark，兼容 theme=light/dark，缺失/无效按 system。首批区域及浮层 SHALL 使用相同有效主题；存储失败 MUST NOT 阻断页面，外观持久化 MUST NOT 含身份、凭据或业务数据。
+
+#### Scenario: 旧值与手动选择
+- GIVEN 已保存 dark 或 light
+- WHEN 启动、跨路由或打开设置
+- THEN 首次挂载及后续区域主题一致，系统变化不覆盖手动选择
+
+#### Scenario: 跟随系统
+- GIVEN 选择 system 或没有有效偏好
+- WHEN 系统主题变化
+- THEN 页面和 Teleport 弹窗同步更新，重复挂载不叠加监听
+
+#### Scenario: 存储失败
+- GIVEN 浏览器不能读写外观偏好
+- WHEN 用户选择主题
+- THEN 本次选择在内存生效且页面可用，不模拟持久化成功
+
+### Requirement: Demo-Aligned Home With Preserved QA Behavior
+
+首页 SHALL 对齐 Demo 问候、胶囊输入、范围 chip 和紧凑建议，保持同步默认及显式流式。建议 SHALL 仅填入文本，未选 KB MUST NOT 发问。迁移 MUST NOT 改变 structured-v1 终态、来源、停止接收或单轮历史只读语义。
+
+#### Scenario: 建议与未选范围
+- GIVEN 未选 KB
+- WHEN 点击建议
+- THEN 填入但不发送，提示选择 KB
+
+#### Scenario: KB 读取失败
+- GIVEN 范围列表加载失败
+- WHEN 打开选择器
+- THEN 显示可重试错误，不冒充空列表
+
+#### Scenario: 既有问答行为
+- GIVEN 用户选定 KB
+- WHEN 保持默认或显式选择流式
+- THEN 分别沿用同步或 structured-v1，不为来源额外 ask，不把停止接收解释为服务端取消
+- AND 历史详情仍禁止续聊
+
+### Requirement: Truthful And Accessible Frontend Settings
+
+设置 SHALL 提供常规外观与只读资料，仅使用现有认证状态真实字段，缺失时中性降级。系统 MUST NOT 显示 mock 身份/密钥或提供未接通的资料保存、头像、改密、密钥生成操作。设置 SHALL 支持一致主题、窄屏和键盘焦点管理。
+
+#### Scenario: 身份缺失
+- GIVEN 刷新后 userInfo 不可用
+- WHEN 查看资料
+- THEN 显示资料暂不可用，不猜测身份、不解析 token 或新增个人资料持久化补值
+
+#### Scenario: 只读资料
+- GIVEN auth store 有资料
+- WHEN 打开设置
+- THEN 只展示真实字段，无编辑保存/密码/API 密钥占位操作
+
+#### Scenario: 键盘与主题
+- GIVEN 用户打开设置
+- WHEN 使用 Tab、Escape 或切换外观
+- THEN 焦点在弹窗内，关闭后归还触发控件，主题一致且窄屏无横向溢出
+
+### Requirement: Frontend Experience Acceptance Evidence
+
+体验迁移 SHALL 分别提供工程、视觉与交互证据，按 design 固定版本/视口/主题/状态逐项标注对齐、适配或延后。合成数据 MUST NOT 被表述为真实后端/provider 或质量门禁证据。
+
+#### Scenario: 逐区域验收
+- GIVEN 首批实现完成
+- WHEN 审核交付
+- THEN 提供含 vue-tsc 构建、受影响测试、指定截图及键盘/窄屏检查，缺少视觉证据不能仅凭 build 收口
+
+#### Scenario: 证据边界
+- GIVEN 使用封闭合成预览
+- WHEN 展示状态
+- THEN 明示合成范围，未知业务请求失败关闭，无真实代理，不宣称 C19/C20 或新增真实 provider 场景通过
+
+### Requirement: Readable Demo-Aligned Answer Presentation
+
+正式聊天页 SHALL 对齐冻结 Demo 的问题气泡、回答排版、代码块与动作区，在深浅主题及指定窄屏下可阅读。Markdown MUST 保持原始 HTML 不执行，代码与表格的横向滚动 MUST 限制在自身区域。复制 SHALL 以实际剪贴板结果提示成功或失败，不能模拟成功。
+
+#### Scenario: 长内容与键盘复制
+- GIVEN 回答包含长代码、表格或长标题
+- WHEN 用户在窄屏阅读并用键盘复制
+- THEN 页面不横向溢出，代码/表格自身可滚动，复制控件可达且结果真实
+
+#### Scenario: 不可信回答内容
+- GIVEN 回答含 HTML、事件文本或不安全协议链接
+- WHEN 渲染回答
+- THEN 原始 HTML 不执行，链接按安全协议校验，代码栏与动作不注入回答脚本
+
+### Requirement: Independent Expandable Answer Sources
+
+来源 SHALL 仅消费当前已适配的 citations，展示实际标题、片段及可选检索相关度，并允许键盘展开/收起完整片段。缺失字段 MUST 中性降级，不补假分数，不自行建立答案句子与来源编号对应关系，不为展开额外 ask 或检索。
+
+#### Scenario: 来源展开与字段缺失
+- GIVEN 返回长 snippet 或缺失标题/score
+- WHEN 用户展开、收起来源
+- THEN 只呈现实际片段，标题沿用已有降级，缺失score不展示假值，不发起业务请求
+
+#### Scenario: 流式来源权限
+- GIVEN 未获唯一有效 ANSWER terminal 或客户端已停止接收
+- WHEN 呈现部分文本与终态提示
+- THEN 保留现有 incomplete/非答案/本地停止语义，不展示来源或通知成功历史刷新
+
+### Requirement: Reader-Controlled Answer Scrolling
+
+消息区 SHALL 在用户接近底部时跟随新增内容，上翻阅读时暂停强制跟随，并提供可访问的回到底部入口。此展示行为 MUST 保留同步默认、structured-v1请求与适配、单轮历史只读及客户端停止的既有语义。
+
+#### Scenario: 上翻阅读与恢复
+- GIVEN 长回答正在增加内容且用户已向上滚动
+- WHEN 收到新文本或点击回到底部
+- THEN 新文本不强制拉回底部，主动回底恢复跟随，不新增网络请求或历史事件
+
+#### Scenario: 历史与既有流程
+- GIVEN 用户查看历史或显式选择流式
+- WHEN 使用新的正文和来源界面
+- THEN 历史仍禁止续聊，流式仍由原parser与唯一有效terminal判断，停止接收不宣称服务端取消或零费用

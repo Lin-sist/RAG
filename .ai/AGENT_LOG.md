@@ -3142,3 +3142,30 @@
 - 跳过：OpenSpec CLI仍未发现，不安装；Java/评测未改，不运行Maven/Python；真实backend/provider/ask/embedding/rerank/judge调用0，没有query/history写入。未新增真实非答案/断流证据，不宣称C19/C20或完整Demo迁移完成。
 - 范围安全与剩余风险：无前端业务源码、prototype、Java/API/auth/request/SSE/parser、依赖/锁文件、本地配置、accepted specs或C19/C20改动；未暂存/提交/push/PR/发布/部署。首批6.2完成、6.6待用户接受与授权归档，ACTIVE仍保留首批；F3仅PLANNED，事前审查待确认。窄屏底边1px、既有大chunk警告和后续页面/真实矩阵仍如实保留。
 - 收尾验证补录：21个受影响相对链接有效，F3为3项requirements/6项scenarios/6项决策，日志diff为纯追加（15行新增、0行删除，补录本行前），`git diff --check` exit 0，仅既有CRLF提示。新增四份规划另执行no-index whitespace检查，最终九文件边界与空暂存区复核见本轮工具输出；不把链接/结构检查称为官方OpenSpec validate。
+
+## 2026-10-01 · 视觉复核与 F3 规划提交补录
+
+- 上一执行提交为 `c74d8c40cecb357e89afcefd1372fbf39ced9126`，message：`docs(前端): 完成首批视觉复核并规划F3迁移`。补录真实 hash，不改写历史；本轮仍用户手动提交。
+
+## 2026-10-01 · 首批接受归档与 frontend-chat-source-alignment F3 实施
+
+- 授权与起点：用户明确批准 F3，随后明确“接受首批并授权归档”；起点 HEAD `c74d8c40cecb357e89afcefd1372fbf39ced9126`、工作区干净。先接受首批五项 delta 并归档，再将唯一 ACTIVE 指针切至 F3 实施。F3 自身 baseline 接受/归档仍待用户验收及授权，提交责任仍为用户手动。Commit: pending。
+- 范围与文件：首批五份 change 文档移至 `openspec/changes/archive/2026-10-01-frontend-demo-experience-alignment/`，接受首批 delta 至 `openspec/specs/rag-system/spec.md`；更新 ACTIVE_TASK、总规划和 F3 proposal/design/tasks，新增 F3 acceptance。正式实现修改 `rag-frontend/src/components/chat/ChatPanel.vue`，新增 AnswerContent.vue、AnswerSources.vue、utils/answerMarkdown.ts、utils/clipboard.ts；修改封闭 `tests/preview.mjs`，新增 `tests/chat-experience.test.mjs`。适用 F3 design 决策1–6，未在日志复述设计取舍。
+- 实现事实：760px 内容上限、问题气泡、BrandMark、Markdown/代码栏/表格局部滚动、可见复制动作、独立真实来源片段键盘展开、80px 底部跟随与回底入口完成；复制仅在浏览器实际 Promise 成功后反馈。未改变 ask/SSE 请求、终态适配、来源展示资格或成功历史事件；同步默认、客户端停止提示、历史只读/反馈与首批首页/设置保留。
+- 环境与验证：Preflight 确认 Node/现有依赖/direct vue-tsc/Vite 可用，npm 不在 PATH，未安装工具。`node --test tests/*.test.mjs` 52/52 PASS；新增五项行为测试，包含 Markdown/危险链接/语言转义、代码空白/表格键盘区域、Clipboard 实际完成/拒绝/不可用、来源字段转义、读者滚动。`node node_modules/vue-tsc/bin/vue-tsc.js -b` 后执行 `node node_modules/vite/bin/vite.js build` 均 PASS；最后 loading aria 调整重新正式构建，复用不受影响的测试，保留既有 >500kB chunk 警告。`node --check rag-frontend/tests/preview.mjs` PASS。
+- 封闭预览验证：127.0.0.1:5188、configFile:false、无 proxy，未知 GET 404，未知 POST/DELETE 405，未允许场景 stream 405，登录/同步 ask 非 POST 405，已知 KB 200；允许 structured-v1 stream 200、唯一 terminal、原始 text event 检查通过。五项非答案、缺/非法/重复 terminal、终态后文本、未知事件、读取失败与客户端停止由合成 fixture 验证，不作为真实 provider 证据。
+- 浏览器与视觉：本轮 visualization 的 `f3/visual-evidence.json` 接受 59 张稳定图，包含 36 张三视口/深浅/六状态矩阵、6 张冻结 Demo 正文参考、17 张交互/兼容图；名称唯一、SHA-256 与图像/DOM 尺度核验通过，六组联系表、Demo/补充联系表及正文/窄屏原图已查看。矩阵 CSS 1440×900、1024×768、390×844，scale=1、页面横向溢出0；窄屏图像390×843底边1px取整。初轮控制脚本超时的非 final 探索图排除；代码反馈位置调整后重采六帧。动态 loading 单独保存，不算稳定矩阵。
+- 交互证据：`interaction-evidence.json` 记录终态、滚动、键盘与复制。来源 Enter/Space，回答 Space/代码 Enter 复制通过；读取本次合成文本剪贴板，与回答及 code.textContent 完全一致。拒绝/不可用仅由指定 fixture 页面注入，提示手动复制，无伪成功。内容长度528→1269、高度1286→3634时上翻顶部保持0，主动回底后top=2980/clientHeight=654；表格clientWidth=317/scrollWidth=361、键盘scrollLeft=32，页面overflow=0。HTML/危险链接不执行、长来源标题换行、加载完成、首页/设置兼容通过；设置关闭后焦点回到侧栏入口。临时浏览器视口已 reset。
+- 真实与跳过：真实 backend/provider/ask/embedding/rerank/judge/upload/delete 调用0，无真实 query/history 写入；仅沿用 R5 已接受的指定 KB17 ANSWER 证据，完整真实异常矩阵仍未知，不宣称服务端取消、质量收益或 C19/C20 完成。Java/评测未改，跳过 Maven/Python；OpenSpec CLI 未发现、不安装，结构/链接检查不冒充官方 validate；未使用真实移动设备验证触屏。
+- 收尾检查：32 个受影响相对链接有效；首批 design/spec delta 与起点原文一致，baseline 旧内容不变且精确追加首批 delta，F3 delta 未接受。25 个变更路径（含移动旧路径）均在本轮允许范围，暂存区为空，日志纯追加；最终 whitespace 检查见下行补录。
+- 范围安全与风险：无后端/API/DTO/auth/token/request/useSSE/sseParser/qaPresentation、依赖/锁文件、prototype、本地配置、学习文件、其他页面业务或模型改动；未暂存/提交/push/PR/发布/部署。F3 工程与本地合成/视觉验收完成但尚未用户验收；F1 logout、F4/F5 完整页面迁移、真实异常矩阵、窄屏底边1px与既有大chunk警告仍保留，不将本轮称为完整 Demo 完成。
+- 最终验证补录：`git diff --check` exit 0；11 个新增文件逐一 `git diff --no-index --check` 无 whitespace 错误，日志纯追加、暂存文件0。已停止本轮封闭预览进程；停止状态和补录后最终 diff 复核见工具输出。
+
+## 2026-10-01 · frontend-chat-source-alignment F3 接受、归档与提交
+
+- 授权：用户在已呈交 F3 验收结果后明确“可以为我提交commit，进行F3归档”，按本轮验收范围接受 F3 baseline、归档并由 Agent 提交计划内文件；不包含 push/PR/部署/发布或真实业务调用。Commit: pending。
+- 范围与文件：F3 五份 change 文件移至 `openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/`；baseline 逐字追加三项 F3 requirement/六项 scenario；更新归档 proposal/tasks/acceptance 当前状态和受影响链接，design/spec delta 保留原文；更新 ACTIVE_TASK 至 IDLE、总规划当前状态与本日志追加段。连同上一轮已授权首批归档及 F3 七个前端文件提交，无新增业务代码。适用 F3 design 决策1–6，证据范围不因归档扩大。
+- 验证与复用：本轮只改收口文档，七个前端文件记录 SHA-256 并在提交前确认未变化，复用上一轮 52/52 合成测试、vue-tsc+Vite 正式构建及59张稳定截图复核；不因提交/归档重复全套检查。受影响相对链接、旧路径、baseline 精确追加、归档原文、日志纯追加及 git diff --check 在下行补录。
+- 跳过与安全：Java/评测未改，跳过 Maven/Python；OpenSpec CLI 仍不可用，不安装，结构检查不冒充官方 validate。真实 backend/provider/ask/embedding/rerank/judge/upload/delete 调用0，无 query/history 写入。无后端/API/auth/SSE契约、依赖/锁文件、prototype、本地配置或学习文件改动；仅暂存已核对的本轮路径，不 push/PR/发布/部署。
+- 剩余风险：真实完整非答案/断流/取消矩阵未知，F1 logout 与 F4/F5 整页迁移尚未完成；保留窄屏底边1px及既有大chunk警告。F3 归档不代表完整 Demo 或 C19/C20 完成。
+- 收口验证补录：33 个受影响相对链接有效，无失效 F3 活动路径链接；baseline 精确等于原内容追加首批五项与 F3 三项 delta，原契约不改；F3 delta 与规划原文一致，design 决策未改，tasks 未勾选项0。30个变化路径（含归档移动源路径）均属本轮范围，七个前端文件 SHA-256 不变，日志纯追加。`git diff --check` 与新增文件 no-index whitespace 检查通过；暂存前文件0，提交前将复核 staged diff，提交后核对 HEAD 与工作区。

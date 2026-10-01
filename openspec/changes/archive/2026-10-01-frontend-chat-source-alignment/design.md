@@ -2,6 +2,8 @@
 
 ## 事实基线
 
+实施补充（2026-10-01）：当前起点为 `c74d8c40cecb357e89afcefd1372fbf39ced9126`，用户已批准 F3 并接受、授权首批归档；首批 delta 已逐字接受，唯一 ACTIVE 指针已切至本 change。以下规划核查基线保留。
+
 2026-10-01 核查 HEAD `cc8d98e18be5122be975af77cd171666621658c7`，包含 R5 `0024e92` 与首批工程。正式 `/chat`、`/chat-v2`、`/chat/:id` 均落到 `components/chat/ChatPanel.vue`；其他 ChatMessage/CitationList 并非该正式路由主链，不在此顺手清理。
 
 ChatPanel 使用 MarkdownIt(html:false)，保留 applySyncResponse/applyStructuredResponse；仅 ANSWER 展示流式 sources。当前正文 800px、composer 760px，复制只处理成功并写控制台，来源为两行截断的 div，scrollToBottom 会在接收文本时调用。QA/history 与 SSE 已有合成回归，不能以迁移名义重写契约适配。

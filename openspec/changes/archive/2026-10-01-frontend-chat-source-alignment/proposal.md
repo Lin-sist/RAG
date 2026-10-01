@@ -1,8 +1,8 @@
 # F3 聊天正文与来源体验对齐
 
 - Change ID：`frontend-chat-source-alignment`。
-- 日期：2026-10-01；Type C；`PLANNED / 待事前审查`，未启用、未实施。
-- 前置：首批 `frontend-demo-experience-alignment` 用户接受并授权归档；一次只启用一个 active change。
+- 日期：2026-10-01；Type C；`ARCHIVED`。用户先批准 F3，工程与本地验收完成后授权提交及 F3 归档，三项 delta 已接受进 baseline。
+- 前置已满足：用户明确回复“接受首批并授权归档”；首批归档后唯一 active 指针切至本 change。
 
 正式 `/chat` 已接同步问答与 structured-v1，但正文仍使用旧 AI 圆形标记和消息宽度，复制结果仅写控制台，来源片段截断且卡片没有实际展开操作。F3 对齐 Demo 的正文、代码块和来源阅读体验，继续使用现有接口与独立 citations，不能从布局变化推导新的业务或质量收益。
 
@@ -14,7 +14,7 @@
 4. 长回答/长代码/长标题可阅读，用户向上阅读时不强制拉回底部，提供“回到底部”入口；只改变本地滚动展示，不改变流式请求、终态或历史事件。
 5. 同步默认、流式终态与 reason、非答案/断流/客户端停止、历史只读和现有历史反馈入口继续受既有契约约束。
 
-## 边界与能力分类
+## 规划时的边界与能力分类
 
 - `confirmed`：当前 R5 accepted requirement 及指定真实 ANSWER 证据；现有独立 citations、同步请求与 history 适配。
 - `partial`：正文排版、复制反馈、来源片段阅读、长内容滚动；现有代码不足以宣称 F3 完成。
@@ -22,10 +22,10 @@
 - `unknown`：真实所有非答案/断流场景，引用原文精确定位。
 - `out_of_scope`：F1 logout、F4 KB/上传、F5 历史列表/新搜索、登录页重设计、多轮 conversation、账号/工作台、C19/C20、模型和后端变更。
 
-本包不构成实现、提交、真实联调、baseline 接受或归档授权。后续实施默认用户手动提交；预览须 configFile:false、独立 localhost 端口、未知业务 fail closed，无真实代理、provider 费用或业务数据出站。真实 provider/ask/upload/delete 等仍需专门的有效授权。
+本轮已完成实施与验收，并获授权接受 baseline、归档和 Agent 提交。预览采用 configFile:false、独立 localhost 端口、未知业务 fail closed，无真实代理、provider 费用或业务数据出站。真实 provider/ask/upload/delete 等仍需专门的有效授权。当前能力与证据限制见 acceptance，以上分类保留规划时快照。
 
 ## 验收与关联
 
 含 vue-tsc 的正式 build、受影响逻辑测试和 R5 回归，浏览器逐状态视觉/键盘/滚动检查；合成、沿用真实证据和未验证项分别报告。任何接口/DTO/认证/SSE parser/生产默认行为越界需求均停止并先修订范围。
 
-[design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总规划](../../../docs/roadmap/frontend-demo-backend-integration-plan.md) · [首批验收](../frontend-demo-experience-alignment/acceptance.md)
+[design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总规划](../../../../docs/roadmap/frontend-demo-backend-integration-plan.md) · [首批验收](../2026-10-01-frontend-demo-experience-alignment/acceptance.md) · [F3 验收](acceptance.md)

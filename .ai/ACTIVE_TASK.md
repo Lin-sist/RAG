@@ -2,20 +2,20 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
-- 当前 change：`frontend-demo-experience-alignment`。
-- 阶段：2026-10-01 首批工程、交互与固定 CSS 视口视觉复核完成，待用户接受及授权归档；窄屏截图底边 1 像素取整限制见 [acceptance](../openspec/changes/frontend-demo-experience-alignment/acceptance.md)。后续 [F3 规划](../openspec/changes/frontend-chat-source-alignment/proposal.md) 已准备，尚未启用或实施。
-- 入口：[proposal](../openspec/changes/frontend-demo-experience-alignment/proposal.md)、[design](../openspec/changes/frontend-demo-experience-alignment/design.md)、[tasks](../openspec/changes/frontend-demo-experience-alignment/tasks.md)、[spec delta](../openspec/changes/frontend-demo-experience-alignment/specs/rag-system/spec.md)。
+- 当前无 active change。2026-10-01 用户授权提交并进行 F3 归档，本轮按已完成的验收范围接受其 baseline、归档并恢复 IDLE。
+- 验收：[acceptance](../openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/acceptance.md)。
+- 入口：[proposal](../openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/proposal.md)、[design](../openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/design.md)、[tasks](../openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/tasks.md)、[spec delta](../openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/specs/rag-system/spec.md)。
 - 推进顺序：C21 后端契约与验证 → 前端接入和联调 → C19 校准 → C20 门禁。后续阶段分别验收。
 
 ## Last Completed Change
 
-- Change ID：`frontend-structured-stream-r5`（R5）
-- 归档路径：`openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/`
-- 阶段：正式前端结构化 SSE 接入与单题真实 `ANSWER` 联调验收完成；详见归档 `acceptance.md`。C21 后端契约此前已单独验收归档。
+- Change ID：`frontend-chat-source-alignment`（F3）。
+- 归档路径：`openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/`。
+- 阶段：F3 工程、合成与指定视口视觉复核完成，用户授权提交及归档，三项 delta 接受进 baseline。首批五区域、R5 与 C21 后端契约已分别验收归档。
 
 ## Current Boundary
 
-- 首批仅侧栏、品牌、主题、首页和设置；当前 checkout 已包含 R5 本地提交 `0024e92`。本轮实现已授权，提交责任为用户手动提交；真实业务调用、baseline 接受与归档仍未授权。不修改后端、评测或模型配置。
+- F3 仅正文、Markdown/代码复制、独立来源展开和本地阅读滚动。用户已授权 Agent 提交本轮文件，不包含 push/PR/发布/部署或真实业务调用；F1 logout、F4/F5 整页迁移尚未完成，后续需各自规划与验收。不修改后端、评测或模型配置。
 - 前端 R5 使用已接受的后端 `structured-v1` wire；真实成功证据仅覆盖 KB17 合成问题的 `ANSWER`，非答案和断连仍由合成测试约束。C19/C20 仍需各自契约与外调授权。客户端断流仍只可判定 incomplete，不能宣称服务端取消或无 provider 费用。

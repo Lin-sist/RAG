@@ -10,11 +10,13 @@
 
 整体 Demo 对齐涉及多个页面、共享样式和多个独立提交，推荐作为 Type C 规划，不能拆成多个 Type B 来绕过重大变更流程。独立的局部样式、文案和已有契约内小 bugfix 仍可按 Type B 推进，不必每次新建 change。
 
-2026-09-30：已按用户“根据规划，开始前端demo的接入工程”指令实施 [frontend-demo-experience-alignment](../../openspec/changes/frontend-demo-experience-alignment/proposal.md) 的侧栏、品牌、主题、首页与设置。工程与交互验证完成：47/47 合成测试、vue-tsc 与 Vite build 通过；24 张首批正式页与 12 张 Demo 参考已采集，截图工具 DPI 缩放/留白仍需严格复核，不能据此宣布视觉完全验收。详见 [工程验收记录](../../openspec/changes/frontend-demo-experience-alignment/acceptance.md)。design 中的决策记录保持原规划，不在本文或 AGENT_LOG 重复保存设计决策。
+2026-09-30：已按用户“根据规划，开始前端demo的接入工程”指令实施 [frontend-demo-experience-alignment](../../openspec/changes/archive/2026-10-01-frontend-demo-experience-alignment/proposal.md) 的侧栏、品牌、主题、首页与设置。工程与交互验证完成：47/47 合成测试、vue-tsc 与 Vite build 通过；24 张首批正式页与 12 张 Demo 参考已采集，截图工具 DPI 缩放/留白仍需严格复核，不能据此宣布视觉完全验收。详见 [工程验收记录](../../openspec/changes/archive/2026-10-01-frontend-demo-experience-alignment/acceptance.md)。design 中的决策记录保持原规划，不在本文或 AGENT_LOG 重复保存设计决策。
 
-本地提交整理补充：R5 已固定为 `0024e92`；下文未提交状态是规划时快照。规划阶段的本地提交授权不包含新规划的业务实现或 push；本次实现授权来自上述新指令，提交责任为用户手动提交。未执行真实业务调用、baseline 接受、归档或推送。
+本地提交整理补充（当时快照）：R5 已固定为 `0024e92`；下文未提交状态是规划时快照。规划阶段的本地提交授权不包含新规划的业务实现或 push；当时提交责任为用户手动提交，尚未执行真实业务调用、baseline 接受、归档或推送。最新授权与收口状态见下段。
 
-2026-10-01 续办：首批实现已由当前本地提交 `cc8d98e` 固定，工作区起始干净。使用 Chrome 单标签、实际 CSS 视口校准和稳定截图重采 24 张正式页 / 12 张 Demo 参考，完成首批视觉复核；窄屏图像底边 1 像素取整限制见上述 acceptance。首批仍待用户接受及授权 baseline 接受/归档，活动指针保持不变。已准备 [F3 聊天正文与来源规划](../../openspec/changes/frontend-chat-source-alignment/proposal.md)，包含 design、tasks、spec delta；只规划，未启用或实施。
+2026-10-01 规划阶段快照：首批实现由本地提交 `cc8d98e` 固定。使用 Chrome 单标签、实际 CSS 视口校准和稳定截图重采 24 张正式页 / 12 张 Demo 参考，完成首批视觉复核；窄屏图像底边 1 像素取整限制见上述 acceptance。当时首批待接受/归档，已准备 [F3 聊天正文与来源规划](../../openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/proposal.md)。随后用户明确批准 F3、接受首批并授权归档，当前状态见下段。
+
+2026-10-01 F3 实施及归档：首批五项 delta 已逐字接受并归档，之后实施 F3。正文 760px、BrandMark、Markdown/代码与表格独立横向阅读、真实复制反馈、来源键盘展开及本地跟随/回底已实施；52/52 合成测试与含 vue-tsc 的正式 build 通过。六组 36 张矩阵、6 张 Demo 参考、17 张交互/兼容图完成，保留窄屏底边 1px 取整及既有大 chunk 警告。详见 [F3 验收记录](../../openspec/changes/archive/2026-10-01-frontend-chat-source-alignment/acceptance.md)。用户授权提交及 F3 归档，按已呈交验收范围接受三项 baseline delta，归档并恢复 IDLE；真实业务调用为 0，F1 logout、F4/F5整页迁移及完整真实异常矩阵仍未完成。
 
 ### B. 与 C19/C20 的顺序
 
@@ -32,7 +34,7 @@
 | 模块 | 分类 | 已完成与剩余项 |
 | --- | --- | --- |
 | 登录/请求基础层 | partial | typed error、single-flight refresh、token rotate 已有实现及合成测试，有真实登录记录；正式侧栏退出仅清本地态，未调用现有 logout API |
-| 应用框架/侧栏/主题 | confirmed（首批合成/视觉） | 品牌、固定导航、最近20条状态、统一主题与首批响应式已验；仍待用户接受，不代表全量页面完成 |
+| 应用框架/侧栏/主题 | confirmed（首批合成/视觉） | 品牌、固定导航、最近20条状态、统一主题与首批响应式已验收归档，不代表全量页面完成 |
 | 知识库列表/详情 | partial | 已接 CRUD、统计、文档、本地筛选与局部表格视觉；未完整对齐 Demo 资料库布局 |
 | 上传/任务 | partial | 已接上传和任务轮询，专用 KB 上传解析已有真实证据；删除、失败恢复及完整浏览器路径不能据此外推通过 |
 | 同步问答 | confirmed | 指定合成问题的真实回答、独立 citation、history 写入与回读通过，不代表整体生成质量 |
@@ -76,7 +78,7 @@ F1–F6 为 R5 后的新阶段，不替换历史 R 编号，也不是自动实�
 | F5 历史、反馈与查找 | 侧栏/历史页刷新、分页浏览、反馈和查找体验 | 新搜索等能力按 Type C；反馈绑定真实 history id；不把局部过滤宣传为全量搜索 |
 | F6 整体验收与分流 | 对纳入范围的页面作视觉、交互和业务状态验收，登记延后功能 | 每个 change 独立收口；之后推进 C19/C20；多轮/账号管理/工作台另立规划 |
 
-当前 active change：`frontend-demo-experience-alignment`，首批 F2 覆盖侧栏、品牌、主题、首页和设置，工程/交互及固定CSS视口视觉复核已完成，待用户接受与授权归档。后续 planned change：`frontend-chat-source-alignment`，F3 正文、代码复制、独立来源展开和阅读滚动，已准备事前审查包，未实施。F4/F5整页、F1 logout仍分别保留。精确范围以各change为准，不能将首批验收当成完整页面迁移完成。
+当前 ACTIVE_TASK 为 `IDLE`。F3 工程及本地合成/视觉验收完成，用户授权提交及归档，三项 delta 接受进 baseline，归档于 `2026-10-01-frontend-chat-source-alignment`。首批 F2 五区域已由用户接受，五项 delta 接受进 baseline，并归档于 `2026-10-01-frontend-demo-experience-alignment`。F4/F5整页、F1 logout仍分别保留。精确范围以各 change 为准，不能将首批与 F3 验收当成完整页面迁移完成。
 
 ### F. 启动、隔离与授权复用
 
