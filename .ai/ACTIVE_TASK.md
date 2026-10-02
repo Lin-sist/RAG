@@ -4,8 +4,8 @@
 
 `ACTIVE`
 
-- Change ID：`frontend-kb-upload-alignment`（F4）。阶段：`IMPLEMENTED / 浏览器上传与真实闭环待验收`。
-- 2026-10-02 用户批准实施并授权 Agent 提交；客户端切片已实施，66/66 测试及 vue-tsc/Vite 正式 build 通过。视觉矩阵已完成五态六组，任务状态矩阵与浏览器上传仍待权限确认；真实闭环、baseline 接受/归档尚未执行。
+- Change ID：`frontend-kb-upload-alignment`（F4）。阶段：`IMPLEMENTED / 上传与36图已验证；拖放与真实闭环待验收`。
+- 2026-10-02 用户批准实施并授权 Agent 提交；工程提交 `da4bc681`，66/66 测试及 vue-tsc/Vite 正式 build 通过。本轮完成用户手动选文件后的多文件/混合失败/接受不明/任务查询恢复、六组36张正式矩阵和独立login复核。拖放动作未独立确认；真实闭环、baseline 接受/归档尚未执行。
 - 入口：[proposal](../openspec/changes/frontend-kb-upload-alignment/proposal.md)、[design](../openspec/changes/frontend-kb-upload-alignment/design.md)、[tasks](../openspec/changes/frontend-kb-upload-alignment/tasks.md)、[阶段验收](../openspec/changes/frontend-kb-upload-alignment/acceptance.md)、[spec delta](../openspec/changes/frontend-kb-upload-alignment/specs/rag-system/spec.md)。
 - 推进顺序：C21 后端契约与验证 → 前端接入和联调 → C19 校准 → C20 门禁。后续阶段分别验收。
 

@@ -56,7 +56,7 @@ function streamFixture(req, res, scenario) {
   res.on('close', () => clearInterval(timer))
 }
 const streamScenarios = new Set(['chat-stream', 'chat-scroll', 'chat-stop', 'chat-incomplete', 'chat-read-failure', 'chat-no-answer', 'chat-unsupported', 'chat-invalid', 'chat-error', 'chat-cancelled', 'chat-invalid-terminal', 'chat-duplicate-terminal', 'chat-post-terminal', 'chat-unknown-event'])
-const f4Scenarios = new Set(['f4', 'f4-empty', 'f4-list-error', 'f4-stats-error', 'f4-docs-error', 'f4-403', 'f4-404', 'f4-upload-mixed', 'f4-upload-unconfirmed', 'f4-poll-error', 'f4-task-running', 'f4-task-failed', 'f4-task-cancelled', 'f4-delete-error', 'f4-refresh-error', 'f4-long'])
+const f4Scenarios = new Set(['f4', 'f4-empty', 'f4-list-error', 'f4-stats-error', 'f4-docs-error', 'f4-403', 'f4-404', 'f4-upload-mixed', 'f4-upload-unconfirmed', 'f4-poll-error', 'f4-task-running', 'f4-task-failed', 'f4-task-cancelled', 'f4-task-matrix', 'f4-delete-error', 'f4-refresh-error', 'f4-long'])
 const f4Sessions = new Map()
 function newF4Session(scenario) {
   const bases = [kb, { ...kb, id: 902, name: '合成知识库 · 阅读资料', isPublic: true }, { ...kb, id: 903, name: '合成知识库 · 空资料', documentCount: 0 }].map(item => ({ ...item }))
@@ -88,8 +88,10 @@ async function f4Api(req, res, url, session) {
   if (taskMatch && method === 'GET') {
     const task = session.tasks.get(taskMatch[1]); if (!task) return fixtureReply(res, 404, null)
     task.calls++
-    if (scene === 'f4-poll-error' && task.calls === 1) return fixtureReply(res, 503, null, '合成状态查询失败')
-    const state = scene === 'f4-task-running' || task.calls < 3 ? 'RUNNING' : scene === 'f4-task-failed' ? 'FAILED' : scene === 'f4-task-cancelled' ? 'CANCELLED' : 'COMPLETED'
+    if ((scene === 'f4-poll-error' || (scene === 'f4-task-matrix' && task.doc.title === 'query.txt')) && task.calls === 1) return fixtureReply(res, 503, null, '合成状态查询失败')
+    const state = scene === 'f4-task-matrix'
+      ? task.doc.title === 'running.txt' ? 'RUNNING' : task.doc.title === 'failed.txt' ? 'FAILED' : task.doc.title === 'cancelled.txt' ? 'CANCELLED' : 'COMPLETED'
+      : scene === 'f4-task-running' || task.calls < 3 ? 'RUNNING' : scene === 'f4-task-failed' ? 'FAILED' : scene === 'f4-task-cancelled' ? 'CANCELLED' : 'COMPLETED'
     if (state === 'COMPLETED') { task.doc.status = 'COMPLETED'; task.doc.chunkCount = 6 }
     else if (state === 'FAILED') task.doc.status = 'FAILED'
     return fixtureReply(res, 200, { taskId: taskMatch[1], taskType: 'DOCUMENT_INDEX', state, progress: state === 'COMPLETED' ? 100 : 36, message: '合成任务状态，仅验证客户端', error: state === 'FAILED' ? '合成索引失败，未执行真实索引' : null, result: null, createdAt: kb.createdAt, updatedAt: kb.updatedAt })
@@ -127,7 +129,7 @@ async function f4Api(req, res, url, session) {
       if (names.length !== 1) return fixtureReply(res, 400, null)
       const name = names[0][1]
       if (scene === 'f4-upload-mixed' && name.includes('fail')) return fixtureReply(res, 400, null, '合成文件拒绝，失败项应保留')
-      if (scene === 'f4-upload-unconfirmed') return fixtureReply(res, 202, { taskId: '', fileName: name })
+      if (scene === 'f4-upload-unconfirmed' || (scene === 'f4-task-matrix' && name === 'unknown.txt')) return fixtureReply(res, 202, { taskId: '', fileName: name })
       const documentId = session.nextId++, taskId = `fixture-task-${documentId}`
       const doc = { id: documentId, kbId: id, title: name, fileType: 'txt', status: 'PROCESSING', chunkCount: 0, createdAt: kb.createdAt, updatedAt: kb.updatedAt }
       session.docs.push(doc); base.documentCount++; session.tasks.set(taskId, { doc, calls: 0 })
@@ -146,6 +148,8 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
   name: 'synthetic-api',
   transformIndexHtml(html, context) {
     const fixture = new URL(context.originalUrl || context.path, 'http://127.0.0.1').searchParams.get('fixture')
+    // Screenshot-only fixture: freeze the running icon/stripes, never fabricate progress or files.
+    if (fixture === 'f4-task-matrix') return { html, tags: [{ tag: 'style', injectTo: 'head', children: '.doc-progress *,.doc-progress *::before,.doc-progress *::after{animation-play-state:paused!important}' }] }
     if (fixture !== 'clipboard-failure' && fixture !== 'clipboard-unavailable') return html
     const replacement = fixture === 'clipboard-failure' ? '{ writeText: () => Promise.reject(new Error("Synthetic clipboard denial")) }' : 'undefined'
     return { html, tags: [{ tag: 'script', attrs: { type: 'module' }, injectTo: 'head-prepend', children: `Object.defineProperty(navigator, "clipboard", { configurable: true, value: ${replacement} }); document.documentElement.dataset.clipboardFixture = "${fixture}";` }] }

@@ -3206,3 +3206,18 @@
 - 未完成/跳过：浏览器文件选择、多文件/拖放/混合结果/任务六态矩阵待权限确认，tasks3.3/3.4保持未勾；动态loading未单独截图，login因现有合成登录态自动跳转未独立复验，未改登录/全局样式。真实backend/provider/upload/embedding/rerank/ask/judge/delete调用0，真实KB/document/query/history写入0；仅沿用R5指定KB17 ANSWER证据，不扩大为本轮闭环。Java/评测未改，跳过Maven/Python；无真实移动设备触屏验证；OpenSpec CLI未发现，不安装，文件级检查不冒充validate。
 - 收尾验证：28个受影响相对链接有效；4 requirement/12 scenario无baseline同名，7决策三行完整；23路径均在design允许范围、日志纯追加、起点至暂存前staged0；tracked diff及9个新增文件no-index whitespace均通过。四项Demo blob一致，新增tracked内容敏感值扫描通过；视觉清单写入普通Copy-Item被ACL拒绝后用apply_patch成功，无失败残留。提交前复核staged范围/whitespace，提交后核对HEAD和工作区。
 - 范围安全与风险：无后端/API/DTO/auth/request/token/SSE/parser/qaPresentation、模型/评测/依赖/锁文件、prototype、accepted specs、本地配置、学习文件或其他页面业务变更。ACTIVE保持F4，工程已实现但浏览器上传/完整36图与专用真实闭环尚未完成，未宣称完整F4；取消/跨刷新恢复/原文接口及F1/F5/C19/C20仍范围外。建议提交信息：`feat(前端): 接入F4知识库与上传恢复体验`。
+
+## 2026-10-02 · F4 工程提交补录
+
+- 上一执行提交：`da4bc681fc12641cd000e31621e6568d87c302ce`，message：`feat(前端): 接入F4知识库与上传恢复体验`。提交后工作区干净、main ahead3；不回改历史。
+
+## 2026-10-02 · frontend-kb-upload-alignment 上传与任务证据补齐
+
+- Commit: pending。沿用本轮Agent提交与后续实施授权；本记录对应design决策3、4、7的执行证据，不重复设计取舍。
+- 范围与文件：tests/preview.mjs增加f4-task-matrix封闭场景与仅截图暂停任务CSS动画；本change的acceptance/tasks/visual-evidence、ACTIVE_TASK、总规划和本日志，共7个计划内路径；正式业务源码和依赖未变。
+- 浏览器结果：自动setFiles仍因扩展文件权限拒绝，chrome://extensions核查被浏览器安全策略拒绝；未绕过权限。用户手动选文件后，pass完成、fail保留，明确再次提交失败项后pass文档仍只有1份、统计6/12/0。第二批用户一次选择5文件，Agent提交后RUNNING/FAILED/CANCELLED/查询暂停正确显示；202缺taskId的unknown保留，恢复原taskId查询后query完成、统计9/12/0，无自动重传。用户只回复“已选择”，拖放动作未独立确认。
+- 视觉结果：补六组六态矩阵至36张，18张Demo参考、26张补充图（25稳定、1动态），共80项名称唯一、SHA-256/PNG尺度匹配；六张新增任务矩阵稳定、DOM目标尺寸/scale1/overflow0。任务场景仅暂停CSS动画，不改变progress/轮询/File对象，不代表真实后台或动画验证。窗口归属导致的早期错误尺寸已排除，公开claimTab重新认领后正确；临时viewport已reset。新增13图的三页联系表和窄屏任务原图已查看。login独立localhost origin深浅1440及浅390兼容复核通过，窄屏scrollWidth小于innerWidth5px；没有真实登录。任务页未捕获控制台error。
+- 聚焦验证：`node --check tests/preview.mjs`PASS；本地check-task-fixture.mjs确认四任务状态、503→COMPLETED、202缺id不产生fixture文档、统计9/12/0及未知写/取消/任务DELETE405。check-images.py确认80项/36矩阵及各组6态；check-scope.py确认7路径、22个相对链接、日志纯追加、4个冻结Demo blob、whitespace通过，提交前staged0/untracked0。临时检查脚本、JSON及图片仅保留在本轮visualizations/f4输出目录，不纳入Git。
+- 运行准备：只读核查现有Docker依赖与数据库聚合状态，没有读取业务正文；`mvn -q -pl rag-admin -am package -DskipTests`首次沙箱依赖网络拒绝，平台批准正常依赖下载后PASS。未启动后台应用、未修改本地配置、未执行真实KB/upload/embedding/rerank/ask/judge/delete或history写入；provider业务调用0。
+- 验证复用与跳过：正式业务源码/配置/依赖未变，复用66/66 Node测试及vue-tsc/Vite成功检查，仅重跑受影响preview检查；package跳过Java测试，不冒充测试通过。Java/Python评测源码未改，不跑Java/Python测试。OpenSpec CLI不可用，文件级链接/结构检查不冒充官方validate。真实拖放、动态loading、移动设备触屏及真实provider/persistence闭环未验证，tasks3.4与4.x仍待验收，ACTIVE保持F4。
+- 范围安全与剩余风险：未改Demo、后端/API/DTO/auth/request/SSE/parser/模型/评测/依赖/锁文件、accepted specs、本地受保护配置或学习目录；仅计划内7文件，无其他用户改动。未push/PR/发布/部署或接受baseline/归档。自动文件选择权限、跨刷新恢复接口、既有大chunk和窄屏底边1px限制保留；合成结果不证明生成质量。建议提交信息：`test(前端): 补齐F4上传与任务验收证据`。
