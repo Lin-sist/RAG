@@ -6,12 +6,16 @@
     </header>
     <div class="list-toolbar">
       <el-input v-model="query" placeholder="筛选已加载的知识库" clearable aria-label="筛选知识库" />
-      <span>{{ filtered.length }} 个知识库</span>
+      <span>已加载 {{ kbStore.list.length }} 个 · 当前 {{ filtered.length }} 个</span>
+      <div class="view-switch" role="group" aria-label="知识库视图">
+        <button :aria-pressed="mode === 'list'" aria-label="列表视图" @click="mode = 'list'"><List :size="17" /></button>
+        <button :aria-pressed="mode === 'grid'" aria-label="网格视图" @click="mode = 'grid'"><LayoutGrid :size="17" /></button>
+      </div>
       <el-button :loading="kbStore.listLoading" @click="loadList">刷新</el-button>
     </div>
     <el-skeleton v-if="kbStore.listLoading" :rows="5" animated />
-    <el-alert v-else-if="kbStore.listError" :title="kbStore.listError" type="error" :closable="false" show-icon />
-    <section v-else-if="filtered.length" class="kb-table" aria-label="知识库列表">
+    <div v-else-if="kbStore.listError" role="status"><el-alert :title="kbStore.listError" type="error" :closable="false" show-icon /><el-button class="retry" @click="loadList">重试知识库加载</el-button></div>
+    <section v-else-if="filtered.length" :class="['kb-table', { grid: mode === 'grid' }]" aria-label="知识库列表">
       <div class="table-heading"><span>名称</span><span>文档</span><span>更新时间</span><span>操作</span></div>
       <article v-for="kb in filtered" :key="kb.id" class="kb-row">
         <button class="kb-name" @click="router.push(`/kb/${kb.id}`)">
@@ -21,7 +25,7 @@
         <time>{{ formatDate(kb.updatedAt) }}</time>
         <div class="row-actions">
           <el-tag size="small" type="info">{{ kb.isPublic ? '公开' : '私有' }}</el-tag>
-          <el-dropdown trigger="click" @command="(command: string) => act(command, kb)">
+          <el-dropdown trigger="click" :disabled="deleting.has(kb.id)" @command="(command: string) => act(command, kb)">
             <button class="more-button" :aria-label="'管理 ' + kb.name">•••</button>
             <template #dropdown><el-dropdown-menu>
               <el-dropdown-item command="edit">编辑</el-dropdown-item>
@@ -37,17 +41,17 @@
       <el-button v-else type="primary" @click="openCreate">创建知识库</el-button>
     </el-empty>
     <KBCreateDialog v-model:visible="dialogVisible" :edit-data="editTarget" @success="loadList" />
-    <el-dialog v-model="statsDialogVisible" title="知识库统计" width="min(520px, 92vw)" destroy-on-close>
-      <el-alert v-if="kbStore.statisticsError" :title="kbStore.statisticsError" type="error" :closable="false" />
-      <KBStatsPanel v-else :stats="kbStore.statistics" :loading="statsLoading" />
+    <el-dialog v-model="statsDialogVisible" :title="'知识库统计 · ' + (statsTarget?.name || '')" width="min(520px, 92vw)" destroy-on-close @closed="kbStore.clearStatistics()">
+      <div v-if="kbStore.statisticsKbId === statsTarget?.id && kbStore.statisticsError" role="status"><el-alert :title="kbStore.statisticsError" type="error" :closable="false" /><el-button class="retry" @click="loadStats">重试统计加载</el-button></div>
+      <KBStatsPanel v-else :stats="kbStore.statistics?.kbId === statsTarget?.id ? kbStore.statistics : null" :loading="kbStore.statisticsLoading" />
     </el-dialog>
   </div>
 </template>
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Plus, Database } from 'lucide-vue-next'
+import { Plus, Database, List, LayoutGrid } from 'lucide-vue-next'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
 import { normalizeError } from '@/api/errors'
 import { formatDate } from '@/utils/format'
@@ -55,7 +59,9 @@ import type { KnowledgeBaseDTO } from '@/types/knowledgeBase'
 import KBCreateDialog from '@/components/knowledge-base/KBCreateDialog.vue'
 import KBStatsPanel from '@/components/knowledge-base/KBStatsPanel.vue'
 const router = useRouter(), kbStore = useKnowledgeBaseStore()
-const query = ref(''), dialogVisible = ref(false), statsDialogVisible = ref(false), statsLoading = ref(false)
+const query = ref(''), mode = ref('list'), dialogVisible = ref(false), statsDialogVisible = ref(false)
+const statsTarget = ref<KnowledgeBaseDTO | null>(null)
+const deleting = reactive(new Set<number>())
 const editTarget = ref<KnowledgeBaseDTO | null>(null)
 const filtered = computed(() => {
   const term = query.value.trim().toLocaleLowerCase()
@@ -63,17 +69,22 @@ const filtered = computed(() => {
 })
 async function loadList() { try { await kbStore.fetchList() } catch { /* store exposes the error state */ } }
 onMounted(loadList)
+onUnmounted(() => kbStore.clearStatistics())
 function openCreate() { editTarget.value = null; dialogVisible.value = true }
+async function loadStats() { if (statsTarget.value) await kbStore.fetchStatistics(statsTarget.value.id) }
 async function act(command: string, kb: KnowledgeBaseDTO) {
   if (command === 'edit') { editTarget.value = kb; dialogVisible.value = true }
   if (command === 'stats') {
-    statsDialogVisible.value = true; statsLoading.value = true
-    try { await kbStore.fetchStatistics(kb.id) } finally { statsLoading.value = false }
+    statsTarget.value = kb; statsDialogVisible.value = true
+    await loadStats()
   }
   if (command === 'delete') {
+    if (deleting.has(kb.id)) return
+    deleting.add(kb.id)
     try { await ElMessageBox.confirm(`确定删除「${kb.name}」及其文档和向量数据吗？`, '删除确认', { type: 'warning' }) }
-    catch { return }
+    catch { deleting.delete(kb.id); return }
     try { await kbStore.remove(kb.id) } catch (error) { ElMessage.error(normalizeError(error).message) }
+    finally { deleting.delete(kb.id) }
   }
 }
 </script>
@@ -100,6 +111,17 @@ h1 { font-size: 28px; margin: 0; color: var(--rag-text-primary); }
 .kb-name small { margin-top: 6px; color: var(--rag-text-secondary); }
 .row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .more-button { cursor: pointer; border: 1px solid var(--rag-border); border-radius: 6px; background: var(--rag-bg-card); color: var(--rag-text-primary); padding: 6px; }
+.retry { margin-top: 12px; }
+.view-switch { display: flex; border: 1px solid var(--rag-border); border-radius: 8px; padding: 3px; }
+.view-switch button { display: flex; align-items: center; padding: 7px; border: 0; border-radius: 5px; color: var(--rag-text-secondary); background: transparent; cursor: pointer; }
+.view-switch button[aria-pressed="true"] { background: var(--rag-bg-hover); color: var(--rag-text-primary); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; border: 0; overflow: visible; }
+.grid .table-heading { display: none; }
+.grid .kb-row { border: 1px solid var(--rag-border); border-radius: 14px; grid-template-columns: 1fr auto; }
+.grid .kb-name { grid-column: 1 / -1; }
+.grid time { grid-column: 1 / -1; }
+.grid .row-actions { grid-column: 2; grid-row: 2; }
+button:focus-visible { outline: 2px solid var(--rag-primary); outline-offset: 3px; }
 time, .doc-count { color: var(--rag-text-secondary); }
 @media (max-width: 720px) {
   .kb-list-view { padding: 24px 16px; }

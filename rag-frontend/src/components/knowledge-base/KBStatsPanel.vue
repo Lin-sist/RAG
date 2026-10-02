@@ -149,4 +149,13 @@ defineProps<{
   color: var(--rag-text-placeholder);
   font-size: 14px;
 }
+@media (max-width: 720px) {
+  .stats-panel { padding: 16px; }
+  .stats-grid { gap: 10px; }
+  .stat-card { padding: 12px 8px; gap: 6px; flex-direction: column; align-items: flex-start; }
+  .stat-icon { width: 28px; height: 28px; }
+  .stat-icon svg { width: 16px; height: 16px; }
+  .stat-value { font-size: 23px; }
+  .stat-label { font-size: 12px; }
+}
 </style>

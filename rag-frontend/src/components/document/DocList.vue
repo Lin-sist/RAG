@@ -1,173 +1,67 @@
-<!-- 文档列表组件 — 阶段 6 -->
 <template>
   <div class="doc-list">
-    <div class="doc-list-header">
-      <span class="doc-count">共 {{ documents.length }} 篇文档</span>
-      <el-button :icon="Refresh" circle size="small" @click="emit('refresh')" :loading="loading" />
+    <div class="doc-toolbar"><el-input v-model="query" placeholder="筛选已加载的文档" clearable aria-label="筛选已加载的文档" /><el-button :loading="loading" aria-label="刷新文档列表" @click="emit('refresh')"><RefreshCw :size="15" /></el-button></div>
+    <p class="doc-count">已加载 {{ documents.length }} 篇 · 当前 {{ filtered.length }} 篇</p>
+    <el-skeleton v-if="loading" :rows="4" animated />
+    <div v-else-if="filtered.length" class="table-scroll" tabindex="0" role="region" aria-label="文档表格，可横向滚动">
+      <table><thead><tr><th>文档</th><th>状态</th><th>分块</th><th>上传时间</th><th>操作</th></tr></thead><tbody>
+        <tr v-for="doc in filtered" :key="doc.id"><td class="doc-title"><strong :title="doc.title">{{ doc.title }}</strong><small>{{ doc.fileType }}</small></td><td><span :class="['doc-state', doc.status.toLowerCase()]">{{ statusLabel(doc.status) }}</span></td><td>{{ doc.status === 'COMPLETED' ? doc.chunkCount : '—' }}</td><td class="doc-date">{{ formatDate(doc.createdAt) }}</td><td><el-button type="danger" link :loading="deleting.has(doc.id)" :aria-label="'删除文档 ' + doc.title" @click="handleDelete(doc)"><Trash2 :size="15" /></el-button></td></tr>
+      </tbody></table>
     </div>
-
-    <el-table
-      v-if="documents.length > 0"
-      :data="documents"
-      style="width: 100%"
-      v-loading="loading"
-    >
-      <el-table-column prop="title" label="文档标题" min-width="200" show-overflow-tooltip />
-
-      <el-table-column prop="fileType" label="类型" width="100" align="center">
-        <template #default="{ row }">
-          <el-tag size="small" effect="plain">{{ row.fileType }}</el-tag>
-        </template>
-      </el-table-column>
-
-      <el-table-column prop="status" label="状态" width="120" align="center">
-        <template #default="{ row }">
-          <el-tag :type="statusTagType(row.status)" size="small" effect="dark">
-            {{ statusLabel(row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-
-      <el-table-column prop="chunkCount" label="分块数" width="90" align="center">
-        <template #default="{ row }">
-          <span v-if="row.status === 'COMPLETED'">{{ row.chunkCount }}</span>
-          <span v-else class="text-muted">—</span>
-        </template>
-      </el-table-column>
-
-      <el-table-column prop="createdAt" label="上传时间" width="170" align="center">
-        <template #default="{ row }">
-          {{ formatDate(row.createdAt) }}
-        </template>
-      </el-table-column>
-
-      <el-table-column label="操作" width="100" align="center" fixed="right">
-        <template #default="{ row }">
-          <el-popconfirm
-            title="确定删除该文档？"
-            confirm-button-text="删除"
-            cancel-button-text="取消"
-            @confirm="handleDelete(row)"
-          >
-            <template #reference>
-              <el-button type="danger" :icon="Delete" size="small" link :loading="row._deleting" />
-            </template>
-          </el-popconfirm>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <!-- 简洁空状态 -->
-    <div v-else-if="!loading" class="empty-state">
-      <div class="empty-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="12" y1="18" x2="12" y2="12"></line>
-          <line x1="9" y1="15" x2="15" y2="15"></line>
-        </svg>
-      </div>
-      <p class="empty-text">暂无文档，点击上传开始使用</p>
-    </div>
+    <div v-else class="empty-state"><FileText :size="30" /><p>{{ query.trim() ? '没有匹配的已加载文档' : '暂无文档，点击上传开始使用' }}</p><el-button v-if="query.trim()" @click="query = ''">清除文档筛选</el-button></div>
+    <el-alert v-if="deleteError" class="delete-error" :title="deleteError" type="error" :closable="false" show-icon />
   </div>
 </template>
-
 <script setup lang="ts">
-import { Refresh, Delete } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { computed, reactive, ref, watch, onUnmounted } from 'vue'
+import { RefreshCw, Trash2, FileText } from 'lucide-vue-next'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { formatDate } from '@/utils/format'
+import { normalizeError } from '@/api/errors'
 import { deleteDocument } from '@/api/knowledgeBase'
-import type { DocumentInfo, DocumentStatus } from '@/types/document'
-
-const props = defineProps<{
-  kbId: number
-  documents: DocumentInfo[]
-  loading: boolean
-}>()
-
-const emit = defineEmits<{
-  (e: 'refresh'): void
-}>()
-
-/** 状态 → Element Plus tag type 映射 */
-function statusTagType(status: DocumentStatus): 'warning' | 'primary' | 'success' | 'danger' | 'info' {
-  const map: Record<DocumentStatus, 'warning' | 'primary' | 'success' | 'danger'> = {
-    PENDING: 'warning',
-    PROCESSING: 'primary',
-    COMPLETED: 'success',
-    FAILED: 'danger',
-    RECONCILIATION_REQUIRED: 'warning',
-  }
-  return map[status] ?? 'info'
+import type { DocumentInfo } from '@/types/document'
+const props = defineProps<{ kbId: number; documents: DocumentInfo[]; loading: boolean }>()
+const emit = defineEmits<{ refresh: []; deleted: [] }>()
+const query = ref(''), deleteError = ref(''), deleting = reactive(new Set<number>())
+let disposed = false
+onUnmounted(() => { disposed = true })
+watch(() => props.kbId, () => { query.value = ''; deleteError.value = '' })
+const filtered = computed(() => {
+  const term = query.value.trim().toLocaleLowerCase()
+  return props.documents.filter(doc => `${doc.title} ${doc.fileType}`.toLocaleLowerCase().includes(term))
+})
+function statusLabel(status: string) {
+  return ({ PENDING: '等待处理', PROCESSING: '处理中', COMPLETED: '已完成', FAILED: '处理失败', RECONCILIATION_REQUIRED: '需要核对' } as Record<string, string>)[status] || '未识别状态'
 }
-
-/** 状态 → 中文标签 */
-function statusLabel(status: DocumentStatus): string {
-  const map: Record<DocumentStatus, string> = {
-    PENDING: '等待处理',
-    PROCESSING: '处理中',
-    COMPLETED: '已完成',
-    FAILED: '处理失败',
-    RECONCILIATION_REQUIRED: '需要核对',
-  }
-  return map[status] ?? status
-}
-
-/** 删除文档 */
-async function handleDelete(doc: DocumentInfo & { _deleting?: boolean }) {
-  doc._deleting = true
+async function handleDelete(doc: DocumentInfo) {
+  if (deleting.has(doc.id)) return
+  const kbId = props.kbId
+  deleting.add(doc.id); deleteError.value = ''
   try {
-    await deleteDocument(props.kbId, doc.id)
-    ElMessage.success('文档已删除')
-    emit('refresh')
-  } catch {
-    ElMessage.error('删除失败')
-  } finally {
-    doc._deleting = false
-  }
+    try { await ElMessageBox.confirm(`确定删除文档「${doc.title}」及其向量数据吗？`, '删除文档确认', { type: 'warning' }) }
+    catch { return }
+    if (disposed || props.kbId !== kbId) return
+    try {
+      await deleteDocument(kbId, doc.id)
+      if (disposed || props.kbId !== kbId) return
+      ElMessage.success('文档已删除'); emit('deleted')
+    } catch (error) { if (!disposed && props.kbId === kbId) deleteError.value = normalizeError(error).message }
+  } finally { deleting.delete(doc.id) }
 }
 </script>
-
 <style scoped>
-.doc-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.doc-count {
-  font-size: 13px;
-  color: var(--rag-text-secondary);
-}
-.text-muted {
-  color: var(--rag-text-placeholder);
-}
-
-/* 简洁空状态 */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--rag-space-12) var(--rag-space-6);
-  text-align: center;
-}
-
-.empty-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--rag-radius-lg);
-  background: var(--rag-bg-hover);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--rag-text-placeholder);
-  margin-bottom: var(--rag-space-4);
-}
-
-.empty-text {
-  font-size: 14px;
-  color: var(--rag-text-secondary);
-  margin: 0;
-}
+.doc-toolbar { display: flex; gap: 10px; }
+.doc-count { color: var(--rag-text-secondary); font-size: 12px; margin-block: 14px; }
+.table-scroll { overflow-x: auto; border-top: 1px solid var(--rag-border); }
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+th { color: var(--rag-text-secondary); font-weight: 500; background: var(--rag-bg-hover); padding: 12px 8px; white-space: nowrap; }
+td { padding: 16px 8px; border-bottom: 1px solid var(--rag-border); color: var(--rag-text-primary); }
+.doc-title { min-width: 140px; max-width: 240px; overflow-wrap: anywhere; }
+.doc-title strong { font-weight: 500; line-height: 1.6; font-size: 13px; }
+.doc-title small { display: block; color: var(--rag-text-secondary); margin-top: 5px; }
+.doc-date { white-space: nowrap; color: var(--rag-text-secondary); }
+.doc-state { display: inline-block; padding: 3px 7px; border-radius: 5px; background: var(--rag-bg-hover); white-space: nowrap; color: var(--rag-text-secondary); }
+.completed { color: var(--rag-success); }.failed { color: var(--rag-danger); }.pending, .reconciliation_required { color: var(--rag-warning); }
+.empty-state { text-align: center; color: var(--rag-text-secondary); padding-block: 40px; font-size: 13px; }
+.delete-error { margin-top: 14px; }.table-scroll:focus-visible { outline: 2px solid var(--rag-primary); outline-offset: 3px; }
 </style>

@@ -68,6 +68,7 @@
         <button type="button" :class="{ selected: responseMode === 'sync' }" :disabled="isSubmitting" @click="responseMode = 'sync'">同步问答 · 显示来源</button>
         <button type="button" :class="{ selected: responseMode === 'stream' }" :disabled="isSubmitting" @click="responseMode = 'stream'">流式问答 · 显示终态与来源</button>
       </div>
+      <p v-if="!isHistoryDetail && (kbNavigationError || (kbLoading && route.query?.kbId !== undefined))" class="kb-navigation-status" role="status">{{ kbNavigationError || '正在确认指定知识库…' }}<button v-if="kbNavigationRetry" type="button" @click="applyKbNavigation">重试指定知识库</button></p>
       <div
         v-if="selectedKb"
         class="kb-scope-row"
@@ -105,7 +106,7 @@
             >
               正在加载知识库…
             </div>
-            <div v-else-if="kbLoadError" class="kb-load-status" role="status">知识库加载失败<button type="button" @click="loadKbListIfNeeded">重试知识库</button></div>
+            <div v-else-if="kbLoadError" class="kb-load-status" role="status">知识库加载失败<button type="button" @click="loadKbListIfNeeded()">重试知识库</button></div>
             <div v-else-if="kbList.length === 0" class="kb-load-status">暂无知识库</div>
             <button
               v-for="kb in kbList"
@@ -196,6 +197,7 @@ import BrandMark from '@/components/common/BrandMark.vue'
 import AnswerContent from './AnswerContent.vue'
 import AnswerSources from './AnswerSources.vue'
 import { copyText, clipboardMessage } from '@/utils/clipboard'
+import { parseKbId } from '@/utils/kbPresentation'
 import { getHistoryById } from '@/api/history'
 import HistoryFeedback from '@/components/history/HistoryFeedback.vue'
 import { ask } from '@/api/qa'
@@ -237,6 +239,9 @@ const kbStore = useKnowledgeBaseStore()
 const authStore = useAuthStore()
 const kbLoading = ref(false)
 const kbLoadError = ref(false)
+const kbNavigationError = ref(''), kbNavigationRetry = ref(false)
+let kbNavigationSequence = 0
+let kbLoadPromise: Promise<void> | null = null
 
 const exampleQuestions = [
   '这个知识库包含哪些主要内容？',
@@ -248,6 +253,8 @@ const exampleQuestions = [
 const canSend = computed(() => (
   inputText.value.trim().length > 0
   && selectedKbId.value !== null
+  && selectedKb.value !== null
+  && !kbNavigationError.value
   && !isSubmitting.value
   && !historyLoading.value
   && route.name !== 'ChatSession'
@@ -262,17 +269,34 @@ watch(inputText, async () => {
   composerInput.value.style.height = Math.min(composerInput.value.scrollHeight, 180) + 'px'
 })
 
-async function loadKbListIfNeeded() {
-  if (kbStore.list.length > 0 || kbLoading.value) return
+async function loadKbListIfNeeded(force = false) {
+  if (kbLoadPromise) return kbLoadPromise
+  if (!force && kbStore.list.length > 0 && !kbLoadError.value) return
   kbLoading.value = true
   kbLoadError.value = false
-  try {
+  kbLoadPromise = (async () => { try {
     await kbStore.fetchList()
   } catch {
     kbLoadError.value = true
   } finally {
     kbLoading.value = false
-  }
+    kbLoadPromise = null
+  } })()
+  return kbLoadPromise
+}
+
+async function applyKbNavigation() {
+  const seq = ++kbNavigationSequence
+  kbNavigationError.value = ''; kbNavigationRetry.value = false
+  if (isHistoryDetail.value || route.query?.kbId === undefined) return
+  selectedKbId.value = null
+  const id = parseKbId(route.query.kbId)
+  if (!id) { kbNavigationError.value = '指定知识库参数无效，请重新选择知识库'; return }
+  await loadKbListIfNeeded(true)
+  if (seq !== kbNavigationSequence || isHistoryDetail.value) return
+  if (kbLoadError.value) { kbNavigationError.value = '指定知识库加载失败'; kbNavigationRetry.value = true; return }
+  if (!kbList.value.some(kb => kb.id === id)) { kbNavigationError.value = '指定知识库不可访问或已不存在，请重新选择知识库'; return }
+  selectedKbId.value = id
 }
 
 function parseRouteHistoryId(): number | null {
@@ -337,6 +361,8 @@ async function loadHistorySession(id: number) {
 }
 
 function resetNewChat() {
+  kbNavigationSequence++
+  kbNavigationError.value = ''; kbNavigationRetry.value = false
   sse.disconnect()
   historyLoadSeq += 1
   historyLoading.value = false
@@ -354,11 +380,15 @@ function toggleKbDropdown() {
 }
 
 function selectKbFromDropdown(kb: KnowledgeBaseDTO) {
+  kbNavigationSequence++
+  kbNavigationError.value = ''; kbNavigationRetry.value = false
   selectedKbId.value = kb.id
   kbDropdownOpen.value = false
 }
 
 function clearSelectedKb() {
+  kbNavigationSequence++
+  kbNavigationError.value = ''; kbNavigationRetry.value = false
   selectedKbId.value = null
 }
 
@@ -540,6 +570,7 @@ watch(
 
     if (route.name === 'Chat' || route.name === 'ChatV2') {
       resetNewChat()
+      await applyKbNavigation()
     }
   },
   { immediate: true },
@@ -551,6 +582,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  kbNavigationSequence++
   sse.disconnect()
   document.removeEventListener('click', handleOutsideClick)
 })
@@ -565,6 +597,8 @@ onUnmounted(() => {
   min-height: 0;
   background: var(--rag-bg-page);
 }
+.kb-navigation-status { max-width: 760px; margin: 8px auto; font-size: 13px; color: var(--rag-text-secondary); overflow-wrap: anywhere; }
+.kb-navigation-status button { margin-left: 8px; color: var(--rag-text-primary); background: var(--rag-bg-hover); border: 1px solid var(--rag-border); border-radius: 6px; padding: 5px 8px; cursor: pointer; }
 
 .chat-panel.is-empty {
   justify-content: center;

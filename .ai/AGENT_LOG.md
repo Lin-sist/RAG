@@ -3169,3 +3169,40 @@
 - 跳过与安全：Java/评测未改，跳过 Maven/Python；OpenSpec CLI 仍不可用，不安装，结构检查不冒充官方 validate。真实 backend/provider/ask/embedding/rerank/judge/upload/delete 调用0，无 query/history 写入。无后端/API/auth/SSE契约、依赖/锁文件、prototype、本地配置或学习文件改动；仅暂存已核对的本轮路径，不 push/PR/发布/部署。
 - 剩余风险：真实完整非答案/断流/取消矩阵未知，F1 logout 与 F4/F5 整页迁移尚未完成；保留窄屏底边1px及既有大chunk警告。F3 归档不代表完整 Demo 或 C19/C20 完成。
 - 收口验证补录：33 个受影响相对链接有效，无失效 F3 活动路径链接；baseline 精确等于原内容追加首批五项与 F3 三项 delta，原契约不改；F3 delta 与规划原文一致，design 决策未改，tasks 未勾选项0。30个变化路径（含归档移动源路径）均属本轮范围，七个前端文件 SHA-256 不变，日志纯追加。`git diff --check` 与新增文件 no-index whitespace 检查通过；暂存前文件0，提交前将复核 staged diff，提交后核对 HEAD 与工作区。
+
+## 2026-10-01 · F3 接受归档提交补录
+
+- 上一执行提交为 `be74d3902b4d7af4f3b932cc7a1c3c31bafbe281`，message：`feat(前端): 完成F3体验接入并归档首批与F3变更`。补录真实 hash，不回改历史；该授权不覆盖新 F4。
+
+## 2026-10-01 · frontend-kb-upload-alignment F4 规划
+
+- Commit: pending。用户要求 F3 完成后推进下一步；本轮按 Type C 建立 F4 事前审查包，未进入业务实现。提交默认用户手动；真实业务调用、baseline 接受/归档与 push/PR/部署/发布未授权。
+- 范围与文件：新增 F4 proposal/design/tasks/specs/rag-system/spec.md；ACTIVE_TASK 从已完成 F3 的 IDLE 切至 F4 PLANNING，更新总规划现行入口，日志只追加。适用 F4 design 决策1–7，不在日志复述取舍。
+- 已确认事实：起点 main HEAD be74d3902b4d7af4f3b932cc7a1c3c31bafbe281，ahead 2、工作区干净；F3 已归档，Demo 四项 blob 重验一致。正式 KB 路由与 CRUD/document/status 复用入口存在；编辑 closed 重置与 watch 同对象存在风险、失败文件全清空、删除仅刷新文档及统计身份归属待完善。REST 无文件大小/原文/文档任务映射；任务取消返回字段与前端 void 不一致，本轮不启用；tenant 内公开语义来自 accepted baseline/代码核查。
+- 规划结果：列表/网格、详情/表单/统计、文件失败保留/成功项不重复、查询只 GET 原 taskId、删除与局部刷新分别反馈、指定 KB 新问答导航；真实闭环另有预算/服务端重试/数据出站授权闸门，真实删除清理不默认包含。
+- 验证：Git 状态/HEAD、Demo hash-object、正式路由/API/store/components/controllers/Document 字段与相关 baseline 只读核对完成；结构/链接/旧路径、需求名称冲突、决策格式、日志纯追加、精确文件边界与 whitespace 检查在收尾执行并补录。OpenSpec CLI 未发现，不宣称官方 validate。
+- 执行限制：普通沙箱创建嵌套 OpenSpec 目录权限拒绝；经平台升级审批成功，仅创建仓库内该 change 的 specs/rag-system 目录。日志普通 Add-Content 权限拒绝后使用 apply_patch 正常追加，无失败写入残留。
+- 跳过与安全：仅文档，不运行前端测试/build/浏览器视觉或 Maven/Python；真实 backend/provider/upload/embedding/rerank/ask/judge/delete 调用0，无 query/history 或真实业务数据写入。无前端/后端源码、accepted specs、prototype、依赖/锁文件、本地配置、学习文件改动；未暂存/提交/push/PR/发布/部署。
+- 剩余风险：F4 仅 planned，尚待事前审查和实际工程/合成/视觉/真实闭环验收；跨刷新任务恢复、取消、全量搜索、原文接口仍在范围外，F1/F5/C19/C20 与原有真实异常矩阵限制保留。
+- 收尾验证补录：23 个受影响相对链接有效，4 项 requirement/12 项 scenario 无 baseline 名称冲突，7 项决策三行结构完整；7 个变更文件均在规划范围、日志纯追加、暂存0，tracked diff 与四个新增文件 no-index whitespace 检查通过。no-index 对新增内容返回1且无错误输出，首次检查将其误判为失败，已按差异退出码修正判定并复核；OpenSpec CLI 未发现，以上不冒充官方 validate。
+
+## 2026-10-02 · frontend-kb-upload-alignment 列表与表单切片
+
+- Commit: pending。用户确认 F4 方案执行并授权本轮 Agent 提交；真实业务调用、baseline 接受/归档、push/PR/发布/部署未授权。
+- 文件：更新 ACTIVE_TASK/proposal/tasks 的实施与授权状态；修改 KnowledgeBaseList.vue、KBCreateDialog.vue、stores/knowledgeBase.ts 和 tests/knowledge-base.test.mjs，新增 utils/kbPresentation.ts。适用 design 决策1/2/5/6，未改设计取舍。
+- 已实施：列表/网格、本地已加载筛选、错误重试；统计独立 loading/error/KB 身份检查与重试；每次打开编辑回填、描述清空、防重复提交和失败保留，公开/私有文案按 tenant 授权；成功写入阻止旧列表覆盖，跨详情清理旧统计。
+- 验证：HEAD be74d39、计划内工作区、四项 Demo blob 一致；Preflight Node/direct vue-tsc/Vite 可用、npm 缺失，不安装。聚焦 knowledge-base 测试 7/7 PASS、vue-tsc -b PASS。新增 CRUD 测试首次因 Element Plus 被 SSR 外部化触发 document 缺失；修复测试 fixture transform 后全部通过，不改业务来迎合 fixture。
+- 跳过/风险：正式 Vite build 与视觉/交互将在完整实现后执行；本片不宣称完整 F4。真实调用0，无 Java/API/DTO/auth/parser/依赖/prototype/本地配置/accepted spec 修改，未暂存/提交。专用浏览器连接受权限管道限制，将使用可用 CUA 浏览器通道复核。
+
+## 2026-10-02 · frontend-kb-upload-alignment 工程与阶段验证
+
+- Commit: pending。沿用用户本轮“确认方案执行，可以为我提交commit”的实施及Agent提交授权；不包含真实业务调用、baseline接受/归档、push/PR/发布/部署。适用design决策1–7。
+- 范围与文件：列表/详情/创建编辑/统计、DocList/DocUploader/DocProgress、KB store、ChatPanel仅KB导航、utils/kbPresentation.ts与uploadQueue.ts；knowledge-base测试、新增kb-upload-experience测试、preview封闭fixture；本change的proposal/tasks/acceptance/visual-evidence/spec delta/design及ACTIVE_TASK/总规划/本日志。共23个计划内路径，无起点外用户改动。
+- 执行结果：hero与真实三统计、文档五态/本地筛选/信息区、统计请求身份与迟到丢弃；编辑重开/失败保留/防重复/描述清空；202+taskId接受与失败/不明队列保留，不静默重传；沿用单poller恢复同taskId只GET，终态与删除后相关读取刷新，已确认删除与局部失败分开；指定KB预选无自动ask、不误选，历史只读/F3/R5保全。
+- 工程验证：`node --test tests/*.test.mjs`66/66 PASS；`node node_modules/vue-tsc/bin/vue-tsc.js -b`PASS后`node node_modules/vite/bin/vite.js build`PASS，等同已有build脚本，不新增依赖；既有大于500kB chunk提示保留。`node --check tests/preview.mjs`PASS。最后验证后业务源码/依赖未再变，不因收尾/提交重复完整测试。
+- 封闭合成：本轮自建127.0.0.1:5188、configFile:false、无proxy。F4白名单会话仅内存CRUD/upload/status，最小multipart大小/数量受限；HTTP核对创建/更新/描述清空、pass接受/fail400、task完成、删除6→5，未知/default写入/取消/任务DELETE405、未知GET404、超限multipart400。不是浏览器上传或真实provider证据。
+- 浏览器视觉：Chrome DPR1.25，CSS1440×900/1024×768/390×844、scale1、页面overflow0；30张正式五态六组、18张Demo参考、18张稳定补充图已查看联系表及关键原图，另1张删除确认背景loading动画图已检查但不计稳定矩阵。67项名称唯一、SHA-256/PNG尺度核验通过；窄屏PNG390×843底边1px取整。初始错误尺度与过渡探索图排除/重采；冻结Demo390首页侧栏打开控件不可见，桌面进入后缩窄取参考，不改原件。临时viewport已reset。
+- 浏览器交互：合成创建、同对象编辑重开/清空描述、筛选、403/404和局部错误；删除取消/拒绝保留、删除成功后局部失败只读重试；901预选、999不回退，历史kbId参数忽略/发送与选库禁用；来源Enter展开、名称Tab到描述、Escape关闭/焦点返回、窄屏表格ArrowRight自身滚动；首页深浅/settings/F3/history兼容复核。文件chooser已触发且multiple=true，但setFiles因Chrome扩展“允许访问文件网址”未启用被阻；已请用户手动启用，用户仅表示将启用，未确认已启用，未绕过权限。
+- 未完成/跳过：浏览器文件选择、多文件/拖放/混合结果/任务六态矩阵待权限确认，tasks3.3/3.4保持未勾；动态loading未单独截图，login因现有合成登录态自动跳转未独立复验，未改登录/全局样式。真实backend/provider/upload/embedding/rerank/ask/judge/delete调用0，真实KB/document/query/history写入0；仅沿用R5指定KB17 ANSWER证据，不扩大为本轮闭环。Java/评测未改，跳过Maven/Python；无真实移动设备触屏验证；OpenSpec CLI未发现，不安装，文件级检查不冒充validate。
+- 收尾验证：28个受影响相对链接有效；4 requirement/12 scenario无baseline同名，7决策三行完整；23路径均在design允许范围、日志纯追加、起点至暂存前staged0；tracked diff及9个新增文件no-index whitespace均通过。四项Demo blob一致，新增tracked内容敏感值扫描通过；视觉清单写入普通Copy-Item被ACL拒绝后用apply_patch成功，无失败残留。提交前复核staged范围/whitespace，提交后核对HEAD和工作区。
+- 范围安全与风险：无后端/API/DTO/auth/request/token/SSE/parser/qaPresentation、模型/评测/依赖/锁文件、prototype、accepted specs、本地配置、学习文件或其他页面业务变更。ACTIVE保持F4，工程已实现但浏览器上传/完整36图与专用真实闭环尚未完成，未宣称完整F4；取消/跨刷新恢复/原文接口及F1/F5/C19/C20仍范围外。建议提交信息：`feat(前端): 接入F4知识库与上传恢复体验`。

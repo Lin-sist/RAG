@@ -16,6 +16,8 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     const listError = ref('')
     const detailError = ref('')
     const statisticsError = ref('')
+    const statisticsKbId = ref<number | null>(null)
+    const statisticsLoading = ref(false)
     let listSequence = 0, detailSequence = 0, statsSequence = 0
 
     // ---------- 加载知识库列表 ----------
@@ -35,6 +37,7 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     }
 
     async function fetchById(id: number) {
+        clearStatistics()
         const seq = ++detailSequence
         detailLoading.value = true
         detailError.value = ''
@@ -55,6 +58,7 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     async function create(data: CreateKBRequest) {
         const res = await kbApi.createKB(data)
         const newKB = res.data.data
+        listSequence++; listLoading.value = false
         list.value.unshift(newKB) // 新建的放最前面
         ElMessage.success('知识库创建成功')
         return newKB
@@ -64,6 +68,7 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     async function update(id: number, data: UpdateKBRequest) {
         const res = await kbApi.updateKB(id, data)
         const updated = res.data.data
+        listSequence++; listLoading.value = false
         // 同步更新列表中的数据
         const idx = list.value.findIndex(kb => kb.id === id)
         if (idx !== -1) list.value[idx] = updated
@@ -76,6 +81,7 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     // ---------- 删除知识库 ----------
     async function remove(id: number) {
         await kbApi.deleteKB(id)
+        listSequence++; listLoading.value = false
         list.value = list.value.filter(kb => kb.id !== id)
         if (current.value?.id === id) current.value = null
         ElMessage.success('知识库已删除')
@@ -84,15 +90,36 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     // ---------- 加载统计信息 ----------
     async function fetchStatistics(id: number) {
         const seq = ++statsSequence
+        statisticsKbId.value = id
+        statisticsLoading.value = true
         statistics.value = null
         statisticsError.value = ''
         try {
             const res = await kbApi.getKBStatistics(id)
+            if (res.data.data?.kbId !== id) throw new Error('Statistics knowledge base mismatch')
             if (seq === statsSequence) statistics.value = res.data.data
             return res.data.data
         } catch (error) {
             if (seq === statsSequence) statisticsError.value = normalizeError(error).message
+        } finally {
+            if (seq === statsSequence) statisticsLoading.value = false
         }
+    }
+
+    function clearStatistics() {
+        statsSequence++
+        statisticsKbId.value = null
+        statistics.value = null
+        statisticsError.value = ''
+        statisticsLoading.value = false
+    }
+
+    function clearDetail() {
+        detailSequence++
+        current.value = null
+        detailLoading.value = false
+        detailError.value = ''
+        clearStatistics()
     }
 
     // ---------- 基础 setter ----------
@@ -100,6 +127,7 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
 
     return {
         list, current, statistics, loading, listLoading, detailLoading, listError, detailError, statisticsError,
+        statisticsKbId, statisticsLoading, clearStatistics, clearDetail,
         fetchList, fetchById, create, update, remove, fetchStatistics, setCurrent,
     }
 })

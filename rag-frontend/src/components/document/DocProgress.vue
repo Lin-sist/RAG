@@ -10,11 +10,12 @@
       <div v-for="task in props.tasks" :key="task.taskId" class="progress-item">
         <div class="progress-info">
           <span class="file-name">{{ task.fileName }}</span>
-          <span class="progress-message">{{ task.pollError ? '状态查询已暂停：' + task.pollError : task.status?.state === 'CANCELLED' ? '任务已取消' : task.status?.error || task.status?.message || '等待处理' }}</span>
+          <span class="progress-message" role="status">{{ task.pollError ? '状态查询已暂停：' + task.pollError : stateLabel(task) }}</span>
         </div>
         <el-button v-if="task.pollError" size="small" @click="emit('retry', task.taskId)">重新查询状态</el-button>
         <el-progress
-          :percentage="task.status?.progress ?? 0"
+          v-if="task.status && Number.isFinite(task.status.progress) && task.status.progress >= 0 && task.status.progress <= 100"
+          :percentage="task.status.progress"
           :status="progressStatus(task)"
           :stroke-width="14"
           striped
@@ -42,6 +43,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ retry: [id: string] }>()
+function stateLabel(task: ProgressTask) {
+  if (!task.status) return '已接受，等待查询状态'
+  const labels: Record<string, string> = { PENDING: '等待处理', RUNNING: '处理中', COMPLETED: '索引已完成', FAILED: '处理失败', CANCELLED: '任务已取消' }
+  return `${labels[task.status.state] || '未识别状态'}${task.status.error || task.status.message ? '：' + (task.status.error || task.status.message) : ''}`
+}
 
 /** 进度条的 Element Plus status */
 function progressStatus(task: ProgressTask): '' | 'success' | 'exception' | 'warning' {
@@ -68,9 +74,10 @@ const activeTasks = computed(() => {
 
 <style scoped>
 .doc-progress {
-  background: var(--el-fill-color-lighter, #fafafa);
+  background: var(--rag-bg-hover);
   border-radius: 8px;
   padding: 16px;
+  margin-bottom: 18px;
 }
 .progress-title {
   display: flex;

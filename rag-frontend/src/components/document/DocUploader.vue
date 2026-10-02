@@ -16,11 +16,11 @@
     >
       <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
       <div class="el-upload__text">
-        将文件拖到此处，或 <em>点击上传</em>
+        将文件拖到此处，或 <em>选择文件</em>
       </div>
       <template #tip>
         <div class="el-upload__tip">
-          支持 PDF、Markdown、Word(.docx)、TXT、代码文件，单次最多 5 个文件
+          支持 PDF、Markdown、Word(.docx)、TXT、代码文件，单次最多 5 个文件。已接受不等于索引完成。
         </div>
       </template>
     </el-upload>
@@ -39,7 +39,7 @@
         v-for="(result, index) in uploadResults"
         :key="index"
         :title="result.message"
-        :type="result.success ? 'success' : 'error'"
+        :type="result.state === 'accepted' ? 'success' : result.state === 'failed' ? 'error' : 'warning'"
         :closable="true"
         show-icon
         class="result-alert"
@@ -55,6 +55,7 @@ import { ElMessage } from 'element-plus'
 import type { UploadFile, UploadInstance } from 'element-plus'
 import { uploadDocument } from '@/api/knowledgeBase'
 import type { DocumentUploadResponse } from '@/types/document'
+import { submitUploadBatch, type UploadOutcome } from '@/utils/uploadQueue'
 
 const props = defineProps<{
   kbId: number
@@ -76,11 +77,7 @@ onUnmounted(() => { disposed = true })
 // 支持的文件类型
 const acceptTypes = '.pdf,.md,.markdown,.docx,.txt,.java,.py,.js,.ts,.go,.c,.cpp,.h,.vue,.json,.yml,.yaml,.xml,.html,.css'
 
-interface UploadResult {
-  success: boolean
-  message: string
-}
-const uploadResults = ref<UploadResult[]>([])
+const uploadResults = ref<UploadOutcome[]>([])
 
 function handleFileChange(_file: UploadFile, newFileList: UploadFile[]) {
   fileList.value = newFileList
@@ -107,28 +104,17 @@ async function submitUpload() {
   uploading.value = true
   uploadResults.value = []
 
-  for (const item of fileList.value) {
+  const kbId = props.kbId
+  const files = fileList.value.flatMap(item => item.raw ? [item.raw] : [])
+  try {
+    const remaining = await submitUploadBatch(files, file => uploadDocument(kbId, file, file.name), result => {
+      uploadResults.value.push(result)
+      if (result.data) emit('uploaded', result.data)
+    }, () => !disposed)
     if (disposed) return
-    const rawFile = item.raw
-    if (!rawFile) continue
-
-    try {
-      const res = await uploadDocument(props.kbId, rawFile, rawFile.name)
-      if (disposed) return
-      const data = res.data.data
-      if (res.status !== 202 || !data?.taskId) throw new Error('上传响应缺少已接受任务信息')
-      uploadResults.value.push({ success: true, message: `「${rawFile.name}」已接受，等待处理` })
-      emit('uploaded', data)
-    } catch (err: any) {
-      const msg = err?.message || '上传失败'
-      uploadResults.value.push({ success: false, message: `「${rawFile.name}」${msg}` })
-    }
-  }
-
-  uploading.value = false
-  fileList.value = []
-  uploadRef.value?.clearFiles()
-  emit('allDone')
+    fileList.value = fileList.value.filter(item => item.raw && remaining.includes(item.raw))
+    emit('allDone')
+  } finally { if (!disposed) uploading.value = false }
 }
 </script>
 
@@ -141,6 +127,7 @@ async function submitUpload() {
 .upload-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .upload-results {
   display: flex;

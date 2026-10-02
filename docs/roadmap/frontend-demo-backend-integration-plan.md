@@ -78,7 +78,7 @@ F1–F6 为 R5 后的新阶段，不替换历史 R 编号，也不是自动实�
 | F5 历史、反馈与查找 | 侧栏/历史页刷新、分页浏览、反馈和查找体验 | 新搜索等能力按 Type C；反馈绑定真实 history id；不把局部过滤宣传为全量搜索 |
 | F6 整体验收与分流 | 对纳入范围的页面作视觉、交互和业务状态验收，登记延后功能 | 每个 change 独立收口；之后推进 C19/C20；多轮/账号管理/工作台另立规划 |
 
-当前 ACTIVE_TASK 为 `IDLE`。F3 工程及本地合成/视觉验收完成，用户授权提交及归档，三项 delta 接受进 baseline，归档于 `2026-10-01-frontend-chat-source-alignment`。首批 F2 五区域已由用户接受，五项 delta 接受进 baseline，并归档于 `2026-10-01-frontend-demo-experience-alignment`。F4/F5整页、F1 logout仍分别保留。精确范围以各 change 为准，不能将首批与 F3 验收当成完整页面迁移完成。
+当前 ACTIVE_TASK 为 F4 `frontend-kb-upload-alignment`，阶段 `IMPLEMENTED / 浏览器上传与真实闭环待验收`。用户于2026-10-02批准方案并授权本轮Agent提交；列表/网格、详情/表单/统计、失败队列保留、查询恢复/删除刷新与指定KB导航已实施，66/66测试及vue-tsc/Vite正式build通过。详见[阶段验收](../../openspec/changes/frontend-kb-upload-alignment/acceptance.md)与[tasks](../../openspec/changes/frontend-kb-upload-alignment/tasks.md)：30张正式矩阵、18张Demo参考及补充图已复核；浏览器上传权限仍待用户确认，任务六态矩阵与文件交互尚未完成。真实闭环另披露授权，预算0；baseline接受/归档与push/PR/发布/部署未授权，ACTIVE保持F4。取消、跨刷新任务恢复、原文预览、全量搜索和F1/F5/C19/C20在范围外。F3三项delta及首批F2五项delta已接受归档，本轮不回改；本状态不代表完整F4或完整Demo验收。
 
 ### F. 启动、隔离与授权复用
 

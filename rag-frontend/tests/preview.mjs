@@ -3,6 +3,7 @@ import { createServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath } from 'node:url'
 import { readFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const kb = { id: 901, name: '合成知识库 · 项目文档', description: '仅用于前端验证，不连接真实后端', documentCount: 2, isPublic: false, vectorCollection: 'fixture_collection', vectorModel: 'fixture-model', vectorDimension: 1024, createdAt: '2026-09-20T10:00:00', updatedAt: '2026-09-20T10:00:00' }
 const longAnswer = [
@@ -55,6 +56,92 @@ function streamFixture(req, res, scenario) {
   res.on('close', () => clearInterval(timer))
 }
 const streamScenarios = new Set(['chat-stream', 'chat-scroll', 'chat-stop', 'chat-incomplete', 'chat-read-failure', 'chat-no-answer', 'chat-unsupported', 'chat-invalid', 'chat-error', 'chat-cancelled', 'chat-invalid-terminal', 'chat-duplicate-terminal', 'chat-post-terminal', 'chat-unknown-event'])
+const f4Scenarios = new Set(['f4', 'f4-empty', 'f4-list-error', 'f4-stats-error', 'f4-docs-error', 'f4-403', 'f4-404', 'f4-upload-mixed', 'f4-upload-unconfirmed', 'f4-poll-error', 'f4-task-running', 'f4-task-failed', 'f4-task-cancelled', 'f4-delete-error', 'f4-refresh-error', 'f4-long'])
+const f4Sessions = new Map()
+function newF4Session(scenario) {
+  const bases = [kb, { ...kb, id: 902, name: '合成知识库 · 阅读资料', isPublic: true }, { ...kb, id: 903, name: '合成知识库 · 空资料', documentCount: 0 }].map(item => ({ ...item }))
+  if (scenario === 'f4-long') { bases[0].name = '合成长名称用于核对完整阅读与窄屏布局'.repeat(8); bases[0].description = '这是合成描述，不代表业务数据。'.repeat(35); bases[0].vectorCollection = 'fixture_long_collection_'.repeat(12) }
+  const states = ['COMPLETED', 'RECONCILIATION_REQUIRED', 'PROCESSING', 'FAILED', 'PENDING']
+  const docs = states.map((state, i) => ({ id: 1 + i, kbId: 901, title: ['合成说明文档', '需要核对的合成文档', '正在处理的合成文档', '失败的合成文档', '等待的合成文档'][i], status: state, fileType: i === 1 ? 'md' : 'txt', chunkCount: state === 'COMPLETED' ? 6 : 0, createdAt: kb.createdAt, updatedAt: kb.updatedAt }))
+  bases[0].documentCount = docs.length
+  return { scenario, bases: scenario === 'f4-empty' ? [] : bases, docs, tasks: new Map(), nextId: 910, deleted: false }
+}
+function fixtureReply(res, status, data, message = '合成预览错误，未连接真实服务') {
+  res.statusCode = status; res.setHeader('Content-Type', 'application/json; charset=utf-8')
+  res.end(JSON.stringify(status < 400 ? { code: status, data } : { errorCode: 'FIXTURE_ONLY', message }))
+}
+async function fixtureBody(req, max = 262144) {
+  let size = 0; const parts = []
+  for await (const chunk of req) { size += chunk.length; if (size > max) throw Error('fixture body limit'); parts.push(chunk) }
+  return Buffer.concat(parts)
+}
+async function f4Api(req, res, url, session) {
+  const method = req.method, scene = session.scenario
+  if (url === '/api/knowledge-bases' && method === 'GET') return fixtureReply(res, scene === 'f4-list-error' || (scene === 'f4-refresh-error' && session.deleted) ? 503 : 200, session.bases)
+  if (url === '/api/knowledge-bases' && method === 'POST') {
+    const draft = JSON.parse((await fixtureBody(req)).toString())
+    if (typeof draft.name !== 'string' || draft.name.trim().length < 2) return fixtureReply(res, 400, null)
+    const created = { ...kb, id: session.nextId++, name: draft.name, description: draft.description || '', isPublic: draft.isPublic === true, documentCount: 0 }
+    session.bases.unshift(created); return fixtureReply(res, 201, created)
+  }
+  const taskMatch = url.match(/^\/api\/tasks\/(fixture-[\w-]+)$/)
+  if (taskMatch && method === 'GET') {
+    const task = session.tasks.get(taskMatch[1]); if (!task) return fixtureReply(res, 404, null)
+    task.calls++
+    if (scene === 'f4-poll-error' && task.calls === 1) return fixtureReply(res, 503, null, '合成状态查询失败')
+    const state = scene === 'f4-task-running' || task.calls < 3 ? 'RUNNING' : scene === 'f4-task-failed' ? 'FAILED' : scene === 'f4-task-cancelled' ? 'CANCELLED' : 'COMPLETED'
+    if (state === 'COMPLETED') { task.doc.status = 'COMPLETED'; task.doc.chunkCount = 6 }
+    else if (state === 'FAILED') task.doc.status = 'FAILED'
+    return fixtureReply(res, 200, { taskId: taskMatch[1], taskType: 'DOCUMENT_INDEX', state, progress: state === 'COMPLETED' ? 100 : 36, message: '合成任务状态，仅验证客户端', error: state === 'FAILED' ? '合成索引失败，未执行真实索引' : null, result: null, createdAt: kb.createdAt, updatedAt: kb.updatedAt })
+  }
+  const match = url.match(/^\/api\/knowledge-bases\/(\d+)(?:\/(statistics|documents)(?:\/(\d+))?)?$/)
+  if (!match) return fixtureReply(res, method === 'GET' ? 404 : 405, null)
+  const id = Number(match[1]), base = session.bases.find(item => item.id === id)
+  if (!base || scene === 'f4-404') return fixtureReply(res, 404, null)
+  if (scene === 'f4-403') return fixtureReply(res, 403, null)
+  if (!match[2]) {
+    if (method === 'GET') return fixtureReply(res, 200, base)
+    if (method === 'PUT') {
+      const draft = JSON.parse((await fixtureBody(req)).toString())
+      if (scene === 'f4-delete-error') return fixtureReply(res, 403, null, '合成写权限拒绝，输入应保留')
+      for (const key of ['name', 'description', 'isPublic']) if (draft[key] !== undefined) base[key] = draft[key]
+      return fixtureReply(res, 200, base)
+    }
+    if (method === 'DELETE') {
+      if (scene === 'f4-delete-error') return fixtureReply(res, 403, null, '合成删除被拒绝')
+      session.bases = session.bases.filter(item => item.id !== id); session.docs = session.docs.filter(item => item.kbId !== id)
+      return fixtureReply(res, 200, null)
+    }
+  }
+  if (match[2] === 'statistics' && !match[3] && method === 'GET') {
+    if (scene === 'f4-stats-error' || (scene === 'f4-refresh-error' && session.deleted)) return fixtureReply(res, 503, null, '合成统计暂不可用')
+    const docs = session.docs.filter(item => item.kbId === id)
+    return fixtureReply(res, 200, { kbId: id, documentCount: docs.length, vectorCount: docs.filter(item => item.status === 'COMPLETED').reduce((n, item) => n + item.chunkCount, 0), queryCount: 0 })
+  }
+  if (match[2] === 'documents') {
+    if (!match[3] && method === 'GET') return fixtureReply(res, scene === 'f4-docs-error' ? 503 : 200, session.docs.filter(item => item.kbId === id))
+    if (!match[3] && method === 'POST') {
+      if (!req.headers['content-type']?.startsWith('multipart/form-data;')) return fixtureReply(res, 400, null)
+      const body = (await fixtureBody(req)).toString('utf8')
+      const names = [...body.matchAll(/name="file"; filename="([^"\r\n]+)"/g)]
+      if (names.length !== 1) return fixtureReply(res, 400, null)
+      const name = names[0][1]
+      if (scene === 'f4-upload-mixed' && name.includes('fail')) return fixtureReply(res, 400, null, '合成文件拒绝，失败项应保留')
+      if (scene === 'f4-upload-unconfirmed') return fixtureReply(res, 202, { taskId: '', fileName: name })
+      const documentId = session.nextId++, taskId = `fixture-task-${documentId}`
+      const doc = { id: documentId, kbId: id, title: name, fileType: 'txt', status: 'PROCESSING', chunkCount: 0, createdAt: kb.createdAt, updatedAt: kb.updatedAt }
+      session.docs.push(doc); base.documentCount++; session.tasks.set(taskId, { doc, calls: 0 })
+      return fixtureReply(res, 202, { documentId, taskId, fileName: name, fileType: 'txt', status: 'PROCESSING' })
+    }
+    if (match[3] && method === 'DELETE') {
+      if (scene === 'f4-delete-error') return fixtureReply(res, 403, null, '合成删除被拒绝')
+      const docId = Number(match[3]); if (!session.docs.some(item => item.id === docId && item.kbId === id)) return fixtureReply(res, 404, null)
+      session.docs = session.docs.filter(item => !(item.id === docId && item.kbId === id)); base.documentCount--; session.deleted = true
+      return fixtureReply(res, 200, null)
+    }
+  }
+  return fixtureReply(res, 405, null)
+}
 const server = await createServer({ root, configFile: false, plugins: [vue(), {
   name: 'synthetic-api',
   transformIndexHtml(html, context) {
@@ -66,6 +153,11 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
       const url = req.url?.split('?')[0]
+      const pageFixture = new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('fixture')
+      if (!url?.startsWith('/api/') && f4Scenarios.has(pageFixture)) {
+        const id = randomUUID(); f4Sessions.set(id, newF4Session(pageFixture))
+        res.setHeader('Set-Cookie', `f4-preview=${id}; Path=/; SameSite=Strict`)
+      }
       if (url?.startsWith('/__demo/')) {
         const name = url.slice('/__demo/'.length) || 'index.html'
         const allowed = { 'index.html': 'text/html; charset=utf-8', 'css/app.css': 'text/css', 'js/app.js': 'text/javascript', 'favicon.svg': 'image/svg+xml' }
@@ -78,6 +170,12 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
       if (!url?.startsWith('/api/') && !url?.startsWith('/auth/')) return next()
       let data, status = 200
       const scenario = new URL(req.headers.referer || 'http://127.0.0.1').searchParams.get('fixture')
+      const sessionId = req.headers.cookie?.match(/(?:^|;\s*)f4-preview=([\w-]+)/)?.[1]
+      const f4Session = f4Sessions.get(sessionId)
+      if ((scenario === null || f4Scenarios.has(scenario)) && f4Session && (url.startsWith('/api/knowledge-bases') || url.startsWith('/api/tasks/'))) {
+        void f4Api(req, res, url, f4Session).catch(() => { if (!res.headersSent) fixtureReply(res, 400, null, '合成请求格式或大小不符合白名单'); else res.end() })
+        return
+      }
       if ((url === '/auth/login' || url === '/api/qa/ask') && req.method !== 'POST') { res.statusCode = 405; res.end('Fixture requires POST'); return }
       if (url === '/api/qa/ask/stream' && req.method === 'POST' && streamScenarios.has(scenario)) { streamFixture(req, res, scenario); return }
       if (req.method !== 'GET' && !(req.method === 'POST' && (url === '/auth/login' || url === '/api/qa/ask'))) {
