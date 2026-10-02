@@ -1,6 +1,10 @@
-# F4 工程与阶段验证记录
+# F4 客户端接受与归档记录
 
-日期：2026-10-02。工程起点 HEAD：`be74d3902b4d7af4f3b932cc7a1c3c31bafbe281`；工程提交：`da4bc681fc12641cd000e31621e6568d87c302ce`，也是本轮证据补齐起点。用户已批准实施及本轮 Agent commit；本文不是完整 F4 接受或归档记录，提交时执行 hash 由 Git 给出，日志按下一次写操作补录。
+日期：2026-10-02。工程起点 HEAD：`be74d3902b4d7af4f3b932cc7a1c3c31bafbe281`；工程提交：`da4bc681fc12641cd000e31621e6568d87c302ce`；证据提交：`e238ee9ebd2c56cd8c73fc257ff9d9b884a016ba`。用户在上一轮已披露余项后要求“可以为我归档F4”；本次按已交付客户端契约接受归档，沿用本轮Agent提交授权，不声称完整真实F4业务闭环。
+
+## 本次接受范围与余项移交
+
+接受四项spec delta及工程/合成/36张正式矩阵与已完成交互证据；客户端规范不新增provider、API或后端保证，逐字接受进rag-system baseline。原3.4拖放与4.1–4.3真实预算/闭环/清理目标移交[技术债](../../../../docs/roadmap/technical-debt.md#f4-客户端归档后的证据债务2026-10-02)和tasks延后节，保持未验证。当前真实调用及真实业务写入0；用户归档请求不构成真实调用/删除、push/PR/发布/部署授权。
 
 ## 结论与证据边界
 
@@ -11,7 +15,7 @@
 | 视觉矩阵 | confirmed | 六组六态36张正式页、18张Demo参考、25张稳定补充图；另1张含删除按钮loading动画的确认图，未计稳定矩阵；共80项哈希/尺度核验 |
 | 浏览器上传 | partial | 用户手动选择后真实浏览器提交，多文件/混合失败/失败重提/接受不明/查询恢复通过；拖放动作未独立确认；API仍为封闭合成 |
 | 本轮真实业务/API/provider | unknown / 未执行 | 调用0，真实KB/文档/query/history写入0；不能用fixture证明持久化、embedding或generation |
-| 最终接受/归档 | planned | tasks3.3完成；3.4拖放及真实闭环4.x保留未完成；baseline不变，ACTIVE仍指向F4 |
+| 客户端接受/归档 | confirmed | 四项客户端delta接受并归档；本次接受范围任务完成，ACTIVE=IDLE；拖放与真实链路移交债务，不计为通过 |
 
 ## 实现与验证
 
@@ -57,10 +61,10 @@ Chrome自动文件选择仍被扩展文件权限拒绝，chrome://extensions只�
 
 ## 范围、安全与剩余风险
 
-Demo四项blob与起点一致；只改design允许的正式KB/文档组件、KB store、纯客户端utils、ChatPanel导航、测试/preview及本change治理文件。无后端/API/DTO/auth/request/token/useSSE/sseParser/qaPresentation、模型/评测/依赖/锁文件、prototype、accepted specs、本地配置、学习文件或其他页面业务改动；日志纯追加，提交仅列出的计划内文件。没有push/PR/发布/部署。
+Demo四项blob与起点一致；实施只改design允许的正式KB/文档组件、KB store、纯客户端utils、ChatPanel导航、测试/preview及本change治理文件。归档只更新本change、rag-system baseline逐字接受、ACTIVE_TASK、总规划、technical-debt和日志追加。无后端/API/DTO/auth/request/token/useSSE/sseParser/qaPresentation、模型/评测/依赖/锁文件、prototype、本地配置、学习文件或其他页面业务改动；没有push/PR/发布/部署。
 
 沿用R5已接受的KB17指定ANSWER证据只说明原契约路径，不证明本轮上传闭环或完整异常矩阵。真实provider、持久化、C19/C20及质量收益未验证；本轮没有业务外部调用或真实KB/document/query/history写入。为后续运行准备当前源代码产物，`mvn -q -pl rag-admin -am package -DskipTests`正常依赖下载后PASS；首次沙箱网络拒绝后经平台审批运行成功，不是Java测试通过。未启动后台应用或调用provider；Java/评测未改，跳过Java/Python测试。既有66/66和vue-tsc/Vite成功检查在业务源码/依赖未变时复用，本轮只重跑改变的preview语法与聚焦HTTP检查。OpenSpec CLI未发现，不安装，文件级结构/链接检查不冒充官方validate。
 
-余项保留：拖放动作未独立验证、自动文件选择权限仍阻塞、专用真实闭环授权/执行、最终接受/归档、跨刷新任务恢复接口缺失、既有大chunk与截图底边1px限制。取消、原文预览/下载、全量搜索、F1 logout/F5与后端能力均为out_of_scope。
+余项保留并移交债务：拖放动作未独立验证、自动文件选择权限仍阻塞、专用真实闭环授权/执行与后续清理。跨刷新任务恢复接口缺失、既有大chunk与截图底边1px限制继续保留。取消、原文预览/下载、全量搜索、F1 logout/F5与后端能力均为out_of_scope。
 
 [proposal](proposal.md) · [design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md)

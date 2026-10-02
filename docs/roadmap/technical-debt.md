@@ -111,6 +111,14 @@
 - 前端 design token、空态/错态/处理中态、可访问性、深度研究 task UI、approval UI 和 evidence inspection 仍需分阶段设计。
 - production-like corpus、用户反馈治理、drift monitoring 与 release rollback 尚未闭环。
 
+## F4 客户端归档后的证据债务（2026-10-02）
+
+本节仅登记F4归档移交的未验证目标，不重验或改写其他既有债务。F4客户端工程、合成、视觉与上传接受/查询恢复已接受；这不代表完整真实业务闭环。追踪来源：[F4归档验收](../../openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/acceptance.md)与[延后任务](../../openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/tasks.md)。
+
+- **F4-LIVE（planned，原4.1–4.2 / D1）**：尚无本次新页面的专用真实创建→上传→任务完成→文档/统计→指定KB问答→来源→历史回读证据。下一次执行先披露KB/合成载荷/问题、实际provider/模型、最大请求数、timeout/服务端重试、出站/费用/限流及query/history/索引副作用，再取得覆盖该预算的授权；记录IDs、metadata/status/errors/retries和持久化。当前预算0，不复用fixture或旧KB17结果证明新闭环，不宣称生成质量收益。
+- **F4-DROP（unknown，原3.4部分 / D2）**：用户手动选文件后的多文件与混合上传已验证，但“已选择”无法独立证明拖放。Chrome自动选文件仍被扩展文件权限阻止，不绕过安全策略；后续取得真实拖入上传区的动作与结果证据后才能关闭，不能改勾为通过。
+- **F4-CLEANUP（conditional / D3，原4.3）**：本轮真实数据写入0，无需清理。后续真实验收产生的专用KB/document/history按明确目标单独授权清理；不默认删除既有用户数据。
+
 ## 已完成、不得按“从零接入”重复立项
 
 - 数据库认证、主链路 integration、LLM/Redis/Milvus 故障语义；

@@ -3221,3 +3221,16 @@
 - 运行准备：只读核查现有Docker依赖与数据库聚合状态，没有读取业务正文；`mvn -q -pl rag-admin -am package -DskipTests`首次沙箱依赖网络拒绝，平台批准正常依赖下载后PASS。未启动后台应用、未修改本地配置、未执行真实KB/upload/embedding/rerank/ask/judge/delete或history写入；provider业务调用0。
 - 验证复用与跳过：正式业务源码/配置/依赖未变，复用66/66 Node测试及vue-tsc/Vite成功检查，仅重跑受影响preview检查；package跳过Java测试，不冒充测试通过。Java/Python评测源码未改，不跑Java/Python测试。OpenSpec CLI不可用，文件级链接/结构检查不冒充官方validate。真实拖放、动态loading、移动设备触屏及真实provider/persistence闭环未验证，tasks3.4与4.x仍待验收，ACTIVE保持F4。
 - 范围安全与剩余风险：未改Demo、后端/API/DTO/auth/request/SSE/parser/模型/评测/依赖/锁文件、accepted specs、本地受保护配置或学习目录；仅计划内7文件，无其他用户改动。未push/PR/发布/部署或接受baseline/归档。自动文件选择权限、跨刷新恢复接口、既有大chunk和窄屏底边1px限制保留；合成结果不证明生成质量。建议提交信息：`test(前端): 补齐F4上传与任务验收证据`。
+
+## 2026-10-02 · F4 证据提交补录
+
+- 上一执行提交：`e238ee9ebd2c56cd8c73fc257ff9d9b884a016ba`，message：`test(前端): 补齐F4上传与任务验收证据`。提交后工作区干净、main ahead4；不回改历史。
+
+## 2026-10-02 · frontend-kb-upload-alignment 客户端接受与归档
+
+- Commit: pending。用户在已披露拖放及真实闭环余项后要求“可以为我归档F4”；沿用本轮Agent提交授权，接受已交付客户端范围并归档，不扩大真实调用/删除或push/PR/发布/部署授权。适用design决策8。
+- 范围与文件：F4六个change文件移动至`openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/`；proposal/design/tasks/acceptance明确客户端接受与余项移交，spec delta/visual-evidence原内容不变；四项客户端requirement/12 scenario逐字追加到rag-system baseline；ACTIVE_TASK恢复IDLE，总规划与technical-debt更新，本日志仅追加。
+- 执行事实：本次接受工程/合成/36张矩阵及已完成交互证据，不声称完整真实F4业务闭环。原3.4拖放与4.1–4.3真实预算/闭环/清理移交F4-DROP/F4-LIVE/F4-CLEANUP；tasks延后节保留三个未勾项，本次接受范围内任务完成。跨刷新恢复、取消、原文接口及F1/F5/C19/C20边界保持不变。
+- 归档验证：check-archive.py PASS：旧目录不存在、归档六文件完整；baseline原79 requirement/243 scenario保持前缀，新增4/12逐字一致且名称唯一，合计83/255；spec delta与visual-evidence和HEAD原文件逐字一致；32个相对链接及锚点有效；8项决策三行完整；80项图像哈希和36张矩阵清单不变；四个Demo blob一致；日志前缀不变、whitespace与新增敏感内容扫描通过。最初敏感规则命中task名称中的sk片段，定位为visual-evidence文件名后修正词边界，未发现凭据。
+- 环境与跳过：普通沙箱Move-Item被写权限拒绝，检查确认原六文件仍完整、目标不存在；依据用户归档授权经平台批准执行仓库内原生Move-Item，复核旧目录消失、目标六文件存在。OpenSpec CLI仍不可用，不安装；文件级验证不冒充官方validate。此次仅治理文档和baseline接受，业务源码/配置/依赖未变，复用66/66和vue-tsc/Vite成功检查，不重复Node/build、Java/Python或浏览器QA。真实业务/provider调用及真实写入仍0，拖放及真实闭环未执行，原因和后续条件已登记技术债。
+- 范围安全与剩余风险：起点工作区干净，只处理F4目录移动、baseline逐字接受和五个治理文件，无业务/后端/API/DTO/auth/SSE/parser/模型/评测/依赖/锁文件、受保护配置、学习目录或其他归档改动；图片与临时检查脚本保留本轮visualizations目录，不跟踪。已完成客户端阶段归档，不声称真实provider/persistence/质量收益；自动选文件权限、跨刷新接口、既有大chunk和1px截图取整风险保留。建议提交信息：`docs(前端): 接受F4客户端契约并归档`。
