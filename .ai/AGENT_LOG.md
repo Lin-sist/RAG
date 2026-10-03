@@ -3234,3 +3234,19 @@
 - 归档验证：check-archive.py PASS：旧目录不存在、归档六文件完整；baseline原79 requirement/243 scenario保持前缀，新增4/12逐字一致且名称唯一，合计83/255；spec delta与visual-evidence和HEAD原文件逐字一致；32个相对链接及锚点有效；8项决策三行完整；80项图像哈希和36张矩阵清单不变；四个Demo blob一致；日志前缀不变、whitespace与新增敏感内容扫描通过。最初敏感规则命中task名称中的sk片段，定位为visual-evidence文件名后修正词边界，未发现凭据。
 - 环境与跳过：普通沙箱Move-Item被写权限拒绝，检查确认原六文件仍完整、目标不存在；依据用户归档授权经平台批准执行仓库内原生Move-Item，复核旧目录消失、目标六文件存在。OpenSpec CLI仍不可用，不安装；文件级验证不冒充官方validate。此次仅治理文档和baseline接受，业务源码/配置/依赖未变，复用66/66和vue-tsc/Vite成功检查，不重复Node/build、Java/Python或浏览器QA。真实业务/provider调用及真实写入仍0，拖放及真实闭环未执行，原因和后续条件已登记技术债。
 - 范围安全与剩余风险：起点工作区干净，只处理F4目录移动、baseline逐字接受和五个治理文件，无业务/后端/API/DTO/auth/SSE/parser/模型/评测/依赖/锁文件、受保护配置、学习目录或其他归档改动；图片与临时检查脚本保留本轮visualizations目录，不跟踪。已完成客户端阶段归档，不声称真实provider/persistence/质量收益；自动选文件权限、跨刷新接口、既有大chunk和1px截图取整风险保留。建议提交信息：`docs(前端): 接受F4客户端契约并归档`。
+
+## 2026-10-02 · F4 客户端归档提交补录
+
+- 上一执行提交：`407f21d2fe5ff2832894802d00bcf7f0dcceb0c5`，message：`docs(前端): 接受F4客户端契约并归档`。本轮重验HEAD、main ahead5、工作区干净；补录hash，不回改历史，不将F4授权借给F5。
+
+## 2026-10-02 · frontend-history-feedback-alignment F5 规划
+
+- Commit: pending。用户要求F4完成后继续下一步；本轮建立Type C事前审查包，业务实施待本方案确认。默认用户手动提交，baseline接受/归档、push/PR/发布/部署未授权。
+- 文件与范围：新增F5 proposal/design/tasks/specs/rag-system/spec.md；ACTIVE_TASK由IDLE切为F5 PLANNING；总规划现行入口追加F5状态；本日志纯追加。适用design决策1–6，不在日志复述取舍。
+- 已确认事实：起点HEAD407f21d、ahead5、干净；F4已接受客户端范围且真实证据债务保留。正式历史自动拉全分页后过滤，缺读取归属，删除hover可达；history接口page/size/kbId、size最大100且无关键词/批量DELETE，限流逐删30/60秒、反馈20/60秒；getMyFeedbacks已有声明未接正式页，反馈无题目字段。反馈成功后仅读恢复已有实现，其会话/生命周期/qaId保护及响应不明恢复待补齐；ChatPanel卸载历史序号待保护。Demo四项blob与冻结值一致。
+- 规划产物：四项客户端requirement/十一项scenario，显式分页/本页查找、目标快照确认及部分失败、记录绑定反馈与写入不明核查、真实字段我的反馈；停止条件、允许路径、测试、24张正式矩阵/18张区域参考已明确。方案不是实现或本轮真实持久化证据。
+- 验证：AGENTS/ACTIVE/Git、正式路由/API/DTO/组件及HistoryController/service只读核对；OpenSpec CLI未发现，不安装。结构/名称冲突/决策三行/相对链接/旧路径/日志纯追加/whitespace/敏感扫描在收尾补录。
+- 环境：普通沙箱无法创建嵌套specs目录，经平台升级审批仅创建仓库内F5 specs/rag-system目录成功，随后apply_patch写入规划文件，无其他目录操作。
+- 跳过：仅规划文档，无业务源码变化，不运行Node/build、浏览器视觉、Maven或Python；已有F4工程结果不当作F5验收。真实backend/provider/ask/upload/embedding/rerank/judge/feedback/delete调用0，无真实query/history/feedback或删除副作用。
+- 范围安全与剩余风险：不改业务代码/后端/API/DTO/auth/SSE/model/评测/依赖/锁文件、prototype、accepted specs、受保护配置/.agents/学习目录或其他归档；未暂存/提交。F5仅planned，实施及视觉尚未验；offset分页/枚举非一致快照、既有逐删限流、反馈写入不明和字段缺失边界已记录。F4拖放/真实债务、F1/F6/C19/C20独立保留。建议提交信息：`docs(前端): 建立F5历史反馈接入方案`。
+- 收尾验证补录：7个变更路径与规划allowlist完全一致，4项requirement/11项scenario、6项三行决策检查通过；20个受影响相对链接有效，需求名称与baseline不冲突，日志历史前缀未改，暂存0。`git diff --check`及四个新文件no-index whitespace检查通过，新增敏感内容扫描通过；no-index返回1且无输出按存在差异处理，不误判失败。OpenSpec CLI未发现，以上为文件级替代检查；未运行前端或真实验证，F5仍PLANNING。

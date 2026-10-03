@@ -80,6 +80,8 @@ F1–F6 为 R5 后的新阶段，不替换历史 R 编号，也不是自动实�
 
 2026-10-02用户要求归档F4；`frontend-kb-upload-alignment`按已交付客户端契约接受，四项delta逐字进入rag-system baseline，归档至`2026-10-02-frontend-kb-upload-alignment`，ACTIVE_TASK恢复IDLE。工程提交`da4bc681`、证据提交`e238ee9`；66/66、vue-tsc/Vite、36张正式矩阵、18张Demo参考及26张补充图（1张动态）已复核，用户手动选文件后的混合结果/失败重提/接受不明/原taskId查询恢复及login兼容通过。详见[归档验收](../../openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/acceptance.md)、[tasks](../../openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/tasks.md)与[技术债](technical-debt.md#f4-客户端归档后的证据债务2026-10-02)：拖放与专用真实provider/persistence闭环未验证，移交后续目标，当前真实预算0；不称完整真实F4或完整Demo验收。push/PR/发布/部署未授权；取消、跨刷新任务恢复、原文预览、全量搜索和F1/F5/C19/C20在范围外。F3三项delta及首批F2五项delta保持既有接受，不回改。后续阶段未自动启动。
 
+2026-10-02 F5启动规划：用户在F4归档后要求推进下一步，已建立[frontend-history-feedback-alignment](../../openspec/changes/frontend-history-feedback-alignment/proposal.md)事前审查包，ACTIVE_TASK为PLANNING。拟推进显式分页/本页查找、保留批量能力的快照确认与失败恢复、记录绑定反馈及只读我的反馈；[design](../../openspec/changes/frontend-history-feedback-alignment/design.md)明确接口/允许路径/六项决策和24张正式矩阵/18张区域参考，[tasks](../../openspec/changes/frontend-history-feedback-alignment/tasks.md)实施闸门保持未勾选。尚未修改业务代码，默认用户手动提交，真实业务调用预算0；全量关键词/Ctrl+K、多轮/反馈修改、新后端、F1/F6/C19/C20与F4证据债务不自动纳入。客户端验收与真实证据分开，F4/F3接受结论不回改。
+
 ### F. 启动、隔离与授权复用
 
 1. 每次先核对 AGENTS.md、Git、ACTIVE_TASK 和相关代码，不默认加载全部后端历史材料。
