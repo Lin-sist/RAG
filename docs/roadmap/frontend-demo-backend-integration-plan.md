@@ -82,6 +82,8 @@ F1–F6 为 R5 后的新阶段，不替换历史 R 编号，也不是自动实�
 
 2026-10-02 F5启动规划：用户在F4归档后要求推进下一步，已建立[frontend-history-feedback-alignment](../../openspec/changes/frontend-history-feedback-alignment/proposal.md)事前审查包，ACTIVE_TASK为PLANNING。拟推进显式分页/本页查找、保留批量能力的快照确认与失败恢复、记录绑定反馈及只读我的反馈；[design](../../openspec/changes/frontend-history-feedback-alignment/design.md)明确接口/允许路径/六项决策和24张正式矩阵/18张区域参考，[tasks](../../openspec/changes/frontend-history-feedback-alignment/tasks.md)实施闸门保持未勾选。尚未修改业务代码，默认用户手动提交，真实业务调用预算0；全量关键词/Ctrl+K、多轮/反馈修改、新后端、F1/F6/C19/C20与F4证据债务不自动纳入。客户端验收与真实证据分开，F4/F3接受结论不回改。
 
+2026-10-03 F5实施：用户批准“可以进入实现”，按已呈交允许路径实现20条分页/KB范围/本页查找、删除快照和部分失败、记录绑定反馈/写入不明核查、只读我的反馈及会话/卸载保护。82/82、含vue-tsc的正式build、39项封闭HTTP检查、24张正式矩阵/18张Demo参考/31张补充图已验证，详见[F5验收](../../openspec/changes/frontend-history-feedback-alignment/acceptance.md)及[tasks](../../openspec/changes/frontend-history-feedback-alignment/tasks.md)。ACTIVE_TASK仍ACTIVE，等待用户接受；默认手动提交，未接受baseline/归档。真实调用/写入0，offset快照并发漂移、逐删限流、反馈迟到与中性ID降级、大chunk及窄屏底边取整风险保留；F4债务和F1/F6/C19/C20未扩入。
+
 ### F. 启动、隔离与授权复用
 
 1. 每次先核对 AGENTS.md、Git、ACTIVE_TASK 和相关代码，不默认加载全部后端历史材料。

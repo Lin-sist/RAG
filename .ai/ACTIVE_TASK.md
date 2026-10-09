@@ -2,10 +2,10 @@
 
 ## Status
 
-`PLANNING`
+`ACTIVE`
 
 - 当前 change：`frontend-history-feedback-alignment`（F5 历史、反馈与查找）。
-- 2026-10-02 用户要求 F4 完成后推进下一步；已建立 F5 事前审查包，待方案确认，未修改业务代码。
+- 2026-10-03 用户明确“可以进入实现”，按已呈交F5方案实施并验证；默认用户手动提交，真实业务调用预算0。
 - 入口：[proposal](../openspec/changes/frontend-history-feedback-alignment/proposal.md)、[design](../openspec/changes/frontend-history-feedback-alignment/design.md)、[tasks](../openspec/changes/frontend-history-feedback-alignment/tasks.md)、[spec delta](../openspec/changes/frontend-history-feedback-alignment/specs/rag-system/spec.md)。
 - 推进顺序：C21 后端契约与验证 → 前端接入和联调 → C19 校准 → C20 门禁。后续阶段分别验收。
 
@@ -18,7 +18,7 @@
 
 ## Current Boundary
 
-- F5 当前只准备规划：分页/本页查找、删除快照与部分失败恢复、记录绑定反馈、我的反馈；允许路径和决策见design，业务实现待事前审查确认。默认用户手动提交，不借用F4授权；baseline接受/归档及push/PR/发布/部署未授权。
+- F5客户端实施及验证完成：82/82、含vue-tsc的正式build、39项封闭HTTP检查、24张正式矩阵/18张Demo参考/31张补充图已复核，见[验收](../openspec/changes/frontend-history-feedback-alignment/acceptance.md)。等待用户接受，保持ACTIVE；默认用户手动提交，不借用F4授权，baseline接受/归档及push/PR/发布/部署未授权。
 - 真实backend/provider/upload/ask/feedback/delete预算0，无真实业务数据写入；真实验收/删除清理按专用目标披露授权另行执行。全量关键词/Ctrl+K、多轮/重命名、反馈改写/删除、F1、后端/API/DTO/模型/评测及C19/C20在F5范围外。
 - F4客户端接受保持不变，拖放和真实闭环/清理债务继续保留；任务取消、跨刷新恢复、原文预览/下载不纳入F5。
 - 前端 R5 使用已接受的后端 `structured-v1` wire；真实成功证据仅覆盖 KB17 合成问题的 `ANSWER`，非答案和断连仍由合成测试约束。C19/C20 仍需各自契约与外调授权。客户端断流仍只可判定 incomplete，不能宣称服务端取消或无 provider 费用。

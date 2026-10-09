@@ -144,6 +144,60 @@ async function f4Api(req, res, url, session) {
   }
   return fixtureReply(res, 405, null)
 }
+const f5Scenarios = new Set(['f5-ready', 'f5-empty', 'f5-error', 'f5-loading', 'f5-long', 'f5-delete-error', 'f5-partial', 'f5-limited', 'f5-refresh-error', 'f5-feedback-error', 'f5-feedback-readback', 'f5-feedback-unknown', 'f5-feedback-duplicate', 'f5-my-error', 'f5-my-empty', 'f5-404'])
+const f5Sessions = new Map()
+function newF5Session(scenario) {
+  const records = scenario === 'f5-empty' ? [] : Array.from({ length: 43 }, (_, i) => ({ id: 901 + i, userId: 901, kbId: i % 3 === 0 ? 902 : 901,
+    question: i === 0 && scenario === 'f5-long' ? '较长的合成问题用于检验窄屏阅读与截断'.repeat(12) : ['如何排查检索结果为空？', '文档上传后什么时候可以提问？', '如何查看回答的来源？', '怎样为知识库选择合适的资料？'][i % 4] + ` · 合成记录 ${i + 1}`,
+    answer: '## 合成历史回答\n\n这是一条保存的单轮问答，仅用于客户端验收。\n\n- 查看资料范围\n- 核对原始来源\n\n不会触发真实问答或生成模型。', citations: sourceCitations, createdAt: new Date(Date.UTC(2026, 9, 3, 7) - i * 9000000).toISOString(), traceId: 'fixture-trace', latencyMs: 0 }))
+  const feedbacks = scenario === 'f5-my-empty' ? [] : [{ id: 1, qaId: 902, userId: 901, rating: 4, comment: scenario === 'f5-long' ? '这是一条较长的合成评论，用于核对完整阅读与换行。'.repeat(20) : '来源清楚，方便核对。', createdAt: '2026-10-03T10:00:00' }, { id: 2, qaId: 940, userId: 901, rating: 3, comment: '希望有更多说明。', createdAt: '2026-10-02T10:00:00' }]
+  return { scenario, records, feedbacks, deleted: false, wrote: false, attempts: 0 }
+}
+async function f5Api(req, res, pathname, session) {
+  const method = req.method, scene = session.scenario, query = new URL(req.url, 'http://127.0.0.1').searchParams
+  if (pathname === '/api/knowledge-bases' && method === 'GET') return fixtureReply(res, 200, [kb, { ...kb, id: 902, name: '合成资料库' }])
+  if (pathname === '/api/history' && method === 'GET') {
+    const page = Number(query.get('page') || 1), size = Number(query.get('size') || 20), kbId = query.get('kbId')
+    if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(size) || size < 1 || size > 100 || (kbId && !/^[1-9]\d*$/.test(kbId))) return fixtureReply(res, 400, null)
+    if (scene === 'f5-loading') await new Promise(resolve => setTimeout(resolve, 4000))
+    if (scene === 'f5-error' || (scene === 'f5-refresh-error' && session.deleted)) return fixtureReply(res, 503, null, '合成历史读取失败')
+    const all = session.records.filter(record => !kbId || record.kbId === Number(kbId))
+    return fixtureReply(res, 200, { records: all.slice((page - 1) * size, page * size), total: all.length, page, size, totalPages: Math.ceil(all.length / size) })
+  }
+  if (pathname === '/api/history/feedback/my' && method === 'GET') return fixtureReply(res, scene === 'f5-my-error' ? 503 : 200, session.feedbacks)
+  const match = pathname.match(/^\/api\/history\/(\d+)(\/feedback)?$/)
+  if (!match) return fixtureReply(res, method === 'GET' ? 404 : 405, null)
+  const id = Number(match[1]), record = session.records.find(item => item.id === id)
+  if (!record || scene === 'f5-404') return fixtureReply(res, 404, null, '合成历史记录不存在')
+  if (!match[2]) {
+    if (method === 'GET') return fixtureReply(res, 200, record)
+    if (method === 'DELETE') {
+      session.attempts++
+      if (scene === 'f5-delete-error' || (scene === 'f5-partial' && id % 2 === 0)) return fixtureReply(res, 403, null, '合成删除拒绝')
+      if (scene === 'f5-limited' && session.attempts >= 3) return fixtureReply(res, 429, null, '合成限流，停止后续删除')
+      session.records = session.records.filter(item => item.id !== id); session.deleted = true
+      return fixtureReply(res, 200, null)
+    }
+  }
+  if (match[2]) {
+    if (method === 'GET') {
+      if (scene === 'f5-feedback-error' || (scene === 'f5-feedback-readback' && session.wrote)) return fixtureReply(res, 503, null, '合成反馈读取失败')
+      return fixtureReply(res, 200, session.feedbacks.filter(item => item.qaId === id))
+    }
+    if (method === 'POST') {
+      const body = JSON.parse((await fixtureBody(req, 4096)).toString())
+      if (!Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5 || (body.comment !== undefined && (typeof body.comment !== 'string' || body.comment.length > 500))) return fixtureReply(res, 400, null)
+      if (scene === 'f5-feedback-unknown') return fixtureReply(res, 503, null, '合成写入响应不明，不自动重发')
+      if (scene === 'f5-feedback-duplicate' || session.feedbacks.some(item => item.qaId === id)) {
+        if (!session.feedbacks.some(item => item.qaId === id)) session.feedbacks.push({ id: 50, qaId: id, userId: 901, rating: 4, comment: '合成已保存反馈', createdAt: kb.createdAt })
+        res.statusCode = 400; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ errorCode: 'FEEDBACK_002', message: '该记录已经提交过反馈' })); return
+      }
+      const saved = { id: session.feedbacks.length + 50, qaId: id, userId: 901, rating: body.rating, comment: body.comment || '', createdAt: '2026-10-03T12:00:00' }
+      session.feedbacks.push(saved); session.wrote = true; return fixtureReply(res, 201, saved)
+    }
+  }
+  return fixtureReply(res, 405, null)
+}
 const server = await createServer({ root, configFile: false, plugins: [vue(), {
   name: 'synthetic-api',
   transformIndexHtml(html, context) {
@@ -158,6 +212,10 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
     server.middlewares.use((req, res, next) => {
       const url = req.url?.split('?')[0]
       const pageFixture = new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('fixture')
+      if (!url?.startsWith('/api/') && f5Scenarios.has(pageFixture)) {
+        const id = randomUUID(); f5Sessions.set(id, newF5Session(pageFixture))
+        res.setHeader('Set-Cookie', `f5-preview=${id}; Path=/; SameSite=Strict`)
+      }
       if (!url?.startsWith('/api/') && f4Scenarios.has(pageFixture)) {
         const id = randomUUID(); f4Sessions.set(id, newF4Session(pageFixture))
         res.setHeader('Set-Cookie', `f4-preview=${id}; Path=/; SameSite=Strict`)
@@ -174,6 +232,11 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
       if (!url?.startsWith('/api/') && !url?.startsWith('/auth/')) return next()
       let data, status = 200
       const scenario = new URL(req.headers.referer || 'http://127.0.0.1').searchParams.get('fixture')
+      const f5Id = req.headers.cookie?.match(/(?:^|;\s*)f5-preview=([\w-]+)/)?.[1], f5Session = f5Sessions.get(f5Id)
+      if ((scenario === null || f5Scenarios.has(scenario)) && f5Session && (url.startsWith('/api/history') || url === '/api/knowledge-bases')) {
+        void f5Api(req, res, url, f5Session).catch(() => { if (!res.headersSent) fixtureReply(res, 400, null, '合成请求格式或大小不符合白名单'); else res.end() })
+        return
+      }
       const sessionId = req.headers.cookie?.match(/(?:^|;\s*)f4-preview=([\w-]+)/)?.[1]
       const f4Session = f4Sessions.get(sessionId)
       if ((scenario === null || f4Scenarios.has(scenario)) && f4Session && (url.startsWith('/api/knowledge-bases') || url.startsWith('/api/tasks/'))) {

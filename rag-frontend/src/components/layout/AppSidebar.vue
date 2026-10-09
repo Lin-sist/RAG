@@ -62,7 +62,7 @@ async function loadHistory() {
     if (mounted && request === sequence && revision === auth.sessionRevision) historyState.value = 'error'
   }
 }
-watch(() => auth.sessionRevision, () => { sequence++; historyList.value = []; if (auth.isLoggedIn) void loadHistory() })
+watch(() => auth.sessionRevision, () => { sequence++; historyList.value = []; historyState.value = 'empty'; const revision = auth.sessionRevision; queueMicrotask(() => { if (mounted && revision === auth.sessionRevision && auth.isLoggedIn) void loadHistory() }) }, { flush: 'sync' })
 async function openDrawer() {
   returnFocus = document.activeElement as HTMLElement
   previousOverflow = document.body.style.overflow

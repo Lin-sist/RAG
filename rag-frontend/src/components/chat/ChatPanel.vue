@@ -1,6 +1,7 @@
 <template>
   <main :class="['chat-panel', { 'is-empty': messages.length === 0 }]">
     <div ref="messageViewport" class="messages-container" @scroll="updateScrollPosition" @wheel="pauseUpwardScroll" @touchstart="pauseTouchScroll">
+      <p v-if="isHistoryDetail && historyLoadError" class="kb-navigation-status" role="alert">{{ historyLoadError }} <button v-if="parseRouteHistoryId()" @click="retryHistorySession">重试读取历史</button><RouterLink to="/history">返回历史记录</RouterLink></p>
       <div v-if="messages.length === 0" class="welcome-screen">
         <h1 class="welcome-title">你好{{ authStore.userInfo?.username ? '，' + authStore.userInfo.username : '' }}。准备好开始了吗？</h1>
       </div>
@@ -199,6 +200,7 @@ import AnswerSources from './AnswerSources.vue'
 import { copyText, clipboardMessage } from '@/utils/clipboard'
 import { parseKbId } from '@/utils/kbPresentation'
 import { getHistoryById } from '@/api/history'
+import { RouterLink } from 'vue-router'
 import HistoryFeedback from '@/components/history/HistoryFeedback.vue'
 import { ask } from '@/api/qa'
 import { useSSE } from '@/composables/useSSE'
@@ -234,6 +236,7 @@ const historyLoading = ref(false)
 const historyLoadError = ref('')
 const historyRecordId = ref<number | null>(null)
 let historyLoadSeq = 0
+let historyAlive = true
 const chatStore = useChatStore()
 const kbStore = useKnowledgeBaseStore()
 const authStore = useAuthStore()
@@ -307,11 +310,13 @@ function parseRouteHistoryId(): number | null {
   }
 
   const id = Number(raw)
-  return Number.isInteger(id) && id > 0 ? id : null
+  return typeof raw === 'string' && /^[1-9]\d*$/.test(raw) && Number.isSafeInteger(id) ? id : null
 }
 
 async function loadHistorySession(id: number) {
   const seq = ++historyLoadSeq
+  const revision = authStore.sessionRevision
+  const current = () => historyAlive && seq === historyLoadSeq && revision === authStore.sessionRevision
 
   historyLoading.value = true
   historyLoadError.value = ''
@@ -330,18 +335,19 @@ async function loadHistorySession(id: number) {
     const res = await getHistoryById(id)
     const record = res.data.data
 
-    if (seq !== historyLoadSeq) return
+    if (!current()) return
+    if (record.id !== id || (authStore.userInfo?.id && record.userId !== authStore.userInfo.id)) throw new Error('HISTORY_IDENTITY_MISMATCH')
 
     messages.value = buildHistoryMessages(record)
     historyRecordId.value = record.id
     selectedKbId.value = record.kbId ?? null
 
     await loadKbListIfNeeded()
-    scrollToBottom()
-  } catch {
-    if (seq !== historyLoadSeq) return
+    if (current()) scrollToBottom()
+  } catch (error) {
+    if (!current()) return
 
-    historyLoadError.value = '历史记录加载失败'
+    historyLoadError.value = normalizeError(error).message
     historyRecordId.value = null
     messages.value = [
       {
@@ -354,11 +360,13 @@ async function loadHistorySession(id: number) {
     ]
     ElMessage.error('历史记录加载失败')
   } finally {
-    if (seq === historyLoadSeq) {
+    if (current()) {
       historyLoading.value = false
     }
   }
 }
+
+function retryHistorySession() { const id = parseRouteHistoryId(); if (id) void loadHistorySession(id) }
 
 function resetNewChat() {
   kbNavigationSequence++
@@ -565,6 +573,7 @@ watch(
 
     if (route.name === 'ChatSession') {
       resetNewChat()
+      historyLoadError.value = '历史记录 ID 无效，请返回历史记录页。'
       return
     }
 
@@ -576,12 +585,21 @@ watch(
   { immediate: true },
 )
 
+watch(() => authStore.sessionRevision, () => {
+  if (!isHistoryDetail.value) return
+  resetNewChat()
+  const revision = authStore.sessionRevision
+  queueMicrotask(() => { if (historyAlive && revision === authStore.sessionRevision && authStore.isLoggedIn) retryHistorySession() })
+}, { flush: 'sync' })
+
 onMounted(async () => {
   await loadKbListIfNeeded()
   document.addEventListener('click', handleOutsideClick)
 })
 
 onUnmounted(() => {
+  historyAlive = false
+  historyLoadSeq++
   kbNavigationSequence++
   sse.disconnect()
   document.removeEventListener('click', handleOutsideClick)

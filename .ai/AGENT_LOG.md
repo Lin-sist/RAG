@@ -3250,3 +3250,29 @@
 - 跳过：仅规划文档，无业务源码变化，不运行Node/build、浏览器视觉、Maven或Python；已有F4工程结果不当作F5验收。真实backend/provider/ask/upload/embedding/rerank/judge/feedback/delete调用0，无真实query/history/feedback或删除副作用。
 - 范围安全与剩余风险：不改业务代码/后端/API/DTO/auth/SSE/model/评测/依赖/锁文件、prototype、accepted specs、受保护配置/.agents/学习目录或其他归档；未暂存/提交。F5仅planned，实施及视觉尚未验；offset分页/枚举非一致快照、既有逐删限流、反馈写入不明和字段缺失边界已记录。F4拖放/真实债务、F1/F6/C19/C20独立保留。建议提交信息：`docs(前端): 建立F5历史反馈接入方案`。
 - 收尾验证补录：7个变更路径与规划allowlist完全一致，4项requirement/11项scenario、6项三行决策检查通过；20个受影响相对链接有效，需求名称与baseline不冲突，日志历史前缀未改，暂存0。`git diff --check`及四个新文件no-index whitespace检查通过，新增敏感内容扫描通过；no-index返回1且无输出按存在差异处理，不误判失败。OpenSpec CLI未发现，以上为文件级替代检查；未运行前端或真实验证，F5仍PLANNING。
+
+## 2026-10-03 · F5 规划提交补录
+
+- 上一规划提交为`6cd7fd8205f11d6347adf9aaf436c984daf15ed0`，message：`docs(前端): 建立F5历史反馈接入方案`；起点main ahead6、工作区干净。用户手动提交，不视为Agent新提交授权，不回改历史。
+
+## 2026-10-03 · frontend-history-feedback-alignment 实施与工程验证
+
+- Commit: pending。用户明确“可以进入实现”，按已呈交F5客户端范围实施；默认用户手动提交，真实业务调用预算0，baseline接受/归档/push/PR/发布/部署未授权。适用design决策1–6。
+- 文件：ChatHistory.vue、HistoryFeedback.vue、MyFeedbackList.vue、historyActions.ts、ChatPanel.vue仅历史读取/错误恢复、AppSidebar.vue仅会话刷新；history-experience.test.mjs、preview.mjs封闭F5；本change/proposal/design/tasks、ACTIVE_TASK、总规划与本日志。无API/DTO/后端/依赖改动。
+- 实施：20条显式分页/KB ID范围/本页过滤；键盘与触屏可达的独立链接/删除；批量枚举确认快照、顺序逐删/429或不明停止/局部刷新；反馈ID和会话归属、成功后仅读、重复核查、写入不明GET与再次确认；我的反馈按需读取且零N+1。迟到/卸载/会话保护与侧栏既有事件保全，历史单条只读/F3/R5不变。
+- 工程验证：聚焦35/35，全套`node --test --test-timeout=20000 tests/*.test.mjs`82/82 PASS；`node node_modules/vue-tsc/bin/vue-tsc.js -b`后`node node_modules/vite/bin/vite.js build`PASS，等同build脚本，既有大于500kB chunk警告。首次vue-tsc发现按钮事件传给boolean形参，改显式函数调用后通过。最初竞态测试等待未结束，定位auth.clearAuth先增revision再清token，改为同步清数据/微任务判断稳定身份，旧测试进程Ctrl+C终止后限时重跑成功；不改auth实现、不掩盖失败。
+- 环境与视觉：Preflight报告Node/direct工具可用、npm缺失，不安装。专用Browser bootstrap被权限管道拒绝，已尝试后改用可用CUA Chrome通道；封闭预览监听127.0.0.1:5188、无proxy。初始打开时预览未启动造成连接拒绝，启动后页面可用；DPR1.25导致首张探索图CSS1152×720，按实际尺度校准后才采正式矩阵。视觉/完整浏览器交互正在进行，未标通过。
+- 跳过与安全：真实backend/provider/upload/ask/embedding/rerank/judge/feedback/delete调用0、真实业务写入0；合成fixture仅内存。Java/评测未改，跳过Maven/Python；OpenSpec CLI未发现、不安装；尚未接受baseline或归档。无prototype/accepted specs/受保护配置/.agents/学习目录/模型/评测/依赖/锁文件改动，未暂存提交。
+- 风险：视觉/交互与fixture白名单拒绝检查待补齐；分页快照并发漂移、既有限流、写入不明、缺题目字段中性降级与大chunk保留。F4债务和F1/F6/C19/C20独立。
+
+## 2026-10-03 · frontend-history-feedback-alignment 客户端验证收尾
+
+- Commit: pending。沿用用户“可以进入实现”，本轮客户端验证完成、呈交acceptance/visual-evidence；仍待用户接受，ACTIVE保持ACTIVE，无Agent提交/归档/push/PR/部署授权。适用design决策1–6。
+- 文件：在前述实现范围内补单删/批量/反馈再次确认的焦点返回（两个组件），更新本change/proposal/tasks/acceptance/visual-evidence、ACTIVE_TASK和总规划；本日志仅追加。
+- 浏览器事实：取消确认时禁用触发按钮导致焦点落body，当前会话解除busy后的nextTick归还仍连接触发按钮；窄屏单删/批量、反馈二次确认Escape取消后读到正确按钮。分页/KB范围/本页过滤/tab、来源Enter/Space、窄屏可见删除、已保存只读恢复、不明二次确认、403/404、批量22成功21失败及429后2成功1失败40未执行、侧栏更新与首页/设置/login/F3/F4兼容均在合成预览检查；没有声称真实触屏设备测试。
+- 工程：焦点修复后F5受影响16/16重新通过，vue-tsc -b及Vite build重新PASS；其余全套82/82成功结果按相同未受影响代码复用，既有大chunk警告保留。preview语法通过；39项localhost HTTP成功/拒绝/失败断言PASS，检查脚本最初误用不存在的f4-ready导致缺cookie，改既有f4后通过。合成数据仅内存，无proxy/provider调用。
+- 视觉：24张正式矩阵、18张冻结Demo区域参考、31张补充状态/交互/兼容，共73唯一图；14联系表逐图及关键窄屏原图复核，SHA-256/DOM尺度/图像尺度/overflow检查PASS。早期加载/动画/主题前一帧及resize高度未稳定图片重采替换，不计入最终证据；窄屏390×844 DOM对应390×843 PNG保留1px取整。证据目录在本机visualizations，完整元数据入visual-evidence.json；Demo无独立历史分页整页，不报像素匹配率。浏览器viewport已reset。
+- 环境：Python直接写新visual-evidence.json被沙箱拒绝，改用允许的apply_patch完成同一仓库内文件，无扩大目录权限。最初采证通过document.getAnimations等待有限动画不可用，改可见状态等待/刷新AX/分开动作与取证；不改页面脚本或冻结Demo。个别预览控件名称/路径核对后纠正，失败尝试不计通过。
+- 跳过：真实backend/provider/ask/upload/embedding/rerank/judge/feedback/delete请求及业务写入0、费用0，无真实模型/超时/重试结果；Java/评测未改，跳过Maven/Python评测。OpenSpec CLI缺失，使用文件级结构/链接/范围检查，不安装、不称CLI通过。预览进程收尾停止。
+- 安全与风险：只在允许文件范围内实现，API/DTO/auth/request/SSE/parser、后端/模型/评测、依赖/锁文件、全局主题/路由、prototype/accepted specs/其他归档、受保护配置/.agents/学习目录保持不变；未暂存/提交。offset枚举并发漂移、已有逐删限流、反馈写入迟到、我的反馈一次列表及标题ID降级、本机图像保存、大chunk/1px风险保留，F4债务及F1/F6/C19/C20独立。建议提交：`feat(前端): 接入F5历史反馈与分页查找体验`。
+- 收尾门禁补录：check-delivery.py PASS，16个文件与design允许路径完全一致、9条新增受影响相对链接存在、delta 4 requirement/11 scenario不变；73个唯一图hash/全部DOM及图像尺度/overflow匹配，14联系表已逐图查看。`git diff --check`及5个新增文件no-index whitespace通过，新增敏感扫描通过；日志HEAD历史前缀未改、Demo四个blob一致、受保护路径改动0、暂存0、HEAD仍6cd7fd8。预览Ctrl+C停止（进程退出1为主动结束，不误作验证失败），viewport已reset；无提交/接受/归档动作。
