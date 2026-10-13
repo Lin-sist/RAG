@@ -3276,3 +3276,38 @@
 - 跳过：真实backend/provider/ask/upload/embedding/rerank/judge/feedback/delete请求及业务写入0、费用0，无真实模型/超时/重试结果；Java/评测未改，跳过Maven/Python评测。OpenSpec CLI缺失，使用文件级结构/链接/范围检查，不安装、不称CLI通过。预览进程收尾停止。
 - 安全与风险：只在允许文件范围内实现，API/DTO/auth/request/SSE/parser、后端/模型/评测、依赖/锁文件、全局主题/路由、prototype/accepted specs/其他归档、受保护配置/.agents/学习目录保持不变；未暂存/提交。offset枚举并发漂移、已有逐删限流、反馈写入迟到、我的反馈一次列表及标题ID降级、本机图像保存、大chunk/1px风险保留，F4债务及F1/F6/C19/C20独立。建议提交：`feat(前端): 接入F5历史反馈与分页查找体验`。
 - 收尾门禁补录：check-delivery.py PASS，16个文件与design允许路径完全一致、9条新增受影响相对链接存在、delta 4 requirement/11 scenario不变；73个唯一图hash/全部DOM及图像尺度/overflow匹配，14联系表已逐图查看。`git diff --check`及5个新增文件no-index whitespace通过，新增敏感扫描通过；日志HEAD历史前缀未改、Demo四个blob一致、受保护路径改动0、暂存0、HEAD仍6cd7fd8。预览Ctrl+C停止（进程退出1为主动结束，不误作验证失败），viewport已reset；无提交/接受/归档动作。
+
+## 2026-10-11 · 项目事实报告生成（PROJECT_REPORT.md）
+
+- 类型：只读扫描与事实梳理任务；未创建新 OpenSpec change，`.ai/ACTIVE_TASK.md` 保持原有状态不变。
+- 范围与输出文件：`PROJECT_REPORT.md`（新建）。
+- 梳理内容：
+  1. 项目概况与功能矩阵（完成度分为完整实现/部分实现/仅占位或Mock/无）；详细梳理 OpenSpec C1~C21 与 F1~F5 演进历程与后续路线图。
+  2. 技术栈、依赖版本、Docker 拓扑与生产/运行时真实配置（Qwen 122B, Nemotron 2048维, Milvus IVF_FLAT, COSINE, 420/80 分块, RRF k=60）。
+  3. 模块架构与 3 条核心调用链路（同步问答、Durable 异步索引入库、SSE structured-v1 流式终端链路）；MySQL 与 Milvus Schema。
+  4. AI 核心参数与算法实现（Prompt 组装与 1200 Token 预算、Dense+BM25 双路召回、Heuristic 默认重排、0.58 引用校验重叠度；确认无自主 Agent 循环）。
+  5. 非 AI 工程实现（JWT/Redis 黑名单认证、滑动窗口限流、分布式锁幂等、Durable Task Ledger 状态机与租约心跳）。
+  6. 测试与评测事实（jqwik 随机属性测试、Testcontainers 容器集成测试；150 题 rag-eval-dev-v2 评测集与 C18 真实客观基线数据）。
+  7. 已知技术债与风险定位（Milvus VarChar 哈希主键与 MySQL BIGINT 自增主键双轨割裂根因文件；C18 因后续 C21 改动导致的 budget_source_drift 离线校验漂移；5.22% 真实客观词法 Claim 覆盖率）。
+  8. 代码规模量化（物理行统计约 8.5 万行，27 个 REST 端点 + 1 个 MCP 端点）与零费/低费实测指南。
+  9. 15 个高频面试技术追问与代码位置解析。
+  10. 10 个候选人优先理解的核心设计与代码决策。
+- 验证：
+  - 代码统计与端点列表经脚本精确验证；
+  - `git status --short --branch` 确认工作区安全，无额外侵入改动；
+  - `git diff --check` 验证空白与格式无问题。
+- 跳过项：未运行外部 LLM / Embedding 业务调用（调用量 0，费用 0）。
+- 范围安全：未修改任何 Java/Vue 业务代码，未触碰 `.env.local`、`application-dev.yml`、`.agents/`、`docs/学习文档/` 等受保护文件；不进行 git commit/push（提交权限由用户保留）。
+- Commit: pending。
+
+## 2026-10-12 · rag-login-motion-demo 独立登录动效原型（Type B）
+
+- 授权与范围：用户明确“可以开始做独立原型了”；新增 prototype/rag-login-motion-demo/ 的 index.html、css/login.css、js/logo-motion.js、js/demo.js、assets/logo.svg、README.md、VALIDATION.md；本日志仅追加。本轮使用原生 CSS/Canvas/WebGL，无新增依赖，不接管 F5，ACTIVE_TASK 保持 ACTIVE。
+- 执行事实：双翼连续形态/明暗场、细点/交叉/字符、黑白/米白、暂停/恢复及静态降级已实现。表单仅本地演示、不做身份认证，不写 storage、不发登录请求，演示后清空；无脚本时禁用输入/提交。静态预览绑定127.0.0.1:8767，页面可离线file://打开。
+- 验证：Preflight report-only；两项node --check、tracked及新文件whitespace、本地链接及三处原始logo路径一致性通过。rag-frontend中node node_modules/vue-tsc/bin/vue-tsc.js -b后接node node_modules/vite/bin/vite.js build均退出0，使用已有入口，保留既有大chunk警告。
+- 浏览器证据：内置浏览器实际运行复核；截图工具缩放/裁切不一致的早期图排除。已有Chrome155.0.8059.39独立headless/SwiftShader下39/39通过，脚本异常/外部请求/非GET请求均0；三视口深浅六张verified矩阵已逐图复核、横向溢出0、登录按钮首屏可达，纹理/动态画面及静态降级作为补充。上下文丢失/恢复、离屏、reduce偏好、destroy再挂载、file://及无脚本降级覆盖。截图与执行JSON/脚本/文件hash位于本线程visualizations/login-motion/，不作为业务真实证据。
+- 修正记录：非整数纹理网格的拍频改为设备像素对齐；reduce切换时停止帧补齐状态通知。失败验收运行不计通过。
+- 跳过：未改正式前端业务源码，不重跑F5全套行为测试；Java/Python评测未改，不跑Maven/Python评测；真实backend/provider/embedding/rerank/ask/judge/auth/feedback/delete及费用0。Lighthouse本机包缺失、不新增工具；真实手机/物理GPU/Safari/Firefox/长时功耗及操作系统后台切换未验证。
+- 范围安全：旧Demo四项冻结blob保持一致，原始logo/正式前端/F5/活动指针/API/DTO/后端/模型/评测/依赖/锁文件/受保护配置不变；用户已有日志内容和PROJECT_REPORT.md完整保留，暂存0、HEAD31ad3f8，无commit/push/PR/部署。
+- 剩余风险：形体为独立程序化近似，非原作者源码或实际3D；软件WebGL不能证明真实设备性能；正式Vue接入仍待独立定级与验收。建议提交：feat(原型): 新增RAG登录双翼点阵动效演示。
+- Commit: pending

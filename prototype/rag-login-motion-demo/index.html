@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>登录动效原型 · RAG 智能问答</title>
+  <link rel="icon" href="./assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/login.css">
+  <script src="./js/logo-motion.js" defer></script>
+  <script src="./js/demo.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="../chatgpt-ui-demo/index.html" aria-label="RAG 智能问答，打开原有演示">
+      <svg viewBox="125 120 355 275" aria-hidden="true">
+        <path d="M141 133 C252 170 372 222 465 268 C372 236 250 184 141 133 Z" fill="currentColor"/>
+        <path d="M226 380 C310 372 396 326 465 268 C398 340 302 388 226 380 Z" fill="currentColor"/>
+        <path d="M412 238 Q447 252 465 268 Q447 284 412 298 Q427 283 427 268 Q427 253 412 238 Z" fill="#C9A15A"/>
+      </svg>
+      <span>RAG<span class="wordmark-divider">\</span>智能问答</span>
+    </a>
+    <nav class="topbar-actions" aria-label="演示页面">
+      <span class="demo-label">动效原型</span>
+      <button id="themeToggle" class="text-button" type="button">米白版 →</button>
+      <a class="original-link" href="../chatgpt-ui-demo/login-dark.html" target="_blank" rel="noopener">原版对照 ↗</a>
+    </nav>
+  </header>
+
+  <main class="hero">
+    <section class="intro" aria-labelledby="headline">
+      <h1 id="headline">让每个回答<br>都有出处</h1>
+      <p class="subtitle">基于知识库的检索与问答</p>
+      <form id="loginForm" class="login-form" novalidate>
+        <div class="field">
+          <label for="username">用户名</label>
+          <input id="username" name="username" type="text" placeholder="请输入演示用户名" autocomplete="off" spellcheck="false" aria-describedby="usernameError" disabled>
+          <p id="usernameError" class="field-error" hidden>请输入用户名</p>
+        </div>
+        <div class="field">
+          <label for="password">密码</label>
+          <div class="password-wrap">
+            <input id="password" name="password" type="password" placeholder="请输入演示密码" autocomplete="off" aria-describedby="passwordError" disabled>
+            <button id="passwordToggle" class="password-toggle" type="button" aria-label="显示密码" aria-pressed="false" disabled>显示</button>
+          </div>
+          <p id="passwordError" class="field-error" hidden>请输入密码</p>
+        </div>
+        <button id="loginButton" class="submit" type="submit" disabled>登 录</button>
+        <p id="formStatus" class="form-status" role="status" aria-live="polite">独立设计演示，不连接真实账号。请使用演示信息。</p>
+      </form>
+    </section>
+
+    <section class="art" aria-label="RAG 双翼品牌动效">
+      <div id="artStage" class="art-stage" data-renderer="static">
+        <canvas id="logoCanvas" aria-hidden="true"></canvas>
+        <svg class="static-mark" viewBox="0 0 512 512" aria-hidden="true">
+          <g transform="translate(-116.7 -59.5) scale(1.23)">
+            <path d="M141 133 C252 170 372 222 465 268 C372 236 250 184 141 133 Z" fill="currentColor"/>
+            <path d="M226 380 C310 372 396 326 465 268 C398 340 302 388 226 380 Z" fill="currentColor"/>
+            <path d="M412 238 Q447 252 465 268 Q447 284 412 298 Q427 283 427 268 Q427 253 412 238 Z" fill="#C9A15A"/>
+          </g>
+        </svg>
+      </div>
+      <div class="art-controls">
+        <div class="texture-control" role="group" aria-label="动效纹理">
+          <button type="button" data-texture="dots" aria-pressed="false">细点</button>
+          <button type="button" data-texture="cross" aria-pressed="true">交叉</button>
+          <button type="button" data-texture="ascii" aria-pressed="false">字符</button>
+        </div>
+        <button id="motionToggle" class="motion-toggle" type="button" aria-pressed="false">暂停动效</button>
+      </div>
+      <p id="motionStatus" class="motion-status" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <noscript><p class="noscript-note">脚本未启用，当前展示静态 logo。登录演示和动效控制需要 JavaScript。</p></noscript>
+</body>
+</html>
