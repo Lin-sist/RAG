@@ -14,6 +14,7 @@
     uniform float u_dpr;
     uniform float u_time;
     uniform float u_mode;
+    uniform float u_trail;
     uniform vec3 u_ink;
     uniform vec3 u_accent;
     uniform sampler2D u_atlas;
@@ -26,7 +27,7 @@
       float wave = sin(x * 3.141593);
       float bend = sin(u_time * 0.44 + x * 2.6) * 0.06 * wave;
       float y = p.y * side + bend;
-      float outer = (0.88 + 0.11 * breathing) * pow(taper, 1.05);
+      float outer = (0.88 + 0.11 * breathing) * pow(taper, 1.18);
       float inner = 0.88 * pow(taper, 3.25) - (0.15 + 0.20 * breathing) * wave;
       float edge = 0.018 + 0.035 * taper;
       float face = smoothstep(inner - edge, inner + edge, y)
@@ -36,23 +37,52 @@
       float light = 0.43 + 0.46 * ridge + 0.11 * sin(x * 3.8 + u_time * 0.32 + side);
       return face * clamp(light, 0.0, 1.0);
     }
-    float field(vec2 p) {
-      float breath = 0.5 + 0.5 * sin(u_time * 0.60);
+    vec2 pose(vec2 p) {
       // A shallow yaw and asymmetric bend suggest a folded surface without a 3D mesh.
       p.x /= 0.86 + 0.12 * sin(u_time * 0.30 + 0.8);
       p.y -= 0.05 * sin(u_time * 0.36) * p.x;
       p.y /= 0.84 + 0.13 * sin(u_time * 0.60);
+      return p;
+    }
+    float field(vec2 p) {
+      float breath = 0.5 + 0.5 * sin(u_time * 0.60);
       float core = max(sail(p, 1.0, breath), sail(p, -1.0, breath));
       float veil = max(sail(p + vec2(0.10, 0.035), 1.0, breath),
                        sail(p + vec2(0.07, -0.03), -1.0, breath)) * 0.19;
       float value = max(core, veil);
-      // The right-facing inner opening echoes the negative space in the brand mark.
-      float notchX = (p.x - 0.32) / 0.49;
-      float notchWidth = 0.24 * (1.0 - clamp(notchX, 0.0, 1.0));
-      float notch = smoothstep(0.0, 0.11, notchX)
-                  * (1.0 - smoothstep(0.92, 1.02, notchX))
-                  * (1.0 - smoothstep(notchWidth - 0.015, notchWidth + 0.015, abs(p.y)));
-      return value * (1.0 - notch);
+      // A curved seam follows the folded face and exits through both wing edges.
+      // There is no vertical closing edge or separate triangular cutout.
+      float roundedY = max(0.0, sqrt(p.y * p.y + 0.0009) - 0.03);
+      float seamX = 0.60 - 1.45 * pow(roundedY, 1.18);
+      seamX += 0.025 * sin(u_time * 0.44) * p.y;
+      float seamWidth = (0.020 + 0.008 * breath) * (1.0 + 0.55 * abs(p.y));
+      float seam = 1.0 - smoothstep(seamWidth, seamWidth + 0.022, abs(p.x - seamX));
+      // The outer fold is a lighter veil, not a heavy closed arrowhead.
+      float frontFold = smoothstep(seamX + seamWidth + 0.022, seamX + seamWidth + 0.10, p.x);
+      value *= mix(1.0, 0.48 + 0.10 * breath, frontFold);
+      return value * (1.0 - seam);
+    }
+    float convergence(vec2 p) {
+      // Analytic lanes: scattered packets enter a broad tail and narrow toward the tip.
+      // A single local lane is evaluated per cell; no particle loop or extra draw pass.
+      float t = (p.x + 1.70) / 2.70;
+      float x = clamp(t, 0.0, 1.0);
+      float envelope = 1.00 * pow(1.0 - x, 1.32) + 0.024;
+      float sway = 0.060 * sin(p.x * 2.0 + u_time * 0.35) * (1.0 - x);
+      float row = (p.y - sway) / envelope * 7.0;
+      float lane = floor(row + 0.5);
+      float seed = fract(sin(lane * 47.13 + 3.7) * 4375.85);
+      float center = lane / 7.0 * envelope + sway;
+      float width = 0.006 + 0.007 * seed + 0.004 * (1.0 - x);
+      float line = 1.0 - smoothstep(width, width + 0.009, abs(p.y - center));
+      float phase = fract(t * (7.0 + seed * 3.0) - u_time * (0.38 + seed * 0.14) + seed);
+      float packet = smoothstep(0.48, 0.86, phase) * (1.0 - smoothstep(0.86, 0.99, phase));
+      // Most fragments fade into the wings; only selected streams reach the output.
+      float selected = step(0.72, seed);
+      float filtering = mix(1.0 - smoothstep(0.48, 0.75, x), 1.0, selected);
+      float bounds = smoothstep(0.0, 0.10, t) * (1.0 - smoothstep(0.96, 1.01, t));
+      bounds *= 1.0 - smoothstep(6.5, 7.5, abs(lane));
+      return line * (0.06 + 0.94 * packet) * filtering * bounds * (0.44 - 0.12 * x);
     }
     void main() {
       // Integral device-pixel cells avoid beat patterns when a fine grid is sampled.
@@ -61,7 +91,9 @@
       vec2 cell = (grid + 0.5) * spacing;
       vec2 p = (cell - 0.5 * u_resolution) / (0.5 * min(u_resolution.x, u_resolution.y));
       p *= 1.10;
-      float strength = field(p);
+      // Give incoming data space on the left, without changing the approved fold.
+      vec2 logo = pose((p - vec2(0.21 * u_trail, 0.0)) / mix(1.0, 0.82, u_trail));
+      float strength = max(field(logo), convergence(logo) * u_trail);
       vec2 local = fract(gl_FragCoord.xy / spacing) - 0.5;
       float coverage = 0.0;
       float alpha = 0.0;
@@ -82,7 +114,7 @@
         coverage = texture2D(u_atlas, uv).a;
         alpha = coverage * smoothstep(0.02, 0.16, strength) * (0.38 + 0.62 * strength);
       }
-      float tip = smoothstep(0.83, 0.97, p.x) * (1.0 - smoothstep(0.02, 0.12, abs(p.y)));
+      float tip = smoothstep(0.78, 0.96, logo.x) * (1.0 - smoothstep(0.025, 0.12, abs(logo.y)));
       vec3 color = mix(u_ink, u_accent, tip * 0.80);
       gl_FragColor = vec4(color * alpha, alpha);
     }
@@ -105,6 +137,7 @@
     let disposed = false;
     let lost = false;
     let texture = 'cross';
+    let trailEnabled = true;
     let dpr = 1;
 
     const report = () => options.onState?.({
@@ -113,6 +146,7 @@
       reducedMotion: media.matches,
       visible: visible && !document.hidden,
       texture,
+      trailEnabled,
     });
     function hex(value) {
       const s = value.trim().replace('#', '');
@@ -155,7 +189,7 @@
         const position = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(position);
         gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-        uniforms = Object.fromEntries(['resolution', 'dpr', 'time', 'mode', 'ink', 'accent', 'atlas'].map(name => [name, gl.getUniformLocation(program, `u_${name}`)]));
+        uniforms = Object.fromEntries(['resolution', 'dpr', 'time', 'mode', 'trail', 'ink', 'accent', 'atlas'].map(name => [name, gl.getUniformLocation(program, `u_${name}`)]));
         const chars = ' .:+*#%@';
         const glyphCanvas = document.createElement('canvas');
         glyphCanvas.width = 8 * 32;
@@ -195,6 +229,7 @@
       gl.uniform1f(uniforms.dpr, dpr);
       gl.uniform1f(uniforms.time, elapsed);
       gl.uniform1f(uniforms.mode, { dots: 0, cross: 1, ascii: 2 }[texture]);
+      gl.uniform1f(uniforms.trail, trailEnabled ? 1 : 0);
       gl.uniform3fv(uniforms.ink, hex(style.getPropertyValue('--art-ink')));
       gl.uniform3fv(uniforms.accent, hex(style.getPropertyValue('--art-accent')));
       gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -256,7 +291,8 @@
     synchronize();
     return {
       setTexture(next) { if (!['dots', 'cross', 'ascii'].includes(next)) return; texture = next; draw(); report(); },
-      setPaused(paused) { manualPaused = !!paused; synchronize(); },
+      setPaused(paused) { manualPaused = !!paused; synchronize(); if (manualPaused) draw(); },
+      setTrailEnabled(enabled) { trailEnabled = !!enabled; draw(); report(); },
       refresh: draw,
       destroy() {
         if (disposed) return;

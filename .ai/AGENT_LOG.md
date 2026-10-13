@@ -3311,3 +3311,27 @@
 - 范围安全：旧Demo四项冻结blob保持一致，原始logo/正式前端/F5/活动指针/API/DTO/后端/模型/评测/依赖/锁文件/受保护配置不变；用户已有日志内容和PROJECT_REPORT.md完整保留，暂存0、HEAD31ad3f8，无commit/push/PR/部署。
 - 剩余风险：形体为独立程序化近似，非原作者源码或实际3D；软件WebGL不能证明真实设备性能；正式Vue接入仍待独立定级与验收。建议提交：feat(原型): 新增RAG登录双翼点阵动效演示。
 - Commit: pending
+
+## 2026-10-13 · 首版独立原型提交补录
+
+- 上轮独立原型已随现有提交 `389df6dfa3270776109b4cf66f25779807f82e38`（feat(原型): 新增RAG登录双翼点阵动效演示,新增项目总结文档）保存；本轮启动Git核验工作区干净、main ahead1。本补录不新增提交，不改上一记录，不借用其他任务提交授权。
+
+## 2026-10-13 · rag-login-motion-demo 前缘留白精修（Type B）
+
+- 授权与范围：用户要求更贴近参考、指出前方三角形别扭；修改prototype/rag-login-motion-demo/js/logo-motion.js轮廓场，补充同目录README.md/VALIDATION.md，本日志仅追加；F5活动指针及契约不改。
+- 执行事实：封闭三角切口替换为贯通上下翼缘的弯曲窄缝；汇聚处圆润，外折面降低密度，翼缘略加弯曲；使用原生WebGL、不新增依赖。布局、表单、三纹理、原始品牌路径及生命周期保持既有实现。
+- 验证：node --check受影响shader和git diff --check通过；既有Chrome155/独立headless/SwiftShader封闭浏览器检查39/39 PASS，页面异常/外部请求/非GET请求0；深浅三视口六张矩阵逐图复核、横向溢出0，运动阶段与纹理/降级补图分别保存。证据为本线程visualizations/login-motion/refinement-2026-10-13/，首版图不覆盖。初跑静态服务连接拒绝，启动127.0.0.1:8767静态服务后复验通过，失败不计通过。
+- 跳过与复用：正式rag-frontend源码/配置/依赖未改，复用上轮vue-tsc/Vite成功build，不重复F5测试；Java/Python评测未改不执行；真实auth/provider/embedding/rerank/ask/judge/feedback/delete预算及费用0。真实手机/物理GPU/Safari/Firefox/长时功耗与Lighthouse未新增验证，原因及限制沿用VALIDATION首版记录。
+- 范围安全：只改shader与说明/执行记录；旧Demo、logo源、正式前端、F5/OpenSpec/活动指针、后端/API/DTO/评测/依赖/锁文件/受保护配置及PROJECT_REPORT提交保持不变，暂存0，HEAD389df6d；无commit/push/PR/发布/部署。
+- 剩余风险：形体仍为独立程序化近似，视觉还原程度需用户动态观察；软件WebGL不证明真实硬件性能。建议提交：fix(原型): 将登录动效三角切口改为曲面留白。
+- Commit: pending
+
+## 2026-10-13 · rag-login-motion-demo 数据汇聚拖尾（Type B）
+
+- 授权与范围：用户希望拖尾表达“从万千数据中汇集出真正有用的信息”；修改prototype/rag-login-motion-demo/下index.html、css/login.css、js/logo-motion.js、js/demo.js、README.md、VALIDATION.md；本日志仅追加，保留上一轮未提交曲面精修，不接管F5/活动指针。
+- 执行事实：宽尾稀疏碎片沿收束弧线向右移动，多数在双翼内淡出，少数细流抵达金色尖端；保持开放窄缝，原生单次片元绘制、无新依赖/业务数据。默认开启的拖尾开关支持键盘与静态对比，控制行可换行；暂停时同步最后内部时间，避免切换微跳一帧。本地资源版本参数解决内置预览旧脚本缓存；README/VALIDATION相同重复段落去重，原记录结论保留。
+- 验证：两项node --check、git diff --check通过；已有Chrome155/独立headless/SwiftShader封闭检查44/44 PASS，异常/外部请求/非GET请求0，storage写入0；新增开关默认状态、同相位切换、Space恢复原帧、reduce静态切换、无脚本禁用及降级覆盖。三尺寸深浅六张矩阵/动态画面复核，无页面或控制行横向溢出；内置预览实际开关0→1复核可用。证据为本线程visualizations/login-motion/convergence-2026-10-13/，前轮证据保留；最初暂停帧对比失败修正后重验，不计失败为通过。
+- 跳过与复用：正式前端源码/配置/依赖不变，复用首版含vue-tsc的正式build，不重复F5/Maven/Python评测；真实auth/provider/embedding/rerank/ask/judge/feedback/delete调用0。真实手机/物理GPU/Safari/Firefox/长时性能未验证，Lighthouse工具缺失，不新增依赖。
+- 范围安全：仅原型及执行说明；旧Demo、原logo、正式前端、F5/OpenSpec/活动指针、后端/API/DTO/评测/依赖/锁文件/受保护配置与PROJECT_REPORT不变，暂存0，HEAD389df6d，无commit/push/PR/发布/部署。
+- 剩余风险：动效是品牌视觉隐喻和程序化近似，不证明真实数据筛选或设备性能；需用户动态观察审美效果。建议提交：feat(原型): 为登录双翼动效加入数据汇聚拖尾。
+- Commit: pending

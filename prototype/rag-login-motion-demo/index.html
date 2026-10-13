@@ -6,9 +6,9 @@
   <meta name="color-scheme" content="dark light">
   <title>登录动效原型 · RAG 智能问答</title>
   <link rel="icon" href="./assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/login.css">
-  <script src="./js/logo-motion.js" defer></script>
-  <script src="./js/demo.js" defer></script>
+  <link rel="stylesheet" href="./css/login.css?v=20261013-convergence">
+  <script src="./js/logo-motion.js?v=20261013-convergence" defer></script>
+  <script src="./js/demo.js?v=20261013-convergence" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -50,7 +50,7 @@
       </form>
     </section>
 
-    <section class="art" aria-label="RAG 双翼品牌动效">
+    <section class="art" aria-label="RAG 双翼品牌动效：万千数据汇成有用的信息">
       <div id="artStage" class="art-stage" data-renderer="static">
         <canvas id="logoCanvas" aria-hidden="true"></canvas>
         <svg class="static-mark" viewBox="0 0 512 512" aria-hidden="true">
@@ -67,8 +67,10 @@
           <button type="button" data-texture="cross" aria-pressed="true">交叉</button>
           <button type="button" data-texture="ascii" aria-pressed="false">字符</button>
         </div>
+        <button id="trailToggle" class="motion-toggle trail-toggle" type="button" aria-pressed="true" disabled>汇聚拖尾</button>
         <button id="motionToggle" class="motion-toggle" type="button" aria-pressed="false">暂停动效</button>
       </div>
+      <p class="art-caption">万千数据，汇成有用的信息</p>
       <p id="motionStatus" class="motion-status" role="status" aria-live="polite"></p>
     </section>
   </main>
