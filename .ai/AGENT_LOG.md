@@ -3372,3 +3372,21 @@
 - 验证：归档结构、逐字baseline、受影响链接和git diff --check在迁移后核验；不以阶段变化重复F5全套。
 - 执行环境：Python直写baseline被沙箱拒绝，发生在首个写入前；改用允许的apply_patch完成同一授权范围，无扩大权限。
 - 跳过与风险：真实auth/backend/provider/反馈/删除调用及费用0；F5-LIVE/F5-CLEANUP登记unknown。OpenSpec CLI未安装不称官方validate；Java/评测未改不运行Maven/Python评测。offset漂移/逐删限流/反馈迟到/标题降级/本机图像保存及大chunk/1px限制保留。
+
+## 2026-10-14 · F5归档核验与F1退出修复（Type B）
+
+- Commit: pending。用户授权先F5接受归档、再修复F1退出；默认手动提交，无暂存/commit/push/PR/发布/部署授权。起点HEAD ceeef1971805717b18f4b3b05537a9d29eaddd22；F5已有工程提交31ad3f811f5f6147a7b54b0acb8bff3dbada988b。本日志只追加。
+- 归档执行补录：受限Move-Item与apply_patch目录迁移被拒绝，初次Move-Item非终止错误后的输出不作为成功证据；经路径边界核验，在已授权范围用平台批准的提升执行Move-Item后成功。六文件/四requirements与11scenarios逐字baseline后缀、45受影响相对链接及IDLE核验PASS；原visual-evidence JSON逐字保留。OpenSpec CLI未安装，不称官方validate。
+- F1范围与文件：rag-frontend/src/components/layout/AppSidebar.vue、src/composables/useAuth.ts、tests/logout.test.mjs、tests/shell-settings.test.mjs、tests/preview.mjs；docs/roadmap/frontend-f1-logout-acceptance.md及总规划补录、本日志。复用既有/auth/logout，不改API/DTO/后端。只接已有契约内logout bug，不新增OpenSpec change。
+- 实现事实：同会话共享一个带凭据POST，请求期间侧栏禁用/显示等待；接口失败不刷新/重试，清本地两token和userInfo、replace登录页，并明确服务端未确认。退出捕获sessionRevision，迟到成功/失败不清新会话、不导航新登录；已有refresh迟到不恢复退出身份。抽屉清理与焦点机制沿用既有逻辑。
+- 验证：F1聚焦8/8 PASS；全套node --test --test-timeout=20000 tests/*.test.mjs 90/90 PASS；node node_modules/vue-tsc/bin/vue-tsc.js -b及node node_modules/vite/bin/vite.js build PASS，既有大chunk警告保留。preview node --check PASS；错误方法/缺场景/缺bearer/refresh/未知写入五项封闭HTTP拒绝检查PASS。初跑虚拟路由隔离与旧shell的ElMessage/window.navigator边界失败，修fixture后重验，不计失败为通过。
+- 浏览器：专用连接尝试因信任桥不可用失败，改用CUA内置浏览器。桌面暗色成功/503两场景各一次authenticated合成POST，disabled等待态、成功login页、Enter触发/失败未确认toast及退出后/chat→/login?redirect=/chat通过；三图存于本线程visualizations并已查看。无新浏览器矩阵/物理触屏结论。F5既有矩阵复用，本轮73图hash一致。
+- 跳过：真实auth/backend/provider/ask/upload/embedding/rerank/judge/feedback/delete调用、业务写入及费用0，无真实provider/model/timeout/retry结果。Java/Python评测未改，不跑Maven/Python评测；OpenSpec CLI不可用不安装。正式F1build完成后只改测试预览/文档，复用成功build和90/90，不重复无关全套。
+- 安全与剩余风险：后端/API/DTO/auth store/requestClient/SSE/parser、模型/评测、依赖/锁文件、prototype冻结Demo/登录原型及受保护配置不变，暂存0、HEAD不变。F5-LIVE/F5-CLEANUP与F4债务继续保留；真实服务端撤销unknown，沿用30秒请求timeout，失败可能未撤销服务端；移动实际浏览器/触屏和大chunk风险保留。建议分两次手动提交：docs(前端): 接受F5客户端契约并归档；fix(前端): 修复F1退出接线及会话竞态保护。
+- 收尾门禁：精确baseline追加、原日志前缀及visual-evidence元数据保全、允许路径、49条受影响链接、新文件whitespace、新增文档敏感模式和git diff --check全部PASS；三个F1截图hash已核验。真实调用0、暂存0、HEAD仍ceeef197。封闭预览收尾停止、临时浏览器标签关闭。
+
+## 2026-10-14 · F5提交补录与F1提交授权
+
+- 上一执行提交：`f595099d3bd9e5210022b8e6578e8cfcf0588340`，`docs(前端): 接受F5客户端契约并归档`。本条只追加真实hash，不改历史。
+- 用户本轮明确授权Agent提交commit并继续前端剩余Demo接入。F5归档与F1实现精确分开暂存；共享日志/规划使用索引级内容选择，工作区全文保留。首次索引补丁因旧CRLF不匹配失败，PowerShell管道引入CRLF后改用字节输入与git clean过滤器规范化，通过cached diff --check后提交；失败不计通过。
+- F1同代码、依赖与环境的90/90、正式build和合成浏览器证据复用，提交本身不重复全套验证。提交不含push/PR/发布/部署或真实业务调用。Commit: pending（F1）。

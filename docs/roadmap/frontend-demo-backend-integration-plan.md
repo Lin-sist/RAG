@@ -511,3 +511,5 @@ R1、R2a、R3a 不依赖 C21，也不要求 C18 先归档；R2b、R3b受真实�
 ## 16. F5客户端接受归档与F1退出修复（2026-10-14）
 
 用户明确“先F5接受归档，然后继续F1退出修复”。F5四项delta/11场景已逐字接受并移入[归档验收](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/acceptance.md)，ACTIVE_TASK恢复IDLE；实现31ad3f8后的正式前端无改动，复用既有工程/视觉证据并重验73图hash。真实权限/反馈持久化/删除清理仍unknown，登记F5-LIVE/F5-CLEANUP，不称完整Demo闭环。F1按已有/auth/logout契约内Type B修复侧栏接线、重复操作和迟到会话清理；真实auth/provider调用预算0，默认手动提交，不含push/PR/发布/部署。
+
+F1退出修复已完成客户端验证：复用useAuth.logout接线，单次带凭据POST、防重复、失败本地清理并明确服务端未确认，旧响应不清新会话；90/90回归和含vue-tsc的正式build通过，实际内置浏览器合成成功/503/键盘退出与受保护页面重定向通过。详见[F1验收](frontend-f1-logout-acceptance.md)。真实服务端撤销unknown；保持Type B/IDLE和手动提交，F2/F6/C19/C20及登录动效集成未启动。

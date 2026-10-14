@@ -58,6 +58,8 @@ function streamFixture(req, res, scenario) {
 const streamScenarios = new Set(['chat-stream', 'chat-scroll', 'chat-stop', 'chat-incomplete', 'chat-read-failure', 'chat-no-answer', 'chat-unsupported', 'chat-invalid', 'chat-error', 'chat-cancelled', 'chat-invalid-terminal', 'chat-duplicate-terminal', 'chat-post-terminal', 'chat-unknown-event'])
 const f4Scenarios = new Set(['f4', 'f4-empty', 'f4-list-error', 'f4-stats-error', 'f4-docs-error', 'f4-403', 'f4-404', 'f4-upload-mixed', 'f4-upload-unconfirmed', 'f4-poll-error', 'f4-task-running', 'f4-task-failed', 'f4-task-cancelled', 'f4-task-matrix', 'f4-delete-error', 'f4-refresh-error', 'f4-long'])
 const f4Sessions = new Map()
+const f1Sessions = new Map()
+const f1Scenarios = new Set(['f1-success', 'f1-failure'])
 function newF4Session(scenario) {
   const bases = [kb, { ...kb, id: 902, name: '合成知识库 · 阅读资料', isPublic: true }, { ...kb, id: 903, name: '合成知识库 · 空资料', documentCount: 0 }].map(item => ({ ...item }))
   if (scenario === 'f4-long') { bases[0].name = '合成长名称用于核对完整阅读与窄屏布局'.repeat(8); bases[0].description = '这是合成描述，不代表业务数据。'.repeat(35); bases[0].vectorCollection = 'fixture_long_collection_'.repeat(12) }
@@ -212,6 +214,11 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
     server.middlewares.use((req, res, next) => {
       const url = req.url?.split('?')[0]
       const pageFixture = new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('fixture')
+      if (!url?.startsWith('/api/') && !url?.startsWith('/auth/') && f1Scenarios.has(pageFixture)) {
+        const id = randomUUID(); f1Sessions.set(id, { scenario: pageFixture, calls: [] })
+        res.setHeader('Set-Cookie', `f1-preview=${id}; Path=/; SameSite=Strict`)
+      }
+      if (url === '/__f1-evidence' && req.method === 'GET') return fixtureReply(res, 200, [...f1Sessions.values()])
       if (!url?.startsWith('/api/') && f5Scenarios.has(pageFixture)) {
         const id = randomUUID(); f5Sessions.set(id, newF5Session(pageFixture))
         res.setHeader('Set-Cookie', `f5-preview=${id}; Path=/; SameSite=Strict`)
@@ -230,6 +237,17 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
         return
       }
       if (!url?.startsWith('/api/') && !url?.startsWith('/auth/')) return next()
+      if (url === '/auth/logout') {
+        const id = req.headers.cookie?.match(/(?:^|;\s*)f1-preview=([\w-]+)/)?.[1], session = f1Sessions.get(id)
+        if (req.method !== 'POST') return fixtureReply(res, 405, null)
+        if (!session) return fixtureReply(res, 405, null)
+        const authenticated = req.headers.authorization === 'Bearer fixture-access'
+        session.calls.push({ method: req.method, authenticated })
+        if (!authenticated) return fixtureReply(res, 401, null)
+        // F1专用内存场景；仅检查按钮等待与降级，不代理真实auth。
+        setTimeout(() => fixtureReply(res, session.scenario === 'f1-failure' ? 503 : 200, undefined), 1500)
+        return
+      }
       let data, status = 200
       const scenario = new URL(req.headers.referer || 'http://127.0.0.1').searchParams.get('fixture')
       const f5Id = req.headers.cookie?.match(/(?:^|;\s*)f5-preview=([\w-]+)/)?.[1], f5Session = f5Sessions.get(f5Id)

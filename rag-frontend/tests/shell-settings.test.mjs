@@ -17,7 +17,12 @@ const server = await createServer({ configFile: false, optimizeDeps: { noDiscove
   resolve: { alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } },
   plugins: [vue(), { name: 'shell-request-fixtures', enforce: 'pre', resolveId(id) {
     if (id.endsWith('/api/history')) return '\0history-fixture'
+    if (id === 'shell-auth-fixture') return '\0shell-auth-fixture'
+  }, transform(code, id) {
+    if (id.endsWith('AppSidebar.vue')) return code.replace("from '@/composables/useAuth'", "from 'shell-auth-fixture'")
+      .replace("import { ElMessage } from 'element-plus'", 'const ElMessage = { warning() {} }')
   }, load(id) {
+    if (id === '\0shell-auth-fixture') return `export const useAuth = () => ({ logout: async () => 'confirmed' })`
     if (id === '\0history-fixture') return `export let handler; export function setHandler(fn) { handler = fn }
       export const getHistoryPage = (page, size) => handler(page, size)`
   } }], appType: 'custom' })

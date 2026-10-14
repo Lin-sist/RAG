@@ -22,7 +22,7 @@
         <button @click="openSettings('general')"><Settings :size="16" />设置</button>
         <button @click="openSettings('profile')"><User :size="16" />个人资料</button>
         <button @click="theme.setPreference(theme.effectiveTheme === 'dark' ? 'light' : 'dark')"><Sun v-if="theme.effectiveTheme === 'dark'" :size="16" /><Moon v-else :size="16" />{{ theme.effectiveTheme === 'dark' ? '切换浅色' : '切换深色' }}</button>
-        <div class="menu-divider"></div><button @click="handleLogout"><LogOut :size="16" />退出登录</button>
+        <div class="menu-divider"></div><button :disabled="loggingOut" :aria-busy="loggingOut" @click="handleLogout"><LogOut :size="16" />{{ loggingOut ? '正在退出…' : '退出登录' }}</button>
       </div>
     </div>
   </aside>
@@ -35,8 +35,12 @@ import BrandMark from '@/components/common/BrandMark.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { getHistoryPage } from '@/api/history'
+import { useAuth } from '@/composables/useAuth'
+import { ElMessage } from 'element-plus'
 const emit = defineEmits<{ (e: 'open-settings', tab: 'general' | 'profile'): void }>()
 const route = useRoute(), router = useRouter(), auth = useAuthStore(), theme = useThemeStore()
+const { logout } = useAuth()
+const loggingOut = ref(false)
 const collapsed = ref(false), mobile = ref(false), drawerOpen = ref(false), userMenuOpen = ref(false)
 const sidebar = ref<HTMLElement>(), menuTrigger = ref<HTMLButtonElement>(), userMenu = ref<HTMLElement>()
 const historyList = ref<{ id: string; title: string }[]>([])
@@ -114,7 +118,21 @@ async function openSettings(tab: 'general' | 'profile') {
   emit('open-settings', tab)
 }
 function navigate(path: string) { userMenuOpen.value = false; closeDrawer(); void router.push(path) }
-function handleLogout() { auth.clearAuth(); navigate('/login') }
+async function handleLogout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    const result = await logout()
+    if (result === 'superseded') return
+    userMenuOpen.value = false
+    closeDrawer()
+    if (result === 'unconfirmed') ElMessage.warning('本地登录信息已清除，服务端退出未确认。')
+  } catch {
+    ElMessage.warning('本地登录信息已清除，登录页跳转失败，请刷新页面。')
+  } finally {
+    loggingOut.value = false
+  }
+}
 function outsideClick(event: MouseEvent) { if (!(event.target as HTMLElement).closest('.user-bar')) userMenuOpen.value = false }
 function resize() { mobile.value = media.matches; if (!mobile.value) closeDrawer() }
 onMounted(() => {
@@ -153,6 +171,7 @@ h2 { font-size: 12px; font-weight: 500; padding: 0 12px 8px; color: var(--rag-te
 .user-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .user-menu { position: absolute; bottom: calc(100% + 8px); left: 0; width: 250px; padding: 6px; background: var(--rag-bg-overlay); border: 1px solid var(--rag-border); border-radius: 13px; box-shadow: var(--rag-shadow-lg); z-index: 55; }
 .user-menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border-radius: 8px; font-size: 13px; text-align: left; }
+.user-menu button:disabled { cursor: wait; opacity: .65; }
 .menu-divider { height: 1px; background: var(--rag-border); margin: 5px; }
 .collapsed { width: 76px; flex-basis: 76px; }
 .collapsed .sidebar-header { flex-direction: column; gap: 6px; }

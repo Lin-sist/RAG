@@ -5,6 +5,9 @@ import router from '@/router'
 import { refreshSession } from '@/api/request'
 import { ApiError } from '@/api/errors'
 
+type LogoutResult = 'confirmed' | 'unconfirmed' | 'superseded'
+const logoutFlights = new WeakMap<object, { revision: number; promise: Promise<LogoutResult> }>()
+
 export function useAuth() {
     const authStore = useAuthStore()
 
@@ -17,11 +20,25 @@ export function useAuth() {
         return authData
     }
 
-    async function logout() {
-        try { await logoutApi() } finally {
+    function logout(): Promise<LogoutResult> {
+        const revision = authStore.sessionRevision
+        const existing = logoutFlights.get(authStore)
+        if (existing?.revision === revision) return existing.promise
+        const promise = (async (): Promise<LogoutResult> => {
+            let result: LogoutResult = 'confirmed'
+            try { await logoutApi() } catch { result = 'unconfirmed' }
+            // 请求属于发起退出的会话；迟到结果不能清除后来登录的身份。
+            if (authStore.sessionRevision !== revision) return 'superseded'
             authStore.clearAuth()
-            router.push('/login')
+            await router.replace('/login')
+            return result
+        })()
+        logoutFlights.set(authStore, { revision, promise })
+        const release = () => {
+            if (logoutFlights.get(authStore)?.promise === promise) logoutFlights.delete(authStore)
         }
+        void promise.then(release, release)
+        return promise
     }
 
     async function refresh() {
