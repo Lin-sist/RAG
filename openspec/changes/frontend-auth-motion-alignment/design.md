@@ -2,7 +2,7 @@
 
 ## 当前事实与冻结参考
 
-2026-10-14，F5归档提交f595099，F1退出提交9061f1c；无其他活动change。AuthLayout原有直接root/localStorage逻辑已按Type B改为唯一theme store，独立验证不并入本change。真实LoginView/useAuth/requestClient与路由保持既有契约。
+2026-10-14，F5归档提交f595099，F1退出提交9061f1c；本change是唯一活动任务。AuthLayout原有直接root/localStorage逻辑已按Type B改为唯一theme store，独立验证不并入本change。真实LoginView/useAuth/requestClient与路由保持既有契约。
 
 参考为prototype/rag-login-motion-demo最终已确认版本，迁移前复核Git blob：logo-motion.js `920f2a3504e230aa9accccae7d6081704574a6f2`；login.css `a56b7e602ee5ff290430d4d45f4e9f7d65ffb1b6`；assets/logo.svg `23d5dd8414bc8aed3442e629413fd06db0cb15fa`。原型读取作参考，不修改或从其demo.js迁入假登录流程。
 
@@ -32,7 +32,7 @@ Vue在onMounted创建renderer，在主题watch的nextTick刷新色彩，在onUnm
 - rag-frontend/src/utils/loginLogoMotion.ts（新增）
 - rag-frontend/src/assets/login-logo.svg（由冻结SVG另存，源不改）
 - rag-frontend/tests/login-motion.test.mjs（新增）
-- rag-frontend/tests/preview.mjs（仅封闭登录失败/等待fixture，若需要）
+- rag-frontend/tests/preview.mjs（仅封闭登录失败/等待fixture及冻结参考五资源白名单）
 - 本change下proposal/design/tasks/specs/rag-system/spec/acceptance/visual-evidence，.ai/ACTIVE_TASK.md、.ai/AGENT_LOG.md与docs/roadmap/frontend-demo-backend-integration-plan.md、technical-debt.md（仅相关记录）
 
 禁止后端/API/DTO/store/requestClient/路由/SSE/评测/provider/依赖/lock、受保护配置、prototype与旧Demo修改。LoginView行为不改；发现表单契约缺口停止并另定范围，不借本装饰change修认证。
@@ -50,12 +50,12 @@ Vue在onMounted创建renderer，在主题watch的nextTick刷新色彩，在onUnm
 
 ### 决策1：采用哪个装饰版本
 - **面临的选择**：保留旧网格；迁入已确认双翼；重新画一版双翼。
-- **选了哪个 + 为什么**：拟迁入已确认双翼，沿用最新用户认可的曲面/拖尾/过渡，待用户事前闸门确认。
+- **选了哪个 + 为什么**：已按2026-10-14用户批准迁入已确认双翼，沿用认可曲面/拖尾/过渡。
 - **放弃的代价**：旧网格无法承接本轮品牌探索；重画会再次引入审美偏差与无关优化。
 
 ### 决策2：怎样进入Vue产品代码
 - **面临的选择**：iframe嵌入完整原型；全局script加载；显式TypeScript模块与Vue组件。
-- **选了哪个 + 为什么**：拟用显式模块与组件，装饰生命周期归Vue、认证仍归既有表单，待用户事前闸门确认。
+- **选了哪个 + 为什么**：已按2026-10-14用户批准使用显式模块与组件，装饰生命周期归Vue、认证仍归既有表单。
 - **放弃的代价**：iframe会带入假表单/重复主题与布局；全局script会留下跨路由共享状态和不清晰销毁责任。
 
 ### 决策3：主题与故障处理

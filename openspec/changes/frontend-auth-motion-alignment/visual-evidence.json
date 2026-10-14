@@ -1,0 +1,398 @@
+{
+  "status": "CLIENT_VALIDATED_AWAITING_ACCEPTANCE",
+  "date": "2026-10-14",
+  "sourceHead": "2259b0e49d0beaec7e158762a721837430002175",
+  "workingTree": "implementation not yet committed at capture",
+  "artifactRoot": "C:/Users/Lin/.codex/visualizations/2026/10/14/01a138a8-6928-70b3-b103-683ed642ae6c/login-integration",
+  "browser": "155.0.8059.41",
+  "renderer": "isolated Chrome / SwiftShader software WebGL",
+  "realCalls": 0,
+  "counts": {
+    "matrix": 6,
+    "reference": 6,
+    "supplement": 14,
+    "files": 26,
+    "uniqueHashes": 25
+  },
+  "images": [
+    {
+      "name": "formal-light-1440",
+      "kind": "matrix",
+      "sha256": "89c32d042e0f38e0a97abe35e6f8d22f3b0b8a9ffcc3a712dcb8aae46cf75a3e",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true,
+      "metrics": {
+        "renderer": "webgl",
+        "frame": "37",
+        "texture": "dots",
+        "opacity": "1.000",
+        "phase": "4.167",
+        "overflow": 0,
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "scale": 1,
+        "buttonBottom": 735.921875
+      },
+      "colors": {
+        "theme": "light",
+        "ink": "#34593d"
+      }
+    },
+    {
+      "name": "formal-dark-1440",
+      "kind": "matrix",
+      "sha256": "81f0816c6daf7264af0eb6a9927cf2f7575049122d53fa696a144001f7c37b61",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true,
+      "metrics": {
+        "renderer": "webgl",
+        "frame": "36",
+        "texture": "dots",
+        "opacity": "1.000",
+        "phase": "4.167",
+        "overflow": 0,
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "scale": 1,
+        "buttonBottom": 735.921875
+      },
+      "colors": {
+        "theme": "dark",
+        "ink": "#eeeeea"
+      }
+    },
+    {
+      "name": "formal-light-1024",
+      "kind": "matrix",
+      "sha256": "2f1fcf97847c50c72bbbc5fc795649564906798eee488c9a9a4b7c26c1043bae",
+      "imageSize": [
+        1024,
+        768
+      ],
+      "fullPage": true,
+      "metrics": {
+        "renderer": "webgl",
+        "frame": "37",
+        "texture": "dots",
+        "opacity": "1.000",
+        "phase": "4.171",
+        "overflow": 0,
+        "width": 1024,
+        "height": 768,
+        "dpr": 1,
+        "scale": 1,
+        "buttonBottom": 645.203125
+      },
+      "colors": {
+        "theme": "light",
+        "ink": "#34593d"
+      }
+    },
+    {
+      "name": "formal-dark-1024",
+      "kind": "matrix",
+      "sha256": "61362a7960ef7890d46b9d05f37876dd454d20c52152cb5ef3c94028230c662e",
+      "imageSize": [
+        1024,
+        768
+      ],
+      "fullPage": true,
+      "metrics": {
+        "renderer": "webgl",
+        "frame": "37",
+        "texture": "dots",
+        "opacity": "1.000",
+        "phase": "4.163",
+        "overflow": 0,
+        "width": 1024,
+        "height": 768,
+        "dpr": 1,
+        "scale": 1,
+        "buttonBottom": 645.203125
+      },
+      "colors": {
+        "theme": "dark",
+        "ink": "#eeeeea"
+      }
+    },
+    {
+      "name": "formal-light-390",
+      "kind": "matrix",
+      "sha256": "d4213ad5b18939b3bde344752a41981c1fdcf87ccc409804ab4e33490afbd745",
+      "imageSize": [
+        390,
+        869
+      ],
+      "fullPage": true,
+      "metrics": {
+        "renderer": "webgl",
+        "frame": "37",
+        "texture": "dots",
+        "opacity": "1.000",
+        "phase": "4.150",
+        "overflow": 0,
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "scale": 1,
+        "buttonBottom": 549.171875
+      },
+      "colors": {
+        "theme": "light",
+        "ink": "#34593d"
+      }
+    },
+    {
+      "name": "formal-dark-390",
+      "kind": "matrix",
+      "sha256": "139910c56e9fde510284d02de549d16f07a59aa26e01d85c6c7beed17050c15f",
+      "imageSize": [
+        390,
+        869
+      ],
+      "fullPage": true,
+      "metrics": {
+        "renderer": "webgl",
+        "frame": "37",
+        "texture": "dots",
+        "opacity": "1.000",
+        "phase": "4.167",
+        "overflow": 0,
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "scale": 1,
+        "buttonBottom": 549.171875
+      },
+      "colors": {
+        "theme": "dark",
+        "ink": "#eeeeea"
+      }
+    },
+    {
+      "name": "reference-light-1440",
+      "kind": "reference",
+      "sha256": "f4b379146739643b586a8d177fd90d7fee2c3b5aedec69c544dc3f8b0944b7b9",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "reference-dark-1440",
+      "kind": "reference",
+      "sha256": "0b32d60a460fe6bb48a8e1ea1d8cee9414aa7e0126706b41cf41542c69e84f50",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "reference-light-1024",
+      "kind": "reference",
+      "sha256": "cc8ff1dc6008e18c5e0413c0cf4b3c5cd37423743b99d4abb232eefcaba6d414",
+      "imageSize": [
+        1024,
+        768
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "reference-dark-1024",
+      "kind": "reference",
+      "sha256": "e831a170914c596ac283eacd1ced8e32172b891678a70551909076f0e0eabc62",
+      "imageSize": [
+        1024,
+        768
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "reference-light-390",
+      "kind": "reference",
+      "sha256": "9c13283664cfdb5438a86fbe5bfe8a489a8ab4348dce8d886406d81808378182",
+      "imageSize": [
+        390,
+        1023
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "reference-dark-390",
+      "kind": "reference",
+      "sha256": "21701c15b10b105e8dfa8996dca5f13e16fe6318d28bbe1963340b6bdaf34056",
+      "imageSize": [
+        390,
+        1023
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "initial-full",
+      "kind": "supplement",
+      "sha256": "d801581a2d317829b2a03f9d78f00c70289111389c750ad61157513f1ece415a",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "fade-out",
+      "kind": "supplement",
+      "sha256": "cb7e22c66f6d727ce09f7ef6538646bc3fc8e8fe02043a6147fa9937532889fb",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "transparent-switch",
+      "kind": "supplement",
+      "sha256": "d5bf8b138141e727a10039e11923430c46d1a6f312daa9800350b19af912ca54",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "fade-in",
+      "kind": "supplement",
+      "sha256": "6d2a0b28e277c9334ee870f4a9d7e03e860f91faae2d7801bef22cf650f7439c",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "cycle-cross",
+      "kind": "supplement",
+      "sha256": "a2915738b9e408e1fe5d11c67490d972e074d879be403587580503d65a7a7d5e",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "cycle-ascii",
+      "kind": "supplement",
+      "sha256": "83be7b81bb6dc56c372f52925aca97390576232ef9ba0392699109a9902ae982",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "cycle-dots",
+      "kind": "supplement",
+      "sha256": "2e77f9ff149aa8b068c024c2ba23aaccccc70a2770a14253e23a7e4d7c35cd82",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "reduce",
+      "kind": "supplement",
+      "sha256": "a431a3f88d62c8c4adf1ea7824e23afed6d42a86932abb7a825af26ab029d14f",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "context-lost",
+      "kind": "supplement",
+      "sha256": "d8c219a39851abf4203bf9ab69ffc2d234360f54414e6ca6d28f48aae7f5dd40",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "fallback",
+      "kind": "supplement",
+      "sha256": "d8c219a39851abf4203bf9ab69ffc2d234360f54414e6ca6d28f48aae7f5dd40",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "login-pending",
+      "kind": "supplement",
+      "sha256": "0a3d86c9f347fab2d9391755e4067de6684ebbf32aa484b1094e160b54f6e01c",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "login-rejected-stable",
+      "kind": "supplement",
+      "sha256": "32b1accaed1eab5d308eef3c24cc56ddc3c99e627f5f0f893dec60002f0fdf2a",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "flow-return-stable",
+      "kind": "supplement",
+      "sha256": "fbb7ade2c781ffe465bbd81731af8da95ce911877e49982c345db9f018f81089",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    },
+    {
+      "name": "flow-pending",
+      "kind": "supplement",
+      "sha256": "699857e018c778de9f7b012011fc750d90a871078844ac5173d73db544f5a47c",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "fullPage": true
+    }
+  ],
+  "inspected": true,
+  "excluded": [
+    "login-rejected.png",
+    "flow-return.png"
+  ],
+  "reports": {
+    "results.json": "4f3df3029d3ca33ea9b47d09b516365d32ac6a70d39ab23ffd0566bbedbcb781",
+    "flow-results.json": "501a7e89dd2b2ade23b9025df672b2de6e59f2d56c5ebf3523a0a4c0d006b484",
+    "stable-results.json": "6330452b6d33559f4659d8b0332306c47429b460ae24d9acc85f7799e4f62d42",
+    "initial-results.json": "189b604181ecd92443c862402b15591b25ccd62d57132a4d58e9203b5f753666"
+  },
+  "limitations": [
+    "Software WebGL does not verify physical GPU/mobile/browser performance",
+    "Full-page narrow screenshots may be taller than viewport; submit stays in first screen",
+    "Initial failed locator report retained; two transition screenshots excluded",
+    "No real auth/backend/provider evidence; no pixel-match score"
+  ]
+}

@@ -1,10 +1,10 @@
 # F2剩余：正式登录页双翼动效接入
 
-Report status：`PROPOSAL_READY_AWAITING_APPROVAL`。2026-10-14用户要求提交F5/F1并继续剩余Demo接入。F5/F1已分别提交；已有契约内登录主题修复作为独立Type B先完成。此包为下一Type C事前审查，不代表双翼动效已迁入或整体Demo已验收。
+Report status：`CLIENT_VALIDATED_AWAITING_ACCEPTANCE`。2026-10-14用户明确“批准登录动效接入（推荐）”，按本包完成客户端实施与验证。F5/F1和登录主题修复已分别提交；沿用Agent本地提交授权。批准实施不等于验收、baseline接受或归档。
 
 ## 问题与结果
 
-正式/login仍使用旧LoginPixelArt网格轮换；用户已在独立prototype中确认双翼曲面、数据汇聚拖尾及细点/交叉/字符自然淡入淡出。拟把该冻结效果组件化接入AuthLayout，保留现有真实LoginView表单和统一theme store；装饰层失败不得阻断登录。
+规划时正式/login使用旧LoginPixelArt网格轮换；用户已确认独立双翼曲面、拖尾与自然过渡。本轮已按批准方案将冻结效果接入AuthLayout，保留真实LoginView和唯一theme store，装饰失败静态降级。
 
 ## 范围
 
@@ -18,9 +18,9 @@ Report status：`PROPOSAL_READY_AWAITING_APPROVAL`。2026-10-14用户要求提�
 | 分类 | 本包事实 |
 | --- | --- |
 | confirmed | F2首批框架/主题/设置、F3/F4/F5客户端已接受；F1退出客户端已验证并提交；原型存在且独立38/38运行证据已记录 |
-| partial | 登录视觉已用旧Demo双列版，但仍是旧网格装饰；登录统一主题小修复独立完成，不证明动效接入 |
-| planned | 双翼动效模块化、正式/login降级/生命周期与视觉矩阵、其后F6客户端整体验收 |
-| unknown | 正式Vue中的WebGL/上下文恢复/性能及真实认证撤销；原型SwiftShader结果不外推新集成或物理设备 |
+| confirmed（客户端） | 正式/login双翼组件/降级/生命周期与指定深浅三视口已验证，主题修复独立继承 |
+| planned | 用户接受/baseline归档及其后F6客户端整体验收 |
+| unknown | 物理GPU/手机/长时性能、真实认证撤销；新Vue WebGL软件浏览器证据不外推硬件 |
 | out_of_scope | F4/F5真实闭环与清理、账号/注册/改密/权限、全量搜索、多轮、评测/MCP/工作台、后端/API/DTO/provider/C19/C20 |
 
 ## 授权与交付
@@ -30,3 +30,7 @@ Report status：`PROPOSAL_READY_AWAITING_APPROVAL`。2026-10-14用户要求提�
 完成标准为设计列出的正式build、行为/生命周期验证、六组深浅/三视口视觉与真实UI合成流程；分类和残余项分别报告。不将本包通过扩张为F6或完整真实Demo。
 
 [design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总规划](../../../docs/roadmap/frontend-demo-backend-integration-plan.md)
+
+## 实施收尾（2026-10-14）
+
+102/102、含vue-tsc的正式build、完整41项浏览器复验及6正式/6参考/14补充文件已核验，真实业务调用0，详见[acceptance](acceptance.md)与[visual-evidence](visual-evidence.json)。沿用Agent本地提交授权，仍待用户接受，不自动接受baseline/归档或启动F6。

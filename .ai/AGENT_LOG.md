@@ -3411,3 +3411,27 @@
 - 验证与跳过：规划结构、受影响相对链接、requirement重名/场景数、冻结hash/源文件保护、whitespace与敏感新增检查收尾执行。文档变化复用主题7/7与正式build，无无关重跑；未改Java/Python评测，不运行Maven/Python评测；OpenSpec CLI缺失不安装、不称CLI通过。
 - 风险：正式Vue WebGL、降级/生命周期、三视口视觉矩阵和物理设备性能仍planned/unknown，原型38/38不外推集成。无baseline接受/归档/push/PR/部署；新提案按已授权本地提交保存，实施待批准。
 - 规划收尾：2 requirements/6 scenarios、4条三行决策、39条受影响链接、无baseline重名、冻结三blob、新文件whitespace/敏感模式、日志HEAD前缀及git diff --check全部PASS。相对2b459da无产品代码新改动；0.3批准与实施/验收tasks未勾选，用户选择已呈交，尚未收到批准不实施。主题7/7与正式build成功结果复用；浏览器截图已查看，无真实业务请求。
+
+## 2026-10-14 · 登录动效规划提交补录
+
+- 上一执行提交：`2259b0e49d0beaec7e158762a721837430002175`，`docs(前端): 建立正式登录双翼动效接入方案`。本条仅追加真实hash，不改历史。
+
+## 2026-10-14 · frontend-auth-motion-alignment 实施启动
+
+- Commit: pending。用户明确批准本审查包，复用Agent本地提交授权；ACTIVE_TASK改ACTIVE，真实业务调用预算0，接受/归档/push/PR/发布/部署未授权。适用design决策1–4；已批准原型版本与模块/组件方案，决策正文只记design。
+- 起点2259b0e/main ahead7，工作区干净；Preflight报告Node/npm/direct build可用、不安装。冻结三blob复核；源代码shader字符串原样保留，复制静态SVG不改源，组件接入AuthLayout局部颜色，表单/认证/主题store不改。
+- 修改范围：LoginLogoMotion.vue、loginLogoMotion.ts、login-logo.svg、AuthLayout.vue及本change/活动指针/日志；后续聚焦测试和合成预览仅设计允许路径。类型/构建、行为和浏览器验证正在执行，未标通过。补丁旧上下文未匹配的失败已通过实际文件重读纠正，不将尝试计为成功证据。
+
+## 2026-10-14 · frontend-auth-motion-alignment 客户端实施与验证收尾
+
+- Commit: pending。沿用本具体实施批准和Agent提交授权；客户端验收呈交，ACTIVE保持ACTIVE，用户接受/baseline/归档/push/PR/发布/部署未授权。适用design决策1–4，已批准的参考与模块方案记在design，本日志只记执行。
+- 文件：四个产品源码/资源（AuthLayout、LoginLogoMotion、loginLogoMotion.ts、login-logo.svg），两个测试/封闭preview；本change proposal/design/tasks/acceptance/visual-evidence、ACTIVE_TASK、总规划和本日志。旧LoginPixelArt不删除，真实LoginView/useAuth/API/theme store不改。
+- 实现事实：冻结shader两个字符串及SVG逐字一致；原生typed renderer只公开mount/refresh/destroy，无window全局、假表单、控制栏或新依赖。Vue在mounted/主题watch/unmounted管理生命周期；十类渲染失败/缺能力/部分setup失败静态，完整reduce/离屏/隐藏/上下文和资源释放保护；canvas装饰aria-hidden，无新增tab stop。
+- 工程：新增9项聚焦，完整node --test --test-timeout=20000 tests/*.test.mjs 102/102 PASS；vue-tsc -b及Vite正式build PASS，既有大chunk警告。第一次Vue测试app._instance未就绪导致ref错误，使用当前component instance后重验通过。提升Preflight看到npm但普通受限PATH找不到npm.cmd，改已有direct Node等价build，无安装/升级；失败不计通过。preview node --check通过，未知参考/原型写入/refresh/未知API四项封闭HTTP拒绝检查PASS。
+- 浏览器：专用browser-client连接因信任桥不可用失败，使用既有Chrome155.0.8059.41、已安装Playwright库的隔离headless/SwiftShader测试，另CUA内置浏览器实际观察webgl及主题。完整复验41/41、定向9/9、稳定补采3/3通过，异常/外部请求0；三纹理全循环/透明切换/reduce跨6.3秒/离屏/真实context loss+restore/静态fallback/表单校验拒绝等待防重复/成功卸载旧canvas/F1退出重挂与主题/键盘均通过。只读fixture cookie setup不改Pinia数据，完整复验2个合成login POST+1个合成logout POST，其他独立运行另记报告。
+- 失败与采证：首轮完整流程最后菜单定位超时，原因是整页刷新后userInfo中性降级而脚本仍按合成用户名定位；保留原script/initial-results，改只读GET设cookie并保持SPA状态，定向及完整重验通过，不改认证迁就测试。登录拒绝/返回说明图采于校验或主题过渡早期，等待DOM/CSS/消息稳定重采两图；旧两图保留并排除，未作为正式验收图。102/102/正式build时的产品源码之后未再改，只改采证脚本/文档，成功验证复用。
+- 视觉：六组CSS三视口×深浅，6正式/6参考/14补充=26文件、25不同hash逐图查看；static context-loss/fallback同图分别绑定已验证场景。提交首屏可达、overflow0、scale1；完整frame矩阵用reduce固定但另有动态证明；窄屏fullPage高度可超过viewport，不混淆。JSON清单含hash/图像及DOM尺度/排除图/报告hash，原图/脚本保留本线程visualizations，不报像素匹配率。
+- 跳过：真实auth/backend/provider/ask/upload/embedding/rerank/judge/feedback/delete与业务写入/费用0，无真实provider/model/timeout/retry证据；Java/Python评测未改不跑Maven/Python评测；OpenSpec CLI缺失不安装不称官方validate，结构/链接/冻结/范围/diff替代核验收尾执行。没有新全页面F6或真实硬件/GPU/手机/其他浏览器/OS后台/长时功耗结论。
+- 安全与风险：按design allowlist修改，表单/API/DTO/认证store/requestClient/路由/SSE、后端/模型/评测、依赖/锁文件、prototype/旧Demo、baseline/其他归档、受保护配置不变；日志只追加。软件WebGL不能证明物理设备性能，品牌近似不证明真实数据筛选；大chunk、F4/F5真实债务及F6/C19/C20独立保留。建议提交：feat(前端): 接入正式登录双翼动效。
+- 交付门禁：14文件allowlist、48受影响链接、2 requirements/6 scenarios不变、冻结三blob/日志前缀、26图hash与PNG/DOM尺寸、四报告hash、新文件whitespace与新增敏感模式、git diff --check全部PASS；暂存前stage=0。按已有授权提交计划内文件，原图不暂存，ACTIVE等待用户接受，不接受baseline/归档。
+- 暂存检查补录：cached diff --check发现新增renderer末尾多一空行，首次提交在门禁处停止，未产生commit；只去掉非语义EOF空行后重新暂存核验。同逻辑/配置/依赖的102/102与正式build复用，不重复无关运行。

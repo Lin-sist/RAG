@@ -60,6 +60,8 @@ const f4Scenarios = new Set(['f4', 'f4-empty', 'f4-list-error', 'f4-stats-error'
 const f4Sessions = new Map()
 const f1Sessions = new Map()
 const f1Scenarios = new Set(['f1-success', 'f1-failure'])
+const authMotionSessions = new Map()
+const authMotionScenarios = new Set(['auth-motion-error', 'auth-motion-loading'])
 function newF4Session(scenario) {
   const bases = [kb, { ...kb, id: 902, name: '合成知识库 · 阅读资料', isPublic: true }, { ...kb, id: 903, name: '合成知识库 · 空资料', documentCount: 0 }].map(item => ({ ...item }))
   if (scenario === 'f4-long') { bases[0].name = '合成长名称用于核对完整阅读与窄屏布局'.repeat(8); bases[0].description = '这是合成描述，不代表业务数据。'.repeat(35); bases[0].vectorCollection = 'fixture_long_collection_'.repeat(12) }
@@ -214,6 +216,21 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
     server.middlewares.use((req, res, next) => {
       const url = req.url?.split('?')[0]
       const pageFixture = new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('fixture')
+      if (!url?.startsWith('/api/') && !url?.startsWith('/auth/') && authMotionScenarios.has(pageFixture)) {
+        const id = randomUUID(); authMotionSessions.set(id, { scenario: pageFixture, calls: 0 })
+        res.setHeader('Set-Cookie', `auth-motion-preview=${id}; Path=/; SameSite=Strict`)
+      }
+      if (url === '/__auth-motion-evidence' && req.method === 'GET') return fixtureReply(res, 200, [...authMotionSessions.values()])
+      if (url?.startsWith('/__motion/')) {
+        if (req.method !== 'GET') return fixtureReply(res, 405, null)
+        const name = url.slice('/__motion/'.length) || 'index.html'
+        const allowed = { 'index.html': 'text/html; charset=utf-8', 'css/login.css': 'text/css', 'js/logo-motion.js': 'text/javascript', 'js/demo.js': 'text/javascript', 'assets/logo.svg': 'image/svg+xml' }
+        if (!allowed[name]) return fixtureReply(res, 404, null)
+        readFile(new URL('../../prototype/rag-login-motion-demo/' + name, import.meta.url)).then(content => {
+          res.setHeader('Content-Type', allowed[name]); res.end(content)
+        }).catch(() => fixtureReply(res, 404, null))
+        return
+      }
       if (!url?.startsWith('/api/') && !url?.startsWith('/auth/') && f1Scenarios.has(pageFixture)) {
         const id = randomUUID(); f1Sessions.set(id, { scenario: pageFixture, calls: [] })
         res.setHeader('Set-Cookie', `f1-preview=${id}; Path=/; SameSite=Strict`)
@@ -237,6 +254,16 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
         return
       }
       if (!url?.startsWith('/api/') && !url?.startsWith('/auth/')) return next()
+      const authMotionId = req.headers.cookie?.match(/(?:^|;\s*)auth-motion-preview=([\w-]+)/)?.[1]
+      const authMotionSession = authMotionSessions.get(authMotionId)
+      if (url === '/auth/login' && req.method === 'POST' && authMotionSession) {
+        authMotionSession.calls++
+        const status = authMotionSession.scenario === 'auth-motion-error' ? 401 : 200
+        const send = () => fixtureReply(res, status, { accessToken: 'fixture-access', refreshToken: 'fixture-refresh', userInfo: { id: 901, username: '合成验收', email: '' } }, '合成登录失败，未连接真实服务')
+        if (authMotionSession.scenario === 'auth-motion-loading') setTimeout(send, 3000)
+        else send()
+        return
+      }
       if (url === '/auth/logout') {
         const id = req.headers.cookie?.match(/(?:^|;\s*)f1-preview=([\w-]+)/)?.[1], session = f1Sessions.get(id)
         if (req.method !== 'POST') return fixtureReply(res, 405, null)

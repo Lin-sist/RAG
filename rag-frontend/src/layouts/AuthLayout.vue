@@ -23,14 +23,14 @@
         <p class="auth-subtitle">基于知识库的检索与问答</p>
         <router-view />
       </section>
-      <LoginPixelArt class="auth-art" />
+      <LoginLogoMotion class="auth-art" />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import LoginPixelArt from '@/components/common/LoginPixelArt.vue'
+import LoginLogoMotion from '@/components/common/LoginLogoMotion.vue'
 import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
@@ -43,6 +43,8 @@ function toggleTheme() {
 
 <style scoped>
 .auth-layout {
+  --art-ink: #34593d;
+  --art-accent: #9b7b40;
   --auth-ink: #1a1915;
   --auth-ink-soft: #3e3b33;
   --auth-muted: #75705f;
@@ -68,6 +70,8 @@ function toggleTheme() {
   font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 .auth-layout--dark {
+  --art-ink: #eeeeea;
+  --art-accent: #c9a15a;
   --auth-ink: #f5f5f5;
   --auth-ink-soft: #d9d9d9;
   --auth-muted: #8f8f8f;
