@@ -2,21 +2,12 @@
   'use strict';
   const root = document.documentElement;
   const themeButton = document.getElementById('themeToggle');
-  const motionButton = document.getElementById('motionToggle');
-  const trailButton = document.getElementById('trailToggle');
   const motionStatus = document.getElementById('motionStatus');
-  const textureButtons = [...document.querySelectorAll('[data-texture]')];
-  let paused = false;
   const motion = window.RagLogoMotion.mount(document.getElementById('logoCanvas'), {
     onState(state) {
       const fallback = state.renderer !== 'webgl';
-      motionButton.disabled = fallback || state.reducedMotion;
-      textureButtons.forEach(button => { button.disabled = fallback; });
-      trailButton.disabled = fallback;
-      trailButton.setAttribute('aria-pressed', String(state.trailEnabled));
-      motionButton.textContent = fallback ? '静态展示' : state.reducedMotion ? '静态展示' : state.paused ? '继续动效' : '暂停动效';
-      motionButton.setAttribute('aria-pressed', String(state.paused));
       motionStatus.textContent = fallback ? '当前浏览器使用静态 logo。' : state.reducedMotion ? '已遵循系统的降低动态效果设置。' : '';
+      motionStatus.hidden = !motionStatus.textContent;
     },
   });
   // Keep prototype preferences in memory. No localStorage or credential persistence.
@@ -25,14 +16,6 @@
     root.dataset.theme = light ? 'light' : 'dark';
     themeButton.textContent = light ? '黑白版 →' : '米白版 →';
     motion.refresh();
-  });
-  textureButtons.forEach(button => button.addEventListener('click', () => {
-    textureButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-    motion.setTexture(button.dataset.texture);
-  }));
-  motionButton.addEventListener('click', () => { paused = !paused; motion.setPaused(paused); });
-  trailButton.addEventListener('click', () => {
-    motion.setTrailEnabled(trailButton.getAttribute('aria-pressed') !== 'true');
   });
 
   const form = document.getElementById('loginForm');

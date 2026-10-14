@@ -15,6 +15,7 @@
     uniform float u_time;
     uniform float u_mode;
     uniform float u_trail;
+    uniform float u_opacity;
     uniform vec3 u_ink;
     uniform vec3 u_accent;
     uniform sampler2D u_atlas;
@@ -114,6 +115,7 @@
         coverage = texture2D(u_atlas, uv).a;
         alpha = coverage * smoothstep(0.02, 0.16, strength) * (0.38 + 0.62 * strength);
       }
+      alpha *= u_opacity;
       float tip = smoothstep(0.78, 0.96, logo.x) * (1.0 - smoothstep(0.025, 0.12, abs(logo.y)));
       vec3 color = mix(u_ink, u_accent, tip * 0.80);
       gl_FragColor = vec4(color * alpha, alpha);
@@ -137,6 +139,9 @@
     let disposed = false;
     let lost = false;
     let texture = 'cross';
+    const textures = ['dots', 'cross', 'ascii'];
+    const autoCycle = options.autoCycle !== false;
+    let cycleElapsed = 0;
     let trailEnabled = true;
     let dpr = 1;
 
@@ -189,7 +194,7 @@
         const position = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(position);
         gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-        uniforms = Object.fromEntries(['resolution', 'dpr', 'time', 'mode', 'trail', 'ink', 'accent', 'atlas'].map(name => [name, gl.getUniformLocation(program, `u_${name}`)]));
+        uniforms = Object.fromEntries(['resolution', 'dpr', 'time', 'mode', 'trail', 'opacity', 'ink', 'accent', 'atlas'].map(name => [name, gl.getUniformLocation(program, `u_${name}`)]));
         const chars = ' .:+*#%@';
         const glyphCanvas = document.createElement('canvas');
         glyphCanvas.width = 8 * 32;
@@ -222,6 +227,13 @@
     }
     function draw() {
       if (disposed || lost || !program) return;
+      // Cycle on the active animation clock, so hidden/reduced-motion views stay still.
+      if (autoCycle) texture = textures[Math.floor(cycleElapsed / 6) % textures.length];
+      const phase = cycleElapsed % 6;
+      const ease = value => { const x = Math.max(0, Math.min(1, value)); return x * x * (3 - 2 * x); };
+      // Leave a 0.3s transparent interval across each mode switch. Reduced motion
+      // always shows a full static frame, including when enabled midway through a fade.
+      const opacity = autoCycle && !media.matches ? ease(phase - 0.15) * ease(5.85 - phase) : 1;
       gl.useProgram(program);
       gl.viewport(0, 0, canvas.width, canvas.height);
       const style = getComputedStyle(stage);
@@ -230,11 +242,14 @@
       gl.uniform1f(uniforms.time, elapsed);
       gl.uniform1f(uniforms.mode, { dots: 0, cross: 1, ascii: 2 }[texture]);
       gl.uniform1f(uniforms.trail, trailEnabled ? 1 : 0);
+      gl.uniform1f(uniforms.opacity, opacity);
       gl.uniform3fv(uniforms.ink, hex(style.getPropertyValue('--art-ink')));
       gl.uniform3fv(uniforms.accent, hex(style.getPropertyValue('--art-accent')));
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       canvas.dataset.frame = String(Number(canvas.dataset.frame || 0) + 1);
       canvas.dataset.phase = elapsed.toFixed(3);
+      canvas.dataset.texture = texture;
+      canvas.dataset.opacity = opacity.toFixed(3);
     }
     function resize() {
       if (disposed) return;
@@ -247,8 +262,15 @@
     const running = () => !disposed && !lost && !!program && !manualPaused && !media.matches && visible && !document.hidden;
     function frame(now) {
       raf = 0;
-      if (!running()) { if (!disposed) report(); return; }
-      if (lastTick) elapsed += Math.min((now - lastTick) / 1000, 0.1);
+      if (!running()) {
+        if (!disposed) { if (media.matches) draw(); report(); }
+        return;
+      }
+      if (lastTick) {
+        const delta = Math.min((now - lastTick) / 1000, 0.1);
+        elapsed += delta;
+        cycleElapsed += delta;
+      }
       lastTick = now;
       // Cap expensive draws at 30fps. Time is continuous across skipped display frames.
       if (!lastDraw || now - lastDraw >= 1000 / 30) { draw(); lastDraw = now; }

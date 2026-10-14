@@ -3335,3 +3335,27 @@
 - 范围安全：仅原型及执行说明；旧Demo、原logo、正式前端、F5/OpenSpec/活动指针、后端/API/DTO/评测/依赖/锁文件/受保护配置与PROJECT_REPORT不变，暂存0，HEAD389df6d，无commit/push/PR/发布/部署。
 - 剩余风险：动效是品牌视觉隐喻和程序化近似，不证明真实数据筛选或设备性能；需用户动态观察审美效果。建议提交：feat(原型): 为登录双翼动效加入数据汇聚拖尾。
 - Commit: pending
+
+## 2026-10-14 · 数据汇聚拖尾提交补录
+
+- 上轮原型改动已由现有提交845416faccfdc1f721cc38768727d4d800b81f35（feat(原型): 为登录双翼动效加入数据汇聚拖尾）保存；本轮启动时工作区干净、main ahead2。本补录不改历史记录，不新增提交或借用提交授权。
+
+## 2026-10-14 · rag-login-motion-demo 自动纹理轮换（Type B）
+
+- 授权与范围：用户确认暂停进一步视觉优化，要求细点/交叉/字符归为自动循环并移除下方按钮和暂停文字；修改prototype/rag-login-motion-demo/的index.html、css/login.css、js/logo-motion.js、js/demo.js、README.md、VALIDATION.md；本日志仅追加，不接管F5。
+- 执行事实：默认细点→交叉→字符→细点，每种6秒有效播放时间、18秒一轮，拖尾默认开启，认可的曲面shader保持。移除控制DOM/事件绑定/专属CSS，正常状态隐藏空状态说明。轮换复用现有RAF时钟，reduce/隐藏/离屏/销毁同步停止，无新定时器或依赖；本地资源版本参数更新。
+- 验证：两项node --check、git diff --check通过；已有Chrome155/独立headless/SwiftShader实际检查30/30 PASS，完整循环的交叉/字符/细点阶段和三尺寸深浅截图复核、横向溢出0，登录按钮首屏可达；无控制DOM与暂停文字、reduce跨轮换间隔冻结、离屏恢复、上下文恢复、destroy/remount、file://、无脚本与本地表单覆盖。异常/外部请求/非GET请求/storage写入均0；内置预览刷新确认控制行消失。证据为本线程visualizations/login-motion/cycle-2026-10-14/。静态服务连接拒绝及检查选择器误命中运行记录的失败已修正重验，不计为通过。
+- 跳过与复用：正式前端与首版成功build时的源码/配置/依赖保持一致，复用含vue-tsc的正式build；未改Java/Python评测，不运行相关测试。真实auth/provider/embedding/rerank/ask/judge/feedback/delete调用0；真实手机/物理GPU/Safari/Firefox/长时功耗与Lighthouse未新增验证，限制见VALIDATION。
+- 范围安全：只改本原型及说明记录；原logo、旧Demo、正式前端、F5/OpenSpec/活动指针、后端/API/评测/依赖/锁文件/受保护配置及PROJECT_REPORT不改。暂存0，HEAD845416f；无commit/push/PR/发布/部署。
+- 剩余风险：软件WebGL验证不证明真实设备性能；视觉探索本轮收起，不做新的形体优化。建议提交：refactor(原型): 自动轮换登录动效纹理并移除控制按钮。
+- Commit: pending
+
+## 2026-10-14 · rag-login-motion-demo 轮换淡入淡出（Type B）
+
+- 授权与范围：用户补充希望当前画面结束后渐融背景、下一形态再出来；在本轮自动轮换上修改js/logo-motion.js整体透明度、index.html资源版本、README/VALIDATION，日志只追加。纹理轮换与控制行移除范围沿用上一记录，不继续优化图形几何。
+- 执行事实：每段6秒包含约1秒平滑淡入、3.7秒完整展示、约1秒平滑淡出，相邻段合计0.3秒纯背景，完全透明时切换纹理；预乘alpha正确同步衰减。reduce始终重绘完整静态画面，修正媒体变化事件尚未同步而停止RAF时的半透明停留。
+- 验证：已有Chrome155/独立headless/SwiftShader最终38/38 PASS，完整循环、旧形态淡出、三次透明切换、新形态部分透明淡入及过渡中reduce全可见且跨6秒冻结通过；无控制行、降级/恢复、离屏、destroy/remount、file://、无脚本与表单覆盖，异常/外部请求/非GET/storage写入0。完整与切换帧像素检查通过，源码语法与git diff --check通过；失败reduce检查修正重验，不计通过。证据为本线程visualizations/login-motion/fade-cycle-2026-10-14/，旧阶段证据保留。
+- 跳过与复用：正式前端源码/配置/依赖未改，复用含vue-tsc的正式build；未改Java/Python评测，不运行相关测试，真实业务调用0。真实手机/GPU/Safari/Firefox/长时功耗及Lighthouse未新增实测，限制沿用VALIDATION。
+- 范围安全：仅独立原型与说明记录，原始曲面shader除整体alpha新增两行保持，原SVG/旧Demo/正式前端/F5/OpenSpec/活动指针/后端/API/依赖/评测/受保护配置不改，暂存0，HEAD845416f，无commit/push/PR/部署。
+- 剩余风险：软件WebGL不能证明真实设备性能；本轮完成用户指定过渡后暂停视觉优化。建议提交：feat(原型): 自动轮换登录动效并加入淡入淡出过渡。
+- Commit: pending

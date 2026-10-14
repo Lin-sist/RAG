@@ -6,9 +6,9 @@
   <meta name="color-scheme" content="dark light">
   <title>登录动效原型 · RAG 智能问答</title>
   <link rel="icon" href="./assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/login.css?v=20261013-convergence">
-  <script src="./js/logo-motion.js?v=20261013-convergence" defer></script>
-  <script src="./js/demo.js?v=20261013-convergence" defer></script>
+  <link rel="stylesheet" href="./css/login.css?v=20261014-fade-cycle2">
+  <script src="./js/logo-motion.js?v=20261014-fade-cycle2" defer></script>
+  <script src="./js/demo.js?v=20261014-fade-cycle2" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -61,19 +61,10 @@
           </g>
         </svg>
       </div>
-      <div class="art-controls">
-        <div class="texture-control" role="group" aria-label="动效纹理">
-          <button type="button" data-texture="dots" aria-pressed="false">细点</button>
-          <button type="button" data-texture="cross" aria-pressed="true">交叉</button>
-          <button type="button" data-texture="ascii" aria-pressed="false">字符</button>
-        </div>
-        <button id="trailToggle" class="motion-toggle trail-toggle" type="button" aria-pressed="true" disabled>汇聚拖尾</button>
-        <button id="motionToggle" class="motion-toggle" type="button" aria-pressed="false">暂停动效</button>
-      </div>
       <p class="art-caption">万千数据，汇成有用的信息</p>
-      <p id="motionStatus" class="motion-status" role="status" aria-live="polite"></p>
+      <p id="motionStatus" class="motion-status" role="status" aria-live="polite" hidden></p>
     </section>
   </main>
-  <noscript><p class="noscript-note">脚本未启用，当前展示静态 logo。登录演示和动效控制需要 JavaScript。</p></noscript>
+  <noscript><p class="noscript-note">脚本未启用，当前展示静态 logo。登录演示和自动动效需要 JavaScript。</p></noscript>
 </body>
 </html>
