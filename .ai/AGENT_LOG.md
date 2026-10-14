@@ -3398,3 +3398,16 @@
 - 验证：登录跟随系统/手动优先/跨布局复用/阻止存储不崩溃等新增3项及原主题4项共7/7 PASS；vue-tsc -b与Vite正式build PASS，既有大chunk提示保留。未改F1认证/历史/上传逻辑，复用90/90结果，不无关重跑。
 - 浏览器和文档收口继续执行；真实auth/backend/provider调用预算0。独立双翼动效迁移拟作为下一Type C规划，尚未迁入业务源。Commit: pending（主题修复）。
 - 主题修复收尾：实际内置浏览器/CUA封闭流程login从暗切浅→合成登录→侧栏显示“切换深色”→侧栏切暗→F1合成退出→login仍暗并显示“米白版”，主题跨路由一致；截图auth-theme-roundtrip.png已查看。只改AuthLayout逻辑及新增3项测试，不改CSS/几何/表单/路由/store/依赖或原型，git diff --check与新文件whitespace通过。7/7和正式build PASS；真实auth/backend/provider0，不新增全页面矩阵，系统变化/blocked storage由聚焦行为测试覆盖，物理设备和大chunk限制保留。复用上一轮浏览器连接不可用的已确认环境，使用可用CUA通道。
+
+## 2026-10-14 · 登录主题提交补录
+
+- 上一执行提交：`2b459da37f395a0f015cc68d2e6e0a50ef6d0c12`，`fix(前端): 统一登录页与应用主题状态`。仅追加真实hash，不改历史。
+
+## 2026-10-14 · frontend-auth-motion-alignment 事前审查包
+
+- Commit: pending。用户授权Agent提交及继续剩余Demo工程；新Type C具体范围仍需事前审查。本轮应用rag-openspec-change-workflow，proposal阶段只写文档，尚未批准时不迁移动效业务代码。
+- 文件：本change proposal/design/tasks/specs/rag-system/spec；ACTIVE_TASK改PLANNING；总规划当前事实更新；本日志只追加。已核对正式AuthLayout/LoginView/theme/旧网格、独立原型最终renderer/CSS/静态logo、决策记录模板。设计决策只放design，不重复到日志。
+- 事实：冻结原型三blob已记录；新包为2 requirements/6 scenarios及4条三行决策，实际接入与验证tasks保持未勾选。规划只涉及/login装饰与生命周期，真实业务调用预算0；F6、真实权限/撤销/闭环、账号/后端/API/DTO/provider/C19/C20排除。
+- 验证与跳过：规划结构、受影响相对链接、requirement重名/场景数、冻结hash/源文件保护、whitespace与敏感新增检查收尾执行。文档变化复用主题7/7与正式build，无无关重跑；未改Java/Python评测，不运行Maven/Python评测；OpenSpec CLI缺失不安装、不称CLI通过。
+- 风险：正式Vue WebGL、降级/生命周期、三视口视觉矩阵和物理设备性能仍planned/unknown，原型38/38不外推集成。无baseline接受/归档/push/PR/部署；新提案按已授权本地提交保存，实施待批准。
+- 规划收尾：2 requirements/6 scenarios、4条三行决策、39条受影响链接、无baseline重名、冻结三blob、新文件whitespace/敏感模式、日志HEAD前缀及git diff --check全部PASS。相对2b459da无产品代码新改动；0.3批准与实施/验收tasks未勾选，用户选择已呈交，尚未收到批准不实施。主题7/7与正式build成功结果复用；浏览器截图已查看，无真实业务请求。

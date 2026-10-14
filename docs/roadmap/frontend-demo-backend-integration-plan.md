@@ -29,20 +29,20 @@
 
 ### C. 当前模块快照
 
-其他模块沿用 2026-09-29 快照；应用框架与设置更新至 2026-10-01 首批验收范围。分类仅针对所述范围，不代表模块所有场景均通过。
+2026-10-14更新客户端事实；既有真实证据只覆盖各自指定目标/场景，不外推新增功能。分类仅针对所述范围，不代表模块所有场景均通过。
 
 | 模块 | 分类 | 已完成与剩余项 |
 | --- | --- | --- |
-| 登录/请求基础层 | partial | typed error、single-flight refresh、token rotate 已有实现及合成测试，有真实登录记录；正式侧栏退出仅清本地态，未调用现有 logout API |
+| 登录/请求基础层 | partial | F1退出已接API/会话保护并提交，90/90及合成浏览器通过；登录主题唯一所有者修复7/7/build及往返通过。双翼视觉接入planned，真实新退出撤销unknown |
 | 应用框架/侧栏/主题 | confirmed（首批合成/视觉） | 品牌、固定导航、最近20条状态、统一主题与首批响应式已验收归档，不代表全量页面完成 |
-| 知识库列表/详情 | partial | 已接 CRUD、统计、文档、本地筛选与局部表格视觉；未完整对齐 Demo 资料库布局 |
-| 上传/任务 | partial | 已接上传和任务轮询，专用 KB 上传解析已有真实证据；删除、失败恢复及完整浏览器路径不能据此外推通过 |
+| 知识库列表/详情 | confirmed（F4客户端） | 列表/网格/详情/统计/上传状态已接受归档；真实闭环与拖放证据债务继续保留 |
+| 上传/任务 | partial | F4客户端接受不明/原taskId只读恢复已验；真实创建→上传→问答完整闭环、拖放和清理仍有独立债务 |
 | 同步问答 | confirmed | 指定合成问题的真实回答、独立 citation、history 写入与回读通过，不代表整体生成质量 |
 | R5 结构化 SSE | partial | Chrome 单题 ANSWER、terminal citation 与 history 回读通过；39/39 合成测试及正式 build 通过；真实非答案/断连矩阵未完整验证 |
-| 历史记录 | partial | 列表、分组、筛选、详情和删除接线存在，真实成功记录可回读；仍为单轮 history |
-| 历史反馈 | confirmed | 真实评分/评论提交、回读及刷新后保留已验证 |
+| 历史记录 | confirmed（F5客户端） | 显式分页/本页查找/KB范围/删除快照与恢复已接受，单轮history保留；真实删除/权限仍unknown |
+| 历史反馈 | partial | 既有指定真实评分证据保留；F5记录归属/不明核查/我的反馈客户端已接受，新增真实持久化/异常路径unknown |
 | 设置 | confirmed（首批合成/视觉） | 常规外观、只读现有身份、中性缺失态、焦点与深浅/窄屏已验；无mock或未接账号操作，账号管理仍不在范围 |
-| 完整外观/搜索体验 | planned | 正式版未完整迁移；已加载列表筛选和全量服务端搜索必须区分 |
+| 完整外观/搜索体验 | partial | 已纳入页面客户端迁移已分阶段接受；剩余/login双翼装饰及F6全页面验收planned。历史/KB本页查找已完成，全量服务端搜索延后 |
 | 多轮 conversation/重命名 | out_of_scope | 本轮不新增会话实体，不以 history id 伪装 conversation id |
 | 引用原文精确定位 | unknown | 可展示现有 citation 片段；原文定位需另核查接口 |
 | 评测/MCP/可观测/知识源/研究任务工作台 | out_of_scope | 不在当前迁移范围，Demo 样例不等于真实管理接口 |
@@ -513,3 +513,9 @@ R1、R2a、R3a 不依赖 C21，也不要求 C18 先归档；R2b、R3b受真实�
 用户明确“先F5接受归档，然后继续F1退出修复”。F5四项delta/11场景已逐字接受并移入[归档验收](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/acceptance.md)，ACTIVE_TASK恢复IDLE；实现31ad3f8后的正式前端无改动，复用既有工程/视觉证据并重验73图hash。真实权限/反馈持久化/删除清理仍unknown，登记F5-LIVE/F5-CLEANUP，不称完整Demo闭环。F1按已有/auth/logout契约内Type B修复侧栏接线、重复操作和迟到会话清理；真实auth/provider调用预算0，默认手动提交，不含push/PR/发布/部署。
 
 F1退出修复已完成客户端验证：复用useAuth.logout接线，单次带凭据POST、防重复、失败本地清理并明确服务端未确认，旧响应不清新会话；90/90回归和含vue-tsc的正式build通过，实际内置浏览器合成成功/503/键盘退出与受保护页面重定向通过。详见[F1验收](frontend-f1-logout-acceptance.md)。真实服务端撤销unknown；保持Type B/IDLE和手动提交，F2/F6/C19/C20及登录动效集成未启动。
+
+## 17. F2剩余登录页收口与F6分流（2026-10-14）
+
+用户授权Agent提交commit并继续工程；F5归档f595099、F1退出9061f1c及统一登录主题2b459da已保存。本轮主题修复7/7及正式build、封闭浏览器登录/侧栏/退出往返通过，真实请求0。下一切片为[frontend-auth-motion-alignment](../../openspec/changes/frontend-auth-motion-alignment/proposal.md)：只迁已确认双翼装饰，保留真实表单/统一主题，明确Vue生命周期/静态降级与六组视觉矩阵；ACTIVE_TASK为PLANNING，尚未迁移动效。新Type C具体事前审查包待批准；本地commit授权保持，push/PR/发布/部署不包含。
+
+后续F6在该独立切片完成后做/login、/chat、/kb、/kb/:id、/history、/chat/:id及设置的全页面客户端视觉/键盘/状态审计，复用未变工程证据，不把客户端矩阵代替F4/F5真实闭环、清理或C19/C20质量证据。全量搜索、多轮、账号管理与工作台继续延后，真实外调先单独披露授权。
