@@ -97,4 +97,4 @@ CSS视口1440×900、1024×768、390×844 × light/dark六组，每组历史有�
 - **选了哪个 + 为什么**：选一个F5客户端change、真实预算0、默认手动提交；F4债务/C19/C20保持独立。
 - **放弃的代价**：跨阶段扩大副作用/验收面；借旧授权超目标/载荷/责任；客户端证据不覆盖本轮持久化/质量收益。
 
-[proposal](proposal.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [正式路由](../../../rag-frontend/src/router/index.ts) · [历史API](../../../rag-frontend/src/api/history.ts)
+[proposal](proposal.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [正式路由](../../../../rag-frontend/src/router/index.ts) · [历史API](../../../../rag-frontend/src/api/history.ts)

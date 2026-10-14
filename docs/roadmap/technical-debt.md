@@ -138,3 +138,11 @@
 - `.ai/AGENT_LOG.md`：只追加执行证据；
 - `openspec/specs/`：accepted 长期契约；
 - `docs/roadmap/iteration-blueprint.md`：v6 长期方向，不替代 active change。
+
+## F5 客户端归档后的证据债务（2026-10-14）
+
+F5按[客户端验收](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/acceptance.md)接受归档，合成验证不等于真实业务闭环。
+
+- F5-LIVE（unknown）：专用账号/历史ID上的分页、权限、反馈提交/读回/刷新及限流尚无本轮真实证据；需另披露目标、请求预算及副作用并授权。
+- F5-CLEANUP（unknown）：真实单删/批量部分失败及删除后反馈关联行为未验证；删除清理需另授权，不能推断原子清空或关联反馈已删除。
+- 保留offset快照并发漂移、逐删限流、反馈空GET不能排除迟到写入、我的反馈一次列表/题目ID降级、既有大chunk及窄屏底边取整限制。F4债务/F6/C19/C20独立保留，当前真实调用预算0。

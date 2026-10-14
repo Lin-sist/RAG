@@ -3359,3 +3359,16 @@
 - 范围安全：仅独立原型与说明记录，原始曲面shader除整体alpha新增两行保持，原SVG/旧Demo/正式前端/F5/OpenSpec/活动指针/后端/API/依赖/评测/受保护配置不改，暂存0，HEAD845416f，无commit/push/PR/部署。
 - 剩余风险：软件WebGL不能证明真实设备性能；本轮完成用户指定过渡后暂停视觉优化。建议提交：feat(原型): 自动轮换登录动效并加入淡入淡出过渡。
 - Commit: pending
+
+## 2026-10-14 · 前轮提交补录
+
+- 原型轮换与淡入淡出已由现有提交ceeef19保存；F5客户端实现已由31ad3f8保存。仅补录现有真实提交，不修改历史、不借用提交授权。
+
+## 2026-10-14 · frontend-history-feedback-alignment 接受归档
+
+- Commit: pending。用户明确“F5接受归档”，只接受已交付客户端范围；默认手动提交，无Agent提交/push/PR/发布/部署授权。适用design决策1–6。
+- 修改：四项delta/11场景逐字追加rag-system baseline；六个change文件迁移2026-10-14归档目录，修正相对链接与接受状态；更新ACTIVE_TASK为IDLE、总规划、技术债并追加本日志。visual-evidence.json原始采证元数据保留。
+- 已确认：起点ceeef19/main ahead3、工作区干净；正式前端相对31ad3f8无变化，复用82/82/正式build/39项HTTP与73图浏览器证据，本轮73图SHA-256全部一致。Preflight仅报告，direct Node/vue-tsc/Vite可用、npm缺失、不安装。
+- 验证：归档结构、逐字baseline、受影响链接和git diff --check在迁移后核验；不以阶段变化重复F5全套。
+- 执行环境：Python直写baseline被沙箱拒绝，发生在首个写入前；改用允许的apply_patch完成同一授权范围，无扩大权限。
+- 跳过与风险：真实auth/backend/provider/反馈/删除调用及费用0；F5-LIVE/F5-CLEANUP登记unknown。OpenSpec CLI未安装不称官方validate；Java/评测未改不运行Maven/Python评测。offset漂移/逐删限流/反馈迟到/标题降级/本机图像保存及大chunk/1px限制保留。

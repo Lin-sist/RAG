@@ -1,6 +1,6 @@
 # F5 客户端验收记录
 
-2026-10-03。Report status：`CLIENT_VALIDATED_AWAITING_ACCEPTANCE`。实施与本轮客户端验证已完成，等待用户接受；尚未合并到 baseline 或归档。起点/当前 HEAD 为 `6cd7fd8205f11d6347adf9aaf436c984daf15ed0`，本轮工作区未提交。用户批准“可以进入实现”，默认手动提交；真实业务调用预算0。
+2026-10-14。Report status：`CLIENT_ACCEPTED_ARCHIVED`。用户明确“F5 接受归档”，按下述客户端证据范围接受四项delta并归档，真实闭环仍unknown。工程已由现有提交 `31ad3f8` 保存；归档起点HEAD为 `ceeef19`，本轮默认用户手动提交，真实业务调用预算0。下述2026-10-03实施与验证记录保留其当时快照。
 
 ## 交付与能力分类
 
@@ -13,7 +13,7 @@
 | 最近问答与F3/F4兼容 | confirmed（本轮覆盖范围） | 保留最多20条和既有成功事件；同步清除旧会话数据，稳定身份后读取。历史正文/来源、只读输入、KB导航、首页/设置/login可达。 |
 | 真实权限、限流、反馈持久化、删除和provider闭环 | unknown（本轮） | 全部合成验证，无真实后台/业务写入。不能据此宣称服务端原子性、关联反馈清理或真实生成质量。 |
 | 完整Demo、多轮、全量关键词、Ctrl+K、反馈改写/删除 | out_of_scope | Demo区域仅作视觉参考；F1/F6/C19/C20、新后端/API与F4证据债务独立保留。 |
-| baseline接受/归档 | planned | 待用户接受与覆盖归档动作的授权；ACTIVE_TASK仍ACTIVE。 |
+| baseline接受/归档 | confirmed | 2026-10-14用户接受客户端范围并授权归档；四项delta逐字进入baseline，ACTIVE_TASK恢复IDLE。 |
 
 ## 工程与合成证据
 
@@ -48,3 +48,7 @@ offset分页/枚举不是一致性事务快照，并发新增/删除可漂移；
 建议用户手动提交：`feat(前端): 接入F5历史反馈与分页查找体验`。
 
 [proposal](proposal.md) · [design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md)
+
+## 接受与归档补录（2026-10-14）
+
+用户授权接受并归档F5客户端范围。正式前端相对工程提交31ad3f8无变化，复用82/82、正式build、39项HTTP及73张视觉/交互证据；本轮重验73张图的SHA-256，不重复执行浏览器矩阵。visual-evidence.json保留原始采证时的HEAD/未提交状态。真实证据另登记F5-LIVE/F5-CLEANUP债务；R1/R2保持未勾选，不以归档宣称真实持久化通过。OpenSpec CLI未安装，使用结构/逐字baseline/相对链接及whitespace替代检查；归档无真实业务请求。

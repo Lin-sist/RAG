@@ -37,4 +37,8 @@
 
 拟验收范围是客户端展示与状态契约：行为测试、含vue-tsc的正式build、深浅主题/三视口视觉与键盘交互、链接及范围安全分别通过。真实API/provider/持久化另行报告；未执行明确unknown，不用fixture或旧记录宣称本轮真实闭环。F4技术债独立保留，F5通过不代表完整Demo或C19/C20完成。完整客户端验收后仍须取得baseline接受与归档授权。
 
-[design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总规划](../../../docs/roadmap/frontend-demo-backend-integration-plan.md) · [F4验收](../archive/2026-10-02-frontend-kb-upload-alignment/acceptance.md)
+[design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总规划](../../../../docs/roadmap/frontend-demo-backend-integration-plan.md) · [F4验收](../2026-10-02-frontend-kb-upload-alignment/acceptance.md)
+
+## 当前收口（2026-10-14）
+
+用户明确接受并归档F5客户端范围，Report status为CLIENT_ACCEPTED_ARCHIVED；四项delta进入baseline，历史规划/授权快照保留。工程已由现有31ad3f8提交保存，本轮默认手动提交；真实证据债务见技术债清单，F1退出修复作为独立Type B继续。

@@ -80,9 +80,9 @@ F1–F6 为 R5 后的新阶段，不替换历史 R 编号，也不是自动实�
 
 2026-10-02用户要求归档F4；`frontend-kb-upload-alignment`按已交付客户端契约接受，四项delta逐字进入rag-system baseline，归档至`2026-10-02-frontend-kb-upload-alignment`，ACTIVE_TASK恢复IDLE。工程提交`da4bc681`、证据提交`e238ee9`；66/66、vue-tsc/Vite、36张正式矩阵、18张Demo参考及26张补充图（1张动态）已复核，用户手动选文件后的混合结果/失败重提/接受不明/原taskId查询恢复及login兼容通过。详见[归档验收](../../openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/acceptance.md)、[tasks](../../openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/tasks.md)与[技术债](technical-debt.md#f4-客户端归档后的证据债务2026-10-02)：拖放与专用真实provider/persistence闭环未验证，移交后续目标，当前真实预算0；不称完整真实F4或完整Demo验收。push/PR/发布/部署未授权；取消、跨刷新任务恢复、原文预览、全量搜索和F1/F5/C19/C20在范围外。F3三项delta及首批F2五项delta保持既有接受，不回改。后续阶段未自动启动。
 
-2026-10-02 F5启动规划：用户在F4归档后要求推进下一步，已建立[frontend-history-feedback-alignment](../../openspec/changes/frontend-history-feedback-alignment/proposal.md)事前审查包，ACTIVE_TASK为PLANNING。拟推进显式分页/本页查找、保留批量能力的快照确认与失败恢复、记录绑定反馈及只读我的反馈；[design](../../openspec/changes/frontend-history-feedback-alignment/design.md)明确接口/允许路径/六项决策和24张正式矩阵/18张区域参考，[tasks](../../openspec/changes/frontend-history-feedback-alignment/tasks.md)实施闸门保持未勾选。尚未修改业务代码，默认用户手动提交，真实业务调用预算0；全量关键词/Ctrl+K、多轮/反馈修改、新后端、F1/F6/C19/C20与F4证据债务不自动纳入。客户端验收与真实证据分开，F4/F3接受结论不回改。
+2026-10-02 F5启动规划：用户在F4归档后要求推进下一步，已建立[frontend-history-feedback-alignment](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/proposal.md)事前审查包，ACTIVE_TASK为PLANNING。拟推进显式分页/本页查找、保留批量能力的快照确认与失败恢复、记录绑定反馈及只读我的反馈；[design](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/design.md)明确接口/允许路径/六项决策和24张正式矩阵/18张区域参考，[tasks](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/tasks.md)实施闸门保持未勾选。尚未修改业务代码，默认用户手动提交，真实业务调用预算0；全量关键词/Ctrl+K、多轮/反馈修改、新后端、F1/F6/C19/C20与F4证据债务不自动纳入。客户端验收与真实证据分开，F4/F3接受结论不回改。
 
-2026-10-03 F5实施：用户批准“可以进入实现”，按已呈交允许路径实现20条分页/KB范围/本页查找、删除快照和部分失败、记录绑定反馈/写入不明核查、只读我的反馈及会话/卸载保护。82/82、含vue-tsc的正式build、39项封闭HTTP检查、24张正式矩阵/18张Demo参考/31张补充图已验证，详见[F5验收](../../openspec/changes/frontend-history-feedback-alignment/acceptance.md)及[tasks](../../openspec/changes/frontend-history-feedback-alignment/tasks.md)。ACTIVE_TASK仍ACTIVE，等待用户接受；默认手动提交，未接受baseline/归档。真实调用/写入0，offset快照并发漂移、逐删限流、反馈迟到与中性ID降级、大chunk及窄屏底边取整风险保留；F4债务和F1/F6/C19/C20未扩入。
+2026-10-03 F5实施：用户批准“可以进入实现”，按已呈交允许路径实现20条分页/KB范围/本页查找、删除快照和部分失败、记录绑定反馈/写入不明核查、只读我的反馈及会话/卸载保护。82/82、含vue-tsc的正式build、39项封闭HTTP检查、24张正式矩阵/18张Demo参考/31张补充图已验证，详见[F5验收](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/acceptance.md)及[tasks](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/tasks.md)。ACTIVE_TASK仍ACTIVE，等待用户接受；默认手动提交，未接受baseline/归档。真实调用/写入0，offset快照并发漂移、逐删限流、反馈迟到与中性ID降级、大chunk及窄屏底边取整风险保留；F4债务和F1/F6/C19/C20未扩入。
 
 ### F. 启动、隔离与授权复用
 
@@ -507,3 +507,7 @@ R1、R2a、R3a 不依赖 C21，也不要求 C18 先归档；R2b、R3b受真实�
 - 后置只读核对：KB17 document/vectorCount 保持 `1/1`、queryCount `3→4`，全局 history `647→648`；history 648 的问题、答案、kbId 与 citation 的 documentId/snippet 均与页面一致。真实 `ANSWER` 主链为 `confirmed`；实际非答案和断流仍只由合成测试覆盖。
 - 本轮未改 Java、provider、评测、`.env.local` 或其他业务数据；未暂存、提交、push、PR、发布或部署。R5 详细边界与剩余风险见 change 的 `acceptance.md`。
 - 用户已明确授权将 R5 spec delta 接受进 baseline 并归档；`Frontend Structured SSE Presentation` 已逐字加入 `openspec/specs/rag-system/spec.md`，change 归档于 `openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/`，活动指针置为 `IDLE`。
+
+## 16. F5客户端接受归档与F1退出修复（2026-10-14）
+
+用户明确“先F5接受归档，然后继续F1退出修复”。F5四项delta/11场景已逐字接受并移入[归档验收](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/acceptance.md)，ACTIVE_TASK恢复IDLE；实现31ad3f8后的正式前端无改动，复用既有工程/视觉证据并重验73图hash。真实权限/反馈持久化/删除清理仍unknown，登记F5-LIVE/F5-CLEANUP，不称完整Demo闭环。F1按已有/auth/logout契约内Type B修复侧栏接线、重复操作和迟到会话清理；真实auth/provider调用预算0，默认手动提交，不含push/PR/发布/部署。
