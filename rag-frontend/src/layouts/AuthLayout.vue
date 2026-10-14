@@ -29,26 +29,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import LoginPixelArt from '@/components/common/LoginPixelArt.vue'
+import { useThemeStore } from '@/stores/theme'
 
-const isDark = ref(false)
-
-function applyTheme(dark: boolean) {
-  isDark.value = dark
-  document.documentElement.classList.toggle('dark', dark)
-  document.documentElement.classList.toggle('light', !dark)
-}
+const theme = useThemeStore()
+const isDark = computed(() => theme.effectiveTheme === 'dark')
 
 function toggleTheme() {
-  applyTheme(!isDark.value)
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+  theme.setPreference(isDark.value ? 'light' : 'dark')
 }
-
-onMounted(() => {
-  const savedTheme = localStorage.getItem('theme')
-  applyTheme(savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-})
 </script>
 
 <style scoped>

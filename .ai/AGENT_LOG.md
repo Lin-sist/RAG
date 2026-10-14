@@ -3390,3 +3390,11 @@
 - 上一执行提交：`f595099d3bd9e5210022b8e6578e8cfcf0588340`，`docs(前端): 接受F5客户端契约并归档`。本条只追加真实hash，不改历史。
 - 用户本轮明确授权Agent提交commit并继续前端剩余Demo接入。F5归档与F1实现精确分开暂存；共享日志/规划使用索引级内容选择，工作区全文保留。首次索引补丁因旧CRLF不匹配失败，PowerShell管道引入CRLF后改用字节输入与git clean过滤器规范化，通过cached diff --check后提交；失败不计通过。
 - F1同代码、依赖与环境的90/90、正式build和合成浏览器证据复用，提交本身不重复全套验证。提交不含push/PR/发布/部署或真实业务调用。Commit: pending（F1）。
+
+## 2026-10-14 · F1提交补录与登录主题修复启动（Type B）
+
+- 上一执行提交：`9061f1cb3777a9a50b9feca3767e940dd84dee39`，`fix(前端): 修复F1退出接线及会话竞态保护`。本条只追加真实hash，历史记录不改。
+- 用户已授权Agent提交并继续剩余Demo接入；在已有Unified Frontend Theme Preference契约内修复登录布局的第二套theme逻辑。修改rag-frontend/src/layouts/AuthLayout.vue与tests/auth-theme.test.mjs，不改布局/CSS/LoginView/API/store；主题来源改为唯一Pinia有效主题，切换复用setPreference，不再直接操作root或localStorage。
+- 验证：登录跟随系统/手动优先/跨布局复用/阻止存储不崩溃等新增3项及原主题4项共7/7 PASS；vue-tsc -b与Vite正式build PASS，既有大chunk提示保留。未改F1认证/历史/上传逻辑，复用90/90结果，不无关重跑。
+- 浏览器和文档收口继续执行；真实auth/backend/provider调用预算0。独立双翼动效迁移拟作为下一Type C规划，尚未迁入业务源。Commit: pending（主题修复）。
+- 主题修复收尾：实际内置浏览器/CUA封闭流程login从暗切浅→合成登录→侧栏显示“切换深色”→侧栏切暗→F1合成退出→login仍暗并显示“米白版”，主题跨路由一致；截图auth-theme-roundtrip.png已查看。只改AuthLayout逻辑及新增3项测试，不改CSS/几何/表单/路由/store/依赖或原型，git diff --check与新文件whitespace通过。7/7和正式build PASS；真实auth/backend/provider0，不新增全页面矩阵，系统变化/blocked storage由聚焦行为测试覆盖，物理设备和大chunk限制保留。复用上一轮浏览器连接不可用的已确认环境，使用可用CUA通道。
