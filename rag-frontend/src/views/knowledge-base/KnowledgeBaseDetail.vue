@@ -174,4 +174,5 @@ summary { cursor: pointer; font-size: 13px; }
 button:focus-visible, summary:focus-visible { outline: 2px solid var(--rag-primary); outline-offset: 4px; }
 @media (max-width: 1100px) { .detail-grid { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .kb-detail-view { padding: 22px 16px; } .detail-top { margin-bottom: 24px; } .detail-card { padding: 16px; } h1 { font-size: 23px; } .detail-hero { gap: 12px; } .hero-icon { width: 42px; height: 42px; } }
+@media (max-width: 768px) { .kb-detail-view { padding-top: 60px; } }
 </style>

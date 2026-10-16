@@ -68,4 +68,4 @@ Vue在onMounted创建renderer，在主题watch的nextTick刷新色彩，在onUnm
 - **选了哪个 + 为什么**：仅客户端，沿用零真实预算，当前缺口可用封闭证据验证。
 - **放弃的代价**：同时扩展会改变权限/API契约与副作用，失去单一可验证切片；账号、真实撤销与业务闭环继续保留unknown债务。
 
-[proposal](proposal.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [原型](../../../prototype/rag-login-motion-demo/README.md)
+[proposal](proposal.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [原型](../../../../prototype/rag-login-motion-demo/README.md)

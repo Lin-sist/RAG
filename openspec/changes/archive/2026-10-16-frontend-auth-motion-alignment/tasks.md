@@ -23,7 +23,7 @@
 ## 3. 收口
 
 - [x] 3.1 按本轮已有Agent授权提交实现/证据，不push/PR/部署；提交完成以本轮Git核验为准，日志Commit: pending随提交写入。
-- [ ] 3.2 用户接受并授权后baseline/归档；整个change未完成不清活动指针。
-- [ ] 3.3 独立进入F6全页面客户端验收与剩余真实证据分流，不把本change称为完整Demo。
+- [x] 3.2 2026-10-16用户确认成功并要求归档；2 requirements/6 scenarios逐字进入baseline并归档。
+- [x] 3.3 移交独立F6全页面客户端验收与真实证据分流，见[F6执行记录](../../../../docs/roadmap/frontend-f6-client-acceptance.md)；不代表完整Demo。
 
 [proposal](proposal.md) · [design](design.md) · [spec delta](specs/rag-system/spec.md)

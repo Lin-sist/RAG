@@ -985,6 +985,7 @@ onUnmounted(() => {
 .kb-load-status button { display: block; margin-top: 8px; color: inherit; background: transparent; border: none; cursor: pointer; text-decoration: underline; }
 
 @media (max-width: 768px) {
+  .messages-container > .kb-navigation-status { margin-top: 60px; }
   .chat-panel.is-empty { padding-bottom: 0; }
   .welcome-title { font-size: 24px; }
   .welcome-screen { padding: 0 16px; }

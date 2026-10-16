@@ -132,4 +132,5 @@ time, .doc-count { color: var(--rag-text-secondary); }
   .kb-name { grid-column: 1; } .row-actions { grid-column: 2; grid-row: 1; }
   time { text-align: end; } .doc-count { grid-column: 1; grid-row: 2; }
 }
+@media (max-width: 768px) { .kb-list-view { padding-top: 60px; } }
 </style>

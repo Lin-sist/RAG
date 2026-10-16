@@ -43,3 +43,7 @@
 建议/本轮提交信息：`feat(前端): 接入正式登录双翼动效`。
 
 [proposal](proposal.md) · [design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md)
+
+## 接受与归档补录（2026-10-16）
+
+当前状态：`ACCEPTED_CLIENT_SCOPE_ARCHIVED`。用户确认登录动效已成功接入并明确要求归档、推进下一规划。实施提交62961a2619d0ad88b42191d7bbbaf116c6552c3a；本轮重验26图与4份报告SHA-256全部一致，复用102/102、含vue-tsc正式build及41/41浏览器结果。原始visual-evidence的采证HEAD/状态/时间保持不变，上文早期“待接受”仅记录当时事实。2项delta/6场景逐字并入baseline。物理设备/长时性能与真实认证仍unknown，F6及F4/F5真实债务独立；真实业务调用0。沿用本地提交授权，无push/PR/部署。

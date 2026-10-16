@@ -3435,3 +3435,29 @@
 - 安全与风险：按design allowlist修改，表单/API/DTO/认证store/requestClient/路由/SSE、后端/模型/评测、依赖/锁文件、prototype/旧Demo、baseline/其他归档、受保护配置不变；日志只追加。软件WebGL不能证明物理设备性能，品牌近似不证明真实数据筛选；大chunk、F4/F5真实债务及F6/C19/C20独立保留。建议提交：feat(前端): 接入正式登录双翼动效。
 - 交付门禁：14文件allowlist、48受影响链接、2 requirements/6 scenarios不变、冻结三blob/日志前缀、26图hash与PNG/DOM尺寸、四报告hash、新文件whitespace与新增敏感模式、git diff --check全部PASS；暂存前stage=0。按已有授权提交计划内文件，原图不暂存，ACTIVE等待用户接受，不接受baseline/归档。
 - 暂存检查补录：cached diff --check发现新增renderer末尾多一空行，首次提交在门禁处停止，未产生commit；只去掉非语义EOF空行后重新暂存核验。同逻辑/配置/依赖的102/102与正式build复用，不重复无关运行。
+
+
+## 2026-10-16 · 登录动效提交补录
+
+- 上一执行提交：`62961a2619d0ad88b42191d7bbbaf116c6552c3a`，`feat(前端): 接入正式登录双翼动效`。仅追加真实hash，不改历史。
+
+## 2026-10-16 · frontend-auth-motion-alignment 接受归档与F6启动
+
+- Commit: pending。用户确认登录动效成功并要求归档、推进下一规划；沿用同一前端工程的Agent本地提交授权，不含push/PR/发布/部署。
+- 范围：动效change移至2026-10-16归档路径，proposal/acceptance/tasks接受补录、受影响链接、baseline精确追加2项delta/6场景；ACTIVE_TASK恢复IDLE并指向F6执行记录，总规划追加当前入口。F6为既有页面审计/Type B，未新增能力或API；适用设计引用原design决策1-4。
+- 验证：归档前26图/4报告SHA-256重验一致，原工作区clean，实施HEAD62961a2。复用同代码102/102、含vue-tsc正式build、41/41完整浏览器结果；原始采证JSON不改。Preflight报告node/python可用、npm不可见、已有direct vue-tsc/vite；不安装依赖。
+- 跳过：无Java/Python评测变化，不重跑无关测试；OpenSpec CLI不可用，仅文件级替代检查。专用浏览器信任桥不可用，F6改走可用浏览器通道；后续结果另追加。真实业务/外部provider调用预算0。
+- 安全与风险：后端/契约/模型/评测、依赖/lock、prototype、受保护配置不变；日志只追加。F4/F5真实债务、认证撤销/物理设备/长时功耗unknown，F6不得外推真实完整Demo。
+
+
+## 2026-10-16 · F6客户端验收与窄屏遮挡修复
+
+- Commit: pending。沿用同一前端工程Agent本地提交授权；动效已接受归档，F6本轮客户端验证完成待用户接受，不自动进入C19/C20。
+- 文件与范围：KnowledgeBaseList/KnowledgeBaseDetail/ChatPanel各一条≤768px CSS，为栏目/返回/失效历史恢复行避开固定侧栏按钮。新增F6验收与visual-evidence清单，活动指针保持IDLE并更新里程碑，总规划/技术债同步；未新增能力/接口或Type C，原动效design决策1-4保持。
+- 验证：知识库2文件17/17、聊天/历史2文件14/14通过；最终direct vue-tsc -b→Vite build exit0，既有大chunk提示保留。工具曾重复插入等价CSS，收尾只去重无语义变化，去重后build再验通过；行为测试复用，不重复全套102/102。归档baseline精确追加2 requirements/6 scenarios、原visual-evidence字节保全、受影响链接及git diff --check PASS。
+- 浏览器：CUA七页面×深浅三视口42正式+15补充=57图已查看，hash/PNG尺寸/视口/源码指纹入清单；页面横溢出0、DPR1、scale1。KB列表/详情390/744/768共6组及失效历史390共7组几何无重叠，内容top60、按钮bottom48。9个最终读取状态、设置键盘循环/焦点归还、合成登录退出、失效历史键盘返回共12条最终检查PASS；原始2条读取过早失败保留，不混入成功。合成登录操作2次、退出1次，均localhost fixture。
+- 采证修正：首次预览未启动连接拒绝、专用信任桥不可用；原生summary按button定位失败后按实际summary通过。20早期图分别为10KB修复前/2反馈未稳定/6登录主题或帧未稳定/1登录resize未稳定/1历史错误修复前，均保留initial并排除；等待canvas opacity超时不算通过，最终实际图已查看。原始动效全循环/降级专项仍复用已归档结果。
+- 跳过：未改Java/Python评测，不跑Maven/Python评测；OpenSpec CLI缺失，替代文件级检查。真实backend/auth/provider/ask/upload/embedding/rerank/judge/feedback/delete与业务写入/费用0，无真实模型/超时/重试参数。不做物理设备/原生触屏/其他浏览器/长时性能/320px或200%缩放/全量无障碍；fullPage不展开内部滚动容器，未声称全部滚动位置本轮重验。
+- 范围安全与风险：三个源码diff各1行CSS，认证/路由/store/request/SSE/API/DTO/后端/模型/评测、依赖/锁文件、prototype、受保护配置/.agents/学习目录未改，日志只追加。F4/F5真实闭环/拖放/清理及真实撤销/设备/大chunk限制继续保留；F6未自动接受。建议提交：fix(前端): 归档登录动效并完成F6客户端验收修复。临时预览停止/页面关闭、viewport重置，原始证据保留。
+
+- 提交授权补录：首次本地commit被自动审批拒绝，理由为当前可信消息不足以证明历史授权；该次未产生提交。用户随后明确回复‘授权 Agent 本地提交’，据此继续同一已暂存范围，仅本地commit，不push。Commit: pending。

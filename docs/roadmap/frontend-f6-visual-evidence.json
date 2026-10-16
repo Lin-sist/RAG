@@ -1,0 +1,1983 @@
+{
+  "status": "CLIENT_VALIDATED_AWAITING_ACCEPTANCE",
+  "date": "2026-10-16",
+  "sourceHead": "62961a2619d0ad88b42191d7bbbaf116c6552c3a",
+  "workingTree": "Three CSS fixes uncommitted at capture; archive and documentation changes also pending",
+  "artifactRoot": "C:\\Users\\Lin\\.codex\\visualizations\\2026\\10\\16\\01a14286-d48b-7ba2-b889-5192b44db56e\\f6",
+  "browser": "CUA Codex In-app Browser; exact version not captured",
+  "realBusinessCalls": 0,
+  "counts": {
+    "matrix": 42,
+    "supplement": 15,
+    "final": 57,
+    "excluded": 20
+  },
+  "sourceSha256": {
+    "rag-frontend/src/views/knowledge-base/KnowledgeBaseList.vue": "fd5d550e06327bb14aed3d4da598b22a674f00a4a8182170e8b060e5b19b25da",
+    "rag-frontend/src/views/knowledge-base/KnowledgeBaseDetail.vue": "9591cd6ce7e569afc2aa2c05e7ccf835deb2d8efcc86da14fe9e6a67635f7227",
+    "rag-frontend/src/components/chat/ChatPanel.vue": "dcda1ca68f6873f4cccbd9a41b4b1b7288b5684e45195298b123e556e51c1347"
+  },
+  "images": [
+    {
+      "name": "login-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "focus": "\n  RAG\\智能问答知识库问答暗黑版 →让每个回答都有出处基于知识库的检索与问答用户名密码登 录\n  \n\n\n\n",
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "initial/login-light-1440.png",
+      "status": "excluded_theme_transition_or_incomplete_motion_frame",
+      "sha256": "c8ee4612b2df1abc73793c4ce2777243f01210d8d578ef23e2b9a25f2fe52bf4",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "login-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "focus": "米白版 →",
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "initial/login-dark-1440.png",
+      "status": "excluded_theme_transition_or_incomplete_motion_frame",
+      "sha256": "e033da05c19187c7c0bb414811aca32a6a354a403199cd0d438dffb2959e30c0",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "login-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "focus": "米白版 →",
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "initial/login-dark-1024.png",
+      "status": "excluded_theme_transition_or_incomplete_motion_frame",
+      "sha256": "5279a87499f338d49c13283d831110e5ed8271479d3a56ac38e16230533e1f98",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "login-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "focus": "暗黑版 →",
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "initial/login-light-1024.png",
+      "status": "excluded_theme_transition_or_incomplete_motion_frame",
+      "sha256": "b1d6268846b9e7b74c6b7df0dc3b6afa60ee129f00d57445a7ffa7ee09f22551",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "login-light-390",
+      "metrics": {
+        "dpr": 1,
+        "focus": "暗黑版 →",
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 869,
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "initial/login-light-390.png",
+      "status": "excluded_theme_transition_or_incomplete_motion_frame",
+      "sha256": "51baf827431691dd68c3c8f23166eb9044ca8c5584a55fe2f4f01a61650aedbc",
+      "imageSize": [
+        384,
+        869
+      ]
+    },
+    {
+      "name": "login-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "focus": "米白版 →",
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 869,
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "initial/login-dark-390.png",
+      "status": "excluded_theme_transition_or_incomplete_motion_frame",
+      "sha256": "9317503d5aa7e594bbde18373a98a988af19d58ec6f2a40cb58768692e196381",
+      "imageSize": [
+        384,
+        869
+      ]
+    },
+    {
+      "name": "chat-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "chat-dark-390.png",
+      "sha256": "e1b272ff8e344559dcf1b57b2d6159afd13f8ff090189a903b562aeaa0e13949",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "settings-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？",
+          "设置",
+          "常规"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "settings-dark-390.png",
+      "sha256": "0d689092b1ceed94a27eaa77cd41abf5e61cd33d3926cbd0e7fd6e6bce1dbaeb",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "settings-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？",
+          "设置",
+          "常规"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "settings-dark-1024.png",
+      "sha256": "798af40e5adcabf2ee60fd6a629d4a8c42f6559ed2633c612f6b9e306942078d",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "settings-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？",
+          "设置",
+          "常规"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "settings-dark-1440.png",
+      "sha256": "155444655b58d06ceb484d6ddcb673cf45e75d6957e80928a7f796dbc1455bf7",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "settings-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？",
+          "设置",
+          "常规"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "light",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "settings-light-1440.png",
+      "sha256": "315c6f36cbb49f64ed5c7336b9510b2c4d9d32e0b5b52ff90dbe5e2131b7884b",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "settings-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？",
+          "设置",
+          "常规"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "light",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "settings-light-1024.png",
+      "sha256": "3ea06cdab83b7a6cc59412a9a3fade4dfca346bd583e76301003180705814393",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "settings-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？",
+          "设置",
+          "常规"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "settings-light-390.png",
+      "sha256": "d267b83d1cd5b64f93141749144bc684eda63400e8957507e48e79c18c7f5491",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "chat-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "chat-light-390.png",
+      "sha256": "753ffa76c6efd6d20d046d1a92639534c4ef684fb6ef79147265fda79924cccb",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "chat-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "light",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "chat-light-1024.png",
+      "sha256": "be7e772312f57103aeb8c88d0fdc96cc911cb86829586c580faeb50903dabf2f",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "chat-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好，合成验收。准备好开始了吗？"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "light",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "chat-light-1440.png",
+      "sha256": "5fc1befcc88ac633cf56076bf07f8e379ea0e1f221c94553ccfc594947c370dc",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-list-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "light",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/kb?fixture=f4",
+      "file": "initial/kb-list-light-1440.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "efb9bd9dfc5643f8ead9d05e042ea6144ae33957a4787337c38a30264c77be3d",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-list-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "light",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/kb?fixture=f4",
+      "file": "initial/kb-list-light-1024.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "ea08baec7c79908b8f9a901d4e8351eb94c784684f6e41503dbbd2e65e7cd132",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "kb-list-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb?fixture=f4",
+      "file": "initial/kb-list-light-390.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "04c24a64f08625a467897e16cb5f64277a0dbe347de55d85e3779281ae410276",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-list-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb?fixture=f4",
+      "file": "initial/kb-list-dark-390.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "9e54d46824d1380dbc27d1651d679e9b7e458c326fa9bd6046c7468e5cd80fa3",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-list-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/kb?fixture=f4",
+      "file": "initial/kb-list-dark-1024.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "562858d58a02c9356b3a1942dcd84d8c2fdaf430249794edab9932be90ce5bf3",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "kb-list-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/kb?fixture=f4",
+      "file": "initial/kb-list-dark-1440.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "0fb03553322f48b7ed6d31e5ef6c89073fc17694f5c442420a8d454c75f9bf84",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-detail-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "initial/kb-detail-dark-1440.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "63e134b9d34f71a260820a3208152fb1067ef25b2ba8b935f54c301506e54f9b",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-detail-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "initial/kb-detail-dark-1024.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "ad88d8706a442b438d1296af16badca0bbfe3cfda4110601528932190806a46b",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "kb-detail-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "initial/kb-detail-dark-390.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "e070026f288ca842b4ba0fde6bdf05a8f39647a66f0b8d2477efc4b78478ebdf",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-detail-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "initial/kb-detail-light-390.png",
+      "status": "superseded_by_layout_fix",
+      "sha256": "05139a7c530304892ee77c67ca0438c5bee1caae0e9900bd83f12172ed3a587a",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-detail-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "kb-detail-light-390.png",
+      "sha256": "9de72ee45d7b0f1459d7f9977ab7f48e53c82a4febc18a9a8c8d8eb608997356",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-detail-light-744-boundary",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 744
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "kb-detail-light-744-boundary.png",
+      "sha256": "45910f494450ef92912a6fe1709a32abcbf13cd8300e93841235323ed0f47269",
+      "imageSize": [
+        744,
+        844
+      ]
+    },
+    {
+      "name": "kb-detail-light-768-boundary",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 768
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "kb-detail-light-768-boundary.png",
+      "sha256": "ad80c7b8617d445b8ce0e53e90ec291d797e7f317393a7db20414e67cf25646f",
+      "imageSize": [
+        768,
+        844
+      ]
+    },
+    {
+      "name": "kb-detail-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "light",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "kb-detail-light-1024.png",
+      "sha256": "ff6986fdd02ab57d59af278c9f9e80e318935b3068cc8087c2338fec56b1126a",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "kb-detail-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "light",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "kb-detail-light-1440.png",
+      "sha256": "dcc84186c612a5e52e9767dcdfa9af771fc49960dd8155b706dc08a3e84ba9bb",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-detail-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "kb-detail-dark-1440.png",
+      "sha256": "1572b8e85f1a2ea7d1d6b76030d8181c5bf25e3a433b3f6f529109862f4a485c",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-detail-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "kb-detail-dark-1024.png",
+      "sha256": "dbebdebb456ddae4e6b8d9d6b3225c51065c9808c64343c32860a9263c669a81",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "kb-detail-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成知识库 · 项目文档",
+          "文档",
+          "基本信息"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb/901",
+      "file": "kb-detail-dark-390.png",
+      "sha256": "65e8e2a248504411947a9d0cbb296542c0fcc5e397c37a022ac80a7951ee4866",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-list-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb",
+      "file": "kb-list-dark-390.png",
+      "sha256": "d0396906eee09817c6a2bb53b752f391a584d917feb59285934c6b0b7b0cba2d",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-list-dark-744-boundary",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 744
+      },
+      "url": "http://127.0.0.1:5188/kb",
+      "file": "kb-list-dark-744-boundary.png",
+      "sha256": "379ef5f1cbbcb16785f5fbb4d6b847dab66fd67c0b442da3df573029cf07febe",
+      "imageSize": [
+        744,
+        844
+      ]
+    },
+    {
+      "name": "kb-list-dark-768-boundary",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 768
+      },
+      "url": "http://127.0.0.1:5188/kb",
+      "file": "kb-list-dark-768-boundary.png",
+      "sha256": "62fbd88bd56246e6e8e2cd0b9cdaa77d2aeaa2601f36cf365a59b198d97a2e46",
+      "imageSize": [
+        768,
+        844
+      ]
+    },
+    {
+      "name": "kb-list-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/kb",
+      "file": "kb-list-dark-1024.png",
+      "sha256": "562858d58a02c9356b3a1942dcd84d8c2fdaf430249794edab9932be90ce5bf3",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "kb-list-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/kb",
+      "file": "kb-list-dark-1440.png",
+      "sha256": "2dd29525c1f0c19afd5d9aad2ae673690a76637b59c5ac13b22a53bf777e701b",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-list-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "light",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/kb",
+      "file": "kb-list-light-1440.png",
+      "sha256": "bcc52aeb046f08b988e294fd1248318a9fef0a94d83f42a7efecc8addba3e518",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-list-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "light",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/kb",
+      "file": "kb-list-light-1024.png",
+      "sha256": "ea08baec7c79908b8f9a901d4e8351eb94c784684f6e41503dbbd2e65e7cd132",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "kb-list-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb",
+      "file": "kb-list-light-390.png",
+      "sha256": "074328519114a3fa360e43e7649b98907f71447f0fbfeea136e3634d916bbc30",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "history-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录",
+          "更早"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-ready",
+      "file": "history-light-390.png",
+      "sha256": "9af2a8aa964d17e69ba76f2322d7bde77fc0293ead494617d2b5db6c044afb0f",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "history-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录",
+          "更早"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "light",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-ready",
+      "file": "history-light-1024.png",
+      "sha256": "c4fabf30fbba205e016c932c0911c5254be0ddd3d5f4c00428185c44693ed27c",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "history-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录",
+          "更早"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "light",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-ready",
+      "file": "history-light-1440.png",
+      "sha256": "b909921ca8cff5035bfce2246b076bef7b90d51e0401bc0e6403989188a20146",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "history-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录",
+          "更早"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-ready",
+      "file": "history-dark-1440.png",
+      "sha256": "d0bd6b260f4d3e6906bd04ac6e582c97b8067eaa0cd0b02c7028bf4fe517744a",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "history-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录",
+          "更早"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-ready",
+      "file": "history-dark-1024.png",
+      "sha256": "c4c20a05e45cfed85f890569206a46f43fe2b07531ef85df5044990026b47db9",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "history-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录",
+          "更早"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-ready",
+      "file": "history-dark-390.png",
+      "sha256": "fda8d8e6ef2e3ba9384fcdf211db51ee470565daacf65f578a57bf835322c1d1",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "history-detail-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成历史回答"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/chat/901",
+      "file": "history-detail-dark-390.png",
+      "sha256": "dfddd04c997daeb2fdbe684e9961accf915473d68b03c711ae8a78a686b0fdcf",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "history-detail-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成历史回答"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/chat/901",
+      "file": "history-detail-dark-1024.png",
+      "sha256": "1b60ceb3f95ea325da49821832dbd6372774c5da9e65e007a2d1e5475d5c33f1",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "history-detail-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成历史回答"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/chat/901",
+      "file": "history-detail-dark-1440.png",
+      "sha256": "bc8e9f9bc791a5c697d72cc8b2289c6f01e8d2a59bf25e9cac19b3376b98345c",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "history-source-expanded-keyboard",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成历史回答"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/chat/901",
+      "file": "history-source-expanded-keyboard.png",
+      "sha256": "9b925d66094cf1375a545b3f4f695823282af09de204c9acffdd6ed61546260a",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "history-detail-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成历史回答"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "light",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/chat/901",
+      "file": "history-detail-light-1440.png",
+      "sha256": "f9fcef9822dcb9396b30343ce912d095301edd86c93ac305be42aa9c0d86d50d",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "history-detail-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成历史回答"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "light",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/chat/901",
+      "file": "history-detail-light-1024.png",
+      "sha256": "1bf2fe7804f1173335d2aefbbe58e08ddfde8a518050f5706b796bbdbe08b4ff",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "history-detail-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "合成历史回答"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/chat/901",
+      "file": "history-detail-light-390.png",
+      "sha256": "bd159ebeee262ae61abecd697ede083c597c516c4978e775edf1a51e836b32d5",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "chat-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好。准备好开始了吗？"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "chat-dark-1024.png",
+      "sha256": "bf2a21b062e01336a2c5feed3f9ae9c4407d14aef1d3d54a7233c7ff6e0622d7",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "chat-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "你好。准备好开始了吗？"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/chat",
+      "file": "chat-dark-1440.png",
+      "sha256": "64d6128d359f30f308960f7e6144f957cf09513cb88fa18e1c0eea816a83e5ad",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "kb-empty",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb?fixture=f4-empty",
+      "file": "kb-empty.png",
+      "sha256": "92ccd03882d909f4544b70ff3f3b09573935fdbee467850ae8b04c040134f25f",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-error",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "知识库"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb?fixture=f4-list-error",
+      "file": "kb-error.png",
+      "sha256": "75342bf7018cb9c5761a43ffd5f5879cee888e6540b296372f6afe6e49bf1871",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-forbidden",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb/901?fixture=f4-403",
+      "file": "kb-forbidden.png",
+      "sha256": "6fac72bed09b7c12a2b3d30c80693566ff28afc5e746e063a4509a99450e6d81",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "kb-missing",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/kb/901?fixture=f4-404",
+      "file": "kb-missing.png",
+      "sha256": "6fac72bed09b7c12a2b3d30c80693566ff28afc5e746e063a4509a99450e6d81",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "history-empty",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-empty",
+      "file": "history-empty.png",
+      "sha256": "830f3c9d569d518ae2411df49e8cb54b4ca7cf1fb132abf8f683bf57d7900720",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "history-error",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-error",
+      "file": "history-error.png",
+      "sha256": "390477b8ac5ad1a6c38f16ebe0fc82460cd5f8de6e5b4a3b025cbfb364e21ebb",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "history-missing",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/chat/901?fixture=f5-404",
+      "file": "initial/history-missing-before-fix.png",
+      "status": "superseded_by_error_spacing_fix",
+      "sha256": "0ab5609a8e70da92e8fff5acd898364cd0702aca46a94a6d1c9d33b4d772998e",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "my-feedback-ready",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-ready",
+      "file": "my-feedback-ready.png",
+      "sha256": "97d87321df912c72697bcdab3d1cea52db2dc035bf5db2e46b1959c0802e686c",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "my-feedback-empty",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-my-empty",
+      "file": "initial/my-feedback-empty.png",
+      "status": "captured_before_async_read_settled",
+      "sha256": "2df73c16a5fe2c002a052c3ef61e88dbde28520d8e3cb25fbe81026c5cfe5f81",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "my-feedback-error",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-my-error",
+      "file": "initial/my-feedback-error.png",
+      "status": "captured_before_async_read_settled",
+      "sha256": "3dfdbfce833f5800579554290a9fd7de3d6696479a70aabf5aabf28953201b96",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "my-feedback-empty",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-my-empty",
+      "file": "my-feedback-empty.png",
+      "sha256": "2df73c16a5fe2c002a052c3ef61e88dbde28520d8e3cb25fbe81026c5cfe5f81",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "my-feedback-error",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答",
+          "历史记录"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/history?fixture=f5-my-error",
+      "file": "my-feedback-error.png",
+      "sha256": "3dfdbfce833f5800579554290a9fd7de3d6696479a70aabf5aabf28953201b96",
+      "imageSize": [
+        390,
+        844
+      ]
+    },
+    {
+      "name": "login-dark-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "dark",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "login-dark-1440.png",
+      "sha256": "e410a58a0f954bf81be2256214920ec9a53d7a38fe256fea0ac2f68a9760249b",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "login-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "initial/login-dark-1024-resize.png",
+      "status": "excluded_before_resize_compositor_settled",
+      "sha256": "fde1770a7cd278f5592b7523f651cb261cf2f5eb37e834dae4df9b016ae093ea",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "login-dark-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 869,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "login-dark-390.png",
+      "sha256": "cf6d1dae10717720b572c168b7dfe1fe21a17f48589969c84f7e7d9e047e7365",
+      "imageSize": [
+        384,
+        869
+      ]
+    },
+    {
+      "name": "login-light-390",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 869,
+        "theme": "light",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "login-light-390.png",
+      "sha256": "679c7034de059dc7019bdcea683c0593ded8db3ec401cf54c20a5061359ee356",
+      "imageSize": [
+        384,
+        869
+      ]
+    },
+    {
+      "name": "login-light-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "light",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "login-light-1024.png",
+      "sha256": "ce13940a1916409239d89c89e70799e399857ddbcf4e1e468107add3cb4fa19c",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "login-light-1440",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 900,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 900,
+        "theme": "light",
+        "width": 1440
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "login-light-1440.png",
+      "sha256": "d8df66edfbabd0b214e61d361f20ed1b457becfe93107e870373d8b7940eb60c",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "login-dark-1024",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "让每个回答都有出处"
+        ],
+        "height": 768,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 768,
+        "theme": "dark",
+        "width": 1024
+      },
+      "url": "http://127.0.0.1:5188/login",
+      "file": "login-dark-1024.png",
+      "sha256": "16d55cd07488cf6aa4918d45aac073cdee9a2610d30e0548fdb541989e966a37",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "history-missing",
+      "metrics": {
+        "dpr": 1,
+        "headings": [
+          "最近问答"
+        ],
+        "height": 844,
+        "overflow": 0,
+        "scale": 1,
+        "scrollHeight": 844,
+        "theme": "dark",
+        "width": 390
+      },
+      "url": "http://127.0.0.1:5188/chat/901?fixture=f5-404",
+      "file": "history-missing.png",
+      "sha256": "526e46675f57ab46881f6899acdc19c1028132710e53794a39c53b28257b48b7",
+      "imageSize": [
+        390,
+        844
+      ]
+    }
+  ],
+  "stateChecks": [
+    {
+      "name": "kb-empty",
+      "expected": "还没有知识库",
+      "pass": true
+    },
+    {
+      "name": "kb-error",
+      "expected": "重试知识库加载",
+      "pass": true
+    },
+    {
+      "name": "kb-forbidden",
+      "expected": "重试详情加载",
+      "pass": true
+    },
+    {
+      "name": "kb-missing",
+      "expected": "重试详情加载",
+      "pass": true
+    },
+    {
+      "name": "history-empty",
+      "expected": "此范围暂无历史问答记录。",
+      "pass": true
+    },
+    {
+      "name": "history-error",
+      "expected": "重试读取",
+      "pass": true
+    },
+    {
+      "name": "history-missing",
+      "expected": "重试读取历史",
+      "pass": true
+    },
+    {
+      "name": "my-feedback-empty",
+      "expected": "你还没有提交过反馈。",
+      "pass": false
+    },
+    {
+      "name": "my-feedback-error",
+      "expected": "重试读取反馈",
+      "pass": false
+    },
+    {
+      "name": "my-feedback-empty-settled",
+      "expected": "你还没有提交过反馈。",
+      "pass": true
+    },
+    {
+      "name": "my-feedback-error-settled",
+      "expected": "重试读取反馈",
+      "pass": true
+    },
+    {
+      "name": "settings-keyboard-wrap-and-restore",
+      "pass": true,
+      "detail": [
+        {
+          "id": "theme-preference",
+          "tag": "SELECT"
+        },
+        "关闭设置",
+        "已登录用户，打开用户菜单"
+      ]
+    },
+    {
+      "name": "synthetic-login-logout-navigation",
+      "pass": true,
+      "detail": "Two synthetic login submissions and one successful F1 logout observed via UI; no real auth call"
+    },
+    {
+      "name": "history-error-keyboard-return",
+      "pass": true
+    }
+  ],
+  "geometryChecks": [
+    {
+      "page": "kb-list",
+      "width": 390,
+      "contentTop": 60,
+      "overflow": 0,
+      "overlap": false,
+      "toggleBottom": 48
+    },
+    {
+      "page": "kb-list",
+      "width": 744,
+      "contentTop": 60,
+      "overflow": 0,
+      "overlap": false,
+      "toggleBottom": 48
+    },
+    {
+      "page": "kb-list",
+      "width": 768,
+      "contentTop": 60,
+      "overflow": 0,
+      "overlap": false,
+      "toggleBottom": 48
+    },
+    {
+      "page": "kb-detail",
+      "width": 390,
+      "contentTop": 60,
+      "overflow": 0,
+      "overlap": false,
+      "toggleBottom": 48
+    },
+    {
+      "page": "kb-detail",
+      "width": 744,
+      "contentTop": 60,
+      "overflow": 0,
+      "overlap": false,
+      "toggleBottom": 48
+    },
+    {
+      "page": "kb-detail",
+      "width": 768,
+      "contentTop": 60,
+      "overflow": 0,
+      "overlap": false,
+      "toggleBottom": 48
+    },
+    {
+      "page": "history-error",
+      "width": 390,
+      "errorTop": 60,
+      "overflow": 0,
+      "overlap": false,
+      "toggleBottom": 48
+    }
+  ],
+  "inspected": true,
+  "limitations": [
+    "Client synthetic evidence only; real auth/provider/persistence unknown",
+    "Internal scroll containers are not expanded by full-page screenshot; viewport and visible operation review only",
+    "20 excluded captures retained: 10 KB before layout fix, 2 feedback reads before settled, 6 login before theme/frame settled, 1 login before resize settled, 1 history error before spacing fix",
+    "No physical mobile, GPU, long-duration or cross-browser validation; no quality metric claim"
+  ],
+  "sourceVerification": "17 KB tests and 14 chat/history tests pass; direct vue-tsc then Vite build exit 0 after final CSS change; unchanged remaining behavior covered by prior 102/102 run",
+  "scope": "42 visible page/theme/viewport combinations and 15 supplemental images; internal scrolling and motion suites partly reused from accepted prior evidence"
+}

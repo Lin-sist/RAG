@@ -516,12 +516,19 @@ F1退出修复已完成客户端验证：复用useAuth.logout接线，单次带�
 
 ## 17. F2剩余登录页收口与F6分流（2026-10-14）
 
-用户授权Agent提交commit并继续工程；F5归档f595099、F1退出9061f1c及统一登录主题2b459da已保存。本轮主题修复7/7及正式build、封闭浏览器登录/侧栏/退出往返通过，真实请求0。下一切片为[frontend-auth-motion-alignment](../../openspec/changes/frontend-auth-motion-alignment/proposal.md)：只迁已确认双翼装饰，保留真实表单/统一主题，明确Vue生命周期/静态降级与六组视觉矩阵；ACTIVE_TASK为PLANNING，尚未迁移动效。新Type C具体事前审查包待批准；本地commit授权保持，push/PR/发布/部署不包含。
+用户授权Agent提交commit并继续工程；F5归档f595099、F1退出9061f1c及统一登录主题2b459da已保存。本轮主题修复7/7及正式build、封闭浏览器登录/侧栏/退出往返通过，真实请求0。下一切片为[frontend-auth-motion-alignment](../../openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/proposal.md)：只迁已确认双翼装饰，保留真实表单/统一主题，明确Vue生命周期/静态降级与六组视觉矩阵；ACTIVE_TASK为PLANNING，尚未迁移动效。新Type C具体事前审查包待批准；本地commit授权保持，push/PR/发布/部署不包含。
 
 后续F6在该独立切片完成后做/login、/chat、/kb、/kb/:id、/history、/chat/:id及设置的全页面客户端视觉/键盘/状态审计，复用未变工程证据，不把客户端矩阵代替F4/F5真实闭环、清理或C19/C20质量证据。全量搜索、多轮、账号管理与工作台继续延后，真实外调先单独披露授权。
 
 ## 18. 正式登录双翼动效实施与客户端验证（2026-10-14）
 
-用户明确批准frontend-auth-motion-alignment，已将冻结双翼/拖尾/三纹理自然过渡接入正式AuthLayout。保留真实LoginView和唯一theme store，装饰失效静态降级、路由卸载清理、reduce/离屏暂停。102/102与含vue-tsc的正式build、完整41项实际Chrome软件WebGL复验通过；深浅三视口6正式/6参考/14补充文件逐图复核。首轮菜单定位失败与两张过渡早期图保留并排除，校正与稳定补采通过；完整说明见[验收](../../openspec/changes/frontend-auth-motion-alignment/acceptance.md)。
+用户明确批准frontend-auth-motion-alignment，已将冻结双翼/拖尾/三纹理自然过渡接入正式AuthLayout。保留真实LoginView和唯一theme store，装饰失效静态降级、路由卸载清理、reduce/离屏暂停。102/102与含vue-tsc的正式build、完整41项实际Chrome软件WebGL复验通过；深浅三视口6正式/6参考/14补充文件逐图复核。首轮菜单定位失败与两张过渡早期图保留并排除，校正与稳定补采通过；完整说明见[验收](../../openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/acceptance.md)。
 
 当前客户端confirmed，真实认证/物理设备/长时性能unknown；真实业务调用0，F4/F5债务和F6/C19/C20保持独立。沿用Agent本地提交授权，但接受/归档尚未授权；ACTIVE_TASK仍ACTIVE等待接受，不能称整个Demo完成。
+
+
+## 19. 登录动效接受归档与F6启动（2026-10-16）
+
+用户确认登录动效成功接入并要求归档和推进下一规划；按客户端范围接受2项delta/6场景，归档至[登录动效验收](../../openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/acceptance.md)，原始26图/4报告hash重验一致，工程/浏览器证据复用。F6按既定顺序推进，见[F6执行记录](frontend-f6-client-acceptance.md)。F6仅审计既有页面与契约内小修，不新增能力；重大缺口另立Type C，真实业务预算0，F4/F5真实债务、全量搜索、多轮/账号/工作台和C19/C20不自动纳入。历史章节为当时状态，以本节及活动指针为当前入口。
+
+F6本轮客户端验证完成：42组七页面主题/视口矩阵、15张补充图、两类窄屏遮挡修复（3条CSS），聚焦17/17+14/14及最终含vue-tsc正式build通过；57正式图与20排除图分别登记。详见[F6客户端验收](frontend-f6-client-acceptance.md)，待用户接受。真实业务调用0，F4/F5真实债务及C19/C20保持独立；不自动升级为完整真实Demo。

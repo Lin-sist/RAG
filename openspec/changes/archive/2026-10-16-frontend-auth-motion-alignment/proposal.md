@@ -29,8 +29,12 @@ Report status：`CLIENT_VALIDATED_AWAITING_ACCEPTANCE`。2026-10-14用户明确�
 
 完成标准为设计列出的正式build、行为/生命周期验证、六组深浅/三视口视觉与真实UI合成流程；分类和残余项分别报告。不将本包通过扩张为F6或完整真实Demo。
 
-[design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总规划](../../../docs/roadmap/frontend-demo-backend-integration-plan.md)
+[design](design.md) · [tasks](tasks.md) · [spec delta](specs/rag-system/spec.md) · [总规划](../../../../docs/roadmap/frontend-demo-backend-integration-plan.md)
 
 ## 实施收尾（2026-10-14）
 
 102/102、含vue-tsc的正式build、完整41项浏览器复验及6正式/6参考/14补充文件已核验，真实业务调用0，详见[acceptance](acceptance.md)与[visual-evidence](visual-evidence.json)。沿用Agent本地提交授权，仍待用户接受，不自动接受baseline/归档或启动F6。
+
+## 接受与归档补录（2026-10-16）
+
+当前状态：`ACCEPTED_CLIENT_SCOPE_ARCHIVED`。用户确认登录动效已成功接入并明确要求归档、推进下一规划。实施提交62961a2619d0ad88b42191d7bbbaf116c6552c3a；本轮重验26图与4份报告SHA-256全部一致，复用102/102、含vue-tsc正式build及41/41浏览器结果。原始visual-evidence的采证HEAD/状态/时间保持不变，上文早期“待接受”仅记录当时事实。2项delta/6场景逐字并入baseline。物理设备/长时性能与真实认证仍unknown，F6及F4/F5真实债务独立；真实业务调用0。沿用本地提交授权，无push/PR/部署。
