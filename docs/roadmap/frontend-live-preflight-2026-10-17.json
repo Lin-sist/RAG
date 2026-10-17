@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "frontend-live-preflight-v1",
+  "observedAtUtc": "2026-10-17T14:47:40.2816356Z",
+  "status": "PREREQUISITES_MISSING",
+  "services": [
+    {
+      "name": "frontend",
+      "host": "127.0.0.1",
+      "port": 5173,
+      "tcpReachable": false
+    },
+    {
+      "name": "backend",
+      "host": "127.0.0.1",
+      "port": 8080,
+      "tcpReachable": false
+    },
+    {
+      "name": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "tcpReachable": false
+    },
+    {
+      "name": "redis",
+      "host": "127.0.0.1",
+      "port": 6379,
+      "tcpReachable": true
+    },
+    {
+      "name": "milvus",
+      "host": "127.0.0.1",
+      "port": 19530,
+      "tcpReachable": false
+    }
+  ],
+  "missing": [
+    "frontend",
+    "backend",
+    "mysql",
+    "milvus"
+  ],
+  "tools": [
+    {
+      "name": "git",
+      "available": true
+    },
+    {
+      "name": "java",
+      "available": true
+    },
+    {
+      "name": "mvn",
+      "available": true
+    },
+    {
+      "name": "node",
+      "available": true
+    },
+    {
+      "name": "docker",
+      "available": true
+    }
+  ],
+  "fixture": {
+    "path": "rag-frontend/tests/fixtures/frontend-live-source.txt",
+    "bytes": 190,
+    "sha256": "1fc9c5ac8b7a416dedd68ce7bbe991e38f27b72fe1b004c0a757b64998a129fc",
+    "belowOneKiB": true
+  },
+  "frontendDependenciesPresent": true,
+  "realBusinessCalls": 0,
+  "providerCalls": 0,
+  "serviceStarts": 0,
+  "businessWrites": 0,
+  "limitations": [
+    "TCP reachability does not identify a service or prove health, auth, data or provider readiness.",
+    "Ports are repository defaults; changed deployment ports need separate verification.",
+    "Configuration defaults and credentials are not runtime-verified; no .env or protected configuration is read.",
+    "A successful preflight never authorizes live execution or starts services."
+  ]
+}

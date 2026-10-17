@@ -3461,3 +3461,18 @@
 - 范围安全与风险：三个源码diff各1行CSS，认证/路由/store/request/SSE/API/DTO/后端/模型/评测、依赖/锁文件、prototype、受保护配置/.agents/学习目录未改，日志只追加。F4/F5真实闭环/拖放/清理及真实撤销/设备/大chunk限制继续保留；F6未自动接受。建议提交：fix(前端): 归档登录动效并完成F6客户端验收修复。临时预览停止/页面关闭、viewport重置，原始证据保留。
 
 - 提交授权补录：首次本地commit被自动审批拒绝，理由为当前可信消息不足以证明历史授权；该次未产生提交。用户随后明确回复‘授权 Agent 本地提交’，据此继续同一已暂存范围，仅本地commit，不push。Commit: pending。
+
+## 2026-10-17 · F6执行提交补录
+
+- 上一执行提交：`980126052efc34bd430344a73b0b21bcc564c78d`，`fix(前端): 归档登录动效并完成F6客户端验收修复`。仅追加真实hash，不回改历史。
+
+## 2026-10-17 · 前端剩余真实闭环预检与执行包
+
+- Commit: pending。用户要求继续剩余前端Demo工程；沿用同一任务已明确的Agent本地提交授权，push/PR/发布/部署未授权。F6保持待接受，不将继续工程自动视为验收或归档。
+- Type B范围与文件：新增scripts/frontend_live_preflight.ps1、固定合成TXT、frontend-live-integration-execution.md及2026-10-17预检JSON；更新ACTIVE_TASK的剩余工程入口、总规划当前模块快照和F4-LIVE债务。未新增产品能力、依赖、API或Type C；无设计决策变更，既有F4归档design决策8的真实证据分流边界继续适用。
+- 已确认：HEAD9801260、原工作区clean。TCP探测5173/8080/3306/19530不可达、6379可达；TCP不证明服务身份/健康。受限及提升只读docker ps均不能连接Docker引擎，未启动服务或改容器/数据卷。仓库默认模型/endpoint/retry/timeout与运行事实明确区分；新方案先完成配置、分块与单变体核查，再披露并取得真实预算授权。
+- 执行与验证：PowerShell AST语法检查通过；预检实跑exit0、PREREQUISITES_MISSING，JSON结构/缺失服务对应/零调用字段核验通过。固定TXT190bytes、SHA-256=1fc9c5ac8b7a416dedd68ce7bbe991e38f27b72fe1b004c0a757b64998a129fc；小于1KiB和420字符，不当作已完成真实分块。40个受影响链接、4新文件whitespace/敏感模式、git diff --check通过。scripts/run_local_quality_gates.ps1 -Mode FrontendBuild使用已有direct vue-tsc再Vite正式build，exit0，既有大chunk警告保留；无依赖安装或升级。
+- 跳过与原因：未改Java或Python评测，不跑Maven/Python评测；未改产品UI，不重跑既有F6浏览器矩阵和全前端102项。没有新浏览器、拖放或真实链路证据。真实F4 L1/F5 L2均NOT_RUN：Docker/backend/MySQL/Milvus未就绪，运行provider/model/凭据及费用预算未确认；当前真实auth/backend/provider/ask/upload/embedding/rerank/judge/feedback/delete与业务写入、费用均0。
+- 安全与剩余风险：正式UI/API/DTO/路由/auth/request/SSE/poller、后端/模型/评测/依赖/lock、prototype、.env.local/application-dev.yml/.agents/学习目录未改；没有注册/赋权/改密/启动任务/删除数据。只读查看配置的输出限定模型/开关/timeout/retry，不输出secret。新preflight自身不读.env或受保护配置、不HTTP、不Docker mutation、不启动或写业务；缺前置条件只报告，不安装工具。前端30s超时不代表后端120s以内工作已停止，写入不明只GET核查不重放。F4-DROP/真实闭环/清理、F5真实持久化/清理、F6设备及C19/C20仍未完成，预算建议不等于已获授权。
+- 建议提交：chore(前端): 补齐真实联调预检与执行边界。
+- 本轮环境恢复补录：已启动原有Docker Desktop（官方已安装程序、隐藏启动），未安装软件。后续Desktop/backend进程及Linux engine pipe出现，但只读docker ps未返回，终止该查询客户端；再次以15秒subprocess超时只读检查仍timeout。未发container start/up/restart/pull、未操作数据卷、未启动RAG后端或发业务/provider请求。原预检JSON保留首次时间和状态，不将进程/pipe存在称为服务恢复；现需用户在Docker Desktop确认引擎正常。首次“未启动服务”描述为当时检查事实，技术恢复动作另记本条。PowerShell普通展示模式也实跑通过，仍PREREQUISITES_MISSING，不作为业务验收。
