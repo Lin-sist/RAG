@@ -16,6 +16,8 @@
 
 ## 2. Live 分阶段授权与执行
 
+- 2026-10-18用户授权的最后一次full已在clean HEAD8f37a7d尝试24次后首错停止：23有效/1network error/48未调用，retry0、compiler INCOMPLETE、正式率N/A。按用户条件指令停放未完live任务并推进C20零外调切片；本change不接受、不归档，既有2.3/2.4/3.*仍未完成。见[最终安全review](../../../docs/eval/reports/c19-final-full-review-v1.json)。后续补齐须独立新run/新授权，不续跑或拼接。
+
 - [x] 2.2d 用户明确授权最后一次同120秒配置独立full最多72次，当前实际0；如中断保留全部证据，C19 live任务延后，继续C20零外调切片，不再自动补跑或反复申请重跑。
 
 - [x] 2.0 用户提供模型信息后独立冻结judge模型、同步共享contract模型身份；已完成4次canary执行包及载荷/预算披露，最新judge29/29，完整回归279项仍为既有C18的1 failure/4 errors。

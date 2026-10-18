@@ -3718,3 +3718,14 @@
 - Commit: pending。用户明确要求最后再跑一次，若再中断保留当前结果并继续C20实现，后续再补live证据；本轮固定独立full24×3最多72次，同NVIDIA NIM/nvidia/nemotron-3-super-120b-a12b、120秒manifest2c1ac168...、合成请求体58191bytes、max_tokens1024/间隔至少2s/retry0/首错停止，不拼接或续跑旧run。实际0，prior59，全部执行累计上限131；费用沿用用户确认免费额度，仍可能失败/限流，实际扣费未知。
 - 6文件授权准备：ACTIVE_TASK、只追加本日志、tasks/readiness/recovery-plan、新final计划；无执行代码/config/数据/指标/生产行为或受保护本地内容变化。凭据仅live时本地只读映射进程，不写值。复用29/29与全Python279既有C18例外，不因新授权重跑Python/Maven/前端；先范围/链接/日志前缀/增量凭据模式/diff，再提交并实时preflight。沿用本地提交授权，未push/PR/部署。适用D1–D8；建议提交：`docs(评测): 记录C19最后一次full与后续切片授权`。
 - 若再次失败：不追加调用，C19不伪称完成/归档；按本次用户明确授权停放其未完live任务，唯一活动指针转C20零外调切片。C20只实现objective独立profile与judge辅助呈现，profile保持DRAFT、阈值待批准、judge不设required；先落proposal/design/tasks/spec delta后实现，不启用质量门禁或改历史证据。
+
+## 2026-10-18 · C19最后一次full授权提交补录
+
+- 上一执行提交：`8f37a7d0488c8ee0177d6dd4bdcfe92473b4e2ad`，`docs(评测): 记录C19最后一次full与后续切片授权`。6文件/17链接/日志前缀/增量凭据模式/diff通过，提交后clean/main ahead17，该clean HEAD为最后一次full身份。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19最后一次full证据与live停放
+
+- Commit: pending。用户最后一次full授权下实际24次尝试/23有效HTTP200/1network error/48未调用，retry0，runner exit4/compiler INCOMPLETE，正式agreement/repeat率N/A。clean HEAD8f37a7d、run b82b2ce3-35c4-4b36-a235-a0c28e170b34、manifest2c1ac168...；同NVIDIA NIM模型，timeout120s/max_tokens1024/间隔至少2s。第24次5030ms网络错误、无HTTP状态，不能认定限流，远端完成/费用未知。累计83次尝试/80个HTTP200/1timeout/2network error，不拼接或补跑。
+- 原始证据独立ignored tmp/eval/c19-final-full-timeout120-20261018-66151987；最终安全review绑定四hash，独立重编译一致，额外provider调用0；凭据源未变，无值进入命令/日志/tracked文件。旧plan/review/raw及执行源码/config/accepted baseline均未变。
+- 按用户明确条件指令停止C19外调、保留未完成任务，后续再补live；当前新run授权0，不再反复申请。C19不伪称完成或归档，转C20零外调objective草案与judge辅助实现。用户已直接授权该切片实现，先记录新change设计再写代码；不启用profile或批准阈值，不变生产行为。
+- 本次6文件：C19 tasks/readiness/recovery-plan、ACTIVE_TASK、本日志及新final review；源码未改，复用29/29及全Python279既有C18例外，跳过Maven/前端/浏览器与任何新增live。四hash/独立编译/链接/日志前缀/增量凭据模式/diff收尾，本地提交授权沿用，无push/PR/部署。建议提交：`docs(评测): 保留C19最后一轮证据并停放live任务`。
