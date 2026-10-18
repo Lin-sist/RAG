@@ -159,7 +159,7 @@
 
 ### C19. `judge-live-calibration-evidence`
 
-2026-10-18：前端按接受范围收口，C19离线实现已提交e107b2c；用户提供模型后完成独立judge配置和[canary执行包](../../openspec/changes/judge-live-calibration-evidence/canary-execution.md)。最新judge29/29、全Python279项仍有既有C18 1 failure/4 errors。费用/配额/认证未确认，live预算0；C19保持ACTIVE，见[readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)，不称全仓GREEN或真实校准通过。
+2026-10-18：前端按接受范围收口，C19离线实现e107b2c、模型准备869803d已提交。用户确认免费额度并授权[本次canary最多4次](../../openspec/changes/judge-live-calibration-evidence/canary-execution.md)，尚未执行、不含full72。最新judge29/29、全Python279项仍有既有C18 1 failure/4 errors。C19保持ACTIVE，结果见[readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)，不称全仓GREEN或真实校准通过。
 
 **目标**：在既有 `rag-judge-v1` 与 `judge-calibration-v1` contract 上形成真实 judge agreement 与 repeat consistency evidence。
 

@@ -1,6 +1,6 @@
 # C19 canary 执行包（2026-10-18）
 
-Report status：`PLAN_READY_AWAITING_LIVE_AUTHORIZATION`。离线实现已提交为`e107b2cf001006a56faad36765753f8cd0845564`；用户随后提供模型信息，现将该模型独立冻结为C19 judge。此文件与模型配置提交后，执行时再读取实际clean HEAD，不把准备过程中的dirty HEAD称为正式运行身份。
+Report status：`AUTHORIZED_PENDING_RUN`。离线实现提交`e107b2c`、模型准备提交`869803d`。用户已明确确认免费额度可用并授权最多4次canary，当前实际0；提交本次授权文档后再读取实际clean HEAD运行，不把准备过程中的dirty HEAD称为正式运行身份。
 
 ## 固定目标及载荷
 
@@ -23,8 +23,8 @@ Report status：`PLAN_READY_AWAITING_LIVE_AUTHORIZATION`。离线实现已提交
 ## 授权前置条件
 
 1. 本地配置已选模型，source hash与clean提交HEAD一致；重新执行本地preflight。READY只证明本地身份，不证明provider认证/模型可用。
-2. 用户确认本次账号费用/免费额度及配额，再明确授权“最多4次canary”；目前该信息未知，调用授权仍0。密钥存在不等于调用预算授权。
-3. 凭据只在本地配置`RAG_EVAL_JUDGE_API_KEY`，不放入tracked文件、命令参数、日志或回复。执行前由本地读取；本准备阶段未读取或验证凭据。聊天中提供的凭据不复制到任何文件；建议用户在控制台换新后本地配置。
+2. 用户已确认免费额度可用并授权“最多4次canary”；费用依据是用户声明，账号账单/具体限流未独立核验。本次最多4次、首错停止，不能复用于full或补跑。
+3. 授权后只读确认项目.env.local含NVIDIA_API_KEY变量名；live时从该本地环境源读入内存并映射为子进程RAG_EVAL_JUDGE_API_KEY，源文件不改，值不进入tracked文件/命令参数/日志/回复。准备阶段未提取或验证密钥值。聊天中的凭据不复制到任何文件，已建议用户换新。
 4. 本包不含GET模型列表、72次full、embedding、rerank、普通ask/generation、KB上传/删除/清理或服务启动。full需canary完整后另行授权。
 
 若已在同一运行环境配置`NVIDIA_API_KEY`，可在该进程内映射到`RAG_EVAL_JUDGE_API_KEY`，不把值放进命令或文件；后端专用配置不会自动导入此独立脚本。这里仅说明本地凭据绑定，没有执行读取或映射。
@@ -40,7 +40,7 @@ Report status：`PLAN_READY_AWAITING_LIVE_AUTHORIZATION`。离线实现已提交
 - 已选模型后judge聚焦测试29/29通过；新增一项证明“模型已选择+clean源码”只能返回本地READY，providerAuthentication仍NOT_CHECKED。原缺模型/拒绝live测试改用独立UNCONFIGURED测试副本，不依赖正式模型始终为空。
 - 完整Python最新279 tests、1 failure/4 errors；失败集合与先前一致，均为C18旧audit，不重写历史基线或宣称全仓GREEN。
 - 生成两个profile的本地计划，预算仍canary4/full72；没有provider请求或模型列表查询。
-- 费用/配额、当前模型访问权限和真实认证unknown；不会把旧前端成功或本次提供模型信息当作已校准。
+- 免费额度可用为用户声明，独立账单/具体限流、模型访问权限和真实认证仍未核验；不把旧前端成功或模型信息当作已校准。
 - 准备时只检查环境变量名称：运行环境中没有`RAG_EVAL_JUDGE_API_KEY`或`NVIDIA_API_KEY`；没有读取变量值或后端私有配置。live前仍需完成本地凭据配置，聊天中的值不注入工具或文件。
 
 [任务](tasks.md) · [readiness](readiness.md) · [安全计划摘要](../../../docs/eval/reports/c19-canary-plan-v1.json)

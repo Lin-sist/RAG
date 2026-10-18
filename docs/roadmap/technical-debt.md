@@ -28,7 +28,7 @@
 
 ### 2. Judge 真实校准
 
-- 2026-10-18：C19离线实现已本地提交e107b2c；按用户提供信息独立固定judge模型，完成[canary执行包](../../openspec/changes/judge-live-calibration-evidence/canary-execution.md)。最新judge29/29，全Python279项仍有既有C18 1 failure/4 errors。见[readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。费用/配额/认证仍未知，C19保持ACTIVE，live NOT_RUN、预算0。
+- 2026-10-18：C19离线实现提交e107b2c、模型准备869803d；用户确认免费额度并授权[本次canary最多4次](../../openspec/changes/judge-live-calibration-evidence/canary-execution.md)，尚未执行、不含full72/补跑。最新judge29/29，全Python279项仍为既有C18 1 failure/4 errors。具体账单/限流/认证未核验；C19保持ACTIVE，结果以[readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)为准。
 
 - C9b tooling、24-case 四象限 gold corpus 与状态语义已完成；live calibration 仍为 `SKIPPED`。
 - accepted contract 固定 canary 4 × 1、full 24 × 3，最大 judge calls 为 4 + 72；任一 case/repeat 缺失不得从成功子集下 agreement 结论。

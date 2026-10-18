@@ -1,6 +1,6 @@
 # C19 事前 readiness（2026-10-18）
 
-Report status：`CANARY_PLAN_READY_AWAITING_AUTHORIZATION`。离线实现已提交`e107b2cf001006a56faad36765753f8cd0845564`；随后按用户提供信息独立固定judge模型，执行时须读取模型配置提交后的clean HEAD。本轮仍无live quality evidence，见[canary执行包](canary-execution.md)。原起点为`e2b077b`，旧占位模型阶段结果按下文日期/阶段保留。
+Report status：`CANARY_AUTHORIZED_PENDING_RUN`。离线实现提交e107b2c、模型准备提交869803d；后者本地preflight READY且工作区干净。用户已确认免费额度可用并授权本次最多4次canary，实际尚0；提交授权记录后读取新的clean HEAD再执行。见[canary执行包](canary-execution.md)。原起点e2b077b及旧占位模型结果按阶段保留，不回写成真实质量证据。
 
 | 项目 | 分类 | 核查结果 |
 | --- | --- | --- |
@@ -11,7 +11,7 @@ Report status：`CANARY_PLAN_READY_AWAITING_AUTHORIZATION`。离线实现已提�
 | normal eval 回归 | confirmed（synthetic） | `python -B -m unittest discover -s scripts -p 'test_run_rag_eval.py'`，47/47通过。 |
 | 全部Python回归 | partial / 非GREEN | 模型配置后最新279 tests，1 failure / 4 errors，与前两阶段相同C18失败，含2组setUpClass错误。完整输出曾截断，紧凑unittest结果保全实跑计数/失败集合。 |
 | C19实现 | confirmed（offline） | 运行冻结、预算、逐次ledger、compiler及缺测抑制已实现；最新judge聚焦29/29，含20项C19及9项既有calibration测试。 |
-| live judge | unknown / NOT_RUN | 模型身份已固定，账号费用/配额、模型访问权限/认证仍未知；真实预算0，未读真实凭据、未查询模型列表或provider。 |
+| live judge | AUTHORIZED / NOT_RUN | 用户确认免费额度可用并授权本次最多4次；具体账单/限流/认证未核验。凭据来自本地项目环境源，准备时只识别变量名，尚未提取值或发provider请求。 |
 | C20 | out_of_scope | 不改profile/阈值，不启用judge required gate。 |
 
 ## 已复现缺口

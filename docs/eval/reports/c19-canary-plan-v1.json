@@ -1,6 +1,6 @@
 {
   "schemaVersion": "c19-canary-plan-v1",
-  "status": "PLAN_READY_AWAITING_LIVE_AUTHORIZATION",
+  "status": "AUTHORIZED_PENDING_RUN",
   "date": "2026-10-18",
   "implementationCommit": "e107b2cf001006a56faad36765753f8cd0845564",
   "executionHeadRule": "read_clean_committed_head_immediately_before_authorized_run",
@@ -21,8 +21,8 @@
   "stopOnFirstError": true,
   "outboundPayloadUtf8Bytes": [871, 897, 779, 761],
   "totalPayloadUtf8BytesExcludingHeaders": 3308,
-  "costBasis": "UNCONFIRMED",
-  "accountQuota": "UNCONFIRMED",
+  "costBasis": "USER_CONFIRMED_FREE_QUOTA_NOT_INDEPENDENTLY_METERED",
+  "accountQuota": "USER_CONFIRMED_FREE_QUOTA_AVAILABLE_RATE_LIMIT_UNVERIFIED",
   "verification": {
     "judgeFocusedTests": 29,
     "judgeFocusedFailures": 0,
@@ -34,11 +34,12 @@
     "existingFailureReason": "c18_budget_source_drift"
   },
   "providerAuthentication": "NOT_CHECKED",
-  "liveAuthorizedRequests": 0,
+  "liveAuthorizedRequests": 4,
   "actualProviderCalls": 0,
   "dataOutboundSoFar": false,
   "credentialEnvironmentVariable": "RAG_EVAL_JUDGE_API_KEY",
   "credentialVariablePresentAtPreparation": false,
+  "liveCredentialBinding": "read_only_project_environment_to_child_process",
   "credentialVariablePresentAtPreparation": false,
   "credentialReadDuringPreparation": false,
   "rawQuestionAnswerContextsTracked": false,

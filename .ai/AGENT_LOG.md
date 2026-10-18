@@ -3590,3 +3590,16 @@
 - 跳过与范围安全：未改Java/前端，跳过Maven/build/浏览器；OpenSpec CLI缺失，用文件级校验。accepted baseline/archive、C17/C18报告/profile、共享contract/corpus、执行源码、依赖/锁文件、受保护配置/.agents/学习目录未改；原offline report保留其历史28/278和占位模型证据，不回写成新模型结果。未启动服务、清理数据或写业务记录；真实backend/provider/embedding/rerank/ask/generation/judge/feedback/delete、数据出站及费用均0。
 - 剩余条件：本地新凭据配置、当前费用/配额确认、最多4次canary独立授权；不自动执行full72。独立canary执行包已具体化，文件/链接/敏感模式/日志前缀及diff收尾后提交。建议提交：`chore(评测): 固定C19判分模型并准备canary执行包`。
 - 提交前收尾：12个允许文件、53个本地链接、manifest/四源码/安全计划hash全部通过；日志原前缀保全，新文件空白及git diff --check通过。增量凭据模式命中0；全日志扫描的4处既有模式前后计数/值相同，未打印或改写历史内容。只读核对当前进程无judge/NVIDIA凭据变量名，不读值；授权/实际provider调用仍0。测试后的代码/config未再改动，复用29/29与全量279（既有1/4例外），准备本地提交后只读核对实际HEAD/preflight。
+
+## 2026-10-18 · C19模型准备提交补录
+
+- 上一执行提交：`869803d7ed171ef9c6b4ca80ff4a1e253e815d8b`，`chore(评测): 固定C19判分模型并准备canary执行包`。12文件，提交后工作区干净/main ahead7；本地preflight=READY、sourceBlobsMatch=true、providerAuthentication=NOT_CHECKED、计划4/实际0。未push。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19 canary授权记录
+
+- Commit: pending。用户明确确认“免费额度可用，授权最多4次canary”；只覆盖已披露的4条合成judge请求，免费依据为用户声明，未独立核验账号账单或限流额度。full72、额外模型列表查询、重试/补跑、backend/embedding/rerank/ask及业务写入均未授权；本地提交责任沿用当前任务授权。
+- 冻结范围：provider=NVIDIA NIM，model=nvidia/nemotron-3-super-120b-a12b，canonical manifest=486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a；4个既定case各1次，POST请求体合计3308bytes，temperature0/timeout60s/max_tokens1024/context6000/间隔2s/retry0/首错停止。未知outcome不重放，不把本次授权拼给full。适用design D1–D7，无代码/契约变化。
+- 本地凭据准备：授权后只读确认项目.env.local含NVIDIA_API_KEY变量名；运行环境无judge/NVIDIA凭据变量名。live时只在内存/子进程环境映射为RAG_EVAL_JUDGE_API_KEY，不改.env.local、不把值写入命令/日志/回复。尚未读取或验证密钥值，也未发外部请求；没有因聊天内提供凭据而绕过预算授权。
+- 修改文件：授权状态同步ACTIVE_TASK、canary执行包/plan摘要、tasks/readiness及本日志。执行前提交这批文档，之后只读preflight并读取实际clean HEAD；复用代码/model未变化的29/29及全量279（既有C18 1 failure/4 errors），不重跑Maven/前端/浏览器。accepted baseline/archive、执行代码/数据/阈值/依赖/受保护目录不改。
+- 当前实际调用0；准备按已授权上限执行一次独立canary，raw写ignored唯一新目录、compiler产安全摘要；结果/错误/请求计数按实际补录，不预填成功或独立计费结论。建议提交：`docs(评测): 记录C19四次canary授权与执行边界`。
+- 执行前核验：最终9个允许文件（另同步指南/路线图/技术债）、46个本地链接、manifest及增量凭据模式扫描通过，AGENT_LOG前缀保全；git diff --check通过。代码/模型/config未变，复用29/29及279项既有C18例外；授权4/实际0，准备提交后按新clean HEAD执行。

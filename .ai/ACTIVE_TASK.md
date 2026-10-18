@@ -22,6 +22,6 @@
 
 - 2026-10-18用户明确要求“为我提交commit，继续下一步”，授权Agent暂存并本地提交本轮前端收口/C19离线实现及随后C19准备文件；push/PR/发布/部署均未授权。
 - 仅已批准的C19离线评测实现与下一步准备；不修改accepted spec/C17/C18 evidence或生产行为。实现提交身份以Git及后续日志补录为准，具体文件与验证见readiness及AGENT_LOG。
-- canary最多4次、full最多72次judge，各阶段独立披露授权；provider/model/endpoint已固定，本次费用/配额及认证未核实，live预算0。用户提供模型或凭据不自动授予批量调用授权。
+- 用户已确认免费额度可用并明确授权本次canary最多4次，当前实际0；provider/model/endpoint固定，费用依据为用户声明，真实认证尚未核验。timeout60s/max_tokens1024/间隔2s/retry0/首错停止，仅4条合成judge。full72及重试/补跑未授权；未知outcome不重放。凭据仅live时从本地项目环境源只读映射到子进程，不写配置或日志。
 - 全量搜索、多轮、账号/工作台、C20 profile/阈值、生产默认prompt/parser/retrieval/SSE不在本change范围。
 - 前端[F4/F5执行包](../docs/roadmap/frontend-live-integration-execution.md)尚未执行；[F6](../docs/roadmap/frontend-f6-client-acceptance.md)和[诊断](../docs/roadmap/frontend-stream-failure-diagnosis-2026-10-18.md)原证据保留。前次STREAM_FAILED根因unknown，不关闭真实债务，不承诺服务端取消或零provider费用。
