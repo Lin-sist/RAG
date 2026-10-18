@@ -1,6 +1,6 @@
 # C19 事前 readiness（2026-10-18）
 
-Report status：`FULL_INCOMPLETE_RECOVERY_AWAITING_APPROVAL`。full在clean HEAD14efadc尝试42次后首错停止：41有效/HTTP200、1 timeout，余30未调用、retry0，compiler INCOMPLETE。见[full安全review](../../../docs/eval/reports/c19-full-review-v1.json)及[恢复审阅包](recovery-plan.md)。原默认60秒/既有证据保留，120秒仅独立候选，新run授权0；canary4/4不能替代完整校准。
+Report status：`RECOVERY_CANARY_AUTHORIZED_PENDING_RUN`。原full在clean HEAD14efadc尝试42次后首错停止：41有效/HTTP200、1 timeout、30未调用、retry0，compiler INCOMPLETE。见[full安全review](../../../docs/eval/reports/c19-full-review-v1.json)及[恢复执行包](recovery-plan.md)。现用户选择独立120秒配置并新增授权最多4次canary，实际0；原默认60秒及既有证据保留，后续full72未授权，canary不能替代完整校准。
 
 | 项目 | 分类 | 核查结果 |
 | --- | --- | --- |

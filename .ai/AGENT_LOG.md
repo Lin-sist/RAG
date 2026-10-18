@@ -3647,3 +3647,14 @@
 - 修改范围：13个文件，含ACTIVE_TASK/只追加本日志、指南/路线图/技术债、C19 proposal/design/tasks/readiness/full-execution、新recovery-plan、安全full review和非默认候选配置。执行源码/共享prompt/parser/0.70阈值/corpus/依赖/accepted baseline及archive/C17/C18/前端/Java/受保护本地目录均不改。C19保持ACTIVE且未完成，不归档或推进C20。
 - 验证与跳过：本轮仅文档、安全证据和非默认配置，复用执行源码未变的judge29/29及全Python279结果（既有C18 1 failure/4 errors，非GREEN），不为提交重跑；Java/前端未改，跳过Maven/build/浏览器。OpenSpec CLI不可用，使用文件级范围/链接/JSON/hash/增量凭据模式/日志前缀及git diff --check检查，不能称官方validate。建议提交：`docs(评测): 保全C19超时证据并准备独立恢复方案`。
 - 收尾：13个允许文件、61个本地链接、4份raw artifact hash与独立重编译均通过；增量凭据模式0、AGENT_LOG前缀保全、安全JSON字段/无本地绝对路径检查通过，默认manifest未变且候选仅timeout不同；CLI候选plan-only exit0、实际0，121秒负例拒绝，git diff --check通过。检查脚本最初将https URL误匹配为Windows路径，收窄为字符串起始的盘符规则后通过，未改证据内容或运行代码。准备本地提交，恢复选项仍待确认。
+
+## 2026-10-18 · C19超时证据提交补录
+
+- 上一执行提交：`caaaf9aa233a561b00423432e76d13b2d2a62efc`，`docs(评测): 保全C19超时证据并准备独立恢复方案`。13文件，提交后clean/main ahead11；120秒候选本地preflight READY、sourceBlobsMatch=true、providerAuthentication=NOT_CHECKED，额外provider调用0。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19独立120秒canary授权
+
+- Commit: pending。用户明确选择“授权120秒候选最多4次canary（建议）”，确认design D8；只新增4次固定canary，合计3308bytes合成内容到integrate.api.nvidia.com，模型nvidia/nemotron-3-super-120b-a12b，timeout120s/max_tokens1024/context6000/temperature0/间隔至少2s/retry0/首错停止。费用沿用用户免费额度声明，具体账单/限流未独立核验，可能再超时；不把延长等待当根因修复。
+- canonical manifest2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea；默认60秒manifest/旧canary/旧partial不变，不补齐或拼接。当前新run授权4/实际0，后续full72、额外查询、重试/补跑、backend/embedding/rerank/普通ask及业务写入均未授权或执行。凭据仅live时本地源只读映射进程，不读聊天值、不写值或改源文件。
+- 修改6文件：ACTIVE_TASK、只追加本日志、design D8、recovery-plan、tasks、readiness。无代码/config/数据/指标/依赖/accepted baseline/受保护目录改动。本地提交授权复用，未push/PR/部署，C19仍ACTIVE。提交后读取实际clean HEAD再独立运行。
+- 验证复用：候选纯本地validator/plan/121秒拒绝及judge29/29已通过；全Python279仍既有C18 1 failure/4 errors，非GREEN。仅授权元数据更新，不因换阶段重跑；Java/前端未变，跳过Maven/build/浏览器，OpenSpec CLI不可用。执行前做范围/链接/日志前缀/增量凭据模式与git diff --check。建议提交：`docs(评测): 记录C19独立120秒canary授权`。
