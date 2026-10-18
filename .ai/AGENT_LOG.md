@@ -3507,3 +3507,18 @@
 - 范围安全：只读白名单核对本地模型/超时等非secret字段，不输出key或读取数据库内容；.env.local/application-dev.yml/.agents/学习目录、API/DTO/SSE/模型默认/依赖/原图/既有采证JSON不变。3份文档的链接、日志前缀、范围与diff聚焦验证收尾执行。建议提交：docs(诊断): 定位流式问答零正文失败路径。
 - 收尾验证：3份文档精确范围、12个本地链接、原日志前缀完整、空白/新增凭据模式及git diff --check全部通过；6项合成结果与诊断程序的hash保存在本地证据目录。暂存和本地提交沿用既有授权，不扩大范围。
 - 用户切换后端终端后，通过app终端快照交叉核验：09:42:46.198检索完成、09:42:46.199模型准备、09:43:37.299解析错误及同一traceId失败，两种读取渠道一致；仍无finish_reason或正文/推理计数。只保存脱敏字段到本地terminal-observations.json，不保存完整终端业务输出；报告同步补录，无代码/配置/请求变化。
+
+## 2026-10-18 · 流式只读诊断提交补录
+
+- 上一执行提交：`91369c019ab0c634e6314c0b4d4a33243bb754b2`，`docs(诊断): 定位流式问答零正文失败路径`。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · 脱敏流式结构与计数诊断实施
+
+- Commit: pending。用户要求继续增加脱敏诊断；Type B既有契约内观测维护，沿用diagnose流程及本工程Agent本地提交授权，不含push/PR/部署。ACTIVE_TASK保持IDLE，无新能力/API/DTO/provider契约或Type C，无新design决策。
+- 范围：当前OpenAI兼容流式生成路径、包内诊断计数器、聚焦测试及诊断报告/本日志。Qwen原生路径、生产模型/token预算/prompt/检索/重试/超时/终态/历史语义不改；无真实调用。先建立覆盖隐私和业务行为的本地测试，再实现。
+- 文件与事实：新增StreamResponseDiagnostics.java、AnswerGeneratorStreamDiagnosticsTest.java，修改AnswerGeneratorImpl的OpenAI流式观测接线；诊断报告追加字段口径与生效限制，ACTIVE_TASK保持IDLE并同步当前状态。每订阅独立streamId、每尝试独立固定大小标量计数，完成/错误/取消各输出一次终结汇总，trace提前捕获并限制为hex；content-type/finish_reason均固定白名单，usage仅固定位置非负整数，缺失-1。只观察首choice，与既有提取一致，不保留原始文本/字段名列表/任意上游标签，不修改MDC。WebClient响应过滤器不消费body，原retrieve/超时/重试/清洗和正文提取继续使用。
+- 聚焦验证：mvn -q -pl rag-core -am "-Dtest=AnswerGeneratorStreamDiagnosticsTest,AnswerGeneratorImplResilienceTest,AnswerGeneratorImplSanitizerTest,AnswerGeneratorTelemetryTest" "-Dsurefire.failIfNoSpecifiedTests=false" test最终exit0，25/25、失败0/错误0/跳过0（10新诊断+10韧性+3清洗+2遥测）。所有响应为内存或loopback合成服务；敏感问题/正文/推理/凭据/错误体及上游标签均有不落日志断言。对两个受影响产品源码调用既有敏感日志scan_text，0发现。正式计数从本次surefire XML核验，不复用旧报告。
+- 失败保留：普通受限Maven不能解析parent依赖，提升后可用；未引用带点-D参数被PowerShell拆分，引用后命令正确。初始9项红灯仅因缺日志；首次实现后3项失败来自测试helper对空extra数组调用AssertJ，修正helper后24/24通过。追加partial error+retry取消顺序专项先出现outcome=cancel，先记录已观察error后再判doFinally信号，仅修正诊断结果，最终25/25通过。结果查询中的rg通配路径被Windows当字面量拒绝，改XML逐文件解析。
+- 跳过：仅rag-core Java维护，不重跑未变前端build/Python评测；没有新增依赖/基础设施，不跑全仓Maven及真实provider重放。未执行package/install/启动脚本或重启现有后端，当前进程仍是旧版本；新日志需重新构建启动后端才生效。Agent新增真实业务HTTP/provider/embedding/ask/rerank/judge/业务写入与费用0。
+- 安全与剩余风险：不修改API/DTO/SSE终态/历史/模型/prompt/检索/default retry/timeout、Qwen原生路径、依赖/lock、.env.local/application-dev.yml/.agents/学习目录。计数为字符/解码块，不等于token/网络帧/费用；模型只返回推理与格式不兼容的实际根因仍需新日志，未宣称原故障已修复。日志只追加，范围/链接/diff检查收尾执行。建议提交：fix(诊断): 增加脱敏流式结构与计数日志。
+- 收尾验证：6个允许文件精确匹配、11个本地链接存在、原AGENT_LOG前缀完整、空白/新增凭据模式及git diff --check通过；最终两个产品源码敏感日志扫描0发现。源码成功验证后未再改动，复用25/25结果；暂存/本地提交沿用授权。

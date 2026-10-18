@@ -5,7 +5,7 @@
 `IDLE`
 
 - 当前无活动Type C change。2026-10-16用户确认登录双翼动效成功并明确授权归档；已接受客户端范围并归档。
-- 当前推进：F6普通客户端路径已获用户手工确认，流式问答异常单列待查，见[10月18日手工验收补录](../docs/roadmap/frontend-user-manual-acceptance-2026-10-18.md)及[F6执行记录](../docs/roadmap/frontend-f6-client-acceptance.md)。本轮仅Type B文档补录，不新增能力。
+- 当前推进：F6普通客户端路径已获用户手工确认，流式异常定位到生成流无可见正文，具体上游原因待定；用户授权的OpenAI兼容路径脱敏诊断已完成Type B实现与25项本地测试，尚未加载到运行后端或真实复现。见[诊断及实施记录](../docs/roadmap/frontend-stream-failure-diagnosis-2026-10-18.md)、[手工验收](../docs/roadmap/frontend-user-manual-acceptance-2026-10-18.md)及[F6记录](../docs/roadmap/frontend-f6-client-acceptance.md)。不新增产品能力或契约。
 - [F4/F5真实闭环执行包](../docs/roadmap/frontend-live-integration-execution.md)的L1/L2尚未由Agent执行；用户截图已补充同步答案/来源、索引完成及反馈列表证据，真实链条分类partial。10月17日环境故障仅为历史快照，不能作为当前阻塞事实；Agent新真实调用预算仍0。
 - 推进顺序：C21/R5 → 前端Demo接入和联调 → C19校准 → C20门禁；后续阶段分别验收。
 

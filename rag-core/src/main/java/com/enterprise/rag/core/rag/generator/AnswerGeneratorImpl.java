@@ -410,44 +410,57 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         requestBody.put("max_tokens", maxOutputTokens);
         requestBody.put("stream", true);
 
-        AtomicInteger attemptCount = new AtomicInteger();
-        AtomicInteger retryCount = new AtomicInteger();
-        AtomicBoolean visibleContentEmitted = new AtomicBoolean();
         String endpoint = "/chat/completions(stream)";
+        String traceId = StreamResponseDiagnostics.captureTraceId();
 
-        Flux<String> visibleResponseFlux = Flux.defer(() -> sanitizeStream(Flux.defer(() -> {
-            attemptCount.incrementAndGet();
-            return webClient.post()
-                    .uri(config.getBaseUrl() + "/chat/completions")
-                    .header("Authorization", "Bearer " + config.getApiKey())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToFlux(String.class)
-                    .timeout(Duration.ofSeconds(properties.getTimeout()));
-        })
-                .filter(line -> !line.equals("[DONE]"))
-                .map(this::parseOpenAIStreamChunk)
-                .filter(content -> content != null && !content.isEmpty())))
-                .switchIfEmpty(Flux.error(invalidResponse()));
+        return Flux.defer(() -> {
+            AtomicInteger attemptCount = new AtomicInteger();
+            AtomicInteger retryCount = new AtomicInteger();
+            AtomicBoolean visibleContentEmitted = new AtomicBoolean();
+            String streamId = UUID.randomUUID().toString();
+            Flux<String> visibleResponseFlux = Flux.defer(() -> {
+                StreamResponseDiagnostics diagnostics = new StreamResponseDiagnostics(traceId, streamId,
+                        attemptCount.incrementAndGet(), retryCount.get(), maxOutputTokens,
+                        properties.getTimeout(), properties.getMaxRetries());
+                // Observe status/headers without changing retrieve() error/body handling.
+                WebClient observedClient = webClient.mutate().filter((request, next) ->
+                        next.exchange(request).doOnNext(response -> diagnostics.response(
+                                response.statusCode().value(), response.headers().header("Content-Type")))).build();
+                Flux<String> parsed = observedClient.post()
+                        .uri(config.getBaseUrl() + "/chat/completions")
+                        .header("Authorization", "Bearer " + config.getApiKey())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(requestBody)
+                        .retrieve()
+                        .bodyToFlux(String.class)
+                        .timeout(Duration.ofSeconds(properties.getTimeout()))
+                        .map(chunk -> parseOpenAIStreamChunk(chunk, diagnostics))
+                        .filter(content -> content != null && !content.isEmpty());
+                return sanitizeStream(parsed)
+                        .doOnNext(diagnostics::visible)
+                        .switchIfEmpty(Flux.error(invalidResponse()))
+                        .doOnError(ignored -> diagnostics.error())
+                        .doFinally(diagnostics::finish);
+            });
 
-        return applyStreamRetryPolicy(
-                visibleResponseFlux.doOnNext(ignored -> visibleContentEmitted.set(true)),
-                "openai",
-                endpoint,
-                retryCount,
-                visibleContentEmitted)
-                .doOnError(error -> logLlmError("openai", endpoint, error))
-                .onErrorMap(error -> buildLlmException(
+            return applyStreamRetryPolicy(
+                    visibleResponseFlux.doOnNext(ignored -> visibleContentEmitted.set(true)),
+                    "openai",
+                    endpoint,
+                    retryCount,
+                    visibleContentEmitted)
+                    .doOnError(error -> logLlmError("openai", endpoint, error))
+                    .onErrorMap(error -> buildLlmException(
                                 "openai",
                                 endpoint,
                                 config.getModel(),
                                 error,
                                 attemptCount.get(),
                                 retryCount.get()))
-                .doOnComplete(() -> llmSpan.providerCall(
-                        "openai", "openai", config.getModel(), "sse",
-                        attemptCount.get(), retryCount.get()));
+                    .doOnComplete(() -> llmSpan.providerCall(
+                            "openai", "openai", config.getModel(), "sse",
+                            attemptCount.get(), retryCount.get()));
+        });
     }
 
     /**
@@ -758,17 +771,23 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
     /**
      * 解析 OpenAI 流式响应块
      */
-    private String parseOpenAIStreamChunk(String chunk) {
+    private String parseOpenAIStreamChunk(String chunk, StreamResponseDiagnostics diagnostics) {
+        diagnostics.event();
+        boolean jsonParsed = false;
         try {
             if (chunk.startsWith("data: ")) {
                 chunk = chunk.substring(6);
             }
             if (chunk.equals("[DONE]")) {
+                diagnostics.done();
                 return "";
             }
             JsonNode root = objectMapper.readTree(chunk);
+            jsonParsed = true;
+            diagnostics.parsed(root);
             return root.path("choices").get(0).path("delta").path("content").asText("");
         } catch (Exception e) {
+            diagnostics.parseFailure(jsonParsed);
             log.debug("Failed to parse OpenAI stream chunk: errorType={}",
                     e.getClass().getSimpleName());
             return "";
