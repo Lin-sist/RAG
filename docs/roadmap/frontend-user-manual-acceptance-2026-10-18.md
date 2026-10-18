@@ -46,3 +46,7 @@
 本轮Agent新增HTTP/业务/provider调用、业务写入及费用均为0；用户自行操作的实际provider、模型、请求次数、timeout/retry与费用未知，不记为0。未运行新的build、Maven、Python评测或浏览器矩阵，因为仅更新验收文档、未修改实现；文档链接、范围与diff另作聚焦验证。原始57张F6证据及10月17日预检快照不变。
 
 [F6客户端验收](frontend-f6-client-acceptance.md) · [真实闭环执行包](frontend-live-integration-execution.md) · [总规划](frontend-demo-backend-integration-plan.md) · [技术债](technical-debt.md)
+
+## 同日后续诊断补录
+
+用户随后要求定位流式失败。已从运行后端的控制台找到09:43:37的一条失败：检索与生成contextCount=5、实际模型已确认，但正文chunk和长度均0，耗时52909ms；失败路径定位至生成流结束后的正文提取/空结果校验。6项同版本合成诊断已通过，真实上游为何没有可见正文仍未定。详见[只读诊断](frontend-stream-failure-diagnosis-2026-10-18.md)。上文“未找到近期日志”是初次文件日志检查结果，本次直接读取控制台补充了证据；未重发真实问答、未修改产品代码。

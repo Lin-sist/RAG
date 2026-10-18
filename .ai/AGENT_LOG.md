@@ -3491,3 +3491,19 @@
 - 跳过与原因：仅文档变更，不重跑既有vue-tsc正式build/前端测试/浏览器矩阵，不跑Maven/Python评测；无新真实HTTP/业务/provider调用或业务写入，Agent本轮费用0，用户自行操作次数/模型/timeout/retry/费用未知。不为补证重发ask、embedding或反馈。
 - 安全与剩余风险：实现/API/DTO/SSE/后端/模型/依赖/lock、受保护配置/.agents/学习目录和原始采证JSON不变，AGENT_LOG只追加。流式失败根因、真实拖放/权限/限流/持久化完整链条/删除清理、设备与大chunk风险继续保留。建议提交：docs(前端): 记录用户手工验收及流式问答例外。
 - 收尾验证：7份文档范围精确匹配、58个本地链接存在、原日志前缀完整、文件末尾/空白及新增敏感模式检查通过，git diff --check通过；代码映射再次只读核验一致。只产生文档与本地非tracked截图副本，无产品代码改动。最终暂存检查及提交按上述既有授权执行。
+
+## 2026-10-18 · 用户手工验收提交补录
+
+- 上一执行提交：`6f18f36634d874b5c3edb87e118f1eab0ef8ed5f`，`docs(前端): 记录用户手工验收及流式问答例外`。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · 流式失败只读定位
+
+- Commit: pending。用户授权先定位流式失败，应用diagnose技能；仅只读诊断与值得保留的证据文档，不修改产品代码/配置或活动指针，不新增Type C。沿用本工程Agent本地提交授权，不含push/PR/部署。无新设计决策。
+- 文件：新增frontend-stream-failure-diagnosis-2026-10-18.md，向用户手工验收追加后续证据，本日志只追加。临时Java诊断程序/结果和进程classpath存本线程visualizations/stream-diagnosis-2026-10-18，不进入Git，不保存真实业务正文。
+- 事实：原工作区clean、HEAD6f18f36。受限CIM查询拒绝，提升后只读确认后端PID33600/8080与前端5173。现存app终端是前端；通过只读附接后端控制台取得既有错误，不发送输入、不重启/终止服务。仅采集字段白名单，KB/user等身份字段不入证据。第一次classpath白名单正则过宽输出了依赖路径，未输出secret；后续只将classpath存本地并输出计数。
+- 已定位：控制台09:43:37.304、traceId001a14cacefa1d092d644434e4ec2fdd；检索/生成contextCount5、estimatedContextTokens1254、dedup/budget去除均0，运行模型nvidia/nemotron-3-super-120b-a12b。LLMException、52909ms、firstChunkLatencyMs=-1、chunkCount0/answerLength0，前有解析NullPointerException。截图无traceId，不声称直接绑定截图身份。该请求进入了生成，失败路径与上游结束后无可见正文的invalid_response一致，实际上游原因仍未确认。
+- 验证：同运行classpath/JAR的AnswerGeneratorImpl执行6项内存WebClient/SSE样本，全部符合预期、exit0，每项1次exchange、retry0；正常正文、正文加空usage、推理后正文成功，纯推理到length、message形状和损坏JSON均零正文invalid_response。空choices解析日志可出现于成功请求，不能单独判根因。同类class字节与target一致，SHA-256入报告。没有真实HTTP或provider调用；临时诊断不是Maven正式测试。
+- 跳过与风险：未改代码/配置，不重跑正式build/Maven/Python评测；真实复现未执行，新增业务HTTP/provider/embedding/ask/rerank/judge/业务写入/费用0，既有用户请求费用/次数未知。真实finish_reason、推理/正文计数、事件结构、max_tokens及HTTP/重试/超时未核验；不能声称已修复或先调token/模型。权限/清理等原债务不变。
+- 范围安全：只读白名单核对本地模型/超时等非secret字段，不输出key或读取数据库内容；.env.local/application-dev.yml/.agents/学习目录、API/DTO/SSE/模型默认/依赖/原图/既有采证JSON不变。3份文档的链接、日志前缀、范围与diff聚焦验证收尾执行。建议提交：docs(诊断): 定位流式问答零正文失败路径。
+- 收尾验证：3份文档精确范围、12个本地链接、原日志前缀完整、空白/新增凭据模式及git diff --check全部通过；6项合成结果与诊断程序的hash保存在本地证据目录。暂存和本地提交沿用既有授权，不扩大范围。
+- 用户切换后端终端后，通过app终端快照交叉核验：09:42:46.198检索完成、09:42:46.199模型准备、09:43:37.299解析错误及同一traceId失败，两种读取渠道一致；仍无finish_reason或正文/推理计数。只保存脱敏字段到本地terminal-observations.json，不保存完整终端业务输出；报告同步补录，无代码/配置/请求变化。
