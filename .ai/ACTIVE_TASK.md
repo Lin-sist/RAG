@@ -4,7 +4,7 @@
 
 `ACTIVE`
 
-- 当前唯一Type C：`judge-live-calibration-evidence`（C19）。已按用户恢复指令执行独立120秒full，第9次网络错误后首错停止：8有效/1网络错误/63未调用，正式率N/A。C19仍未完成，当前新run授权0。入口：[proposal](../openspec/changes/judge-live-calibration-evidence/proposal.md)、[design](../openspec/changes/judge-live-calibration-evidence/design.md)、[tasks](../openspec/changes/judge-live-calibration-evidence/tasks.md)、[readiness](../openspec/changes/judge-live-calibration-evidence/readiness.md)。
+- 当前唯一活动Type C仍为C19。用户明确授权最后一次独立120秒full最多72次（同模型/约58KB/max_tokens1024/间隔至少2s/retry0/首错停止），当前实际0；如再中断则保留证据、暂停C19未完live任务，并转入C20零外调objective独立门禁/judge仅辅助切片，不将C19标完成或归档。
 - 前端Demo于2026-10-18按用户确认的客户端/手工使用范围完成整体接受收口；各Type C已归档，F1/F6为Type B，无新delta待归档。见[收口索引](../docs/roadmap/frontend-demo-closeout-2026-10-18.md)。真实权限/持久化/拖放/清理/设备/流式稳定性债务保留。
 - 最新120秒full见[安全review](../docs/eval/reports/c19-full-timeout120-review-v1.json)：clean HEAD91dc567，attempt9/cal-ft-rt-03/repeat3在5032ms报judge_network_error、无HTTP状态，未重试。同case前两次5266/17092ms成功，根因/远端完成及费用未知。原60秒full及两轮canary证据、默认配置均保留，不拼接；原plan为执行前授权快照。
 - 推进顺序：C21/R5 → 前端Demo（已接受范围收口）→ C19校准 → C20门禁；分别验收。

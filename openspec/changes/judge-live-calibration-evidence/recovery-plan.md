@@ -1,6 +1,6 @@
 # C19 full超时后的恢复审阅包
 
-2026-10-18。Report status：`FULL_TIMEOUT120_INCOMPLETE_NETWORK_ERROR`。已按恢复指令独立执行120秒full：8个HTTP200有效响应、第9次judge_network_error、余63未调用，零重试/首错停止，compiler INCOMPLETE。见[本次full安全review](../../../docs/eval/reports/c19-full-timeout120-review-v1.json)；原[full计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)保留执行前授权快照，新run授权0，不自动补跑。
+2026-10-18。Report status：`FINAL_FULL_AUTHORIZED_PENDING_RUN`。用户授权最后一次同120秒配置独立full最多72次，当前实际0；此前59次尝试/57个HTTP200保留，新run不拼接旧结果。若再次首错停止，不再请求重复外调，按用户授权保留未完成C19并推进C20零外调切片。最新计划见[最后一次计划](../../../docs/eval/reports/c19-final-full-timeout120-plan-v1.json)，以下记录此前执行事实。
 
 ## 已保存的事实
 

@@ -3708,3 +3708,13 @@
 - 修改11文件：ACTIVE_TASK/本日志、proposal/tasks/readiness/recovery-plan、原full执行包最新入口、指南/路线图/技术债和新full安全review；指南初始UNCONFIGURED段显式标为历史快照，避免与当前结果混淆。代码/配置/数据/依赖/accepted baseline/archive/C17/C18/生产行为及受保护本地目录不改；C19仍未完成，不归档/置IDLE或启动C20。沿用本地提交授权，未push/PR/部署。
 - 验证/跳过：真实9次及独立重编译如上；复用源码未变的judge29/29与全Python279（既有C18 1 failure/4 errors，非GREEN），不因新证据重跑。Java/前端未改，跳过Maven/build/浏览器；OpenSpec CLI不可用，文件级范围/链接/JSON/hash/日志前缀/增量凭据模式/diff收尾。建议提交：`docs(评测): 保全C19独立full网络错误证据`。
 - 收尾：11个允许文件/58个本地链接、4份raw hash/ignored状态及独立重编译一致；AGENT_LOG前缀保全、增量凭据模式0、安全JSON字段/无本地绝对路径检查通过，执行源码及两份manifest hash均未变，git diff --check通过。只读核查无额外HTTP请求，本轮provider尝试严格为9；准备本地提交后停止，任何新run需明确授权。
+
+## 2026-10-18 · C19网络错误证据提交补录
+
+- 上一执行提交：`6f2498daa763849984f0443b911f20e095f05f18`，`docs(评测): 保全C19独立full网络错误证据`。11文件，提交后clean/main ahead16；11文件/58链接/四artifact hash与独立重编译通过，新增诊断性外调0。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19最后一次full与C20条件推进授权
+
+- Commit: pending。用户明确要求最后再跑一次，若再中断保留当前结果并继续C20实现，后续再补live证据；本轮固定独立full24×3最多72次，同NVIDIA NIM/nvidia/nemotron-3-super-120b-a12b、120秒manifest2c1ac168...、合成请求体58191bytes、max_tokens1024/间隔至少2s/retry0/首错停止，不拼接或续跑旧run。实际0，prior59，全部执行累计上限131；费用沿用用户确认免费额度，仍可能失败/限流，实际扣费未知。
+- 6文件授权准备：ACTIVE_TASK、只追加本日志、tasks/readiness/recovery-plan、新final计划；无执行代码/config/数据/指标/生产行为或受保护本地内容变化。凭据仅live时本地只读映射进程，不写值。复用29/29与全Python279既有C18例外，不因新授权重跑Python/Maven/前端；先范围/链接/日志前缀/增量凭据模式/diff，再提交并实时preflight。沿用本地提交授权，未push/PR/部署。适用D1–D8；建议提交：`docs(评测): 记录C19最后一次full与后续切片授权`。
+- 若再次失败：不追加调用，C19不伪称完成/归档；按本次用户明确授权停放其未完live任务，唯一活动指针转C20零外调切片。C20只实现objective独立profile与judge辅助呈现，profile保持DRAFT、阈值待批准、judge不设required；先落proposal/design/tasks/spec delta后实现，不启用质量门禁或改历史证据。

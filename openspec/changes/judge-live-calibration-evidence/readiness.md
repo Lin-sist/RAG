@@ -1,6 +1,6 @@
 # C19 事前 readiness（2026-10-18）
 
-Report status：`FULL_TIMEOUT120_INCOMPLETE_NETWORK_ERROR`。已按用户恢复指令执行独立120秒full，clean HEAD91dc567下9次尝试：8个HTTP200有效响应、第9次judge_network_error、63未调用，retry0，compiler INCOMPLETE，正式率N/A。见[新full review](../../../docs/eval/reports/c19-full-timeout120-review-v1.json)及[执行记录](recovery-plan.md)。新run授权0，不续跑或拼接；默认配置/旧证据保留，C19未完成。
+Report status：`FINAL_FULL_AUTHORIZED_PENDING_RUN`。用户授权最后一次独立full最多72次，原120秒manifest/模型/载荷/首错停止策略不变，实际0；旧证据保留。若再中断则不重跑，C19 live任务保留待后续，转C20零外调objective独立门禁/judge辅助实现。
 
 | 项目 | 分类 | 核查结果 |
 | --- | --- | --- |
