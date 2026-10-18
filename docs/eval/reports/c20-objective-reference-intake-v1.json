@@ -1,0 +1,234 @@
+{
+  "schemaVersion": "c20-reference-intake-v1",
+  "status": "INCOMPLETE",
+  "exitCode": 4,
+  "gateStatus": "NOT_EVALUABLE",
+  "activationEligible": false,
+  "activationPerformed": false,
+  "providerCalls": 0,
+  "businessDataOutbound": false,
+  "providerExecutionVerified": false,
+  "expectedRepeats": 3,
+  "suppliedRuns": 1,
+  "reasonCodes": [
+    "candidate_ineligible",
+    "repeat_index_incomplete",
+    "repeat_total_incompatible"
+  ],
+  "runs": [
+    {
+      "repeatIndex": 1,
+      "declaredRepeatTotal": 1,
+      "detailsSha256": "f63c065ef075a161d00ab6fced64973f7b9a2658d79f451a74712a4c03af9300",
+      "metadataSha256": "4682b2fa9714db24dd9a19f0ac4bfc29ee40242f8940dac2a872ee4bf7750c58",
+      "objectiveMeasurementComplete": true,
+      "runtimeIdentitySha256": "939cce46ae142e298c159f52287bbc753f7c1aa4a347761b9f5ca9575fb37dd3",
+      "policyBlocker": "retry_count_exceeded",
+      "observationEligible": false,
+      "candidateEligible": false,
+      "duplicate": false
+    }
+  ],
+  "rules": [
+    {
+      "id": "answer-keyword-hit-rate",
+      "metric": "answer_keyword_hit_rate",
+      "operator": "minInclusive",
+      "repeats": [
+        {
+          "repeatIndex": 1,
+          "observed": 0.7974413646055437,
+          "denominator": 469
+        },
+        {
+          "repeatIndex": 2,
+          "observed": null,
+          "denominator": null
+        },
+        {
+          "repeatIndex": 3,
+          "observed": null,
+          "denominator": null
+        }
+      ],
+      "distribution": null,
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "approvalStatus": "PENDING"
+    },
+    {
+      "id": "citation-source-hit-rate",
+      "metric": "citation_source_hit_rate",
+      "operator": "minInclusive",
+      "repeats": [
+        {
+          "repeatIndex": 1,
+          "observed": 0.9191176470588235,
+          "denominator": 136
+        },
+        {
+          "repeatIndex": 2,
+          "observed": null,
+          "denominator": null
+        },
+        {
+          "repeatIndex": 3,
+          "observed": null,
+          "denominator": null
+        }
+      ],
+      "distribution": null,
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "approvalStatus": "PENDING"
+    },
+    {
+      "id": "citation-snippet-hit-rate",
+      "metric": "citation_snippet_hit_rate",
+      "operator": "minInclusive",
+      "repeats": [
+        {
+          "repeatIndex": 1,
+          "observed": 1,
+          "denominator": 336
+        },
+        {
+          "repeatIndex": 2,
+          "observed": null,
+          "denominator": null
+        },
+        {
+          "repeatIndex": 3,
+          "observed": null,
+          "denominator": null
+        }
+      ],
+      "distribution": null,
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "approvalStatus": "PENDING"
+    },
+    {
+      "id": "objective-claim-support-rate",
+      "metric": "objective_claim_support_rate",
+      "operator": "minInclusive",
+      "repeats": [
+        {
+          "repeatIndex": 1,
+          "observed": 0.05215419501133787,
+          "denominator": 441
+        },
+        {
+          "repeatIndex": 2,
+          "observed": null,
+          "denominator": null
+        },
+        {
+          "repeatIndex": 3,
+          "observed": null,
+          "denominator": null
+        }
+      ],
+      "distribution": null,
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "approvalStatus": "PENDING"
+    },
+    {
+      "id": "no-answer-accuracy",
+      "metric": "no_answer_accuracy",
+      "operator": "minInclusive",
+      "repeats": [
+        {
+          "repeatIndex": 1,
+          "observed": 0.95,
+          "denominator": 20
+        },
+        {
+          "repeatIndex": 2,
+          "observed": null,
+          "denominator": null
+        },
+        {
+          "repeatIndex": 3,
+          "observed": null,
+          "denominator": null
+        }
+      ],
+      "distribution": null,
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "approvalStatus": "PENDING"
+    },
+    {
+      "id": "unsupported-citation-count",
+      "metric": "unsupported_citation_count",
+      "operator": "maxInclusive",
+      "repeats": [
+        {
+          "repeatIndex": 1,
+          "observed": 0,
+          "denominator": 150
+        },
+        {
+          "repeatIndex": 2,
+          "observed": null,
+          "denominator": null
+        },
+        {
+          "repeatIndex": 3,
+          "observed": null,
+          "denominator": null
+        }
+      ],
+      "distribution": null,
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "approvalStatus": "PENDING"
+    },
+    {
+      "id": "no-answer-citation-violation-count",
+      "metric": "no_answer_citation_violation_count",
+      "operator": "maxInclusive",
+      "repeats": [
+        {
+          "repeatIndex": 1,
+          "observed": 1,
+          "denominator": 20
+        },
+        {
+          "repeatIndex": 2,
+          "observed": null,
+          "denominator": null
+        },
+        {
+          "repeatIndex": 3,
+          "observed": null,
+          "denominator": null
+        }
+      ],
+      "distribution": null,
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "approvalStatus": "PENDING"
+    }
+  ],
+  "profileSha256": "4a919f41ac092f992f7f6a9b78558e8be1beb641c37fc161f4e1364a8960e802",
+  "profileStatus": "DRAFT",
+  "datasetManifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
+  "compatibleIdentityCount": 1,
+  "suppliedRepeatIndexes": [
+    1
+  ],
+  "missingRepeatIndexes": [
+    2,
+    3
+  ],
+  "evidenceSource": {
+    "kind": "ACCEPTED_C18_SINGLE_RUN_LOCAL_INTAKE",
+    "acceptedReviewSha256": "06dd7458e4950e6d61de7aa8a408570cb06a5524fa4786fa9d67612d7d8f30ae",
+    "detailsAndMetadataHashesMatchAccepted": true,
+    "currentC18CompilerRevalidated": false,
+    "realRepeatCollectionPerformed": false
+  }
+}

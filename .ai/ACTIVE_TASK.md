@@ -6,6 +6,10 @@
 
 - 当前唯一活动Type C：`objective-judge-quality-gate-profile`（C20），执行用户已授权的零外调切片。见[proposal](../openspec/changes/objective-judge-quality-gate-profile/proposal.md)、[design](../openspec/changes/objective-judge-quality-gate-profile/design.md)、[tasks](../openspec/changes/objective-judge-quality-gate-profile/tasks.md)。objective草案/judge仅辅助、阈值待批、不激活；C19未完成live任务停放在原目录，未接受/归档，后续独立授权补测。
 
+- 用户本轮要求核查归档，不能则继续实现。核查仍缺参考重复证据/数值审批/激活验收，故不归档；当前推进零外调参考intake编译与阈值审阅包，真实三轮采集及阈值批准不在本轮授权内。设计D6–D7已先行记录。
+
+- 本轮下一切片已实现：三轮参考intake/唯一性与metadata/runtime绑定、缺口槽位、完整分布及空阈值审阅表；新聚焦9/9通过，全Python302仍原C18 1 failure/4 errors。现有C18单轮[安全intake](../docs/eval/reports/c20-objective-reference-intake-v1.json)为INCOMPLETE（缺2/3、total1/retry31），无分布/激活；C20归档仍待真实证据与独立数值批准，外部调用0。
+
 - C19 live已按用户条件指令停放：最后一轮24次尝试/23有效/1network error/48未调用、零重试、INCOMPLETE，正式率N/A，未接受/归档。C20已完成[零外调首切片](../openspec/changes/objective-judge-quality-gate-profile/readiness.md)：7项objective草案/3项judge辅助与安全review；profile仍DRAFT，参考重复证据/阈值批准/激活未完成，当前指针继续ACTIVE。
 - 前端Demo于2026-10-18按用户确认的客户端/手工使用范围完成整体接受收口；各Type C已归档，F1/F6为Type B，无新delta待归档。见[收口索引](../docs/roadmap/frontend-demo-closeout-2026-10-18.md)。真实权限/持久化/拖放/清理/设备/流式稳定性债务保留。
 - 最新[最后一轮review](../docs/eval/reports/c19-final-full-review-v1.json)绑定clean HEAD8f37a7d及独立run b82b2ce3-35c4-4b36-a235-a0c28e170b34。第24次cal-ft-rf-02/repeat3在5030ms报network error、无HTTP状态；根因/远端结果及费用未知，未认定限流。

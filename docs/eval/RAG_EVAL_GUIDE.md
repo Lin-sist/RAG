@@ -968,3 +968,23 @@ python -B scripts/review_objective_judge_profile.py --details tmp/eval/c18/20260
 仅读取完整普通评测details，不调用backend或provider。先核对dataset/ordered selection/run identity，再复用C10计数计算；objective完整观测与严格错误策略分列，judge PARTIAL/SKIPPED或字段不完整时不展示辅助数值，不影响完整objective。C19校准摘要不能混作普通150样本judge证据。
 
 预期DRAFT为NOT_EVALUABLE/exit4，不是放行或执行故障；--output仅创建全新仓库内文件，拒绝覆盖输入或旧结果。[C18原件安全回放](reports/c20-objective-judge-draft-review-v1.json)的7指标与接受报告一致，历史retry31仍显示retry_count_exceeded，不自动放宽策略或选阈值。后续充分参考/重复证据、逐规则数值批准、新version ACTIVE与judge升级required是独立阶段，见[C20 readiness](../../openspec/changes/objective-judge-quality-gate-profile/readiness.md)。
+
+#### C20参考intake与阈值审阅包
+
+新增[离线编译器](../../scripts/compile_objective_gate_reference.py)，用0至3对--details/--metadata读取已有本地候选；三轮需独立、index1/2/3且total3、完整150样本、metadata与embedded绑定、实际dataset/questionSet及provider/config/执行策略身份相容、符合原严格errorPolicy。重复文件/运行时间或身份漂移不产生可比分布，缺轮/缺测/策略不符保留null槽位，不从成功子集汇总。
+
+```powershell
+python -B scripts/compile_objective_gate_reference.py --details tmp/eval/c18/20260922-r11-full-live-details.json --metadata tmp/eval/c18/20260922-r11-full-live-metadata.json
+```
+
+该[历史单轮intake](reports/c20-objective-reference-intake-v1.json)为INCOMPLETE/exit4，明确缺2/3、total1及retry31。只有全三轮完整时才输出FOR_REVIEW的min/median/max/spread和空target/tolerance审阅表；gate始终NOT_EVALUABLE、providerExecutionVerified/activationEligible均false，不表示真实provider执行已独立核验或获准激活。非法输入exit2，--output只创建全新仓库内文件，拒绝覆盖任一输入。工具不采集真实运行、不新增外调，不改C18/C19历史结果。
+
+#### C20参考intake与阈值审阅包
+
+新增[离线编译器](../../scripts/compile_objective_gate_reference.py)，用0至3对--details/--metadata读取已有本地候选；三轮需独立、index1/2/3且total3、完整150样本、metadata与embedded绑定、实际dataset/questionSet及provider/config/执行策略身份相容、符合原严格errorPolicy。重复文件/运行时间或身份漂移不产生可比分布，缺轮/缺测/策略不符保留null槽位，不从成功子集汇总。
+
+```powershell
+python -B scripts/compile_objective_gate_reference.py --details tmp/eval/c18/20260922-r11-full-live-details.json --metadata tmp/eval/c18/20260922-r11-full-live-metadata.json
+```
+
+该[历史单轮intake](reports/c20-objective-reference-intake-v1.json)为INCOMPLETE/exit4，明确缺2/3、total1及retry31。只有全三轮完整时才输出FOR_REVIEW的min/median/max/spread和空target/tolerance审阅表；gate始终NOT_EVALUABLE、providerExecutionVerified/activationEligible均false，不表示真实provider执行已独立核验或获准激活。非法输入exit2，--output只创建全新仓库内文件，拒绝覆盖任一输入。工具不采集真实运行、不新增外调，不改C18/C19历史结果。

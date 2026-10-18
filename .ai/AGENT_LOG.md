@@ -3748,3 +3748,22 @@
 - 跳过：Java/前端未改，不跑Maven/正式前端build/浏览器；不新增live或重跑历史provider评测；OpenSpec CLI不可用，以文件/链接/结构/脱敏/日志前缀/diff检查替代，不冒称官方validate。建议提交：`feat(评测): 实现C20零外调objective草案与judge辅助审阅`。
 - 最终补充验证：新增畸形嵌套judge输入测试，最初检查误落计算分支被测试检出；移至缺测校验并清除异常结果可用标记后，新C20 14/14通过。最终完整回归293项/12.048s，只有原C18 1 failure/4 errors，真实unittest exit1；中间版额外失败已修复，不计最终通过。shared gate22项亦在最终全量内通过，代码至此冻结，后续仅文档/安全报告检查。
 - 收尾：15个允许文件/47个本地链接、5条三行决策、2 requirements/5 scenarios、原生profile validator及当前CLI与安全report逐对象一致均通过；C18原件/接受报告/profile hash绑定正确。日志前缀保全、增量凭据模式0、安全JSON字段/无绝对路径检查、git diff --check通过。全量失败集合精确为既有C18五条，C20阶段真实外调0；准备本地提交，不接受整个change或激活profile。
+
+## 2026-10-18 · C20首切片提交补录
+
+- 上一执行提交：`35a9253eabffdc7000ced5f49c9d444cb8a3501e`，`feat(评测): 实现C20零外调objective草案与judge辅助审阅`。15文件，提交后clean/main ahead19；聚焦22+14通过，全Python293为既有C18 1 failure/4 errors，零新增provider调用。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C20归档核查与下一切片授权
+
+- Commit: pending。用户要求可归档则归档，否则继续实现；当前tasks2.1/2.3未完成，profile仍DRAFT/空阈值，历史C18单轮及retry31不能支撑新参考/激活，故不归档。按已有实现方向继续零外调三轮参考intake/空阈值审阅包，先更新proposal/design/tasks/spec再编码，适用D6–D7。
+- 用户未授权新增业务外调或数值批准，本轮不采集真实repeat、不补C19、不激活或回写历史artifact。允许新compile_objective_gate_reference.py及测试，复用现有计算和严格策略，不放宽errorPolicy。C20保持ACTIVE，本地提交责任沿用，无push/PR/部署；验证随实现追加。
+
+## 2026-10-18 · C20三轮参考intake与阈值审阅包实现
+
+- Commit: pending。新增compile_objective_gate_reference.py及对应9项测试，复用C20 review/共享指标，不改原draft profile或首切片review。校验0至3对details/metadata、实际版本化dataset/questionSet、完整顺序、metadata/embedded绑定、三轮index/total、独立文件hash/运行时间、干净Git来源、provider/执行manifest/timeout/retry/config/KB/metric身份；缺轮/策略不符INCOMPLETE，重复/漂移NOT_COMPARABLE，畸形INVALID，无成功子集分布。
+- 完整输入仅输出FOR_REVIEW的min/median/max/spread与空target/tolerance；activationEligible/providerExecutionVerified恒false，gateStatus NOT_EVALUABLE/exit4，不批准阈值或激活profile。新CLI只读本地、exclusive输出、禁止覆盖任一输入，路径受仓库约束，异常固定code无原文/绝对路径。适用design D6–D7。
+- 实际C18单轮details/metadata hash均匹配接受报告，本地新安全intake为INCOMPLETE，reasonCodes=candidate_ineligible/repeat_index_incomplete/repeat_total_incompatible；缺repeat2/3、total1、policyBlocker retry_count_exceeded(31)。7项只保留单轮诊断槽位，分布全null；当前C18 compiler未重验，不重写原件或伪造三轮。
+- 聚焦新9/9通过；最终完整命令python -B -m unittest discover -s scripts -p 'test_*.py'实际302项/20.280s，仍原C18 1 failure/4 errors(含2个setUpClass)、真实exit1，无新增失败，非GREEN。实际原件核查发现并修正Windows相对/绝对路径规范化及C18 metadata策略/顶层账本的格式区别；补充非放宽的兼容测试后最终通过。执行策略/manifest漂移负例、重复时间/文件/索引、数据集与questionSet不符、畸形/输出保全/脱敏均覆盖。
+- 范围13文件：新compiler/test/intake report，C20 proposal/design/tasks/spec/readiness、ACTIVE_TASK/本日志、指南/路线图/技术债。现有draft配置/首切片report/共享计算代码、C17/C18/C19 artifact、accepted baseline/archive、生产Java/前端/依赖/受保护本地配置与凭据均未改；C20仍ACTIVE，不归档或置IDLE。本轮provider/backend/embedding/rerank/ask/judge调用0，无push/PR/部署。
+- 跳过：无Java/前端变化，不跑Maven/build/浏览器；不执行任何live采集或当前C18审计维修；OpenSpec CLI不可用，采用文件级范围/链接/hash/结构/敏感字段/日志前缀/diff核查，不称官方validate。建议提交：`feat(评测): 实现C20三轮参考编译与阈值审阅包`。
+- 收尾：13个允许文件/58个本地链接、7条三行决策、3 requirements/8 scenarios、当前compiler与安全intake逐对象一致均通过；C18 details/metadata与接受报告hash绑定正确，输入/历史报告无改动。日志前缀保全、增量凭据模式0、安全JSON字段/无绝对路径检查及git diff --check通过。最终全量失败集合仅原C18五条，原draft配置/首切片计算及report未变，外部调用0。准备本地提交，C20不归档或激活。

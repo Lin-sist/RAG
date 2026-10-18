@@ -33,3 +33,23 @@ C20 SHALL reuse C9a counts and denominators for keyword, citation, claim and no-
 - GIVEN a prior output or input selected as output
 - WHEN the CLI writes
 - THEN it refuses without overwriting either artifact
+
+### Requirement: C20 Independent Repeat Intake And Threshold Review Packet
+
+C20 SHALL compile three independently identified full objective candidate repeats from local details/metadata under the DRAFT profile. Index/total, full ordered selection, metadata binding, clean source provenance, runtime/metric identities, distinct artifacts and the existing strict policy MUST be checked. Missing, duplicated, drifted or ineligible evidence MUST NOT produce a successful-subset distribution. Per-rule repeat slots and denominators SHALL remain visible with unavailable values null. Complete comparable repeats MAY expose minimum/median/maximum/spread and an unset target/tolerance worksheet, but MUST NOT approve thresholds, activate profiles or produce a gate PASS. Compilation SHALL perform zero provider calls and exclusive safe output only.
+
+#### Scenario: One historical run is supplied
+- GIVEN only one accepted historical run with total=1 or policy-incompatible retries
+- WHEN the reference intake runs
+- THEN it reports missing/ineligible repeat evidence with no quality distribution or activation
+
+#### Scenario: Three independent complete candidates exist
+- GIVEN repeat indexes 1/2/3, total3, compatible identity and complete policy-eligible observations
+- WHEN compiled locally
+- THEN all three values/denominators and deterministic distribution are shown FOR_REVIEW
+- AND targets/tolerances remain null, gateStatus NOT_EVALUABLE and exit4
+
+#### Scenario: Duplicate or drifted evidence is supplied
+- GIVEN a reused artifact/run timestamp or incompatible runtime identity
+- WHEN compiled
+- THEN status is NOT_COMPARABLE and no rule distribution is emitted

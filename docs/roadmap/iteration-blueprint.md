@@ -175,6 +175,8 @@
 
 ### C20. `objective-judge-quality-gate-profile`
 
+2026-10-18后续归档核查：整个C20仍缺正式参考重复证据/阈值批准/激活验收，按用户指令不归档并继续零外调实现。新增[三轮intake编译器](../../scripts/compile_objective_gate_reference.py)及[安全缺口报告](../eval/reports/c20-objective-reference-intake-v1.json)，检查唯一性/metadata/dataset/执行策略身份，完整才出分布且阈值仍空；新9/9通过，全Python302仍既有C18 1 failure/4 errors。真实三轮采集和审批尚未执行，不伪造参考或门禁PASS。
+
 2026-10-18用户条件授权已满足：C19最后一轮23有效/1网络错误后停止并停放live，C20零外调首切片已实现。见[readiness](../../openspec/changes/objective-judge-quality-gate-profile/readiness.md)、[DRAFT profile](../eval/config/c20-objective-judge-draft-v1.json)及[安全review](../eval/reports/c20-objective-judge-draft-review-v1.json)。7项objective/3项judge辅助、空阈值不激活；22/22+14/14通过，全Python293仍既有C18 1 failure/4 errors。C19未完成/未归档，C20参考重复证据/数值批准/硬门禁仍未完成。
 
 **目标**：在 C18/C19 evidence 充分后，以新 profile/version 建立 objective 与 judge 的独立门禁。

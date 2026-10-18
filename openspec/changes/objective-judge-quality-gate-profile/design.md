@@ -34,3 +34,23 @@ review仅接受本DRAFT布局，不负责激活。先复用C10 dataset/selection
 - **面临的选择**：同时启用objective/judge硬门禁；仅DRAFT与辅助审阅。
 - **选了哪个 + 为什么**：仅DRAFT与review，judge校准、objective重复参考及数值审批尚未完成。
 - **放弃的代价**：立即硬门禁会在证据不足时产生虚假放行结论。
+
+## 下一切片：参考证据编译与阈值审阅包
+
+输入为原生DRAFT profile及0至3组普通评测details/metadata。三轮离线contract要求repeat index=1/2/3、total=3，distinct details/metadata hash与generatedAt，metadata与details.runMetadata完全相同，干净Git来源、dataset/selection/run/claim/judge/config/KB/provider运行身份一致。仅输出身份hash，不输出KB信息或原文。当前历史C18是1×150且retry31，允许作为不合格候选列入缺口诊断，不能伪装三轮参考。
+
+questionSet必须匹配实际版本化release的sha256/bytes及仓库内解析路径，绝对/相对及Windows路径写法规范化后才入身份hash。执行manifest、timeout/retry等策略属于跨轮身份；C18的metadata.c18Execution策略由embedded runMetadata绑定，details.c18Execution是账本，不能把两者直接当同一字段比较。FOR_REVIEW不表示provider实际执行已经独立核验。
+
+每轮通过原C20 review检查全部7项objective观测与strict errorPolicy，judge仍辅助。输入畸形→INVALID；重复或身份漂移→NOT_COMPARABLE；缺轮/缺测/错误策略不符→INCOMPLETE。任何非完整可比三轮不得输出质量分布；每项保留3个repeat槽及分母，缺值为null，不把一次运行复用三次。
+
+完整三轮仅生成FOR_REVIEW分布及空target/tolerance审阅表；activationEligible恒false，gateStatus恒NOT_EVALUABLE。CLI exit4表示待审批（即使分布已完整），非法输入exit2；不创建ACTIVE profile/reference，不进行provider身份实时核验或实际调用。输出exclusive且禁止覆盖任何输入，路径受repo约束，异常固定code，无绝对路径或raw字段。
+
+### D6 参考输入数量
+- **面临的选择**：直接用C18单轮；固定三轮独立候选；自动增加轮数直到看起来稳定。
+- **选了哪个 + 为什么**：固定三轮作为离线编译contract，保留各值和波动，与既有三轮审阅方式一致；真实采集的执行包/预算仍后续批准，三轮不冒充统计置信保证。
+- **放弃的代价**：单轮无法展示重复波动；自动加轮可能无限消耗额度并产生选择偏差。
+
+### D7 参考完整性与审批
+- **面临的选择**：从完整子集先算中位数并自动填阈值；缺测则隐藏来源；保留槽位/缺口且完整后只输出空阈值审阅表。
+- **选了哪个 + 为什么**：保留缺口，完整才出分布，target/tolerance仍null；测量编译不能代替人的门禁审批。
+- **放弃的代价**：子集分布和自动阈值会掩盖缺测并拟合数据；隐藏来源让用户无法判断还缺什么。
