@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "c19-canary-review-v1",
+  "status": "CANARY_COMPLETE_FULL_NOT_AUTHORIZED",
+  "date": "2026-10-18",
+  "evidence": {
+    "schemaVersion": "c19-judge-evidence-v1",
+    "status": "COMPLETE",
+    "reasonCodes": [],
+    "manifestSha256": "486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a",
+    "actual": {
+      "reservedAttempts": 4,
+      "recordedOutcomes": 4,
+      "outcomeUnknownCount": 0,
+      "unattemptedCount": 0,
+      "automaticRetries": 0,
+      "providerAttemptsUpperBound": 4,
+      "confirmedHttpResponses": 4
+    },
+    "metrics": {
+      "calibrationStatus": "COMPLETE",
+      "comparisonEligible": true,
+      "confusionScope": "complete",
+      "expectedObservationCount": 4,
+      "receivedObservationCount": 4,
+      "validObservationCount": 4,
+      "errorObservationCount": 0,
+      "missingObservationCount": 0,
+      "duplicateObservationCount": 0,
+      "unexpectedObservationCount": 0,
+      "parseCoverage": 1,
+      "faithfulness": {
+        "tp": 2,
+        "tn": 2,
+        "fp": 0,
+        "fn": 0,
+        "agreement": 1
+      },
+      "relevance": {
+        "tp": 2,
+        "tn": 2,
+        "fp": 0,
+        "fn": 0,
+        "agreement": 1
+      },
+      "jointPass": {
+        "tp": 1,
+        "tn": 3,
+        "fp": 0,
+        "fn": 0,
+        "agreement": 1
+      },
+      "providerPassMismatchCount": 0,
+      "repeatConsistentCaseCount": 4,
+      "repeatConsistentCaseRate": 1,
+      "inconsistentCaseIds": [],
+      "errorCategoryHistogram": {}
+    },
+    "comparisonEligible": true,
+    "liveEvidenceEligible": true,
+    "compilerProviderCalls": 0,
+    "compilerDataOutbound": false,
+    "profile": "canary",
+    "runId": "2f5a0222-d442-4490-b90f-4571274bff0f",
+    "evidenceKind": "LIVE",
+    "sourceHead": "823b81a373d9cbda5c6b0e9a0d31a77125397430",
+    "judgeContractConfig": {
+      "judgeContractVersion": "rag-judge-v1",
+      "promptVersion": "rag-judge-prompt-v1",
+      "promptSha256": "d98612cdc4f6681e126d3e6fd4dac81f5d76d14ec4bd596e904fa4843999df80",
+      "parserVersion": "strict-json-scores-v1",
+      "faithfulnessThreshold": 0.7,
+      "relevanceThreshold": 0.7,
+      "jointPassRule": "both-scores-gte-threshold-v1",
+      "maxContextChars": 6000,
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "temperature": 0,
+      "endpointIdentity": "https://integrate.api.nvidia.com"
+    },
+    "executionConfig": {
+      "provider": "nvidia-nim",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "temperature": 0,
+      "timeoutSeconds": 60,
+      "maxOutputTokens": 1024,
+      "maxContextChars": 6000,
+      "minIntervalSeconds": 2,
+      "retries": 0
+    },
+    "artifacts": {
+      "identitySha256": "7eed3c9888fa3081f28aa0882d3e506a2cde9b4ecdfd23d57ff1f80f536a52b8",
+      "ledgerSha256": "c96b51c4ea8bc437675a0752ecc593a158b80d0562737a2ba44b752ab1f99ea7"
+    }
+  },
+  "attemptOutcomes": [
+    {
+      "caseId": "cal-ft-rt-01",
+      "repeatIndex": 1,
+      "attemptIndex": 1,
+      "elapsedMs": 3531,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "caseId": "cal-ft-rf-01",
+      "repeatIndex": 1,
+      "attemptIndex": 2,
+      "elapsedMs": 5171,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "caseId": "cal-ff-rt-01",
+      "repeatIndex": 1,
+      "attemptIndex": 3,
+      "elapsedMs": 3734,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "caseId": "cal-ff-rf-01",
+      "repeatIndex": 1,
+      "attemptIndex": 4,
+      "elapsedMs": 3702,
+      "httpStatus": 200,
+      "errorCategory": null
+    }
+  ],
+  "additionalArtifactHashes": {
+    "completionSha256": "0779591d1550fce2f599cb8f5e63f8026e63b940b24a2ac8accca2b82eada38f",
+    "safeSummarySha256": "9325794ad59a262e1e11ad8106da6476b124c3439534e96f954cc932912b3bfb"
+  },
+  "scope": {
+    "measurement": "4_cases_1_repeat_canary_only",
+    "fullRepeatConsistencyEstablished": false,
+    "productionQualityEstablished": false,
+    "c20GateActivated": false,
+    "authorizedCanaryCalls": 4,
+    "usedCanaryCalls": 4,
+    "remainingCanaryCalls": 0,
+    "authorizedFullCalls": 0,
+    "actualFullCalls": 0,
+    "ordinaryQaGenerationCalls": 0,
+    "backendCalls": 0,
+    "embeddingCalls": 0,
+    "rerankCalls": 0
+  },
+  "privacy": {
+    "rawLocalIgnored": true,
+    "rawQuestionAnswerContextOrReasonTracked": false,
+    "credentialValueTracked": false,
+    "localCredentialSourceUnchanged": true
+  },
+  "cost": {
+    "basis": "USER_CONFIRMED_FREE_QUOTA",
+    "billingIndependentlyVerified": false,
+    "observedCharges": null
+  }
+}

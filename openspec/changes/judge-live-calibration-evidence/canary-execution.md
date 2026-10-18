@@ -1,6 +1,6 @@
 # C19 canary 执行包（2026-10-18）
 
-Report status：`AUTHORIZED_PENDING_RUN`。离线实现提交`e107b2c`、模型准备提交`869803d`。用户已明确确认免费额度可用并授权最多4次canary，当前实际0；提交本次授权文档后再读取实际clean HEAD运行，不把准备过程中的dirty HEAD称为正式运行身份。
+Report status：`CANARY_COMPLETE_FULL_NOT_AUTHORIZED`。本次已在授权提交clean HEAD `823b81a373d9cbda5c6b0e9a0d31a77125397430`完成4/4，错误/重试0。执行前授权计划保留于[原plan](../../../docs/eval/reports/c19-canary-plan-v1.json)，真实结果见[安全摘要](../../../docs/eval/reports/c19-canary-review-v1.json)。4次授权已耗尽，新增full72尚未授权。
 
 ## 固定目标及载荷
 
@@ -35,7 +35,7 @@ Report status：`AUTHORIZED_PENDING_RUN`。离线实现提交`e107b2c`、模型�
 
 独立compiler复核4条完整证据；失败/缺测时保留coverage/error并抑制agreement。即便完整，canary也不证明24×3 repeat consistency或生产质量；低agreement保留，不调阈值。安全报告只含身份/hash/计数/状态，raw只留本地ignored区域。
 
-## 本轮本地检查
+## 执行前本地检查（保留当时状态）
 
 - 已选模型后judge聚焦测试29/29通过；新增一项证明“模型已选择+clean源码”只能返回本地READY，providerAuthentication仍NOT_CHECKED。原缺模型/拒绝live测试改用独立UNCONFIGURED测试副本，不依赖正式模型始终为空。
 - 完整Python最新279 tests、1 failure/4 errors；失败集合与先前一致，均为C18旧audit，不重写历史基线或宣称全仓GREEN。
@@ -44,3 +44,9 @@ Report status：`AUTHORIZED_PENDING_RUN`。离线实现提交`e107b2c`、模型�
 - 准备时只检查环境变量名称：运行环境中没有`RAG_EVAL_JUDGE_API_KEY`或`NVIDIA_API_KEY`；没有读取变量值或后端私有配置。live前仍需完成本地凭据配置，聊天中的值不注入工具或文件。
 
 [任务](tasks.md) · [readiness](readiness.md) · [安全计划摘要](../../../docs/eval/reports/c19-canary-plan-v1.json)
+
+## 真实结果与限制
+
+4次HTTP均200，耗时分别3531/5171/3734/3702ms；parse4/4，缺失/重复/意外/错误/重试/unknown均0。faithfulness/relevance confusion各TP2/TN2/FP0/FN0，joint TP1/TN3/FP0/FN0，agreement各100%，provider-pass mismatch0。只读独立compiler重编译与原safe-summary完全一致，无额外provider调用；本地凭据源文件未变，raw确认Git ignored。
+
+这是4条/1轮的小样本协议与校准canary。单轮下的repeat-consistent诊断数不能证明三轮一致性；不外推到24条、normal eval、生产faithfulness或C20门禁。费用依据是用户确认免费额度，未独立核验账单或记录实际token账单。下一步见[full执行包](full-execution.md)，不能自动补跑或扩为72次。

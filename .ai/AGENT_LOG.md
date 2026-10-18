@@ -3603,3 +3603,19 @@
 - 修改文件：授权状态同步ACTIVE_TASK、canary执行包/plan摘要、tasks/readiness及本日志。执行前提交这批文档，之后只读preflight并读取实际clean HEAD；复用代码/model未变化的29/29及全量279（既有C18 1 failure/4 errors），不重跑Maven/前端/浏览器。accepted baseline/archive、执行代码/数据/阈值/依赖/受保护目录不改。
 - 当前实际调用0；准备按已授权上限执行一次独立canary，raw写ignored唯一新目录、compiler产安全摘要；结果/错误/请求计数按实际补录，不预填成功或独立计费结论。建议提交：`docs(评测): 记录C19四次canary授权与执行边界`。
 - 执行前核验：最终9个允许文件（另同步指南/路线图/技术债）、46个本地链接、manifest及增量凭据模式扫描通过，AGENT_LOG前缀保全；git diff --check通过。代码/模型/config未变，复用29/29及279项既有C18例外；授权4/实际0，准备提交后按新clean HEAD执行。
+
+## 2026-10-18 · C19 canary授权提交补录
+
+- 上一执行提交：`823b81a373d9cbda5c6b0e9a0d31a77125397430`，`docs(评测): 记录C19四次canary授权与执行边界`。9个允许文件，提交后工作区干净/main ahead8；该clean HEAD为本次真实canary执行身份。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19真实canary完成与full执行包
+
+- Commit: pending。本次只执行用户明确授权的4次canary，已耗尽4/4，未重试/补跑。用户免费额度声明为费用依据，未独立核验账单或推断实际扣费。full新增72次尚未授权/执行；同一任务Agent本地提交授权沿用，未push/PR/发布/部署。
+- 运行身份：clean HEAD823b81a373d9cbda5c6b0e9a0d31a77125397430，manifest486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a；NVIDIA NIM / nvidia/nemotron-3-super-120b-a12b，temperature0/timeout60s/max_tokens1024/context6000/间隔2s/retry0。只读本地项目环境源在内存/子进程传递凭据，无值进入命令/日志/回复，源文件前后只在内存对比确认未变。
+- 实际结果：4 starts/4 outcomes/4 HTTP200，unknown/未尝试/错误/缺失/重复/意外/重试均0，latency3531/5171/3734/3702ms，runner exit0、compiler COMPLETE。parse coverage1.0；faithfulness/relevance各TP2/TN2/FP0/FN0，joint TP1/TN3/FP0/FN0，agreement均1.0，provider-pass mismatch0。repeat-count仅1，4个case的单轮一致性诊断不证明full三轮一致性，不外推生产或C20。
+- 证据：raw在ignored tmp/eval/c19-canary-20261018-972ed5c6，runId2f5a0222-d442-4490-b90f-4571274bff0f。安全review新增docs/eval/reports/c19-canary-review-v1.json，仅身份/hash/计数/状态/聚合与技术结果；identity/ledger/completion/safe-summary四hash绑定。独立本地重编译与原safe-summary逐对象相同，额外provider调用0。原canary-plan保留执行前授权状态，不回写成run结果。
+- 下一阶段：新增full-execution.md与c19-full-plan-v1.json，24 case×3=新增最多72次，前次canary不拼入full；JSON请求体合计58191bytes，配置输出上限合计73728token，非用量/计费承诺。相同模型/manifest/四源码hash/runtime，full在其新clean实际HEAD下记录72条；费用依据沿用用户免费额度声明，具体限流未探测。明确零重试/首错停止/新目录/未知outcome不重放，执行前须独立授权。
+- 修改范围：12文件，含ACTIVE_TASK、指南、路线图/技术债、proposal/tasks/readiness/canary记录及本日志；新增canary安全review/full安全plan/full执行包。design D1–D7不变，accepted baseline/archive/C17/C18报告/profile、执行代码/config/依赖、前端/Java、受保护目录不改。当前完整C19仍ACTIVE，未归档或开C20。
+- 验证/跳过：真实4/4及本地独立重编译PASS，raw ignored/源文件未变；代码和模型/config未改变，复用29/29与全Python279（既有C18 1 failure/4 errors），不重跑测试/Maven/前端build/浏览器。没有模型列表GET、backend/auth/upload/embedding/rerank/普通ask/generation/feedback/delete或业务写入。新文档结构/链接/增量凭据模式/日志前缀/报告白名单与hash/diff随后收尾。
+- 建议提交：`docs(评测): 保存C19真实canary证据并准备full校准`。下一步只提请新增72次full授权，不把本次4条小样本通过声明为完整judge校准或生产门禁通过。
+- 收尾：12个允许文件/64个本地链接全部通过，日志前缀保全、增量凭据模式0、JSON安全字段及无绝对路径检查通过；canary四份artifact hash/独立重编译一致，raw确认Git ignored，full计划预算72但授权/实际0。git diff --check通过；没有再改执行代码/config或重跑真实canary，准备本地提交安全证据与下一阶段计划。
