@@ -3729,3 +3729,22 @@
 - 原始证据独立ignored tmp/eval/c19-final-full-timeout120-20261018-66151987；最终安全review绑定四hash，独立重编译一致，额外provider调用0；凭据源未变，无值进入命令/日志/tracked文件。旧plan/review/raw及执行源码/config/accepted baseline均未变。
 - 按用户明确条件指令停止C19外调、保留未完成任务，后续再补live；当前新run授权0，不再反复申请。C19不伪称完成或归档，转C20零外调objective草案与judge辅助实现。用户已直接授权该切片实现，先记录新change设计再写代码；不启用profile或批准阈值，不变生产行为。
 - 本次6文件：C19 tasks/readiness/recovery-plan、ACTIVE_TASK、本日志及新final review；源码未改，复用29/29及全Python279既有C18例外，跳过Maven/前端/浏览器与任何新增live。四hash/独立编译/链接/日志前缀/增量凭据模式/diff收尾，本地提交授权沿用，无push/PR/部署。建议提交：`docs(评测): 保留C19最后一轮证据并停放live任务`。
+
+## 2026-10-18 · C19最终证据提交补录
+
+- 上一执行提交：`7113bdc9ad16c38ac18d1e277fa097a471f98c0a`，`docs(评测): 保留C19最后一轮证据并停放live任务`。6文件/20链接及四hash/独立重编译通过，提交后clean/main ahead18；实际83次尝试不再增加。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C20已授权零外调切片设计
+
+- Commit: pending。用户明确授权最后一轮C19如中断则保留结果并继续C20实现；条件已满足，不重复要求同一切片审批。先创建objective-judge-quality-gate-profile的proposal/design/tasks/spec delta再编码，适用D1–D5。唯一活动指针转C20，C19保留未完/未归档状态，不置IDLE或伪称校准完成。
+- 本切片只实现DRAFT空阈值objective profile、既有计数映射和judge辅助、离线review；不激活、不批准阈值、不新增外调或改历史证据/生产行为/依赖。后续参考重复证据及正式数值仍独立批准。本地提交授权沿用，无push/PR/部署；验证随实现追加。
+
+## 2026-10-18 · C20零外调首切片实现
+
+- Commit: pending。新增原生C10 DRAFT profile（7 objective required/3 judge辅助，target/tolerance全null）、review_objective_judge_profile.py和13项聚焦测试；共享evaluate_quality_gate新增既有C9a计数字段映射与严格检查，optional judge不完整时SKIPPED。required judge错误原因保留；检索/生产行为/数据集/依赖/共享judge prompt/parser/0.70阈值不改。适用design D1–D5，整个C20仍ACTIVE，参考重复/数值批准/激活/归档未完成。
+- 验证：共享门禁22/22、新C20 13/13通过；来源citation仅应答、snippet全成功ask的分母差异由非对称合成样本验证。新增全字段judge检查一度改变required错误原因，聚焦测试检出后收窄optional路径，22/22恢复通过。全Python命令实际292项，既有C18 budget_source_drift仍1 failure/4 errors（含2个setUpClass），无新增失败，非GREEN；日志ignored tmp/eval/c20-full-unittest.log，不改旧audit让它通过。
+- 本地烟测：接受C18 details hash=f63c065ef075a161d00ab6fced64973f7b9a2658d79f451a74712a4c03af9300匹配，7项objective观测/分母与旧报告逐值一致，judge辅助UNAVAILABLE；gate NOT_EVALUABLE/exit4、profile_draft，policyBlocker retry_count_exceeded（31次历史恢复重试）。只读回放不表示当前C18 compiler重验通过，不放宽C20策略。安全报告绑定profile/details/accepted review hash，无raw文本或凭据。
+- 范围：C20 proposal/design/tasks/spec delta/readiness、2脚本/1测试、profile/安全report、ACTIVE_TASK/本日志、指南/路线图/技术债；C19原artifact不变且live已停放，当前唯一活动指针C20。C20阶段provider/backend/embedding/rerank/普通ask/judge真实调用均0；最后一次C19后总尝试83未增加。凭据源/受保护目录/生产Java/前端/依赖/accepted baseline/archive/C17/C18/C19原件不改，无push/PR/部署。
+- 跳过：Java/前端未改，不跑Maven/正式前端build/浏览器；不新增live或重跑历史provider评测；OpenSpec CLI不可用，以文件/链接/结构/脱敏/日志前缀/diff检查替代，不冒称官方validate。建议提交：`feat(评测): 实现C20零外调objective草案与judge辅助审阅`。
+- 最终补充验证：新增畸形嵌套judge输入测试，最初检查误落计算分支被测试检出；移至缺测校验并清除异常结果可用标记后，新C20 14/14通过。最终完整回归293项/12.048s，只有原C18 1 failure/4 errors，真实unittest exit1；中间版额外失败已修复，不计最终通过。shared gate22项亦在最终全量内通过，代码至此冻结，后续仅文档/安全报告检查。
+- 收尾：15个允许文件/47个本地链接、5条三行决策、2 requirements/5 scenarios、原生profile validator及当前CLI与安全report逐对象一致均通过；C18原件/接受报告/profile hash绑定正确。日志前缀保全、增量凭据模式0、安全JSON字段/无绝对路径检查、git diff --check通过。全量失败集合精确为既有C18五条，C20阶段真实外调0；准备本地提交，不接受整个change或激活profile。

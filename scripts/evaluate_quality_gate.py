@@ -15,6 +15,17 @@ import eval_dataset_contract
 PROFILE_SCHEMA_VERSION = "rag-quality-gate-profile-v1"
 EVALUATOR_VERSION = "rag-quality-gate-evaluator-v1"
 
+# Existing C9a observation fields; these are not new scoring formulas.
+OBJECTIVE_RATIOS = {
+    "answer_keyword_hit_rate": ("keywordHits", "keywordTotal", "answerable"),
+    "citation_source_hit_rate": ("citationHits", "citationTotal", "answerable"),
+    "citation_snippet_hit_rate": ("citationSnippetHits", "citationSnippetTotal", "all"),
+}
+OBJECTIVE_COUNTS = {
+    "unsupported_citation_count": ("unsupportedCitationCount", "all"),
+    "no_answer_citation_violation_count": ("noAnswerCitationViolationCount", "no_answer"),
+}
+
 
 class GateContractError(RuntimeError):
     def __init__(self, code: str) -> None:
@@ -117,15 +128,19 @@ def _evaluate_gate(
 
     slices = {item["id"]: item for item in profile["slices"]}
     annotated_evidence = list(zip(dataset_samples, evidence_samples, strict=True))
-    rule_results = [
-        _evaluate_rule(
-            rule,
-            slices[rule["slice"]],
-            annotated_evidence,
-            reference_rules.get(str(rule.get("id"))),
-        )
-        for rule in profile["rules"]
-    ]
+    rule_results = []
+    judge_channel = (details.get("metricChannels") or {}).get("judge") or {}
+    judge_complete = (isinstance(judge_channel, dict) and judge_channel.get("status") == "COMPLETE"
+                      and judge_channel.get("comparisonSafety") == "ELIGIBLE"
+                      and run_counts.get("judgeErrors", 0) == 0
+                      and all(not _metric_value_missing(metric, annotated_evidence)
+                              for metric in ("judge_pass_rate", "faithfulness_avg", "relevance_avg")))
+    for rule in profile["rules"]:
+        if rule["channel"] == "judge" and not rule["required"] and not judge_complete:
+            rule_results.append(_blocked_rule(rule, "judge_channel_incomplete"))
+        else:
+            rule_results.append(_evaluate_rule(rule, slices[rule["slice"]], annotated_evidence,
+                                              reference_rules.get(str(rule.get("id")))))
     if any(item["result"] == "NOT_EVALUABLE" and item["required"] for item in rule_results):
         gate_status = "NOT_EVALUABLE"
     elif any(item["result"] == "FAIL" and item["required"] for item in rule_results):
@@ -318,6 +333,9 @@ def _validate_profile_rules(
         "judge_pass_rate": "judge",
         "faithfulness_avg": "judge",
         "relevance_avg": "judge",
+        "no_answer_accuracy": "objective",
+        **{metric: "objective" for metric in OBJECTIVE_RATIOS},
+        **{metric: "objective" for metric in OBJECTIVE_COUNTS},
     }
     if not isinstance(rules, list) or not rules:
         raise GateContractError("profile_rule_invalid")
@@ -620,6 +638,20 @@ def _calculate_metric(
     metric: str,
     selected: list[tuple[dict[str, Any], dict[str, Any]]],
 ) -> tuple[float, int]:
+    if metric in OBJECTIVE_RATIOS:
+        hits, total, scope = OBJECTIVE_RATIOS[metric]
+        values = _objective_selection(selected, scope)
+        numerator = sum(item["metricCalculationDetails"][hits] for _, item in values)
+        denominator = sum(item["metricCalculationDetails"][total] for _, item in values)
+        return (numerator / denominator if denominator else 0.0), denominator
+    if metric in OBJECTIVE_COUNTS:
+        field, scope = OBJECTIVE_COUNTS[metric]
+        values = _objective_selection(selected, scope)
+        return sum(item["metricCalculationDetails"][field] for _, item in values), len(values)
+    if metric == "no_answer_accuracy":
+        values = _objective_selection(selected, "no_answer")
+        return (sum(item["metricCalculationDetails"]["noAnswerOk"] for _, item in values)
+                / len(values) if values else 0.0), len(values)
     if metric in {"recall_at_3", "recall_at_5"}:
         hit_field = "recall3Hits" if metric == "recall_at_3" else "recall5Hits"
         hits = 0
@@ -685,7 +717,15 @@ def _metric_value_missing(
     metric: str,
     selected: list[tuple[dict[str, Any], dict[str, Any]]],
 ) -> bool:
+    if metric in OBJECTIVE_RATIOS or metric in OBJECTIVE_COUNTS or metric in {
+        "no_answer_accuracy", "objective_claim_support_rate"
+    }:
+        return not _objective_values_valid(metric, selected)
     answerable = [item for item in selected if bool(item[0].get("should_answer"))]
+    if metric in {"judge_pass_rate", "faithfulness_avg", "relevance_avg"} and any(
+        not isinstance(evidence.get("metricCalculationDetails"), dict) for _, evidence in answerable
+    ):
+        return True
     if metric in {"recall_at_3", "recall_at_5"}:
         hit_field = "recall3Hits" if metric == "recall_at_3" else "recall5Hits"
         return any(
@@ -706,22 +746,16 @@ def _metric_value_missing(
             "top1SourceHit" not in (evidence.get("metricCalculationDetails") or {})
             for _, evidence in answerable
         )
-    if metric == "objective_claim_support_rate":
-        return any(
-            not isinstance(evidence.get("objectiveClaimMetrics"), dict)
-            or "claimTotal" not in evidence["objectiveClaimMetrics"]
-            or "supportedClaimCount" not in evidence["objectiveClaimMetrics"]
-            for _, evidence in answerable
-        )
     if metric == "judge_pass_rate":
         return any(
-            (evidence.get("metricCalculationDetails") or {}).get("judgePass") not in {True, False}
+            type((evidence.get("metricCalculationDetails") or {}).get("judgePass")) is not bool
             for _, evidence in answerable
         )
     if metric in {"faithfulness_avg", "relevance_avg"}:
         field = "faithfulnessScore" if metric == "faithfulness_avg" else "relevanceScore"
         return any(
             not _finite_number((evidence.get("metricCalculationDetails") or {}).get(field))
+            or not 0 <= (evidence.get("metricCalculationDetails") or {})[field] <= 1
             for _, evidence in answerable
         )
     if metric == "retrieve_success_rate":
@@ -735,6 +769,49 @@ def _metric_value_missing(
             or float(evidence["retrieveLatencyMillis"]) < 0
             for _, evidence in selected
         )
+    return True
+
+
+def _objective_selection(selected: list[tuple[dict[str, Any], dict[str, Any]]],
+                         scope: str) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    return [item for item in selected if scope == "all"
+            or (item[0].get("should_answer") is True if scope == "answerable"
+                else item[0].get("should_answer") is False)]
+
+
+def _objective_values_valid(metric: str,
+                            selected: list[tuple[dict[str, Any], dict[str, Any]]]) -> bool:
+    # Never turn a failed ask/retrieval into a successful-subset objective value.
+    for _, evidence in selected:
+        errors = evidence.get("errors")
+        if not isinstance(errors, dict) or any(key not in errors or errors[key] is not None
+                                              for key in ("retrieval", "ask")):
+            return False
+    def count(value: Any) -> bool:
+        return type(value) is int and value >= 0
+    if metric == "objective_claim_support_rate":
+        for _, item in _objective_selection(selected, "answerable"):
+            values = item.get("objectiveClaimMetrics")
+            if not isinstance(values, dict) or values.get("claimMetricStatus") != "COMPLETE":
+                return False
+            total, hits = values.get("claimTotal"), values.get("supportedClaimCount")
+            if not count(total) or not count(hits) or hits > total:
+                return False
+        return True
+    scope = (OBJECTIVE_RATIOS.get(metric) or OBJECTIVE_COUNTS.get(metric) or ("no_answer",))[-1]
+    for _, item in _objective_selection(selected, scope):
+        values = item.get("metricCalculationDetails")
+        if not isinstance(values, dict):
+            return False
+        if metric in OBJECTIVE_RATIOS:
+            hits, total, _ = OBJECTIVE_RATIOS[metric]
+            if not count(values.get(hits)) or not count(values.get(total)) or values[hits] > values[total]:
+                return False
+        elif metric in OBJECTIVE_COUNTS:
+            if not count(values.get(OBJECTIVE_COUNTS[metric][0])):
+                return False
+        elif type(values.get("noAnswerOk")) is not bool:
+            return False
     return True
 
 

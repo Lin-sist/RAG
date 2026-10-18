@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "rag-quality-gate-profile-v1",
+  "profileId": "c20-objective-judge-draft",
+  "profileVersion": "v1-draft",
+  "status": "DRAFT",
+  "thresholdStatus": "PENDING_REFERENCE_EVIDENCE",
+  "dataset": {
+    "manifestPath": "docs/eval/dataset-manifest.json",
+    "manifestSha256": "8fe7f88846436133592ddc27388701018884df4bc526504183e82f5cb5626b87",
+    "releaseVersion": "rag-eval-dev-v2",
+    "expectedSampleCount": 150,
+    "selectionMode": "full"
+  },
+  "runIdentity": {
+    "mode": "generation/citation",
+    "topK": 5,
+    "minScore": 0.3,
+    "enableRerank": true
+  },
+  "requiredChannels": [
+    "objective"
+  ],
+  "errorPolicy": {
+    "retrieveErrorsMax": 0,
+    "rateLimitErrorsMax": 0,
+    "retryCountMax": 0
+  },
+  "missingPolicy": "NOT_EVALUABLE",
+  "slices": [
+    {
+      "id": "overall",
+      "axis": "all",
+      "value": "all",
+      "minimumDenominator": 1
+    }
+  ],
+  "rules": [
+    {
+      "id": "answer-keyword-hit-rate",
+      "channel": "objective",
+      "slice": "overall",
+      "metric": "answer_keyword_hit_rate",
+      "operator": "minInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": true
+    },
+    {
+      "id": "citation-source-hit-rate",
+      "channel": "objective",
+      "slice": "overall",
+      "metric": "citation_source_hit_rate",
+      "operator": "minInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": true
+    },
+    {
+      "id": "citation-snippet-hit-rate",
+      "channel": "objective",
+      "slice": "overall",
+      "metric": "citation_snippet_hit_rate",
+      "operator": "minInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": true
+    },
+    {
+      "id": "objective-claim-support-rate",
+      "channel": "objective",
+      "slice": "overall",
+      "metric": "objective_claim_support_rate",
+      "operator": "minInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": true
+    },
+    {
+      "id": "no-answer-accuracy",
+      "channel": "objective",
+      "slice": "overall",
+      "metric": "no_answer_accuracy",
+      "operator": "minInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": true
+    },
+    {
+      "id": "unsupported-citation-count",
+      "channel": "objective",
+      "slice": "overall",
+      "metric": "unsupported_citation_count",
+      "operator": "maxInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": true
+    },
+    {
+      "id": "no-answer-citation-violation-count",
+      "channel": "objective",
+      "slice": "overall",
+      "metric": "no_answer_citation_violation_count",
+      "operator": "maxInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": true
+    },
+    {
+      "id": "judge-pass-rate",
+      "channel": "judge",
+      "slice": "overall",
+      "metric": "judge_pass_rate",
+      "operator": "minInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": false
+    },
+    {
+      "id": "faithfulness-avg",
+      "channel": "judge",
+      "slice": "overall",
+      "metric": "faithfulness_avg",
+      "operator": "minInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": false
+    },
+    {
+      "id": "relevance-avg",
+      "channel": "judge",
+      "slice": "overall",
+      "metric": "relevance_avg",
+      "operator": "minInclusive",
+      "target": null,
+      "maxAbsoluteRegression": null,
+      "required": false
+    }
+  ]
+}

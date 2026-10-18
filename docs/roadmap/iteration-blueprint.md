@@ -159,7 +159,7 @@
 
 ### C19. `judge-live-calibration-evidence`
 
-2026-10-18：原60秒full41有效/1timeout；独立120秒canary4/4后，恢复授权的新full尝试9次首错停止，8有效/1network error/63未调用，见[最新review](../eval/reports/c19-full-timeout120-review-v1.json)。正式率N/A，新run授权0；不拼接或补跑，C19仍ACTIVE且未完成，默认/阈值未改，不启动C20。本地29/29与全Python279既有C18例外保留。
+2026-10-18最新：C19最后一次full24尝试/23有效/1network error/48未调用，见[最终review](../eval/reports/c19-final-full-review-v1.json)。累计83尝试/80个HTTP200/1timeout/2network error，正式率N/A；按用户条件指令停放未完live任务，后续独立授权补测，不拼接/归档。C20零外调工程先行，judge硬门禁仍未启用。
 
 **目标**：在既有 `rag-judge-v1` 与 `judge-calibration-v1` contract 上形成真实 judge agreement 与 repeat consistency evidence。
 
@@ -174,6 +174,8 @@
 **非目标**：不自动优化 score threshold，不在 calibration 通过前把 judge 设为硬发布门禁，不让 judge 质量值污染 objective completeness。
 
 ### C20. `objective-judge-quality-gate-profile`
+
+2026-10-18用户条件授权已满足：C19最后一轮23有效/1网络错误后停止并停放live，C20零外调首切片已实现。见[readiness](../../openspec/changes/objective-judge-quality-gate-profile/readiness.md)、[DRAFT profile](../eval/config/c20-objective-judge-draft-v1.json)及[安全review](../eval/reports/c20-objective-judge-draft-review-v1.json)。7项objective/3项judge辅助、空阈值不激活；22/22+14/14通过，全Python293仍既有C18 1 failure/4 errors。C19未完成/未归档，C20参考重复证据/数值批准/硬门禁仍未完成。
 
 **目标**：在 C18/C19 evidence 充分后，以新 profile/version 建立 objective 与 judge 的独立门禁。
 

@@ -28,6 +28,8 @@
 
 ### 2. Judge 真实校准
 
+- 2026-10-18最新条件分支：最后一次C19 full24尝试/23有效/1network error/48未调用，零重试、INCOMPLETE；累计83尝试/80个HTTP200，根因/失败费用未知。见[最终review](../eval/reports/c19-final-full-review-v1.json)。按用户决定停放未完live任务，不拼接或续跑，后续独立授权补测；C19未接受/未归档。C20零外调首切片已实现，见[readiness](../../openspec/changes/objective-judge-quality-gate-profile/readiness.md)：profile仍DRAFT、judge仅辅助，数值/重复参考证据/ACTIVE激活继续保留债务；C18当前源码审计漂移亦未修复。
+
 - 2026-10-18：原60秒full41有效/1timeout；独立120秒canary4/4后，新full8有效/1network error/63未调用、INCOMPLETE，见[最新review](../eval/reports/c19-full-timeout120-review-v1.json)。正式率N/A，累计59次尝试/57个HTTP200，根因/账单未知；不拼接或自动补跑，新run授权0。C19未完成，不进C20；29/29及全Python279既有C18例外保留。
 
 - C9b tooling、24-case 四象限 gold corpus 与状态语义已完成；C9b接受时live calibration为`SKIPPED`，当前C19真实执行进展以上述review为准。

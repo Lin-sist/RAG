@@ -453,7 +453,7 @@ normal details JSON 新增 `objectiveMetricStatus`、`judgeMetricStatus`、`metr
 
 #### C19：冻结执行与独立证据编译（2026-10-18离线实现）
 
-C19应使用显式入口，不把旧C9b plan或synthetic当真实校准。原60秒full41有效/1timeout/30未尝试；120秒canary4/4后独立full8有效/1network error/63未调用，见[最新full review](reports/c19-full-timeout120-review-v1.json)。两轮full均INCOMPLETE，正式agreement/repeat率N/A；[执行记录](../../openspec/changes/judge-live-calibration-evidence/recovery-plan.md)保留原证据且不拼接，当前新run授权0。120秒入口须显式指定候选manifest及--judge-timeout 120，默认未改；费用依据用户免费额度声明，失败的远端结果/费用未知。
+C19最新[最后一轮review](reports/c19-final-full-review-v1.json)为24尝试/23有效/1network error/48未调用、INCOMPLETE，正式率N/A。此前独立canary及partial均保留，不拼接；累计83尝试/80个HTTP200，失败根因/远端结果/费用未知。按用户决定停放未完live任务，后续独立授权补测，不再反复重跑；当前唯一活动任务为下方C20零外调切片，不把C19伪称已完成或归档。
 
 ```powershell
 python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile canary
@@ -473,7 +473,7 @@ python -B scripts/compile_judge_calibration_evidence.py --run-directory tmp/eval
 
 compiler退出码`COMPLETE/INVALID/NOT_COMPARABLE/INCOMPLETE=0/2/3/4`，不改变历史runner退出码。它从raw重新解析score并读取tracked gold，核对顺序、hash、预算和Git/source/runtime身份；缺测/重复/错误时agreement与repeat率为`N/A`，coverage/错误仍可见。低agreement的完整测量保持COMPLETE，不自动调阈值。SYNTHETIC明确`liveEvidenceEligible=false`，不能用于真实质量声明；reservation上限与已观察HTTP响应另列，不推断未知调用无费用。
 
-离线状态与既有C18全量回归例外见[C19 readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。真实canary/full和C20仍未完成。
+离线状态与既有C18全量回归例外见[C19 readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。真实canary已有独立完成记录，full仍不完整；C20已实现零外调首切片，数值审批/激活仍未完成。
 
 #### C19：冻结执行与独立证据编译（2026-10-18离线实现）
 
@@ -497,7 +497,7 @@ python -B scripts/compile_judge_calibration_evidence.py --run-directory tmp/eval
 
 compiler退出码`COMPLETE/INVALID/NOT_COMPARABLE/INCOMPLETE=0/2/3/4`，不改变历史runner退出码。它从raw重新解析score并读取tracked gold，核对顺序、hash、预算和Git/source/runtime身份；缺测/重复/错误时agreement与repeat率为`N/A`，coverage/错误仍可见。低agreement的完整测量保持COMPLETE，不自动调阈值。SYNTHETIC明确`liveEvidenceEligible=false`，不能用于真实质量声明；reservation上限与已观察HTTP响应另列，不推断未知调用无费用。
 
-离线状态与既有C18全量回归例外见[C19 readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。真实canary/full和C20仍未完成。
+离线状态与既有C18全量回归例外见[C19 readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。真实canary已有独立完成记录，full仍不完整；C20已实现零外调首切片，数值审批/激活仍未完成。
 
 ### 6.2 C10 quality gate profile 与离线 evaluator
 
@@ -956,3 +956,15 @@ python -B scripts\compile_generation_objective_baseline.py `
 compiler 只保留 manifest/dataset/runtime/Git hash、调用事实、分通道数值与状态；问题、答案、contexts、claims、provider payload、凭据、数字 KB ID、collection 和绝对路径留在本地 raw，不进入 tracked 摘要。v6的`COMPLETE`要求 exact 150、`CLEAN`、objective `COMPLETE`、judge `SKIPPED`、模型身份与指标重算一致、每个attempt的embedding全程可观测、固定 identity 和预算合规；允许契约内已恢复的瞬态重试，但不允许缺失attempt事实。低分也不会触发本轮优化。
 
 C18 瞬态重试必须保留逐次失败账本。compiler 的 COMPLETE 要求最终观测完整、未恢复错误为零且 ledger 合法；CLEAN 不表示传输从未失败。摘要分别列出 HTTP/ask/retrieval 重试、恢复失败、失败状态直方图及已知/未知 generation HTTP 次数；不与旧零重试运行混比。
+
+### C20：Objective草案与Judge辅助的零外调审阅
+
+用户明确授权C19最后一次再中断后保留证据并继续C20；现C19 live停放，未完成/未归档，[最终C19 review](reports/c19-final-full-review-v1.json)为准。C20已实现[DRAFT profile](config/c20-objective-judge-draft-v1.json)和[离线review](../../scripts/review_objective_judge_profile.py)，7项objective规则required、3项judge仅辅助，所有target/tolerance均null，未激活。
+
+```powershell
+python -B scripts/review_objective_judge_profile.py --details tmp/eval/c18/20260922-r11-full-live-details.json
+```
+
+仅读取完整普通评测details，不调用backend或provider。先核对dataset/ordered selection/run identity，再复用C10计数计算；objective完整观测与严格错误策略分列，judge PARTIAL/SKIPPED或字段不完整时不展示辅助数值，不影响完整objective。C19校准摘要不能混作普通150样本judge证据。
+
+预期DRAFT为NOT_EVALUABLE/exit4，不是放行或执行故障；--output仅创建全新仓库内文件，拒绝覆盖输入或旧结果。[C18原件安全回放](reports/c20-objective-judge-draft-review-v1.json)的7指标与接受报告一致，历史retry31仍显示retry_count_exceeded，不自动放宽策略或选阈值。后续充分参考/重复证据、逐规则数值批准、新version ACTIVE与judge升级required是独立阶段，见[C20 readiness](../../openspec/changes/objective-judge-quality-gate-profile/readiness.md)。
