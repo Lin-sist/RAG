@@ -453,7 +453,7 @@ normal details JSON 新增 `objectiveMetricStatus`、`judgeMetricStatus`、`metr
 
 #### C19：冻结执行与独立证据编译（2026-10-18离线实现）
 
-C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。默认[60秒manifest](config/c19-judge-calibration-v1.json)的canary4/4成功；后续full尝试42次后首错停止（41有效/1timeout/30未尝试），见[full安全review](reports/c19-full-review-v1.json)。整体INCOMPLETE，agreement/repeat率N/A，不补齐/拼接partial；[恢复提案](../../openspec/changes/judge-live-calibration-evidence/recovery-plan.md)含独立120秒候选，未改默认，新的调用需单独授权。费用依据用户免费额度声明，timeout上游完成/费用未知。
+C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。默认60秒canary4/4，原full41有效/1timeout/30未尝试、INCOMPLETE，正式率N/A；旧证据保留。独立[120秒canary](reports/c19-canary-timeout120-review-v1.json)已4/4、0错误/重试，仅小样本；[新full72计划](reports/c19-full-timeout120-plan-v1.json)待授权，[执行包](../../openspec/changes/judge-live-calibration-evidence/recovery-plan.md)明确不拼接旧run。120秒入口须同时显式指定候选manifest及--judge-timeout 120；默认未改，费用依据用户免费额度声明，旧timeout远端结果/费用未知。
 
 ```powershell
 python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile canary

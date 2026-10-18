@@ -28,7 +28,7 @@
 
 ### 2. Judge 真实校准
 
-- 2026-10-18：canary4/4；full首错停止于第42次（41有效/1timeout/30未调用），compiler INCOMPLETE，agreement/repeat率N/A，见[full安全review](../eval/reports/c19-full-review-v1.json)。[恢复提案](../../openspec/changes/judge-live-calibration-evidence/recovery-plan.md)及独立120秒候选待选择，不改默认或自动续跑。C19未完成，judge29/29及全Python279（既有C18 1 failure/4 errors）保留；账单/timeout根因未知，不进入C20。
+- 2026-10-18：原60秒full41有效/1timeout/30未调用、INCOMPLETE，正式率N/A；随后独立[120秒canary](../eval/reports/c19-canary-timeout120-review-v1.json)完成4/4，错误/重试0；[新full72计划](../eval/reports/c19-full-timeout120-plan-v1.json)授权/实际0。不改默认或续跑/拼接旧run，C19仍未完成。judge29/29及全Python279（既有C18 1 failure/4 errors）保留；旧timeout根因/账单未知，不进入C20。
 
 - C9b tooling、24-case 四象限 gold corpus 与状态语义已完成；C9b接受时live calibration为`SKIPPED`，当前C19真实执行进展以上述review为准。
 - accepted contract 固定 canary 4 × 1、full 24 × 3，最大 judge calls 为 4 + 72；任一 case/repeat 缺失不得从成功子集下 agreement 结论。

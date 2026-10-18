@@ -3658,3 +3658,17 @@
 - canonical manifest2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea；默认60秒manifest/旧canary/旧partial不变，不补齐或拼接。当前新run授权4/实际0，后续full72、额外查询、重试/补跑、backend/embedding/rerank/普通ask及业务写入均未授权或执行。凭据仅live时本地源只读映射进程，不读聊天值、不写值或改源文件。
 - 修改6文件：ACTIVE_TASK、只追加本日志、design D8、recovery-plan、tasks、readiness。无代码/config/数据/指标/依赖/accepted baseline/受保护目录改动。本地提交授权复用，未push/PR/部署，C19仍ACTIVE。提交后读取实际clean HEAD再独立运行。
 - 验证复用：候选纯本地validator/plan/121秒拒绝及judge29/29已通过；全Python279仍既有C18 1 failure/4 errors，非GREEN。仅授权元数据更新，不因换阶段重跑；Java/前端未变，跳过Maven/build/浏览器，OpenSpec CLI不可用。执行前做范围/链接/日志前缀/增量凭据模式与git diff --check。建议提交：`docs(评测): 记录C19独立120秒canary授权`。
+
+## 2026-10-18 · C19独立120秒canary授权提交补录
+
+- 上一执行提交：`193e46cd82d9f46f70517d76de7b9ca13687dca3`，`docs(评测): 记录C19独立120秒canary授权`。6文件，提交后clean/main ahead12；6文件/23个链接/日志前缀/增量凭据模式/diff检查通过，该clean HEAD为本轮独立canary运行身份。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19独立120秒canary完成与新full计划
+
+- Commit: pending。本轮只执行已授权独立canary4次，4/4 HTTP200/有效解析、error/missing/unknown/retry均0，runner exit0/compiler COMPLETE，elapsed8155/5657/4202/5782ms。faithfulness/relevance各TP2/TN2/FP0/FN0，joint TP1/TN3/FP0/FN0，三组agreement1.0、mismatch0；单轮4条不建立完整三轮一致性、不证明原超时根因修复。
+- 实际身份：clean HEAD193e46cd82d9f46f70517d76de7b9ca13687dca3，manifest2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea，run70f38f0e-74c4-43bb-bdda-33c230585564；NVIDIA NIM / nvidia/nemotron-3-super-120b-a12b，timeout120s/max_tokens1024/context6000/temperature0/间隔至少2s/retry0。适用design D1–D8，无评分/源码/默认配置变更。
+- raw独立保留ignored tmp/eval/c19-canary-timeout120-20261018-24e5bb81；安全c19-canary-timeout120-review-v1.json绑定identity/ledger/completion/safe-summary四hash，独立本地compiler重编译与原摘要逐对象相同，额外调用0。凭据只读加载、源文件前后内存比对未变，值未进入tracked文件/命令/日志/回复。无backend/embedding/rerank/普通ask/业务写入或额外查询。
+- 新canary4次预算已用完；累计尝试50、HTTP200共49、旧timeout1，远端结果/费用未知。费用沿用用户确认免费额度，未独立核账或探测限流。新增c19-full-timeout120-plan-v1.json，固定24×3/最多72次、58191bytes约58KB；同120秒manifest/模型/源码/请求体，输出配置上限73728token非实际用量。新full授权0/实际0，完整获授权并执行后总尝试上限122；不拼接8条canary或旧partial，不重用旧剩余30。
+- 修改12文件：ACTIVE_TASK/本日志、指南/路线图/技术债、proposal/tasks/readiness/recovery-plan、原full执行包增补最新入口、两份新安全review/plan；旧原始证据及原plan/review不改。accepted baseline/archive、C17/C18、执行源码/依赖/生产行为及受保护本地内容不改，C19仍ACTIVE、未归档或启动C20。沿用本地提交授权，未push/PR/部署。
+- 验证/跳过：live4/4及独立重编译通过；复用未变化源码的judge29/29与全Python279（既有C18 1 failure/4 errors，非GREEN），Java/前端未改，跳过Maven/build/浏览器。OpenSpec CLI不可用，文件级范围/链接/JSON/hash/plan预算/日志前缀/增量凭据模式/diff检查收尾。建议提交：`docs(评测): 保存C19独立120秒canary证据与full计划`。
+- 收尾：12个允许文件/66个本地链接、4份artifact hash/ignored状态及独立重编译一致；日志前缀保全、增量凭据模式0、安全JSON字段/无本地绝对路径检查通过。按现有prompt/payload组装逻辑纯本地重算24条请求体bytes，逐条与新full计划一致，三轮合计58191bytes，新full授权/实际0；git diff --check通过，未新增外调。准备提交后只提请独立full授权。

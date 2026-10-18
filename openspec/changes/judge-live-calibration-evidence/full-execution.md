@@ -2,6 +2,8 @@
 
 Report status：`FULL_INCOMPLETE_TIMEOUT`。本次在clean HEAD14efadc执行42次后按首错停止：41有效/HTTP200、1次timeout，余30未调用、retry0。compiler INCOMPLETE，完整agreement/repeat率N/A。原[full计划](../../../docs/eval/reports/c19-full-plan-v1.json)保留执行前授权状态，实际见[安全review](../../../docs/eval/reports/c19-full-review-v1.json)。新run未授权，见[恢复审阅包](recovery-plan.md)。
 
+此页专属原60秒full，保留原状态。后续独立120秒canary已4/4完成，见[新review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)；下一轮[120秒full计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)授权/实际0，不拼接本页partial或任一canary。
+
 ## 本轮执行约束与实际
 
 - 本run获授权最多72次judge POST，24×3；实际尝试42、剩余30未调用，不能续跑或拼接旧41条。前次4条canary独立保留；两阶段已尝试总计46，收到45个HTTP200，1个timeout未记录HTTP状态，不能推断未计费。

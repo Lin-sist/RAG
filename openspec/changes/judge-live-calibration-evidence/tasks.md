@@ -21,7 +21,7 @@
 - [x] 2.1 用户确认免费额度可用并授权最多4次canary；模型/endpoint/载荷/runtime已固定，配置提交869803d本地preflight READY，授权文档提交后再读取实际clean HEAD。费用依据为用户声明、真实认证/具体限流未核验；只在live时从本地项目环境源只读加载凭据。
 - [x] 2.2 独立授权4次canary，在clean HEAD823b81a完成4/4、HTTP200/parse100%、错误/重试0；独立重编译与原摘要完全相同。仅单轮canary，不证明full三轮一致性；4次预算已使用，不补跑。
 - [x] 2.2a 用户明确授权新增最多72次full，沿用已确认免费额度、固定24×3及已披露出站/runtime；授权提交后读取新clean HEAD，不复用canary或扩大调用类型。
-- [x] 2.2b 原full首错停止后，用户选择D8独立120秒分支并新增授权最多4次canary；固定4条/3308bytes、零重试/首错停止，后续full72仍未授权。执行前文档提交并核查clean HEAD，本次实际0。
+- [x] 2.2b 用户选择D8并新增授权120秒canary4次；clean HEAD193e46c实测4/4、HTTP200/解析100%、错误/重试0，独立compiler COMPLETE且重编译一致。仅单轮小样本，不证明原超时根因解决；4次已用完，新full72授权0/实际0。
 - [ ] 2.3 本次独立full已执行42次后timeout首错停止：41有效、30未尝试、retry0，compiler INCOMPLETE；完整24×3未达成，不拼接canary/partial。恢复选择及独立新预算见[recovery-plan](recovery-plan.md)。
 - [ ] 2.4 compiler已如实输出partial：valid41/expected72、1 timeout/30 missing、agreement/repeat率N/A；完整72条指标仍未建立，不能用成功子集给结论。
 
@@ -30,4 +30,4 @@
 - [ ] 3.1 形成安全acceptance/report：低agreement如实保留，不自动调参，不声称生产质量或C20通过。
 - [ ] 3.2 用户明确接受本change后delta进入baseline、归档、恢复IDLE；更新技术债与执行日志。
 
-已完成第0–1节及2.0–2.2b；原canary已用4，原full尝试42后首错停止，余30未用不作续跑授权。用户新增授权独立120秒canary最多4次，当前实际0；2.3–2.4及第3节仍未完成，默认60秒不改，change不归档、不接受baseline、不改IDLE。
+已完成第0–1节及2.0–2.2b；旧canary4+旧full42+新canary4=50次尝试，49个HTTP200/1旧timeout。原full余30不可续跑，新120秒full72未授权/未执行；2.3–2.4及第3节仍未完成，默认60秒不改，change不归档、不接受baseline、不改IDLE。

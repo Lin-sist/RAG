@@ -4,7 +4,7 @@
 
 C9b 已接受 `rag-judge-v1`、24 条 `judge-calibration-v1` 和离线 runner，真实 judge 仍为 SKIPPED。C19 为固定四象限 corpus 建立独立 judge agreement / repeat consistency 证据，不从前端或 C18 objective 结果推断 judge 已校准。
 
-2026-10-18 用户批准具体设计并授权Agent本地提交，前端按[收口索引](../../../docs/roadmap/frontend-demo-closeout-2026-10-18.md)接受，C19离线实现提交e107b2c。用户确认免费额度并分阶段授权：canary4/4成功；full72上限下尝试42次，41有效/1timeout/30未调用，retry0、compiler INCOMPLETE，见[full review](../../../docs/eval/reports/c19-full-review-v1.json)。change保持ACTIVE；[恢复提案](recovery-plan.md)待用户选择，新run授权0，不归档或推进C20。本地提交授权继续，不含push/PR/部署。
+2026-10-18 用户批准具体设计并授权Agent本地提交，前端按[收口索引](../../../docs/roadmap/frontend-demo-closeout-2026-10-18.md)接受。原60秒canary4/4，full41有效/1timeout/30未调用、INCOMPLETE；随后选择D8并授权独立120秒canary，实测4/4、错误/重试0，见[新review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)。[新120秒full72计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)授权0/实际0，不拼接旧证据。change保持ACTIVE，不归档或推进C20；本地提交授权继续，不含push/PR/部署。
 
 ## 范围
 
@@ -22,7 +22,7 @@ C9b 已接受 `rag-judge-v1`、24 条 `judge-calibration-v1` 和离线 runner，
 - 离线实现：真实 HTTP/provider calls=0，数据出站=false。
 - canary：固定 4 case × 1 repeat，最多 4 次 judge POST；完整 schema/ledger/identity 无误后才可提请 full 授权。agreement 低值保留，不作为自动调参或补跑理由。
 - full：24 case × 3 repeats，最多 72 次 judge POST，独立授权；不得把 canary 拼成 full。
-- provider采用NVIDIA NIM OpenAI-compatible，judge固定为`nvidia/nemotron-3-super-120b-a12b`；累计45个HTTP200及1个timeout，凭据仅本地只读加载到进程，不落tracked文件/日志。未查模型列表，full不完整，不能用成功子集给agreement；60秒默认保留，120秒仅恢复候选，见[recovery-plan](recovery-plan.md)。
+- provider采用NVIDIA NIM OpenAI-compatible，judge固定为`nvidia/nemotron-3-super-120b-a12b`；累计49个HTTP200及1个旧timeout，凭据仅本地只读加载到进程，不落tracked文件/日志。未查模型列表，旧full不完整，不能用成功子集给agreement；60秒默认保留，120秒独立canary已完成，新full待授权，见[recovery-plan](recovery-plan.md)。
 - 出站仅 tracked 合成 question/answer、fixture excerpt 和 judge prompt，不包含 gold labels、用户资料或 KB 内容。费用/零费用依据与账号配额待执行前确认；不得用旧账号声明当作本轮事实。串行、retry=0、拟 timeout=60s、间隔至少2s、输出上限1024 token、context 上限6000字符，均在 manifest 中冻结并呈交 live 授权。
 - 离线验收：聚焦回归及 `python -B -m unittest discover -s scripts -p 'test_*.py'`；plan/preflight/compiler 为纯本地；负例证明请求前拒绝及脱敏。
 - 最终接受：一份完整正式 full 的全部72 observation、parse coverage、三组 confusion/agreement、provider-pass mismatch、24个case repeat consistency、错误/重试/身份均可审计。COMPLETE 只证明测量完整，不表示 agreement 达标；接受/归档由用户确认。
