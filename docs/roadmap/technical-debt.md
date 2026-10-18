@@ -115,7 +115,7 @@
 
 本节仅登记F4归档移交的未验证目标，不重验或改写其他既有债务。F4客户端工程、合成、视觉与上传接受/查询恢复已接受；这不代表完整真实业务闭环。追踪来源：[F4归档验收](../../openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/acceptance.md)与[延后任务](../../openspec/changes/archive/2026-10-02-frontend-kb-upload-alignment/tasks.md)。
 
-- **F4-LIVE（planned，原4.1–4.2 / D1）**：尚无本次新页面的专用真实创建→上传→任务完成→文档/统计→指定KB问答→来源→历史回读证据。2026-10-17已准备[分阶段执行包](frontend-live-integration-execution.md)与零外调预检；Docker/backend/MySQL/Milvus未就绪，L1/L2均NOT_RUN。实际provider/模型、请求预算、timeout/retry、出站/费用/限流及query/history/索引副作用仍须执行前确认并授权。当前预算0，不复用fixture或旧KB17结果证明新闭环，不宣称生成质量收益。
+- **F4-LIVE（partial，原4.1–4.2 / D1，2026-10-18补录）**：[用户手测截图](frontend-user-manual-acceptance-2026-10-18.md)显示索引完成/统计、同步答案与来源；尚缺上传HTTP202/taskId、任务状态及历史回读的完整链条。[分阶段执行包](frontend-live-integration-execution.md)L1/L2尚未由Agent执行，10月17日环境故障只作历史快照。Agent新增真实预算0；实际provider/模型、timeout/retry、出站/费用/限流等须在Agent执行前确认并授权，不把用户手测当作重跑授权，不宣称生成质量收益。
 - **F4-DROP（unknown，原3.4部分 / D2）**：用户手动选文件后的多文件与混合上传已验证，但“已选择”无法独立证明拖放。Chrome自动选文件仍被扩展文件权限阻止，不绕过安全策略；后续取得真实拖入上传区的动作与结果证据后才能关闭，不能改勾为通过。
 - **F4-CLEANUP（conditional / D3，原4.3）**：本轮真实数据写入0，无需清理。后续真实验收产生的专用KB/document/history按明确目标单独授权清理；不默认删除既有用户数据。
 
@@ -143,15 +143,16 @@
 
 F5按[客户端验收](../../openspec/changes/archive/2026-10-14-frontend-history-feedback-alignment/acceptance.md)接受归档，合成验证不等于真实业务闭环。
 
-- F5-LIVE（unknown）：专用账号/历史ID上的分页、权限、反馈提交/读回/刷新及限流尚无本轮真实证据；需另披露目标、请求预算及副作用并授权。
+- F5-LIVE（partial，2026-10-18补录）：用户确认普通功能可用且截图显示我的反馈评分/评论列表；尚缺同次POST响应与刷新回读、专用历史ID关联、真实权限/限流等完整证据。Agent新增真实执行仍需另披露目标、请求预算及副作用并授权。
 - F5-CLEANUP（unknown）：真实单删/批量部分失败及删除后反馈关联行为未验证；删除清理需另授权，不能推断原子清空或关联反馈已删除。
 - 保留offset快照并发漂移、逐删限流、反馈空GET不能排除迟到写入、我的反馈一次列表/题目ID降级、既有大chunk及窄屏底边取整限制。F4债务/F6/C19/C20独立保留，当前真实调用预算0。
 
 
 ## F6 客户端整体验收后的证据分流（2026-10-16）
 
-[F6本轮客户端验证](frontend-f6-client-acceptance.md)完成，待用户接受；两类窄屏遮挡已在3条CSS内修复，不能据此认定真实闭环完成。F4-LIVE/F4-DROP/F4-CLEANUP、F5-LIVE/F5-CLEANUP继续保留原边界。
+[F6客户端验证](frontend-f6-client-acceptance.md)完成，2026-10-18普通路径已获用户手工确认，流式异常单列待查；两类窄屏遮挡已在3条CSS内修复，不能据此认定全部真实闭环完成。F4-LIVE/F5-LIVE补充为partial，其余债务继续保留原边界。
 
 - F6-DEVICE（unknown）：指定桌面浏览器CSS视口矩阵不能证明原生触屏、GPU、Safari/Firefox、320px/200%缩放、完整无障碍或长时功耗；没有新设备证据。
-- F6-LIVE（unknown）：真实auth撤销、权限、跨页数据持久化/上传/问答/反馈/清理仍需专用目标、预算及副作用授权；本轮真实调用0，合成成功不替代。
+- F6-LIVE（partial）：用户手测补充同步答案/来源、索引完成和反馈列表；真实auth撤销、权限、完整持久化及删除清理链条未补齐。Agent新增真实调用0，用户实际调用次数/费用未知；合成成功不替代真实证据。
+- F6-STREAM（unknown，2026-10-18）：用户流式操作出现STREAM_FAILED。代码只证明它是已识别超时之外的异常兜底；无检索结果另走NO_ANSWER/NO_RESULT。未找到对应本次操作的近期本地日志，根因未定，不能直接归因文档；应先取得同次traceId与后端异常/provider错误信息，再决定修复及验收范围，不改变既有SSE契约或默认模型。
 - F6-SIZE（partial）：既有>500kB主bundle警告保留，未为审计引入拆包/依赖升级或性能重构；C19/C20质量口径与外部评测另立阶段。

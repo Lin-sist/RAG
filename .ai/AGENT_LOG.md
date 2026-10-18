@@ -3476,3 +3476,18 @@
 - 安全与剩余风险：正式UI/API/DTO/路由/auth/request/SSE/poller、后端/模型/评测/依赖/lock、prototype、.env.local/application-dev.yml/.agents/学习目录未改；没有注册/赋权/改密/启动任务/删除数据。只读查看配置的输出限定模型/开关/timeout/retry，不输出secret。新preflight自身不读.env或受保护配置、不HTTP、不Docker mutation、不启动或写业务；缺前置条件只报告，不安装工具。前端30s超时不代表后端120s以内工作已停止，写入不明只GET核查不重放。F4-DROP/真实闭环/清理、F5真实持久化/清理、F6设备及C19/C20仍未完成，预算建议不等于已获授权。
 - 建议提交：chore(前端): 补齐真实联调预检与执行边界。
 - 本轮环境恢复补录：已启动原有Docker Desktop（官方已安装程序、隐藏启动），未安装软件。后续Desktop/backend进程及Linux engine pipe出现，但只读docker ps未返回，终止该查询客户端；再次以15秒subprocess超时只读检查仍timeout。未发container start/up/restart/pull、未操作数据卷、未启动RAG后端或发业务/provider请求。原预检JSON保留首次时间和状态，不将进程/pipe存在称为服务恢复；现需用户在Docker Desktop确认引擎正常。首次“未启动服务”描述为当时检查事实，技术恢复动作另记本条。PowerShell普通展示模式也实跑通过，仍PREREQUISITES_MISSING，不作为业务验收。
+
+## 2026-10-18 · 前端真实联调准备提交补录
+
+- 上一执行提交：`047c87336837ffa60fe4edee49161f32128ec178`，`chore(前端): 补齐真实联调预检与执行边界`。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · 用户手工验收与流式异常分流
+
+- Commit: pending。Type B文档补录，沿用同一前端工程Agent本地提交授权，不含push/PR/发布/部署。用户表示手动验证普通功能正常、流式问答失败；普通客户端路径记用户确认，异常保留，不自动开展C19/C20或新Type C。沿用既有F4/F5/F6证据分流边界，无新design决策。
+- 范围与文件：新增frontend-user-manual-acceptance-2026-10-18.md，更新ACTIVE_TASK、F6验收、真实执行包、总规划、技术债和本日志。四附件复制到本线程visualizations/manual-2026-10-18，SHA-256入报告，原图不进Git；tracked文件只记匿名化证明点，不记业务标题/ID/正文/评论。
+- 已确认：起点047c873/main ahead1、工作区干净。图中同步答案/引用片段、文档完成/统计、反馈列表可见，F4/F5真实证据为partial；不能证明完整HTTP202/taskId/任务/历史/刷新回读，L1/L2仍未由Agent执行。10月17日环境故障标为历史，不推断当前Docker健康或不健康。
+- 只读诊断：QAController.streamErrorReason将已识别超时映射TIMEOUT，其余兜底STREAM_FAILED；RAGServiceImpl无检索结果走NO_ANSWER/NO_RESULT。已检查日志目录无对应本次操作的近期记录，根因unknown，不归因文档，不用旧日志替代。下一证据为同次traceId、后端异常及provider错误类别/HTTP状态。
+- 验证：四附件复制/hash通过；受影响文档链接、日志只追加、文件范围及git diff --check聚焦验证收尾执行，结果以随后的补录为准。首次截图复制脚本因PowerShell for循环直接接管道解析失败，未执行文件操作；改为数组收集后复制通过。
+- 跳过与原因：仅文档变更，不重跑既有vue-tsc正式build/前端测试/浏览器矩阵，不跑Maven/Python评测；无新真实HTTP/业务/provider调用或业务写入，Agent本轮费用0，用户自行操作次数/模型/timeout/retry/费用未知。不为补证重发ask、embedding或反馈。
+- 安全与剩余风险：实现/API/DTO/SSE/后端/模型/依赖/lock、受保护配置/.agents/学习目录和原始采证JSON不变，AGENT_LOG只追加。流式失败根因、真实拖放/权限/限流/持久化完整链条/删除清理、设备与大chunk风险继续保留。建议提交：docs(前端): 记录用户手工验收及流式问答例外。
+- 收尾验证：7份文档范围精确匹配、58个本地链接存在、原日志前缀完整、文件末尾/空白及新增敏感模式检查通过，git diff --check通过；代码映射再次只读核验一致。只产生文档与本地非tracked截图副本，无产品代码改动。最终暂存检查及提交按上述既有授权执行。

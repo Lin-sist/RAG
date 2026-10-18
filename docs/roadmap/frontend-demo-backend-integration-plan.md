@@ -29,25 +29,25 @@
 
 ### C. 当前模块快照
 
-2026-10-17复核客户端事实；既有真实证据只覆盖各自指定目标/场景，不外推新增功能。分类仅针对所述范围，不代表模块所有场景均通过。剩余真实闭环按[执行包](frontend-live-integration-execution.md)推进，当前环境未就绪、真实预算0。
+2026-10-18补充[用户手工验收](frontend-user-manual-acceptance-2026-10-18.md)：普通客户端路径确认可用，流式问答出现STREAM_FAILED、根因待查；截图补充同步答案/来源、索引完成与反馈列表。分类仅针对所述范围，不代表模块所有场景均通过。[专用执行包](frontend-live-integration-execution.md)L1/L2尚未由Agent执行，Agent新增真实预算0；10月17日环境故障仅为历史快照，不能断言当前环境未就绪。
 
 | 模块 | 分类 | 已完成与剩余项 |
 | --- | --- | --- |
 | 登录/请求基础层 | partial | F1退出已接API/会话保护；登录双翼已接入并于2026-10-16接受归档，统一主题及客户端生命周期/降级已验证；真实新退出撤销unknown |
 | 应用框架/侧栏/主题 | confirmed（首批合成/视觉） | 品牌、固定导航、最近20条状态、统一主题与首批响应式已验收归档，不代表全量页面完成 |
 | 知识库列表/详情 | confirmed（F4客户端） | 列表/网格/详情/统计/上传状态已接受归档；真实闭环与拖放证据债务继续保留 |
-| 上传/任务 | partial | F4客户端接受不明/原taskId只读恢复已验；真实创建→上传→问答完整闭环、拖放和清理仍有独立债务 |
+| 上传/任务 | partial | F4客户端接受不明/原taskId只读恢复已验；用户手测截图显示文档完成与统计，HTTP202/taskId/完整回读链条、拖放和清理仍有独立债务 |
 | 同步问答 | confirmed | 指定合成问题的真实回答、独立 citation、history 写入与回读通过，不代表整体生成质量 |
-| R5 结构化 SSE | partial | Chrome 单题 ANSWER、terminal citation 与 history 回读通过；39/39 合成测试及正式 build 通过；真实非答案/断连矩阵未完整验证 |
+| R5 结构化 SSE | partial | 既有Chrome单题ANSWER、terminal citation与history回读通过；39/39合成测试及正式build通过；10月18日用户本次STREAM_FAILED尚未定位，真实非答案/断连矩阵未完整验证 |
 | 历史记录 | confirmed（F5客户端） | 显式分页/本页查找/KB范围/删除快照与恢复已接受，单轮history保留；真实删除/权限仍unknown |
-| 历史反馈 | partial | 既有指定真实评分证据保留；F5记录归属/不明核查/我的反馈客户端已接受，新增真实持久化/异常路径unknown |
+| 历史反馈 | partial | 既有指定真实评分证据保留；F5客户端已接受，10月18日用户截图显示评分/评论列表；刷新持久化/权限/限流等完整链条仍未补齐 |
 | 设置 | confirmed（首批合成/视觉） | 常规外观、只读现有身份、中性缺失态、焦点与深浅/窄屏已验；无mock或未接账号操作，账号管理仍不在范围 |
-| 完整外观/搜索体验 | partial | 登录双翼已归档；F6七页面42组矩阵及15补充图已验证，三条窄屏CSS修复已提交，F6待用户接受。历史/KB本页查找已完成，全量服务端搜索延后 |
+| 完整外观/搜索体验 | partial | 登录双翼已归档；F6七页面42组矩阵及15补充图已验证，三条窄屏CSS修复已提交，普通客户端路径已获用户手工确认、流式异常保留。历史/KB本页查找已完成，全量服务端搜索延后 |
 | 多轮 conversation/重命名 | out_of_scope | 本轮不新增会话实体，不以 history id 伪装 conversation id |
 | 引用原文精确定位 | unknown | 可展示现有 citation 片段；原文定位需另核查接口 |
 | 评测/MCP/可观测/知识源/研究任务工作台 | out_of_scope | 不在当前迁移范围，Demo 样例不等于真实管理接口 |
 
-证据入口：[正式路由](../../rag-frontend/src/router/index.ts)、[正式聊天页](../../rag-frontend/src/components/chat/ChatPanel.vue)、[设置](../../rag-frontend/src/components/settings/SettingsModal.vue)、[反馈](../../rag-frontend/src/components/history/HistoryFeedback.vue)、[R5 验收](../../openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/acceptance.md)、[执行日志](../../.ai/AGENT_LOG.md)。本轮只读核查这些事实，没有新增真实联调。
+证据入口：[正式路由](../../rag-frontend/src/router/index.ts)、[正式聊天页](../../rag-frontend/src/components/chat/ChatPanel.vue)、[设置](../../rag-frontend/src/components/settings/SettingsModal.vue)、[反馈](../../rag-frontend/src/components/history/HistoryFeedback.vue)、[R5 验收](../../openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/acceptance.md)、[执行日志](../../.ai/AGENT_LOG.md)。本轮Agent只读核对实现并补录用户手测证据，没有新增真实联调调用。
 
 ### D. 迁移目标
 
@@ -532,3 +532,7 @@ F1退出修复已完成客户端验证：复用useAuth.logout接线，单次带�
 用户确认登录动效成功接入并要求归档和推进下一规划；按客户端范围接受2项delta/6场景，归档至[登录动效验收](../../openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/acceptance.md)，原始26图/4报告hash重验一致，工程/浏览器证据复用。F6按既定顺序推进，见[F6执行记录](frontend-f6-client-acceptance.md)。F6仅审计既有页面与契约内小修，不新增能力；重大缺口另立Type C，真实业务预算0，F4/F5真实债务、全量搜索、多轮/账号/工作台和C19/C20不自动纳入。历史章节为当时状态，以本节及活动指针为当前入口。
 
 F6本轮客户端验证完成：42组七页面主题/视口矩阵、15张补充图、两类窄屏遮挡修复（3条CSS），聚焦17/17+14/14及最终含vue-tsc正式build通过；57正式图与20排除图分别登记。详见[F6客户端验收](frontend-f6-client-acceptance.md)，待用户接受。真实业务调用0，F4/F5真实债务及C19/C20保持独立；不自动升级为完整真实Demo。
+
+## 20. 用户手工确认与流式异常分流（2026-10-18）
+
+用户手动验证并确认普通功能可用；四张截图补充同步答案及来源、索引完成、反馈列表和流式失败证据，详见[手工验收补录](frontend-user-manual-acceptance-2026-10-18.md)。F6普通客户端路径不再保持待用户确认，流式异常独立保留，F4/F5真实证据为partial。STREAM_FAILED是异常兜底分类，未找到对应近期日志，不能直接归因文档。下一步先定位同次请求的traceId与后端异常，再决定修复范围；不重跑provider、不自动进入C19/C20。旧预检/历史章节保持当时事实，以当前快照及本节为准。
