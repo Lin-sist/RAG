@@ -451,6 +451,54 @@ python -B scripts\run_judge_calibration.py --plan-only --profile full --judge-mo
 
 normal details JSON 新增 `objectiveMetricStatus`、`judgeMetricStatus`、`metricChannels` 和 `judgeContractConfig`。judge all-error 会使 global `PARTIAL`，但不会污染完整 objective channel；judge off 为 `SKIPPED`，no-answer-only 且 judge 已开启为 `NOT_APPLICABLE`。旧报告缺少 C9b 字段时只能解释为 `unavailable`，不得回填为 0、`SKIPPED` 或 `PARTIAL`。
 
+#### C19：冻结执行与独立证据编译（2026-10-18离线实现）
+
+C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。当前[执行manifest](config/c19-judge-calibration-v1.json)的模型为`UNCONFIGURED`，live预算0；完成模型选择、费用/出站/限流披露、阶段授权及clean源码提交前，preflight必须BLOCKED。
+
+```powershell
+python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile canary
+python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile full
+python -B scripts/run_judge_calibration.py --c19-manifest --preflight-only
+```
+
+这些命令均无HTTP/凭据读取；前两项输出计划4/72，实际调用0；BLOCKED退出4不表示provider不可用或业务质量不达标。manifest冻结provider/model/完整endpoint path、temperature、timeout60s、输出上限1024token、上下文6000字符、间隔2s、retry0；冲突的CLI/env参数会拒绝，而非静默覆盖。共享prompt/parser/阈值保持原契约。
+
+以后独立授权的执行使用`--execute-live-judge --run-directory tmp/eval/<unique-run>`，目录必须是新的、位于仓库ignored区域，不能借该命令示例推导授权。每次调用前保存reservation/start，再保存outcome，首错停止；未知outcome不可自动重放。保留identity/ledger/completion文件，不覆盖或续跑。API key仅live时读取本地`RAG_EVAL_JUDGE_API_KEY`，不写入manifest/日志/summary。
+
+独立compiler只读取本地证据：
+
+```powershell
+python -B scripts/compile_judge_calibration_evidence.py --run-directory tmp/eval/<unique-run> --output tmp/eval/<unique-run>/review.json
+```
+
+compiler退出码`COMPLETE/INVALID/NOT_COMPARABLE/INCOMPLETE=0/2/3/4`，不改变历史runner退出码。它从raw重新解析score并读取tracked gold，核对顺序、hash、预算和Git/source/runtime身份；缺测/重复/错误时agreement与repeat率为`N/A`，coverage/错误仍可见。低agreement的完整测量保持COMPLETE，不自动调阈值。SYNTHETIC明确`liveEvidenceEligible=false`，不能用于真实质量声明；reservation上限与已观察HTTP响应另列，不推断未知调用无费用。
+
+离线状态与既有C18全量回归例外见[C19 readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。真实canary/full和C20仍未完成。
+
+#### C19：冻结执行与独立证据编译（2026-10-18离线实现）
+
+C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。当前[执行manifest](config/c19-judge-calibration-v1.json)的模型为`UNCONFIGURED`，live预算0；完成模型选择、费用/出站/限流披露、阶段授权及clean源码提交前，preflight必须BLOCKED。
+
+```powershell
+python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile canary
+python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile full
+python -B scripts/run_judge_calibration.py --c19-manifest --preflight-only
+```
+
+这些命令均无HTTP/凭据读取；前两项输出计划4/72，实际调用0；BLOCKED退出4不表示provider不可用或业务质量不达标。manifest冻结provider/model/完整endpoint path、temperature、timeout60s、输出上限1024token、上下文6000字符、间隔2s、retry0；冲突的CLI/env参数会拒绝，而非静默覆盖。共享prompt/parser/阈值保持原契约。
+
+以后独立授权的执行使用`--execute-live-judge --run-directory tmp/eval/<unique-run>`，目录必须是新的、位于仓库ignored区域，不能借该命令示例推导授权。每次调用前保存reservation/start，再保存outcome，首错停止；未知outcome不可自动重放。保留identity/ledger/completion文件，不覆盖或续跑。API key仅live时读取本地`RAG_EVAL_JUDGE_API_KEY`，不写入manifest/日志/summary。
+
+独立compiler只读取本地证据：
+
+```powershell
+python -B scripts/compile_judge_calibration_evidence.py --run-directory tmp/eval/<unique-run> --output tmp/eval/<unique-run>/review.json
+```
+
+compiler退出码`COMPLETE/INVALID/NOT_COMPARABLE/INCOMPLETE=0/2/3/4`，不改变历史runner退出码。它从raw重新解析score并读取tracked gold，核对顺序、hash、预算和Git/source/runtime身份；缺测/重复/错误时agreement与repeat率为`N/A`，coverage/错误仍可见。低agreement的完整测量保持COMPLETE，不自动调阈值。SYNTHETIC明确`liveEvidenceEligible=false`，不能用于真实质量声明；reservation上限与已观察HTTP响应另列，不推断未知调用无费用。
+
+离线状态与既有C18全量回归例外见[C19 readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。真实canary/full和C20仍未完成。
+
 ### 6.2 C10 quality gate profile 与离线 evaluator
 
 C10 将“产生评测 evidence”和“应用质量 policy”拆成两步。`run_rag_eval.py` / `run_reproducible_rag_eval.py` 继续负责生成本地 details JSON；`evaluate_quality_gate.py` 只读取已存在的 details、tracked profile 与可选 reference summary，不登录 backend，也不调用 embedding、rerank、ask、generation 或 judge。

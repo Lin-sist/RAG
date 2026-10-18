@@ -159,6 +159,8 @@
 
 ### C19. `judge-live-calibration-evidence`
 
+2026-10-18：前端按接受范围收口后，用户批准C19具体设计；零外调运行护栏、缺测抑制与独立compiler已实现，judge聚焦28/28通过。模型未选择、源码未提交冻结，live预算0；C19保持ACTIVE，见[readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。全Python278项仍有既有C18 audit的1 failure/4 errors，不称全仓GREEN。
+
 **目标**：在既有 `rag-judge-v1` 与 `judge-calibration-v1` contract 上形成真实 judge agreement 与 repeat consistency evidence。
 
 **固定调用形态**：

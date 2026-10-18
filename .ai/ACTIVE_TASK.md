@@ -2,14 +2,16 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE`
 
-- 当前无活动Type C change。2026-10-16用户确认登录双翼动效成功并明确授权归档；已接受客户端范围并归档。
-- 当前推进：F6普通客户端路径已获用户手工确认；10月18日10:36用户再次手测流式成功，新脱敏诊断已在运行后端生效，HTTP200/stop、1次尝试0重试、9块/92可见字符，截图显示完整答案/来源，另有历史insert日志但未独立回读。前次失败根因及长期稳定性仍待证据。见[诊断及实施记录](../docs/roadmap/frontend-stream-failure-diagnosis-2026-10-18.md)、[手工验收](../docs/roadmap/frontend-user-manual-acceptance-2026-10-18.md)及[F6记录](../docs/roadmap/frontend-f6-client-acceptance.md)。本轮仅Type B证据补录，不新增产品能力或契约。
-- [F4/F5真实闭环执行包](../docs/roadmap/frontend-live-integration-execution.md)的L1/L2尚未由Agent执行；用户截图已补充同步答案/来源、索引完成及反馈列表证据，真实链条分类partial。10月17日环境故障仅为历史快照，不能作为当前阻塞事实；Agent新真实调用预算仍0。
-- 推进顺序：C21/R5 → 前端Demo接入和联调 → C19校准 → C20门禁；后续阶段分别验收。
+- 当前唯一Type C：`judge-live-calibration-evidence`（C19）。用户明确批准具体设计，零外调实现已完成；真实canary/full待分别披露授权。入口：[proposal](../openspec/changes/judge-live-calibration-evidence/proposal.md)、[design](../openspec/changes/judge-live-calibration-evidence/design.md)、[tasks](../openspec/changes/judge-live-calibration-evidence/tasks.md)、[readiness](../openspec/changes/judge-live-calibration-evidence/readiness.md)。
+- 前端Demo于2026-10-18按用户确认的客户端/手工使用范围完成整体接受收口；各Type C已归档，F1/F6为Type B，无新delta待归档。见[收口索引](../docs/roadmap/frontend-demo-closeout-2026-10-18.md)。真实权限/持久化/拖放/清理/设备/流式稳定性债务保留。
+- C19 judge聚焦28/28通过，含预算/持久化/脱敏/compiler负例；本地4/72 plan及compiler合成CLI通过。实现后全Python278 tests仍为同一C18旧audit的1 failure/4 errors，不冒称GREEN。模型UNCONFIGURED、源码未提交，preflight=BLOCKED，真实预算0。
+- 推进顺序：C21/R5 → 前端Demo（已接受范围收口）→ C19校准 → C20门禁；分别验收。
 
-## Last Completed Change
+## Last Completed Stage
+
+- 前端Demo：2026-10-18整体接受，见[收口索引](../docs/roadmap/frontend-demo-closeout-2026-10-18.md)；F4/F5真实链条partial，F6单次成功不外推长期稳定性。最后完成的Type C为下列登录动效。
 
 - Change ID：`frontend-auth-motion-alignment`（F2剩余正式登录双翼动效）。
 - 归档路径：`openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/`。
@@ -18,8 +20,8 @@
 
 ## Current Boundary
 
-- 沿用本轮前端接入已有Agent本地提交授权；push/PR/发布/部署未授权。
-- F6仅/login、/chat、/kb、/kb/:id、/history、/chat/:id及设置的客户端视觉/键盘/状态检查，既有契约内小修另记录；重大缺口先建Type C。
-- Agent新增真实backend/auth/provider/upload/ask/embedding/rerank/judge/feedback/delete预算0；用户手测不授予Agent重跑调用授权。F4/F5真实使用证据partial；权限/撤销/完整持久化链条、拖放/清理、物理设备/长时性能未关闭。`STREAM_FAILED`根因unknown，不能直接归因文档。
-- F5全量搜索/Ctrl+K、多轮/重命名、反馈改写/删除、账号/工作台、后端/API/DTO/模型/评测及C19/C20不自动纳入。
-- R5既有专用合成问题ANSWER/历史回读证据保留；10月18日另有用户真实资料流式完整答案/来源及脱敏计数单例，不外推非答案/断连/长期稳定性。客户端断流只判incomplete，不承诺服务端取消或无provider费用。
+- 2026-10-18用户明确要求“为我提交commit，继续下一步”，授权Agent暂存并本地提交本轮前端收口/C19离线实现及随后C19准备文件；push/PR/发布/部署均未授权。
+- 仅已批准的C19离线评测实现与下一步准备；不修改accepted spec/C17/C18 evidence或生产行为。实现提交身份以Git及后续日志补录为准，具体文件与验证见readiness及AGENT_LOG。
+- canary最多4次、full最多72次judge，各阶段独立披露授权；provider/model/费用/配额未核实，live预算0。前端用户手测不是重跑授权。
+- 全量搜索、多轮、账号/工作台、C20 profile/阈值、生产默认prompt/parser/retrieval/SSE不在本change范围。
+- 前端[F4/F5执行包](../docs/roadmap/frontend-live-integration-execution.md)尚未执行；[F6](../docs/roadmap/frontend-f6-client-acceptance.md)和[诊断](../docs/roadmap/frontend-stream-failure-diagnosis-2026-10-18.md)原证据保留。前次STREAM_FAILED根因unknown，不关闭真实债务，不承诺服务端取消或零provider费用。

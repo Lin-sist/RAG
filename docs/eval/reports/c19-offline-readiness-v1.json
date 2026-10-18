@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "c19-offline-readiness-v1",
+  "status": "OFFLINE_IMPLEMENTED_LIVE_BLOCKED",
+  "date": "2026-10-18",
+  "sourceHeadAtStart": "e2b077b520d6da92949b233bd260dc94e0183431",
+  "committedImplementation": false,
+  "verification": {
+    "judgeFocusedTests": 28,
+    "judgeFocusedFailures": 0,
+    "judgeFocusedErrors": 0,
+    "fullPythonTests": 278,
+    "fullPythonFailures": 1,
+    "fullPythonErrors": 4,
+    "fullPythonGreen": false,
+    "existingFailureReason": "c18_budget_source_drift",
+    "canaryPlannedCalls": 4,
+    "fullPlannedCalls": 72,
+    "preflightStatus": "BLOCKED",
+    "preflightExitCode": 4,
+    "preflightReasons": ["model_not_selected", "clean_frozen_source_required"]
+  },
+  "compilerCliSmoke": {
+    "evidenceKind": "SYNTHETIC",
+    "measurementStatus": "COMPLETE",
+    "liveEvidenceEligible": false,
+    "reservedSyntheticAttempts": 4,
+    "providerAttemptsUpperBound": 0,
+    "exitCode": 0,
+    "repeatOutputRefusedExitCode": 2,
+    "rawIdentitySha256": "96b7b98ac061858d553f0056237d5e6d1994a53998c7786f5a8ba4f0d2233d7e",
+    "rawLedgerSha256": "c05dd6b24e17034bea3a0422491a5faf470c91a411e42a70bf8596f240afbca4",
+    "safeSummarySha256": "5db9bdc8116184f1314026feddfeafda003673b823f2f7896fb8200922a33868"
+  },
+  "live": {
+    "status": "NOT_RUN",
+    "authorizedCalls": 0,
+    "providerCalls": 0,
+    "businessDataOutbound": false,
+    "model": "UNCONFIGURED"
+  },
+  "boundary": {
+    "productionBehaviorChanged": false,
+    "acceptedBaselinesChanged": false,
+    "thresholdsChanged": false,
+    "c20Activated": false,
+    "rawArtifactsTracked": false,
+    "credentialsRead": false
+  }
+}

@@ -48,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--execute-live-judge", action="store_true")
     parser.add_argument("--judge-base-url", default=os.getenv("RAG_EVAL_JUDGE_BASE_URL", "https://integrate.api.nvidia.com/v1"))
-    parser.add_argument("--judge-api-key", default=os.getenv("RAG_EVAL_JUDGE_API_KEY", ""))
+    parser.add_argument("--judge-api-key", default="")
     parser.add_argument("--judge-model", default=os.getenv("RAG_EVAL_JUDGE_MODEL", ""))
     parser.add_argument("--judge-temperature", type=float, default=0.0)
     parser.add_argument("--judge-timeout", type=float, default=60.0)
@@ -56,6 +56,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report", default="tmp/eval/judge-calibration.md")
     parser.add_argument("--details-json", default="tmp/eval/judge-calibration-details.json")
     parser.add_argument("--no-overwrite", action="store_true")
+    parser.add_argument("--c19-manifest", nargs="?", const="docs/eval/config/c19-judge-calibration-v1.json")
+    parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--run-directory")
     return parser.parse_args()
 
 
@@ -340,6 +343,8 @@ def call_live_judge(
             {"role": "user", "content": user_prompt},
         ],
     }
+    if getattr(args, "judge_max_output_tokens", None) is not None:
+        payload["max_tokens"] = args.judge_max_output_tokens
     request = urllib.request.Request(
         f"{str(args.judge_base_url).rstrip('/')}/chat/completions",
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -349,10 +354,18 @@ def call_live_judge(
         },
         method="POST",
     )
+    opener = urllib.request.urlopen
+    if getattr(args, "judge_reject_redirects", False):
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *_: Any, **__: Any) -> None:
+                return None
+        opener = urllib.request.build_opener(NoRedirect()).open
     try:
-        with urllib.request.urlopen(request, timeout=float(args.judge_timeout)) as response:
+        with opener(request, timeout=float(args.judge_timeout)) as response:
+            args.judge_http_status = int(getattr(response, "status", 200))
             body = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        args.judge_http_status = int(exc.code)
         if exc.code == 429:
             raise CalibrationCallError("rate_limited") from exc
         raise CalibrationCallError("judge_http_error") from exc
@@ -526,8 +539,18 @@ def aggregate_calibration(
         calibration_status = "NOT_COMPARABLE"
     else:
         calibration_status = "COMPLETE" if complete else "PARTIAL"
+    confusion = {
+        "faithfulness": _confusion(faith_gold, faith_predicted),
+        "relevance": _confusion(relevance_gold, relevance_predicted),
+        "jointPass": _confusion(joint_gold, joint_predicted),
+    }
+    if not complete:
+        for channel in confusion.values():
+            channel["agreement"] = "N/A"
     return {
         "calibrationStatus": calibration_status,
+        "comparisonEligible": complete,
+        "confusionScope": "complete" if complete else "partial_diagnostic_only",
         "expectedObservationCount": len(expected_keys),
         "receivedObservationCount": len(observed),
         "validObservationCount": len(valid),
@@ -536,12 +559,10 @@ def aggregate_calibration(
         "duplicateObservationCount": duplicate_count,
         "unexpectedObservationCount": unexpected_count,
         "parseCoverage": len(valid) / len(expected_keys) if expected_keys else "N/A",
-        "faithfulness": _confusion(faith_gold, faith_predicted),
-        "relevance": _confusion(relevance_gold, relevance_predicted),
-        "jointPass": _confusion(joint_gold, joint_predicted),
+        **confusion,
         "providerPassMismatchCount": sum(bool(item.get("providerPassMismatch")) for item in valid),
         "repeatConsistentCaseCount": len(consistent_case_ids),
-        "repeatConsistentCaseRate": len(consistent_case_ids) / len(cases_by_id) if cases_by_id else "N/A",
+        "repeatConsistentCaseRate": len(consistent_case_ids) / len(cases_by_id) if complete and cases_by_id else "N/A",
         "inconsistentCaseIds": inconsistent_case_ids,
         "errorCategoryHistogram": dict(sorted(error_categories.items())),
     }
@@ -621,6 +642,12 @@ def write_calibration_outputs(
 def main() -> int:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[1]
+    if args.c19_manifest:
+        import c19_judge_contract
+        return c19_judge_contract.main_for_runner(repo_root, args)
+    if args.preflight_only or args.run_directory:
+        print("C19 execution options require --c19-manifest.", file=sys.stderr)
+        return 2
     try:
         plan = calibration_plan(
             repo_root,
@@ -643,6 +670,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+    args.judge_api_key = args.judge_api_key or os.getenv("RAG_EVAL_JUDGE_API_KEY", "")
     if not args.judge_model or not args.judge_api_key:
         print("Live judge calibration requires explicit model and API key configuration.", file=sys.stderr)
         return 2

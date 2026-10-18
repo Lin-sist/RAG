@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C19 judge calibration execution manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "manifestId", "schemaSha256", "calibrationManifest", "judge", "judgeContractConfig", "sourceSha256"],
+  "properties": {
+    "schemaVersion": {"const": "c19-judge-calibration-v1"},
+    "manifestId": {"const": "c19-judge-calibration-v1"},
+    "schemaSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "calibrationManifest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"const": "docs/eval/calibration/judge-calibration-v1-manifest.json"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "judge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "model", "baseUrl", "temperature", "timeoutSeconds", "maxOutputTokens", "maxContextChars", "minIntervalSeconds", "retries"],
+      "properties": {
+        "provider": {"const": "nvidia-nim"},
+        "model": {"type": "string", "pattern": "^[A-Za-z0-9_./-]{1,160}$"},
+        "baseUrl": {"type": "string", "pattern": "^https://[A-Za-z0-9.:-]+(/[A-Za-z0-9_./-]+)?$"},
+        "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+        "timeoutSeconds": {"type": "number", "minimum": 1, "maximum": 120},
+        "maxOutputTokens": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "maxContextChars": {"type": "integer", "minimum": 1, "maximum": 6000},
+        "minIntervalSeconds": {"type": "number", "minimum": 2, "maximum": 60},
+        "retries": {"const": 0}
+      }
+    },
+    "judgeContractConfig": {"type": "object"},
+    "sourceSha256": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scripts/c19_judge_contract.py", "scripts/compile_judge_calibration_evidence.py", "scripts/run_judge_calibration.py", "scripts/rag_judge_contract.py"],
+      "properties": {
+        "scripts/c19_judge_contract.py": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "scripts/compile_judge_calibration_evidence.py": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "scripts/run_judge_calibration.py": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "scripts/rag_judge_contract.py": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

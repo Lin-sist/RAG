@@ -3536,3 +3536,42 @@
 - 验证与采证限制：只提取固定允许字段，不保存完整终端/业务输出。终端换行在字段边界重复字符，简单压平曾把下一条日志年份误识别为slowGapCount；逐项核对原字段后纠正为0，doneEvents1和chunkCount9也按原行确认，不把错误解析结果作为证据。读取结果确认新诊断已加载，不冒称运行整体JAR与HEAD字节一致。图像复制/hash和脱敏JSON生成通过，文档范围/链接/日志只追加/diff收尾检查。
 - 跳过与安全：产品源码/依赖/lock/配置/受保护目录未改，复用同代码25/25，不重跑Maven/前端build/Python/浏览器矩阵；未重启服务、未新增HTTP/provider/embedding/ask/rerank/judge或业务写入，Agent费用0。用户本次generation尝试1/重试0已观察，整轮其他调用及费用未知。前次原失败上游根因、长期稳定性/权限/清理等原债务保留，不把单次成功或新增日志当作修复证明。建议提交：docs(验收): 补录真实流式成功与诊断数据。
 - 收尾验证：6份文档精确范围、34个本地链接存在、原日志前缀完整、空白/新增凭据与附件业务标题模式、git diff --check通过；脱敏记录同traceId、9块/92字符两层一致、token总数相符、截图SHA-256复核通过。按已有授权暂存并本地提交文档，原图/终端明细不进入Git。
+
+## 2026-10-18 · 用户流式成功补录提交身份
+
+- 上一执行提交：`e2b077b520d6da92949b233bd260dc94e0183431`，`docs(验收): 补录真实流式成功与诊断数据`。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · 前端Demo整体收口与C19事前包
+
+- Commit: pending。用户要求检查前端是否归档、未归档先归档并继续C19；本轮具体C19方案此前不存在，按OpenSpec技能先形成可审阅包，不将路线图当作具体设计已批准。默认用户手动提交，不借用前端commit授权；无暂存/提交/push/PR/部署。
+- 文件范围：新增frontend-demo-closeout-2026-10-18.md；更新前端总规划/F6/技术债及ACTIVE_TASK；新增judge-live-calibration-evidence下proposal/design/tasks/readiness/evaluation delta共6文件；本日志只追加。前端按已确认客户端/手测范围接受收口，不修改既有archive/baseline；C19当前PLANNING。适用决策引用：C19 design D1–D7，仅记引用不复述取舍。
+- 归档检查：7个前端archive均存在；6个现行delta共19 requirements/52 scenarios与baseline逐字一致。R4历史requirement当前baseline不逐字存在，R5现行契约存在；保留历史不重新追加。F4的D1–D3/F5的R1–R2为已移交真实债务，不勾选。两个旧目录仅有空文件夹，不删不搬；F1/F6为Type B，以新索引闭环，无新delta可归档。
+- 原始证据：F6清单77图（57正式/20排除）SHA-256及3正式源码hash均一致，旧工程/视觉证据复用，不冒称新跑浏览器。前次STREAM_FAILED上游原因、真实持久化/权限/撤销/拖放/清理/设备/长时及大chunk债务保留。
+- C19本地核验：accepted corpus24条/四象限各6、canary4/full72计划VALID；占位model=UNCONFIGURED不作live就绪。现有聚合器synthetic复现expected2/valid1时PARTIAL、coverage0.5但agreement1.0，登记缺口，未改实现。
+- 验证：Preflight只报告环境无安装。calibration聚焦9/9、normal eval47/47通过。全量`python -B -m unittest discover -s scripts -p 'test_*.py'`实际259 tests、1 failure/4 errors，均C18 budget_source_drift（含2个setUpClass未执行后续测试）；8个源码原始hash漂移，其中5个仅CRLF/LF，另3个HEAD blob不同。未改C18 audit/历史evidence或放宽验证。文件结构/链接/diff/日志前缀和敏感模式检查在收尾执行。
+- 跳过：未改Java/前端/Python实现，不跑Maven、前端build、新UI矩阵；OpenSpec CLI缺失，文件级检查不代替官方validate。真实HTTP/backend/provider/ask/embedding/rerank/generation/judge/feedback/delete、业务写入/数据出站均0，未读凭据/查模型列表/启动服务/删除数据，无新增依赖。完整Python非GREEN与C19未实现如实保留，不报质量收益。
+- 范围安全：accepted specs、archive、原JSON/图片、C17/C18数据/profile、生产代码/模型/prompt/parser/threshold、依赖/lock、受保护配置/.agents/学习目录未改。首次精确比对R4旧delta失败后核查现行R5，不将历史缺项静默补回；PowerShell花括号路径解析失败后改目录检索；一次多文件patch上下文失败未写入，拆分成功；普通Python写ACTIVE_TASK被权限拒绝，改用可用apply_patch成功，无平台审批拒绝。
+- 建议提交：`docs(规划): 收口前端Demo并建立C19校准事前方案`。后续零外调实现待本具体设计批准，live canary/full分别授权，C20不纳入。
+
+## 2026-10-18 · C19已批准零外调切片实施
+
+- Commit: pending。用户审阅具体设计后明确回复“批准，按该设计实施零外调切片”；ACTIVE_TASK切为ACTIVE。默认用户手动提交，未暂存/commit，不借用前端授权。真实judge/provider预算0，canary/full未运行，C20未推进。
+- 范围：新增scripts/c19_judge_contract.py、compile_judge_calibration_evidence.py及对应两份test；修改run_judge_calibration.py/test_judge_calibration.py；新增C19 manifest/schema和offline-readiness安全报告；更新本change五个文件、ACTIVE_TASK、评测指南、路线图、技术债及前端收口入口；本日志只追加。更正前条计数：C19事前change为5文件，连前端索引共6个新增文档，不是change自身6文件。适用design D1–D7，无额外决策。
+- 执行事实：C19显式入口完成规范endpoint/runtime/共享contract/corpus/Git LF源码身份、请求前硬预算、独占新ignored目录、逐次flush/fsync ledger、首错停止、retry0/禁止redirect/禁止resume；延后读取live凭据。compiler独立重算、核对hash/ledger/原始score与tracked gold，不信任现成summary；缺测/重复/身份/畸形抑制agreement/repeat率，coverage和安全错误保留。SYNTHETIC明确不能作为live evidence；reservation上限与confirmed HTTP响应分开。
+- 聚焦验证：`python -B -m unittest discover -s scripts -p 'test_*judge*.py'`最终28/28，失败/错误0（19项C19新测试+9既有校准），覆盖低agreement完整full、预算、金标不入transport、首错/中断/未知outcome、no-overwrite、hash/身份/重复/缺测、脱敏与HTTP redirect拒绝。实现前47项normal eval通过，实现后全量包含该组，无新失败。所有响应均mock/注入合成transport，没有外部HTTP。
+- 完整验证：`python -B -m unittest discover -s scripts -p 'test_*.py'`实现后278 tests、1 failure/4 errors，均同一既有C18 budget_source_drift（含2个setUpClass），与实现前259的失败集合一致；不改历史audit或伪称GREEN。代码通过后未再改动，后续文档收尾复用本结果。
+- CLI：C19本地canary/full plan退出0、4/72计划/实际0；preflight退出4，model_not_selected/clean_frozen_source_required。独立compiler对4条SYNTHETIC canary退出0、COMPLETE但liveEvidenceEligible=false，同名输出重写退出2；raw留在ignored tmp/eval，安全报告只存hash/状态/计数，无合成质量冒充真实结论。
+- 环境/失败保留：普通Python写config被拒，改apply_patch生成；首次manifest缺失触发16项新测试错误，不计通过。受限tmp/eval目录创建触发Windows tempfile反复PermissionError，确认唯一对应本次python进程后停止；按仓库已有测试授权提升执行，最终28/28与278结果如上。无平台自动审批拒绝，不把权限故障当产品回归。单元临时合成目录按测试自身清理，独立CLI raw保留。
+- 跳过：未改Java/前端，不跑Maven/build/浏览器矩阵，复用前端hash一致的原结果；OpenSpec CLI缺失，采用文件级检查。真实backend/auth/ask/upload/embedding/rerank/generation/judge/feedback/delete、业务写入、数据出站/费用0；未读真实凭据、查模型列表、启动服务、注册/赋权或清理业务数据。未新增依赖/锁文件。
+- 范围与剩余风险：accepted baseline/archive、corpus/gold/fixture、共享prompt/parser/0.70阈值、normal eval、C17/C18 evidence/profile、Java/前端、受保护配置/.agents/学习目录未改；AGENT_LOG只追加。源码未提交且模型未选，live preflight必须BLOCKED；C18全量回归非GREEN、F4/F5/F6真实债务仍保留。结构/链接、manifest/hash、安全白名单、精确文件范围及diff收尾检查随后补录。
+- 建议提交：`feat(评测): 实现C19离线执行护栏与证据编译`；前端阶段收口文档可由用户另拆`docs(前端): 完成Demo接入阶段收口`。
+- 收尾验证：22个允许文件精确匹配；96个本地链接全部存在；新增文件空白/凭据模式0发现；日志原前缀保全。C19 manifest/schema/四源码hash验证通过；CLI烟测identity/ledger/safe-summary三个hash与安全报告一致，raw确认Git ignored。git diff --check通过；仅有既有Git全局ignore访问和日志CRLF提示，不作功能失败。accepted baseline/archive、生产/受保护路径未改；没有暂存或commit。代码/配置在最终成功验证后未再改，复用28/28及全量278（既有1/4例外）。
+
+## 2026-10-18 · C19离线切片本地提交授权与下一步准备
+
+- Commit: pending。用户明确要求“为我提交commit，继续下一步”，授权本轮22文件的暂存与本地提交；C19同一阶段后续准备沿用授权，push/PR/发布/部署和真实provider调用仍未授权。
+- 范围：当前前端收口/C19离线实现22文件；本次提交前仅同步ACTIVE_TASK/proposal/tasks的最新提交责任，修正readiness中将“实现前未改源码”混写为整轮未改Python的措辞；本日志只追加。design D1–D7不变。
+- 验证复用：Python实现/配置/依赖未变化，复用judge28/28及全量278（既有C18 1 failure/4 errors），不因提交重跑测试。提交前重新核对精确文件范围、manifest/四源码hash、受影响链接、日志只追加及diff；结果见提交执行与后续补录。
+- 下一步已检查进程环境未配置RAG_EVAL_JUDGE_MODEL，仅输出模型是否配置，未读凭据；已询问用户judge模型和账号费用/配额信息。当前manifest仍UNCONFIGURED，真实judge预算0；不自动继承前端generation模型或查询provider模型列表。
+- 跳过/安全/风险：不跑未改的Maven/前端build/浏览器矩阵，不重启服务或清理数据；accepted baseline/archive、C17/C18 evidence、Java/前端、共享prompt/parser/阈值、依赖/受保护目录未改。下一步仅准备执行包，模型/费用/配额未定时不执行live；C18全量回归非GREEN和前端真实债务保留。
+- 提交信息：`feat(评测): 完成C19离线校准护栏与前端收口`。

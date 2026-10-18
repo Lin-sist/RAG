@@ -28,6 +28,8 @@
 
 ### 2. Judge 真实校准
 
+- 2026-10-18：前端已按接受范围收口；用户批准[C19具体设计](../../openspec/changes/judge-live-calibration-evidence/proposal.md)，离线执行护栏/compiler及缺测抑制已实现，judge聚焦28/28通过；全Python278项仍有C18旧audit的1 failure/4 errors。见[readiness](../../openspec/changes/judge-live-calibration-evidence/readiness.md)。C19保持ACTIVE；模型未选/源码未提交，live NOT_RUN、预算0。
+
 - C9b tooling、24-case 四象限 gold corpus 与状态语义已完成；live calibration 仍为 `SKIPPED`。
 - accepted contract 固定 canary 4 × 1、full 24 × 3，最大 judge calls 为 4 + 72；任一 case/repeat 缺失不得从成功子集下 agreement 结论。
 - 校准通过前 judge 不应成为 required release gate，也不得自动搜索阈值。
@@ -150,7 +152,7 @@ F5按[客户端验收](../../openspec/changes/archive/2026-10-14-frontend-histor
 
 ## F6 客户端整体验收后的证据分流（2026-10-16）
 
-[F6客户端验证](frontend-f6-client-acceptance.md)完成，2026-10-18普通路径已获用户手工确认，流式异常单列待查；两类窄屏遮挡已在3条CSS内修复，不能据此认定全部真实闭环完成。F4-LIVE/F5-LIVE补充为partial，其余债务继续保留原边界。
+[F6客户端验证](frontend-f6-client-acceptance.md)完成，2026-10-18用户确认整个前端接入工程完成并授权收口，见[收口索引](frontend-demo-closeout-2026-10-18.md)。10:36流式成功单例已确认，前次异常根因及长期稳定性保留；两类遮挡已修复，完整真实闭环仍非全部验证。F4-LIVE/F5-LIVE为partial，其余债务边界不变。
 
 - F6-DEVICE（unknown）：指定桌面浏览器CSS视口矩阵不能证明原生触屏、GPU、Safari/Firefox、320px/200%缩放、完整无障碍或长时功耗；没有新设备证据。
 - F6-LIVE（partial）：用户手测补充同步答案/来源、索引完成和反馈列表；真实auth撤销、权限、完整持久化及删除清理链条未补齐。Agent新增真实调用0，用户实际调用次数/费用未知；合成成功不替代真实证据。

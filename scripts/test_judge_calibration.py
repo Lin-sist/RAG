@@ -110,6 +110,9 @@ class JudgeCalibrationTest(unittest.TestCase):
         self.assertEqual(2, summary["expectedObservationCount"])
         self.assertEqual(1, summary["validObservationCount"])
         self.assertEqual(0.5, summary["parseCoverage"])
+        self.assertEqual("N/A", summary["jointPass"]["agreement"])
+        self.assertEqual("N/A", summary["repeatConsistentCaseRate"])
+        self.assertFalse(summary["comparisonEligible"])
 
     def test_duplicate_or_unexpected_observation_is_not_comparable(self) -> None:
         cases = [
@@ -134,6 +137,7 @@ class JudgeCalibrationTest(unittest.TestCase):
         self.assertEqual("NOT_COMPARABLE", summary["calibrationStatus"])
         self.assertEqual(1, summary["duplicateObservationCount"])
         self.assertEqual(1, summary["unexpectedObservationCount"])
+        self.assertEqual("N/A", summary["faithfulness"]["agreement"])
 
     def test_canary_execution_uses_static_cases_and_shared_strict_parser(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]

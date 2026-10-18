@@ -1,5 +1,7 @@
 # 前端 Demo 接入总说明与分阶段推进规划
 
+> 2026-10-18最终阶段状态：`ACCEPTED_WITH_TRACKED_DEBT`。用户确认接入工程完成并授权归档；各Type C切片均已归档，F1/F6为Type B，已补[整体收口索引](frontend-demo-closeout-2026-10-18.md)。下方历史快照按当时日期理解；10:36用户流式成功单例已补[诊断证据](frontend-stream-failure-diagnosis-2026-10-18.md)，原失败根因及完整真实链条等债务保留。[C19](../../openspec/changes/judge-live-calibration-evidence/proposal.md)已获具体设计批准并完成零外调实现，保持ACTIVE；不表示judge调用获授权或C19/C20已完成。
+
 ## 现行推进规则（2026-09-29 修订）
 
 本节是后续前端接入的现行入口。下方原第 1–10 节保留为早期规划，涉及 C18 活跃、等待 C21、未修复契约缺口和历史授权的描述不得直接作为当前启动条件；第 11–15 节为历史执行证据。当前事实仍按 AGENTS.md、ACTIVE_TASK、active change、accepted specs 和代码核验。
@@ -29,7 +31,7 @@
 
 ### C. 当前模块快照
 
-2026-10-18补充[用户手工验收](frontend-user-manual-acceptance-2026-10-18.md)：普通客户端路径确认可用，流式问答出现STREAM_FAILED、根因待查；截图补充同步答案/来源、索引完成与反馈列表。分类仅针对所述范围，不代表模块所有场景均通过。[专用执行包](frontend-live-integration-execution.md)L1/L2尚未由Agent执行，Agent新增真实预算0；10月17日环境故障仅为历史快照，不能断言当前环境未就绪。
+2026-10-18最终状态：用户确认整体接入工程完成；普通路径确认可用，10:36流式成功单例已观察，前次STREAM_FAILED根因及长期稳定性仍待证据。见[收口索引](frontend-demo-closeout-2026-10-18.md)和[用户手工验收](frontend-user-manual-acceptance-2026-10-18.md)。分类仅针对所述范围，不代表所有业务场景均通过。[专用执行包](frontend-live-integration-execution.md)L1/L2尚未由Agent执行，新增真实预算0；旧环境故障不作为当前阻塞。
 
 | 模块 | 分类 | 已完成与剩余项 |
 | --- | --- | --- |
@@ -38,11 +40,11 @@
 | 知识库列表/详情 | confirmed（F4客户端） | 列表/网格/详情/统计/上传状态已接受归档；真实闭环与拖放证据债务继续保留 |
 | 上传/任务 | partial | F4客户端接受不明/原taskId只读恢复已验；用户手测截图显示文档完成与统计，HTTP202/taskId/完整回读链条、拖放和清理仍有独立债务 |
 | 同步问答 | confirmed | 指定合成问题的真实回答、独立 citation、history 写入与回读通过，不代表整体生成质量 |
-| R5 结构化 SSE | partial | 既有Chrome单题ANSWER、terminal citation与history回读通过；39/39合成测试及正式build通过；10月18日用户本次STREAM_FAILED尚未定位，真实非答案/断连矩阵未完整验证 |
+| R5 结构化 SSE | partial | 既有单题ANSWER/来源/history回读及合成验证保留；10月18日用户10:36成功单例与新诊断已确认，前次零正文失败的上游根因及非答案/断连/长期矩阵仍未完整验证 |
 | 历史记录 | confirmed（F5客户端） | 显式分页/本页查找/KB范围/删除快照与恢复已接受，单轮history保留；真实删除/权限仍unknown |
 | 历史反馈 | partial | 既有指定真实评分证据保留；F5客户端已接受，10月18日用户截图显示评分/评论列表；刷新持久化/权限/限流等完整链条仍未补齐 |
 | 设置 | confirmed（首批合成/视觉） | 常规外观、只读现有身份、中性缺失态、焦点与深浅/窄屏已验；无mock或未接账号操作，账号管理仍不在范围 |
-| 完整外观/搜索体验 | partial | 登录双翼已归档；F6七页面42组矩阵及15补充图已验证，三条窄屏CSS修复已提交，普通客户端路径已获用户手工确认、流式异常保留。历史/KB本页查找已完成，全量服务端搜索延后 |
+| 完整外观/搜索体验 | partial | 登录双翼已归档；F6七页面42组矩阵及15补充图已验证，客户端范围已接受收口；完整搜索等延后，真实/设备债务保留 |
 | 多轮 conversation/重命名 | out_of_scope | 本轮不新增会话实体，不以 history id 伪装 conversation id |
 | 引用原文精确定位 | unknown | 可展示现有 citation 片段；原文定位需另核查接口 |
 | 评测/MCP/可观测/知识源/研究任务工作台 | out_of_scope | 不在当前迁移范围，Demo 样例不等于真实管理接口 |
