@@ -453,7 +453,7 @@ normal details JSON 新增 `objectiveMetricStatus`、`judgeMetricStatus`、`metr
 
 #### C19：冻结执行与独立证据编译（2026-10-18离线实现）
 
-C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。当前[执行manifest](config/c19-judge-calibration-v1.json)固定judge为`nvidia/nemotron-3-super-120b-a12b`；已授权canary实际4/4通过、0错误/重试，见[真实安全摘要](reports/c19-canary-review-v1.json)。这不证明24×3完整一致性；[新增72次full执行包](../../openspec/changes/judge-live-calibration-evidence/full-execution.md)尚未授权。账单未独立核验，费用依据为用户确认免费额度；旧plan保留当时状态，执行结果以readiness和review为准。
+C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。[执行manifest](config/c19-judge-calibration-v1.json)固定judge为`nvidia/nemotron-3-super-120b-a12b`；canary实际4/4、0错误/重试，见[安全摘要](reports/c19-canary-review-v1.json)。用户已独立授权[新增最多72次full](../../openspec/changes/judge-live-calibration-evidence/full-execution.md)，尚待运行，不拼接canary。账单未独立核验，费用依据为用户确认免费额度；旧plan保留当时状态，实际结果以readiness/review为准。
 
 ```powershell
 python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile canary

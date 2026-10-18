@@ -1,6 +1,6 @@
 # C19 事前 readiness（2026-10-18）
 
-Report status：`CANARY_COMPLETE_FULL_AWAITING_AUTHORIZATION`。真实canary在授权提交clean HEAD823b81a完成4/4、HTTP200/parse100%、错误/重试0；三组agreement各100%只适用于该4条/1轮。见[真实安全摘要](../../../docs/eval/reports/c19-canary-review-v1.json)及[full执行包](full-execution.md)。离线实现e107b2c、模型准备869803d及旧占位模型结果保留；full新增72尚未授权，不将canary冒充完整校准。
+Report status：`FULL_AUTHORIZED_PENDING_RUN`。用户已独立授权新增最多72次full，当前实际0；授权文档提交后读取clean实际HEAD，沿用canary的manifest/执行源码/runtime。此前canary4/4、错误/重试0，见[真实安全摘要](../../../docs/eval/reports/c19-canary-review-v1.json)和[full执行包](full-execution.md)。旧阶段证据保留，不把canary当作完整校准。
 
 | 项目 | 分类 | 核查结果 |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ Report status：`CANARY_COMPLETE_FULL_AWAITING_AUTHORIZATION`。真实canary在�
 ## 实现与CLI验证
 
 - 真实canary：source HEAD823b81a、manifest486a6495...，4次HTTP200；latency3531/5171/3734/3702ms。三组agreement100%、mismatch0，单轮不建立三轮一致性。raw本地ignored，identity/ledger/completion/safe-summary hash写入安全报告；独立本地重编译逐对象相同，额外provider调用0。凭据源只读且未变。
-- 新full计划：24×3=新增72请求，合计JSON请求体58191bytes、同模型/manifest/执行源码/runtime；canary4条不拼入full。full实际HEAD在新clean提交后读取，记录文档提交与执行源码不变的区别；正式72条同一运行身份。当前full授权/实际均0。
+- 新full计划：24×3=新增72请求、JSON请求体58191bytes、同模型/manifest/源码/runtime；canary不拼入full。full实际HEAD在授权文档clean提交后读取，72条同一运行身份；用户已授权72，当前实际0。
 
 - 最新模型准备：29/29通过；新增测试证明已选模型与clean源码只能得到本地READY，providerAuthentication=NOT_CHECKED。缺模型负例改用独立UNCONFIGURED测试副本，不依赖正式manifest为空。本次只改模型配置及测试，四个执行源码hash与e107b2c一致。
 - 模型配置提交前的本地preflight仅因`clean_frozen_source_required`为BLOCKED，原`model_not_selected`已消除；提交后只读复核实际clean HEAD。准备时仅检查变量名，当前环境未配置judge/NVIDIA凭据变量；未读取凭据值或后端私有配置，live前需本地配置。

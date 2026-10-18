@@ -1,6 +1,6 @@
 {
   "schemaVersion": "c19-full-plan-v1",
-  "status": "FULL_PLAN_AWAITING_AUTHORIZATION",
+  "status": "FULL_AUTHORIZED_PENDING_RUN",
   "date": "2026-10-18",
   "canarySourceHead": "823b81a373d9cbda5c6b0e9a0d31a77125397430",
   "canaryRunId": "2f5a0222-d442-4490-b90f-4571274bff0f",
@@ -59,7 +59,7 @@
   "additionalMaximumJudgeRequests": 72,
   "priorCanaryRequests": 4,
   "combinedMaximumIfFullyAuthorized": 76,
-  "authorizedFullRequests": 0,
+  "authorizedFullRequests": 72,
   "actualFullRequests": 0,
   "perCasePayloadUtf8Bytes": [
     871,
@@ -93,7 +93,7 @@
   "stopOnFirstError": true,
   "canaryObservationsReusedInFull": false,
   "backendEmbeddingRerankAskCalls": 0,
-  "costBasis": "USER_CONFIRMED_FREE_QUOTA_FULL_STAGE_AUTHORIZATION_PENDING",
+  "costBasis": "USER_CONFIRMED_FREE_QUOTA_AND_EXPLICIT_FULL_72_AUTHORIZATION",
   "billingIndependentlyVerified": false,
   "providerRateLimitIndependentlyVerified": false,
   "executionHeadRule": "record_clean_committed_head_before_run_with_same_manifest_and_audited_source_hashes",

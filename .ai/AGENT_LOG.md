@@ -3619,3 +3619,16 @@
 - 验证/跳过：真实4/4及本地独立重编译PASS，raw ignored/源文件未变；代码和模型/config未改变，复用29/29与全Python279（既有C18 1 failure/4 errors），不重跑测试/Maven/前端build/浏览器。没有模型列表GET、backend/auth/upload/embedding/rerank/普通ask/generation/feedback/delete或业务写入。新文档结构/链接/增量凭据模式/日志前缀/报告白名单与hash/diff随后收尾。
 - 建议提交：`docs(评测): 保存C19真实canary证据并准备full校准`。下一步只提请新增72次full授权，不把本次4条小样本通过声明为完整judge校准或生产门禁通过。
 - 收尾：12个允许文件/64个本地链接全部通过，日志前缀保全、增量凭据模式0、JSON安全字段及无绝对路径检查通过；canary四份artifact hash/独立重编译一致，raw确认Git ignored，full计划预算72但授权/实际0。git diff --check通过；没有再改执行代码/config或重跑真实canary，准备本地提交安全证据与下一阶段计划。
+
+## 2026-10-18 · C19 canary证据提交补录
+
+- 上一执行提交：`c114486d450f24302319f0ee93b9729d4945ed63`，`docs(评测): 保存C19真实canary证据并准备full校准`。12文件，提交后clean/main ahead9；full本地preflight READY、sourceBlobsMatch=true、计划72/实际0。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19新增72次full授权
+
+- Commit: pending。用户明确授权“新增最多72次full”，与先前已使用4次canary分开；不拼接canary，总计上限76。费用依据沿用用户确认免费额度，具体账单/限流未独立核验。只允许固定24×3 judge，retry0/首错停止；不补跑/续跑未知outcome，不调用backend/embedding/rerank/普通ask或KB业务。本地提交授权沿用，未push/PR/部署。
+- 冻结模型/manifest/执行代码/runtime与canary相同：NVIDIA NIM / nvidia/nemotron-3-super-120b-a12b，manifest486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a；temperature0/timeout60s/max_tokens1024/context6000/间隔2s，full请求体58191bytes，72-key SHA-256=c9c4ebdddd9077c26b3289ddc563a456149ec58da1a0a08bbe506ccde9756952。代码/语料/公式/阈值不变，文档提交后实际clean HEAD在run identity独立记录。
+- 凭据按同一本地项目环境源只读映射到子进程，不复制聊天值，不改.env.local、不把值写入命令/日志/回复。新ignored run目录保存完整独立full证据；后续由compiler重算72项，不从成功子集给agreement，不自动调阈值。
+- 本轮仅同步授权文档/状态；复用29/29及全Python279（既有C18 1 failure/4 errors），不因阶段授权/提交重跑测试。actual full0、authorized full72，canary已使用4。执行后按真实结果写安全摘要，COMPLETE不等于质量阈值通过或可自动归档/C20。
+- 建议提交：`docs(评测): 记录C19七十二次full校准授权`。
+- 执行前收尾：11个允许文件、64个链接、manifest/72-key选择指纹全部通过，日志前缀保全、增量凭据模式0，git diff --check通过。只改授权元数据，执行代码/model/config未变；full授权72/实际0、canary已用4，准备提交后读取实际clean HEAD再执行。

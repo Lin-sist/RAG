@@ -1,6 +1,6 @@
 # C19 canary 执行包（2026-10-18）
 
-Report status：`CANARY_COMPLETE_FULL_NOT_AUTHORIZED`。本次已在授权提交clean HEAD `823b81a373d9cbda5c6b0e9a0d31a77125397430`完成4/4，错误/重试0。执行前授权计划保留于[原plan](../../../docs/eval/reports/c19-canary-plan-v1.json)，真实结果见[安全摘要](../../../docs/eval/reports/c19-canary-review-v1.json)。4次授权已耗尽，新增full72尚未授权。
+Report status：`CANARY_COMPLETE`。本次在授权提交clean HEAD823b81a完成4/4，错误/重试0。执行前授权计划保留于[原plan](../../../docs/eval/reports/c19-canary-plan-v1.json)，真实结果见[安全摘要](../../../docs/eval/reports/c19-canary-review-v1.json)。4次授权已耗尽；后续full新增72已获独立授权，状态见[full执行包](full-execution.md)。
 
 ## 固定目标及载荷
 
