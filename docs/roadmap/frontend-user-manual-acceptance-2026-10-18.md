@@ -1,6 +1,6 @@
 # 前端Demo用户手工验收补录
 
-2026-10-18。Report status：`USER_MANUAL_CONFIRMED_WITH_STREAM_EXCEPTION`。核对起点HEAD：`047c87336837ffa60fe4edee49161f32128ec178`。
+2026-10-18。Report status：`USER_MANUAL_CONFIRMED_STREAM_SUCCESS_OBSERVED`。初次核对起点HEAD：`047c87336837ffa60fe4edee49161f32128ec178`；后续10:36成功补录见文末，原失败仍保留。
 
 用户表示已手动验证，基本功能可以正常实现，流式问答存在失败。本记录接受普通客户端路径的用户手工确认，将流式异常单列待查；不把截图扩大为全部业务场景或生成质量通过。没有新Type C，也不自动启动C19/C20。
 
@@ -50,3 +50,7 @@
 ## 同日后续诊断补录
 
 用户随后要求定位流式失败。已从运行后端的控制台找到09:43:37的一条失败：检索与生成contextCount=5、实际模型已确认，但正文chunk和长度均0，耗时52909ms；失败路径定位至生成流结束后的正文提取/空结果校验。6项同版本合成诊断已通过，真实上游为何没有可见正文仍未定。详见[只读诊断](frontend-stream-failure-diagnosis-2026-10-18.md)。上文“未找到近期日志”是初次文件日志检查结果，本次直接读取控制台补充了证据；未重发真实问答、未修改产品代码。
+
+## 新诊断生效后的用户流式成功补录
+
+用户再次手测并提供完整答案/来源截图。10:36后端日志确认新增诊断已生效：HTTP200、sse、finishReason=stop、attempt1/retry0；推理239事件/3578字符，正文9事件/93字符，清洗后9块/92字符。usage记录1972输入/946输出token，其中reasoningTokens857；总耗时18878ms，首正文18440ms。出现历史insert日志，未独立GET回读。完整脱敏字段及原图hash见[诊断报告最新节](frontend-stream-failure-diagnosis-2026-10-18.md)。本次成功confirmed，前次失败根因unknown，不因成功宣称诊断代码修复了原问题或全部稳定性通过。Agent未主动查询业务数据、重发问答或重新调用模型。

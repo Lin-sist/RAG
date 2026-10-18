@@ -3522,3 +3522,17 @@
 - 跳过：仅rag-core Java维护，不重跑未变前端build/Python评测；没有新增依赖/基础设施，不跑全仓Maven及真实provider重放。未执行package/install/启动脚本或重启现有后端，当前进程仍是旧版本；新日志需重新构建启动后端才生效。Agent新增真实业务HTTP/provider/embedding/ask/rerank/judge/业务写入与费用0。
 - 安全与剩余风险：不修改API/DTO/SSE终态/历史/模型/prompt/检索/default retry/timeout、Qwen原生路径、依赖/lock、.env.local/application-dev.yml/.agents/学习目录。计数为字符/解码块，不等于token/网络帧/费用；模型只返回推理与格式不兼容的实际根因仍需新日志，未宣称原故障已修复。日志只追加，范围/链接/diff检查收尾执行。建议提交：fix(诊断): 增加脱敏流式结构与计数日志。
 - 收尾验证：6个允许文件精确匹配、11个本地链接存在、原AGENT_LOG前缀完整、空白/新增凭据模式及git diff --check通过；最终两个产品源码敏感日志扫描0发现。源码成功验证后未再改动，复用25/25结果；暂存/本地提交沿用授权。
+
+## 2026-10-18 · 脱敏诊断实施提交补录
+
+- 上一执行提交：`78db2ad31fdc31965541b01e9305b15b528cc425`，`fix(诊断): 增加脱敏流式结构与计数日志`。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · 用户流式成功及新诊断生效补录
+
+- Commit: pending。用户报告流式成功并授权查看已打开后端终端；Type B仅证据文档维护，沿用本工程Agent本地提交授权，无新Type C/design决策，不启动C19/C20，不push/PR/部署。
+- 范围：诊断报告追加10:36真实成功记录；同步ACTIVE_TASK（保持IDLE）、用户手工验收、F6报告和技术债，本日志只追加。原图和脱敏safe-terminal-summary.json存本线程visualizations/stream-success-2026-10-18，不进Git；tracked只记计数/技术标识，不记用户KB/文档/问答/来源正文。
+- 已确认：原工作区clean、HEAD78db2ad。实际app后端终端新llm_stream_attempt已生效：traceId001a14cddd191748113c8f68da7b769b、streamId b309ba1d-d871-42dd-ad83-acd646fa41b3，HTTP200/sse/complete/stop，attempt1/retry0、maxRetries0、maxOutputTokens2048、timeout120。模型nvidia/nemotron-3-super-120b-a12b，上下文5/估算1254；events250/json249、parseFailures0/extractionFailures1/emptyChoices1/DONE1；content9事件/93字符、reasoning239事件/3578字符、visible9块/92字符。usage1972/946/2918、reasoning857。
+- 交付证据：同traceId的stream_delivery_complete与控制器完成日志，总18878ms、首正文18440ms、平均间隔49ms/最大152ms、slowGap0，截图完整答案及来源。10:36:26.879另见Saved QA history日志，不记录业务ID、未GET独立回读。截图没有traceId，不能宣称截图身份独立核验；原图SHA-256入报告。单个空choices会触发既有捕获的NPE，未影响本次成功。
+- 验证与采证限制：只提取固定允许字段，不保存完整终端/业务输出。终端换行在字段边界重复字符，简单压平曾把下一条日志年份误识别为slowGapCount；逐项核对原字段后纠正为0，doneEvents1和chunkCount9也按原行确认，不把错误解析结果作为证据。读取结果确认新诊断已加载，不冒称运行整体JAR与HEAD字节一致。图像复制/hash和脱敏JSON生成通过，文档范围/链接/日志只追加/diff收尾检查。
+- 跳过与安全：产品源码/依赖/lock/配置/受保护目录未改，复用同代码25/25，不重跑Maven/前端build/Python/浏览器矩阵；未重启服务、未新增HTTP/provider/embedding/ask/rerank/judge或业务写入，Agent费用0。用户本次generation尝试1/重试0已观察，整轮其他调用及费用未知。前次原失败上游根因、长期稳定性/权限/清理等原债务保留，不把单次成功或新增日志当作修复证明。建议提交：docs(验收): 补录真实流式成功与诊断数据。
+- 收尾验证：6份文档精确范围、34个本地链接存在、原日志前缀完整、空白/新增凭据与附件业务标题模式、git diff --check通过；脱敏记录同traceId、9块/92字符两层一致、token总数相符、截图SHA-256复核通过。按已有授权暂存并本地提交文档，原图/终端明细不进入Git。

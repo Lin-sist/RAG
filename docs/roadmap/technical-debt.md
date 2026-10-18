@@ -154,5 +154,5 @@ F5按[客户端验收](../../openspec/changes/archive/2026-10-14-frontend-histor
 
 - F6-DEVICE（unknown）：指定桌面浏览器CSS视口矩阵不能证明原生触屏、GPU、Safari/Firefox、320px/200%缩放、完整无障碍或长时功耗；没有新设备证据。
 - F6-LIVE（partial）：用户手测补充同步答案/来源、索引完成和反馈列表；真实auth撤销、权限、完整持久化及删除清理链条未补齐。Agent新增真实调用0，用户实际调用次数/费用未知；合成成功不替代真实证据。
-- F6-STREAM（unknown，2026-10-18）：用户流式操作出现STREAM_FAILED。代码只证明它是已识别超时之外的异常兜底；无检索结果另走NO_ANSWER/NO_RESULT。未找到对应本次操作的近期本地日志，根因未定，不能直接归因文档；应先取得同次traceId与后端异常/provider错误信息，再决定修复及验收范围，不改变既有SSE契约或默认模型。
+- F6-STREAM（partial，2026-10-18后续）：已从控制台定位前次失败为有检索上下文但零正文；新增脱敏诊断经25项本地测试并已生效。用户10:36再次手测成功：HTTP200/stop、1次尝试0重试、9块/92可见字符，截图完整答案/来源且有历史insert日志，未独立回读。详见[诊断最新记录](frontend-stream-failure-diagnosis-2026-10-18.md)。本次成功confirmed，前次上游根因和长期稳定性unknown，不以诊断增加宣称已修复原异常，不改变SSE契约或默认模型。
 - F6-SIZE（partial）：既有>500kB主bundle警告保留，未为审计引入拆包/依赖升级或性能重构；C19/C20质量口径与外部评测另立阶段。

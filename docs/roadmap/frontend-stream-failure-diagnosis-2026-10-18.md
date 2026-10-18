@@ -74,3 +74,26 @@
 - 对受影响两个产品源码运行既有敏感日志扫描器，0发现；文档链接、日志只追加、精确文件范围及diff检查另做聚焦核验。初始9项因缺诊断日志预期失败；实现后发现测试辅助函数不接受空断言列表，修正后24/24通过；追加错误后取消专项先失败，再修正诊断结果顺序，最终25/25通过。受限Maven依赖访问和PowerShell未引用-D参数失败不计通过，提升并引用参数后执行成功。
 - 未改前端/Python评测，跳过前端build及Python评测；使用聚焦Java回归，不声称全仓Maven测试通过。依赖/lock/模型/默认配置/受保护文件未改。
 - 当前运行后端没有重启，未向本地Maven仓库安装新JAR，因此旧进程不会自动获得日志。需要下一次按既有流程重新构建并启动后端后再由用户手动复现。Agent本轮真实业务/provider调用及业务写入仍0，不把本地通过称为原故障已修复。
+
+## 用户再次手测：真实流式成功
+
+后续状态：`LIVE_STREAM_SUCCESS_OBSERVED_PREVIOUS_FAILURE_CAUSE_UNCONFIRMED`。用户报告本次成功并提供完整答案/来源截图，授权查看已打开的后端终端。仓库核对HEAD为`78db2ad31fdc31965541b01e9305b15b528cc425`，工作区干净；运行终端已出现新增llm_stream_attempt，确认诊断生效，但未核验运行JAR整体与该HEAD的逐字身份。前一节“未加载”保留为实施结束时事实，以本节为最新状态。
+
+| 项 | 2026-10-18 10:36这次日志事实 |
+| --- | --- |
+| 关联 | traceId=`001a14cddd191748113c8f68da7b769b`，streamId=`b309ba1d-d871-42dd-ad83-acd646fa41b3`；截图无traceId，以用户陈述和症状关联，不称独立截图身份核验。 |
+| 检索/生成 | contextCount=5，estimatedContextTokens=1254；model=`nvidia/nemotron-3-super-120b-a12b`。 |
+| 响应/尝试 | HTTP200、contentType=sse、outcome=complete、finishReason=stop；attempt=1、retryCount=0、maxRetries=0，maxOutputTokens=2048、timeoutSeconds=120。 |
+| 结构/解析 | events=250、jsonEvents=249、jsonParseFailures=0、extractionFailures=1、doneEvents=1、emptyChoicesEvents=1、missingChoicesEvents=0、maxChoices=1、deltaEvents=248、messageEvents=0。 |
+| 正文/推理 | contentEvents=9、contentChars=93；reasoningEvents=239、reasoningChars=3578；visibleChunks=9、visibleChars=92。只记录计数，不保存内容。 |
+| usage | usageEvents=1、promptTokens=1972、completionTokens=946、totalTokens=2918、reasoningTokens=857；不由此估算费用。 |
+| 时延/交付 | 模型尝试elapsedMs=17932；stream_delivery_complete和控制器完成日志对应同一traceId，总18878ms、首正文18440ms、chunkCount=9、answerLength=92、avgChunkGapMs=49、maxChunkGapMs=152、slowGapCount=0。截图显示完整答案及来源，支持本次用户端成功。 |
+| 历史 | 10:36:26.879出现Saved QA history日志，随后10:36:26.889控制器完成；代码在insert返回后输出该日志。未保存业务ID、未GET独立回读，不扩大为持久化完整验收。 |
+
+本次确实收到推理与最终正文，最后以stop结束，没有达到length限制，也没有重试。唯一空choices事件在既有first-choice提取处会触发NullPointerException并被捕获；计数和日志相符，未影响本次完整答案，不据此重写provider解析行为。
+
+新增诊断仅提供观测，没有修复模型生成逻辑。上次失败没有上游结构/usage记录，本次成功不能反推出上次是否只有推理、达到长度限制或上游格式不同。当前分类：本次真实流式成功及诊断生效confirmed；整体长期稳定性partial，原失败根因unknown；权限/删除/跨设备等既有范围不外推。
+
+原图仅保存在本线程`stream-success-2026-10-18/manual-stream-success.png`，SHA-256=`a6cf4c371bab1a2275d7f184ead9fd785f8aed609d66fa37b861811b7ac33c05`；脱敏safe-terminal-summary.json同目录，SHA-256以本地文件为准。终端自动换行在少数字段名边界重复字符，已按允许字段逐项检查，没有把简单拼接误识别的年份当计数，也未保存完整终端输出。
+
+本轮仅查看已有终端并保存证据/更新文档，Agent新增真实业务HTTP/provider/embedding/ask/rerank/judge调用、业务写入和费用均0；用户本次生成attempt=1/retry=0已观察，整轮其他调用/费用未知。未改产品代码、未启动/重启服务，复用上一实现25/25本地结果，不重跑Maven/前端build/Python或浏览器矩阵；聚焦文档链接、范围、日志只追加和diff核验。C19/C20保持后续独立阶段。
