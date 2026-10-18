@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "c19-judge-calibration-v1",
+  "manifestId": "c19-judge-calibration-v1",
+  "schemaSha256": "9c50aa132f8d1793f5bcb59d08ad7bdf94871675d8f825089fbbd59fb6a4b75f",
+  "calibrationManifest": {
+    "path": "docs/eval/calibration/judge-calibration-v1-manifest.json",
+    "sha256": "54c891c45ac682e38373bab293893d22695a938b7fc5ac9fa205c7f620dedb55"
+  },
+  "judge": {
+    "provider": "nvidia-nim",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "baseUrl": "https://integrate.api.nvidia.com/v1",
+    "temperature": 0,
+    "timeoutSeconds": 120,
+    "maxOutputTokens": 1024,
+    "maxContextChars": 6000,
+    "minIntervalSeconds": 2,
+    "retries": 0
+  },
+  "sourceSha256": {
+    "scripts/c19_judge_contract.py": "c3dcfddc75b8f2ece0713ae665b0c5e5c1e9b915128c88b72af6b84e69576f75",
+    "scripts/compile_judge_calibration_evidence.py": "98e2d608e9572d251f9b0af85629fba1e3c41d8833f7048afdd3f4c1be518f5a",
+    "scripts/run_judge_calibration.py": "99f4b4f91b9b57edd4e512711076c26f0bcc14ad94cbb155a3ce88accefc62d8",
+    "scripts/rag_judge_contract.py": "09c8a802cfd24a1ff82d67f927e169d5bedab816f0ab6ae9ffd1004d895a598f"
+  },
+  "judgeContractConfig": {
+    "judgeContractVersion": "rag-judge-v1",
+    "promptVersion": "rag-judge-prompt-v1",
+    "promptSha256": "d98612cdc4f6681e126d3e6fd4dac81f5d76d14ec4bd596e904fa4843999df80",
+    "parserVersion": "strict-json-scores-v1",
+    "faithfulnessThreshold": 0.7,
+    "relevanceThreshold": 0.7,
+    "jointPassRule": "both-scores-gte-threshold-v1",
+    "maxContextChars": 6000,
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "temperature": 0,
+    "endpointIdentity": "https://integrate.api.nvidia.com"
+  }
+}

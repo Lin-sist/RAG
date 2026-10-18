@@ -28,7 +28,7 @@
 
 ## 修改边界
 
-允许：`scripts/run_judge_calibration.py`、`scripts/test_judge_calibration.py`；新增 `scripts/c19_judge_contract.py`、`scripts/compile_judge_calibration_evidence.py` 及对应 `test_*.py`；新增 `docs/eval/config/c19-judge-calibration-v1.json` 与对应 schema；C19 change、`.ai/ACTIVE_TASK.md`、只追加 `.ai/AGENT_LOG.md`；评测指南/路线图/技术债和安全报告。
+允许：`scripts/run_judge_calibration.py`、`scripts/test_judge_calibration.py`；新增 `scripts/c19_judge_contract.py`、`scripts/compile_judge_calibration_evidence.py` 及对应 `test_*.py`；新增 `docs/eval/config/c19-judge-calibration-v1.json` 与对应schema。2026-10-18 full首错停止后，另允许准备显式候选`c19-judge-calibration-timeout120-v1.json`供审阅，原默认v1不改，新runtime调用须独立授权；C19 change、ACTIVE_TASK/只追加AGENT_LOG、指南/路线图/技术债和安全报告仍在范围内。
 
 禁止：改 calibration corpus/schema/manifest 原件、共享 judge prompt/parser/threshold、normal runner、Java/前端、依赖/锁文件、C17/C18 artifacts、`.env.local`、`application-dev.yml`、`.agents/`、学习目录。若实现需要超出允许路径，先更新事前范围。
 
@@ -68,3 +68,8 @@
 - **面临的选择**：直接hash工作区源码bytes；冻结Git LF blob并核对工作树规范化一致；放宽或关闭源码hash验证。
 - **选了哪个 + 为什么**：冻结Git LF blob且核对工作树一致，数据仍核对原始bytes，避免Windows换行造成假漂移，同时拒绝真实源码变动。
 - **放弃的代价**：直接工作区hash跨平台不可比较；关闭验证会让实际执行逻辑变化逃过身份检查。
+
+### D8 full超时后的恢复（待用户确认）
+- **面临的选择**：保留60秒并独立重跑完整72条；保留旧证据，另建120秒配置先跑4条canary再独立申请full；保留partial并停止真实调用。
+- **选了哪个 + 为什么**：待用户确认；建议独立120秒候选先canary，只扩大等待窗口、不改评分契约，且不覆盖旧manifest。已观察的失败是60秒超时，但上游根因未知，延长等待不保证修复。
+- **放弃的代价**：60秒新full可能再次遇到同一等待上限；120秒会改变执行身份、增加最长等待并需新阶段授权；暂停则无法获得完整72条证据。所有分支都不能拼接旧partial或自动HTTP重试。

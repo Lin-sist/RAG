@@ -21,12 +21,12 @@
 - [x] 2.1 用户确认免费额度可用并授权最多4次canary；模型/endpoint/载荷/runtime已固定，配置提交869803d本地preflight READY，授权文档提交后再读取实际clean HEAD。费用依据为用户声明、真实认证/具体限流未核验；只在live时从本地项目环境源只读加载凭据。
 - [x] 2.2 独立授权4次canary，在clean HEAD823b81a完成4/4、HTTP200/parse100%、错误/重试0；独立重编译与原摘要完全相同。仅单轮canary，不证明full三轮一致性；4次预算已使用，不补跑。
 - [x] 2.2a 用户明确授权新增最多72次full，沿用已确认免费额度、固定24×3及已披露出站/runtime；授权提交后读取新clean HEAD，不复用canary或扩大调用类型。
-- [ ] 2.3 canary完整且身份不变后独立取得full最多72次授权；新目录执行24×3，不拼接canary或旧失败轮。
-- [ ] 2.4 compiler从全部72条重算parse coverage、三组confusion/agreement、mismatch和24个case repeat consistency；真实错误/尝试/重试单列。
+- [ ] 2.3 本次独立full已执行42次后timeout首错停止：41有效、30未尝试、retry0，compiler INCOMPLETE；完整24×3未达成，不拼接canary/partial。恢复选择及独立新预算见[recovery-plan](recovery-plan.md)。
+- [ ] 2.4 compiler已如实输出partial：valid41/expected72、1 timeout/30 missing、agreement/repeat率N/A；完整72条指标仍未建立，不能用成功子集给结论。
 
 ## 3. 验收与归档
 
 - [ ] 3.1 形成安全acceptance/report：低agreement如实保留，不自动调参，不声称生产质量或C20通过。
 - [ ] 3.2 用户明确接受本change后delta进入baseline、归档、恢复IDLE；更新技术债与执行日志。
 
-已完成第0–1节及2.0–2.2a；canary已用4，full新增授权72/当前实际0。2.3–2.4及第3节仍未完成，待本次真实full结果；change不归档、不接受baseline、不改IDLE。官方OpenSpec CLI未安装，文件级检查不冒称官方validate。
+已完成第0–1节及2.0–2.2a；canary已用4，full尝试42后首错停止，余30未用不作续跑授权。2.3–2.4及第3节未完成，恢复方案待用户选择；默认60秒不改，120秒仅候选，change不归档、不接受baseline、不改IDLE。

@@ -3632,3 +3632,18 @@
 - 本轮仅同步授权文档/状态；复用29/29及全Python279（既有C18 1 failure/4 errors），不因阶段授权/提交重跑测试。actual full0、authorized full72，canary已使用4。执行后按真实结果写安全摘要，COMPLETE不等于质量阈值通过或可自动归档/C20。
 - 建议提交：`docs(评测): 记录C19七十二次full校准授权`。
 - 执行前收尾：11个允许文件、64个链接、manifest/72-key选择指纹全部通过，日志前缀保全、增量凭据模式0，git diff --check通过。只改授权元数据，执行代码/model/config未变；full授权72/实际0、canary已用4，准备提交后读取实际clean HEAD再执行。
+
+## 2026-10-18 · C19 full授权提交补录
+
+- 上一执行提交：`14efadcfc108996a70323f81e398c29b8f5a99d0`，`docs(评测): 记录C19七十二次full校准授权`。11文件，提交后clean/main ahead10；为本次真实full运行HEAD。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19 full首错停止与恢复审阅包
+
+- Commit: pending。按用户新增最多72次full授权独立执行，实际42次尝试/41个HTTP200有效响应/1个timeout，剩余30未调用，retry0；首错停止后未续跑或拼接canary。累计canary4+full42=46次尝试、45个HTTP200。费用依据为用户免费额度声明，未独立核账，timeout上游完成/扣费未知；本地提交授权沿用，未push/PR/部署。
+- 运行身份：clean HEAD14efadcfc108996a70323f81e398c29b8f5a99d0，原manifest486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a，NVIDIA NIM / nvidia/nemotron-3-super-120b-a12b；timeout60s/max_tokens1024/间隔至少2s/retry0。第42次cal-ff-rt-02/repeat3在60265ms超时，无HTTP状态；同case前两次HTTP200、7375/8390ms。根因unknown，不归因为配额或特定数据。
+- 原始证据保留ignored tmp/eval/c19-full-20261018-f8bb5ef4，runId693fcefd-94a2-4b2b-b919-bc7e9395a93d；新增c19-full-review-v1.json绑定identity/ledger/completion/safe-summary四hash。runner exit4，compiler INCOMPLETE/calibration PARTIAL，valid41/expected72；errorObservationCount31包含1timeout+30missing，正式agreement/repeat率N/A，不从成功子集得全轮结论。独立本地重编译与原摘要相同，额外provider请求0。
+- 凭据仅从本地项目环境源只读映射到子进程，源文件前后内存比对未变；值未进入命令、日志、tracked文件或回复。无backend/embedding/rerank/普通ask/业务写入，没有额外模型查询。timeout不能证明远端取消或零费用。
+- 恢复准备：原默认60秒manifest不改；另建非默认c19-judge-calibration-timeout120-v1.json，canonical hash2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea，逐对象仅timeoutSeconds改120。候选validator/CLI plan-only（显式--judge-timeout 120）通过，预算4/实际0；121秒仍被现有validator拒绝。design D8待确认，recovery-plan给出新60秒full72、独立120秒canary4后另申请full、停止真实调用三种选择，均不覆盖或续跑旧partial；新run授权0。
+- 修改范围：13个文件，含ACTIVE_TASK/只追加本日志、指南/路线图/技术债、C19 proposal/design/tasks/readiness/full-execution、新recovery-plan、安全full review和非默认候选配置。执行源码/共享prompt/parser/0.70阈值/corpus/依赖/accepted baseline及archive/C17/C18/前端/Java/受保护本地目录均不改。C19保持ACTIVE且未完成，不归档或推进C20。
+- 验证与跳过：本轮仅文档、安全证据和非默认配置，复用执行源码未变的judge29/29及全Python279结果（既有C18 1 failure/4 errors，非GREEN），不为提交重跑；Java/前端未改，跳过Maven/build/浏览器。OpenSpec CLI不可用，使用文件级范围/链接/JSON/hash/增量凭据模式/日志前缀及git diff --check检查，不能称官方validate。建议提交：`docs(评测): 保全C19超时证据并准备独立恢复方案`。
+- 收尾：13个允许文件、61个本地链接、4份raw artifact hash与独立重编译均通过；增量凭据模式0、AGENT_LOG前缀保全、安全JSON字段/无本地绝对路径检查通过，默认manifest未变且候选仅timeout不同；CLI候选plan-only exit0、实际0，121秒负例拒绝，git diff --check通过。检查脚本最初将https URL误匹配为Windows路径，收窄为字符串起始的盘符规则后通过，未改证据内容或运行代码。准备本地提交，恢复选项仍待确认。

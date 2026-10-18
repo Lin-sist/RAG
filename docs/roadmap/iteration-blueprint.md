@@ -159,7 +159,7 @@
 
 ### C19. `judge-live-calibration-evidence`
 
-2026-10-18：真实canary完成4/4、HTTP200/parse100%、0错误/重试，见[安全摘要](../eval/reports/c19-canary-review-v1.json)。用户已独立授权[新增72次full](../../openspec/changes/judge-live-calibration-evidence/full-execution.md)，待完整24×3结果；C19保持ACTIVE，不把canary当完整校准。judge29/29、全Python279（既有C18 1 failure/4 errors）保留，不称全仓GREEN或C20通过。
+2026-10-18：canary4/4；full尝试42次后timeout首错停止，41有效/30未调用，retry0，compiler INCOMPLETE，见[full安全review](../eval/reports/c19-full-review-v1.json)。[恢复提案](../../openspec/changes/judge-live-calibration-evidence/recovery-plan.md)待用户选择，默认60秒保留、120秒为独立候选，新run未授权。C19保持ACTIVE，不输出成功子集agreement或宣称C20通过；本地29/29与全Python279既有C18例外保留。
 
 **目标**：在既有 `rag-judge-v1` 与 `judge-calibration-v1` contract 上形成真实 judge agreement 与 repeat consistency evidence。
 

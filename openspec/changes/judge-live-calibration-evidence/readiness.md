@@ -1,6 +1,6 @@
 # C19 事前 readiness（2026-10-18）
 
-Report status：`FULL_AUTHORIZED_PENDING_RUN`。用户已独立授权新增最多72次full，当前实际0；授权文档提交后读取clean实际HEAD，沿用canary的manifest/执行源码/runtime。此前canary4/4、错误/重试0，见[真实安全摘要](../../../docs/eval/reports/c19-canary-review-v1.json)和[full执行包](full-execution.md)。旧阶段证据保留，不把canary当作完整校准。
+Report status：`FULL_INCOMPLETE_RECOVERY_AWAITING_APPROVAL`。full在clean HEAD14efadc尝试42次后首错停止：41有效/HTTP200、1 timeout，余30未调用、retry0，compiler INCOMPLETE。见[full安全review](../../../docs/eval/reports/c19-full-review-v1.json)及[恢复审阅包](recovery-plan.md)。原默认60秒/既有证据保留，120秒仅独立候选，新run授权0；canary4/4不能替代完整校准。
 
 | 项目 | 分类 | 核查结果 |
 | --- | --- | --- |
@@ -11,7 +11,7 @@ Report status：`FULL_AUTHORIZED_PENDING_RUN`。用户已独立授权新增最�
 | normal eval 回归 | confirmed（synthetic） | `python -B -m unittest discover -s scripts -p 'test_run_rag_eval.py'`，47/47通过。 |
 | 全部Python回归 | partial / 非GREEN | 模型配置后最新279 tests，1 failure / 4 errors，与前两阶段相同C18失败，含2组setUpClass错误。完整输出曾截断，紧凑unittest结果保全实跑计数/失败集合。 |
 | C19实现 | confirmed（offline） | 运行冻结、预算、逐次ledger、compiler及缺测抑制已实现；最新judge聚焦29/29，含20项C19及9项既有calibration测试。 |
-| live judge | partial（canary complete） | 4/4真实请求和解析通过、0错误/重试；免费额度为用户声明，账单未独立核验。24×3 full与正式repeat consistency尚无证据。 |
+| live judge | partial（full incomplete） | canary4/4；full41有效、1 timeout、30未尝试，正式agreement/repeat率N/A。共46次尝试，45个HTTP200，1个超时远端结果/费用未知。 |
 | C20 | out_of_scope | 不改profile/阈值，不启用judge required gate。 |
 
 ## 已复现缺口
@@ -20,8 +20,11 @@ Report status：`FULL_AUTHORIZED_PENDING_RUN`。用户已独立授权新增最�
 
 ## 实现与CLI验证
 
+- 最新full：source HEAD14efadc、run693fcefd-94a2-4b2b-b919-bc7e9395a93d，42次尝试中41有效，第42次cal-ff-rt-02/repeat3在60265ms超时、无HTTP状态；同case前2次7375/8390ms成功。root cause未知，首错停止/不重试按契约生效。独立重编译与原摘要相同，无额外provider请求。
+- 候选恢复：另建120秒manifest，canonical hash2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea；与默认486a...只有timeoutSeconds不同。纯本地validator/CLI canary plan通过，实际0；121秒仍拒绝。D8待确认，未切换默认/改执行源码或评分规则。
+
 - 真实canary：source HEAD823b81a、manifest486a6495...，4次HTTP200；latency3531/5171/3734/3702ms。三组agreement100%、mismatch0，单轮不建立三轮一致性。raw本地ignored，identity/ledger/completion/safe-summary hash写入安全报告；独立本地重编译逐对象相同，额外provider调用0。凭据源只读且未变。
-- 新full计划：24×3=新增72请求、JSON请求体58191bytes、同模型/manifest/源码/runtime；canary不拼入full。full实际HEAD在授权文档clean提交后读取，72条同一运行身份；用户已授权72，当前实际0。
+- 原full计划：24×3=72请求、JSON请求体58191bytes、同模型/manifest/源码/runtime，canary不拼接。该run实际在clean HEAD14efadc尝试42次后停止，剩余30未调用；恢复不能续跑旧run。
 
 - 最新模型准备：29/29通过；新增测试证明已选模型与clean源码只能得到本地READY，providerAuthentication=NOT_CHECKED。缺模型负例改用独立UNCONFIGURED测试副本，不依赖正式manifest为空。本次只改模型配置及测试，四个执行源码hash与e107b2c一致。
 - 模型配置提交前的本地preflight仅因`clean_frozen_source_required`为BLOCKED，原`model_not_selected`已消除；提交后只读复核实际clean HEAD。准备时仅检查变量名，当前环境未配置judge/NVIDIA凭据变量；未读取凭据值或后端私有配置，live前需本地配置。
@@ -42,6 +45,6 @@ C19独立冻结，不复用旧call-graph audit；源码采用Git LF blob且核�
 
 Preflight：Git/Java/Maven/Python/Node可用，npm缺失、已有直接vue-tsc/Vite入口，无安装/升级。OpenSpec CLI不可用，文件级检查不冒称官方validate。
 
-本次canary与full准备未改代码/config，复用29/29及全Python279的既有C18例外；跳过Maven、前端build和新浏览器矩阵，OpenSpec采用文件级检查。真实judge已4次，合成校准内容已出站；backend/auth/upload/普通ask/embedding/rerank/普通QA generation/feedback/delete及业务写入仍0。凭据源文件未变，无服务启动或数据清理；未push/PR/部署。本地提交及实际运行HEAD分别记录，不把历史离线零调用状态当作当前统计。原合成CLI raw与本次真实raw分别保留ignored目录。
+本次真实运行后只保存证据/恢复提案，未改执行代码/默认manifest/评分契约；新增非默认120秒候选做本地validator/CLI plan及边界验证，复用29/29与全Python279的既有C18例外。跳过Maven/前端build/浏览器，OpenSpec为文件级检查。judge合计46次尝试（canary4+full42），45个HTTP200/1timeout，未额外调用；backend/embedding/rerank/普通QA及业务写入仍0。凭据源文件两次运行均未变；未push/PR/部署。raw均保留ignored，超时不能推断provider已取消/零费用。
 
 受限Python写config失败，改apply_patch生成；首次因此出现16项缺manifest错误，不计通过。受限执行时Windows临时目录创建反复PermissionError，停止该测试进程后按既有验证授权提升执行，最终28/28及全量278的结果以上述数值为准；无平台自动审批拒绝，无真实HTTP请求。
