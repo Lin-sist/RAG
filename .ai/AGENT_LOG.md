@@ -3672,3 +3672,13 @@
 - 修改12文件：ACTIVE_TASK/本日志、指南/路线图/技术债、proposal/tasks/readiness/recovery-plan、原full执行包增补最新入口、两份新安全review/plan；旧原始证据及原plan/review不改。accepted baseline/archive、C17/C18、执行源码/依赖/生产行为及受保护本地内容不改，C19仍ACTIVE、未归档或启动C20。沿用本地提交授权，未push/PR/部署。
 - 验证/跳过：live4/4及独立重编译通过；复用未变化源码的judge29/29与全Python279（既有C18 1 failure/4 errors，非GREEN），Java/前端未改，跳过Maven/build/浏览器。OpenSpec CLI不可用，文件级范围/链接/JSON/hash/plan预算/日志前缀/增量凭据模式/diff检查收尾。建议提交：`docs(评测): 保存C19独立120秒canary证据与full计划`。
 - 收尾：12个允许文件/66个本地链接、4份artifact hash/ignored状态及独立重编译一致；日志前缀保全、增量凭据模式0、安全JSON字段/无本地绝对路径检查通过。按现有prompt/payload组装逻辑纯本地重算24条请求体bytes，逐条与新full计划一致，三轮合计58191bytes，新full授权/实际0；git diff --check通过，未新增外调。准备提交后只提请独立full授权。
+
+## 2026-10-18 · C19独立canary证据提交补录
+
+- 上一执行提交：`d986e3a5b4c2acb4c62c8f7f3748feb370c51f10`，`docs(评测): 保存C19独立120秒canary证据与full计划`。12文件，提交后clean/main ahead13；120秒full纯本地preflight READY、sourceBlobsMatch=true、providerAuthentication=NOT_CHECKED，新增full授权/实际0。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19按用户选择暂停外部调用
+
+- Commit: pending。用户对新增72次full授权请求明确选择“暂不继续外部调用”；当前不启动新full或其他provider请求，恢复须用户重新明确授权。仅同步5份状态文档：ACTIVE_TASK、本日志、recovery-plan、readiness、tasks，保留既有plan/review及raw，不改历史运行结论。
+- 已确认：120秒canary4/4，原60秒full INCOMPLETE；累计50次尝试/49个HTTP200/1旧timeout不变，本轮新增外调0，新full授权/实际0。C19仍ACTIVE且未完成，不接受baseline/归档/置IDLE或推进C20。适用design D8及既有分阶段执行边界，未改代码/配置/依赖/生产行为/受保护目录或凭据源。
+- 验证/跳过：纯文档状态同步，聚焦检查5文件范围、链接、AGENT_LOG前缀、增量凭据模式及git diff --check；无代码改动，跳过Python/Maven/前端build/浏览器及所有live验证，保留既有测试结论与C18例外。不重复请求外调授权，不创建自动恢复任务；本地提交沿用既有授权，未push/PR/部署。建议提交：`docs(评测): 记录C19按用户选择暂停外部调用`。

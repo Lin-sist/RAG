@@ -1,6 +1,6 @@
 # C19 full超时后的恢复审阅包
 
-2026-10-18。Report status：`RECOVERY_CANARY_COMPLETE_FULL_AWAITING_AUTHORIZATION`。用户授权的独立120秒canary已完成4/4、0错误/重试，见[安全review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)。本阶段4次预算已用完；新full72授权0/实际0，见[新full计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)。
+2026-10-18。Report status：`EXTERNAL_CALLS_PAUSED_BY_USER`。用户明确选择“暂不继续外部调用”，不启动新full或其他provider请求；恢复须重新明确授权。独立120秒canary已完成4/4、0错误/重试，见[安全review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)。新full72授权0/实际0，[原审阅计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)及全部证据保留，C19未完成。
 
 ## 已保存的事实
 

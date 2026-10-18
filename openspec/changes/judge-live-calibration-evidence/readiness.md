@@ -1,6 +1,6 @@
 # C19 事前 readiness（2026-10-18）
 
-Report status：`RECOVERY_CANARY_COMPLETE_FULL_AWAITING_AUTHORIZATION`。独立120秒canary完成4/4、HTTP200/解析100%、错误/重试0，见[新canary review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)及[恢复执行包](recovery-plan.md)。原60秒full仍INCOMPLETE，正式率N/A；默认60秒及旧证据保留。新120秒full72授权0/实际0，canary不能替代完整校准。
+Report status：`EXTERNAL_CALLS_PAUSED_BY_USER`。用户于2026-10-18选择“暂不继续外部调用”，当前不启动新full或其他provider请求，恢复须重新明确授权。独立120秒canary完成4/4、错误/重试0，见[新canary review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)及[恢复记录](recovery-plan.md)。原60秒full仍INCOMPLETE，正式率N/A；原默认/计划/证据保留，新120秒full72授权0/实际0，C19未完成。
 
 | 项目 | 分类 | 核查结果 |
 | --- | --- | --- |

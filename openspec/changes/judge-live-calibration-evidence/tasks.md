@@ -30,4 +30,4 @@
 - [ ] 3.1 形成安全acceptance/report：低agreement如实保留，不自动调参，不声称生产质量或C20通过。
 - [ ] 3.2 用户明确接受本change后delta进入baseline、归档、恢复IDLE；更新技术债与执行日志。
 
-已完成第0–1节及2.0–2.2b；旧canary4+旧full42+新canary4=50次尝试，49个HTTP200/1旧timeout。原full余30不可续跑，新120秒full72未授权/未执行；2.3–2.4及第3节仍未完成，默认60秒不改，change不归档、不接受baseline、不改IDLE。
+已完成第0–1节及2.0–2.2b；旧canary4+旧full42+新canary4=50次尝试，49个HTTP200/1旧timeout。用户2026-10-18选择“暂不继续外部调用”，当前外调暂停，恢复须重新明确授权；原full余30不可续跑，新120秒full72未授权/未执行。2.3–2.4及第3节仍未完成，保留全部证据，默认60秒不改，change不归档、不接受baseline、不改IDLE。
