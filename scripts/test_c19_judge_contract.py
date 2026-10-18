@@ -17,14 +17,21 @@ class C19ContractTest(unittest.TestCase):
     def setUp(self) -> None:
         self.manifest = c19.load_manifest(ROOT)
 
+    def unconfigured_manifest(self) -> dict:
+        manifest = copy.deepcopy(self.manifest)
+        manifest["judge"]["model"] = "UNCONFIGURED"
+        manifest["judgeContractConfig"] = c19.judge.contract_config(c19.judge_args(manifest))
+        return manifest
+
     def test_local_plan_and_blocked_preflight_do_not_read_credentials_or_call_network(self) -> None:
+        manifest = self.unconfigured_manifest()
         with mock.patch.object(c19.os, "getenv", side_effect=AssertionError("credential read")), \
              mock.patch.object(calibration.urllib.request, "urlopen", side_effect=AssertionError("network")):
             for profile, count in (("canary", 4), ("full", 72)):
-                plan = c19.build_plan(ROOT, self.manifest, profile)
+                plan = c19.build_plan(ROOT, manifest, profile)
                 self.assertEqual(count, plan["calibrationPlan"]["estimatedJudgeCalls"])
                 self.assertEqual(0, plan["actualProviderCalls"])
-            ready = c19.preflight(ROOT, self.manifest, "canary")
+            ready = c19.preflight(ROOT, manifest, "canary")
         self.assertEqual("BLOCKED", ready["status"])
         self.assertIn("model_not_selected", ready["reasonCodes"])
         self.assertFalse(ready["businessDataOutbound"])
@@ -59,8 +66,21 @@ class C19ContractTest(unittest.TestCase):
     def test_live_refused_before_transport_or_directory_creation(self) -> None:
         with mock.patch.object(calibration.urllib.request, "urlopen") as network:
             with self.assertRaisesRegex(c19.ContractError, "live_preflight_blocked"):
-                c19.execute_run(ROOT, self.manifest, "canary", Path("tmp/eval/c19-must-not-exist"))
+                c19.execute_run(ROOT, self.unconfigured_manifest(), "canary", Path("tmp/eval/c19-must-not-exist"))
             network.assert_not_called()
+
+    def test_selected_model_and_clean_source_only_prove_local_readiness(self) -> None:
+        manifest = copy.deepcopy(self.manifest)
+        manifest["judge"]["model"] = "synthetic/judge-model"
+        manifest["judgeContractConfig"] = c19.judge.contract_config(c19.judge_args(manifest))
+        git = {"head": "1" * 40, "clean": True, "sourceBlobsMatch": True}
+        with mock.patch.object(c19, "git_identity", return_value=git), \
+             mock.patch.object(c19.os, "getenv", side_effect=AssertionError("credential read")), \
+             mock.patch.object(calibration.urllib.request, "urlopen", side_effect=AssertionError("network")):
+            result = c19.preflight(ROOT, manifest, "canary")
+        self.assertEqual("READY", result["status"])
+        self.assertEqual("NOT_CHECKED", result["providerAuthentication"])
+        self.assertEqual(0, result["actualProviderCalls"])
 
     def test_payload_is_bounded_and_redirects_are_rejected_without_retry(self) -> None:
         args = c19.judge_args(self.manifest, "synthetic-credential")

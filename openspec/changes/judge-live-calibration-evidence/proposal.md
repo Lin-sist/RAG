@@ -22,7 +22,7 @@ C9b 已接受 `rag-judge-v1`、24 条 `judge-calibration-v1` 和离线 runner，
 - 离线实现：真实 HTTP/provider calls=0，数据出站=false。
 - canary：固定 4 case × 1 repeat，最多 4 次 judge POST；完整 schema/ledger/identity 无误后才可提请 full 授权。agreement 低值保留，不作为自动调参或补跑理由。
 - full：24 case × 3 repeats，最多 72 次 judge POST，独立授权；不得把 canary 拼成 full。
-- provider 拟采用 NVIDIA NIM OpenAI-compatible；模型待明确选择并冻结，不继承前端 generation 模型。当前未读凭据、未查询模型列表、未获 live 预算；模型未定时 live readiness 必须 BLOCKED。
+- provider采用NVIDIA NIM OpenAI-compatible；用户本次提供模型信息后，独立冻结judge为`nvidia/nemotron-3-super-120b-a12b`。当前未读真实凭据、未查询模型列表、未获live预算；模型选择不证明账号访问权限，详见[canary执行包](canary-execution.md)。
 - 出站仅 tracked 合成 question/answer、fixture excerpt 和 judge prompt，不包含 gold labels、用户资料或 KB 内容。费用/零费用依据与账号配额待执行前确认；不得用旧账号声明当作本轮事实。串行、retry=0、拟 timeout=60s、间隔至少2s、输出上限1024 token、context 上限6000字符，均在 manifest 中冻结并呈交 live 授权。
 - 离线验收：聚焦回归及 `python -B -m unittest discover -s scripts -p 'test_*.py'`；plan/preflight/compiler 为纯本地；负例证明请求前拒绝及脱敏。
 - 最终接受：一份完整正式 full 的全部72 observation、parse coverage、三组 confusion/agreement、provider-pass mismatch、24个case repeat consistency、错误/重试/身份均可审计。COMPLETE 只证明测量完整，不表示 agreement 达标；接受/归档由用户确认。

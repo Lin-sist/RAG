@@ -8,7 +8,7 @@
   },
   "judge": {
     "provider": "nvidia-nim",
-    "model": "UNCONFIGURED",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
     "baseUrl": "https://integrate.api.nvidia.com/v1",
     "temperature": 0.0,
     "timeoutSeconds": 60,
@@ -32,7 +32,7 @@
     "relevanceThreshold": 0.7,
     "jointPassRule": "both-scores-gte-threshold-v1",
     "maxContextChars": 6000,
-    "model": "UNCONFIGURED",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
     "temperature": 0.0,
     "endpointIdentity": "https://integrate.api.nvidia.com"
   }

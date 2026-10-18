@@ -453,7 +453,7 @@ normal details JSON 新增 `objectiveMetricStatus`、`judgeMetricStatus`、`metr
 
 #### C19：冻结执行与独立证据编译（2026-10-18离线实现）
 
-C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。当前[执行manifest](config/c19-judge-calibration-v1.json)的模型为`UNCONFIGURED`，live预算0；完成模型选择、费用/出站/限流披露、阶段授权及clean源码提交前，preflight必须BLOCKED。
+C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。当前[执行manifest](config/c19-judge-calibration-v1.json)已按用户提供信息固定judge模型为`nvidia/nemotron-3-super-120b-a12b`；[4次canary执行包](../../openspec/changes/judge-live-calibration-evidence/canary-execution.md)已准备。live预算仍0，费用/配额及阶段授权待确认；本地preflight READY也不代表provider认证、模型权限或live授权通过。
 
 ```powershell
 python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile canary

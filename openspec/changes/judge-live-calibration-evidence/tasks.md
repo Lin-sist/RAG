@@ -16,6 +16,8 @@
 
 ## 2. Live 分阶段授权与执行
 
+- [x] 2.0 用户提供模型信息后独立冻结judge模型、同步共享contract模型身份；已完成4次canary执行包及载荷/预算披露，最新judge29/29，完整回归279项仍为既有C18的1 failure/4 errors。
+
 - [ ] 2.1 明确provider/model/endpoint、费用/零费用依据、配额、出站、timeout/output/context/retry/间隔；冻结本地提交HEAD。实施批准不等于live授权。
 - [ ] 2.2 独立取得canary最多4次授权；新目录运行、编译并审阅，错误即停止，不补跑。
 - [ ] 2.3 canary完整且身份不变后独立取得full最多72次授权；新目录执行24×3，不拼接canary或旧失败轮。
@@ -26,4 +28,4 @@
 - [ ] 3.1 形成安全acceptance/report：低agreement如实保留，不自动调参，不声称生产质量或C20通过。
 - [ ] 3.2 用户明确接受本change后delta进入baseline、归档、恢复IDLE；更新技术债与执行日志。
 
-本轮已完成第0–1节零外调切片；真实judge预算0。第2–3节保持未勾，change不归档、不接受baseline、不改IDLE。官方OpenSpec CLI未安装，文件级检查不冒称官方validate。
+已完成第0–1节及2.0的零外调准备；真实judge预算0。2.1–2.4及第3节保持未勾，change不归档、不接受baseline、不改IDLE。官方OpenSpec CLI未安装，文件级检查不冒称官方validate。

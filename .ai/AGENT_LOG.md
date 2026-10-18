@@ -3575,3 +3575,18 @@
 - 下一步已检查进程环境未配置RAG_EVAL_JUDGE_MODEL，仅输出模型是否配置，未读凭据；已询问用户judge模型和账号费用/配额信息。当前manifest仍UNCONFIGURED，真实judge预算0；不自动继承前端generation模型或查询provider模型列表。
 - 跳过/安全/风险：不跑未改的Maven/前端build/浏览器矩阵，不重启服务或清理数据；accepted baseline/archive、C17/C18 evidence、Java/前端、共享prompt/parser/阈值、依赖/受保护目录未改。下一步仅准备执行包，模型/费用/配额未定时不执行live；C18全量回归非GREEN和前端真实债务保留。
 - 提交信息：`feat(评测): 完成C19离线校准护栏与前端收口`。
+
+## 2026-10-18 · C19离线实现提交补录
+
+- 上一执行提交：`e107b2cf001006a56faad36765753f8cd0845564`，`feat(评测): 完成C19离线校准护栏与前端收口`。22个允许文件，提交后工作区干净、main ahead6；未push。原源码与配置测试结果复用，无额外provider调用。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19 judge模型冻结与canary执行包
+
+- Commit: pending。用户继续同一C19任务并提供模型信息；沿用本轮Agent本地提交授权，push/PR/发布/部署未授权。只将所给模型名称独立用于judge配置，不将凭据值传入工具/写盘/回复。真实judge预算0，费用/配额及canary授权尚待用户确认。
+- 范围：更新C19 manifest与test_c19_judge_contract.py；新增canary-execution.md及安全plan JSON；同步ACTIVE_TASK、proposal/tasks/readiness、评测指南、路线图/技术债，本日志只追加。共12个允许文件。适用design D3/D7及既有执行边界，无生产源码/共享prompt/parser/阈值/语料变更。
+- 事实：judge独立固定为用户提供的nvidia/nemotron-3-super-120b-a12b，canonical manifest hash为486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a；四个执行源码Git LF hash与e107b2c相同。4条canary JSON请求体871/897/779/761字节、合计3308，不含HTTP头；仅合成question/answer/fixture及system prompt出站，金标/ID/用户资料不出站。runtime固定temperature0/timeout60s/max_tokens1024/context6000/间隔2s/retry0/首错停止；4次仅计划，不含full72。
+- 验证：judge聚焦29/29通过，新增已选模型+clean源仍不等于provider认证的测试，缺模型负例改用独立副本。完整Python279 tests、1 failure/4 errors，仍同一C18旧audit集合；第一次完整输出截断后用内存捕获的紧凑unittest结果复验并保全实际计数，未把截断/推算作为结果。没有外部HTTP或真实业务调用。测试后未再改代码/模型配置，后续复用。
+- 本地preflight：提交准备阶段BLOCKED只剩clean_frozen_source_required，模型未选原因已消除；模型配置提交后须只读复核clean HEAD。只检查环境变量名称，当前进程环境没有judge/NVIDIA凭据变量；未读真实凭据值、未读后端私有配置、未调用模型列表/认证端点，不把聊天中的密钥复制进命令。费用/免费额度、配额、模型访问权限未知，READY仅本地身份，不是live授权。
+- 跳过与范围安全：未改Java/前端，跳过Maven/build/浏览器；OpenSpec CLI缺失，用文件级校验。accepted baseline/archive、C17/C18报告/profile、共享contract/corpus、执行源码、依赖/锁文件、受保护配置/.agents/学习目录未改；原offline report保留其历史28/278和占位模型证据，不回写成新模型结果。未启动服务、清理数据或写业务记录；真实backend/provider/embedding/rerank/ask/generation/judge/feedback/delete、数据出站及费用均0。
+- 剩余条件：本地新凭据配置、当前费用/配额确认、最多4次canary独立授权；不自动执行full72。独立canary执行包已具体化，文件/链接/敏感模式/日志前缀及diff收尾后提交。建议提交：`chore(评测): 固定C19判分模型并准备canary执行包`。
+- 提交前收尾：12个允许文件、53个本地链接、manifest/四源码/安全计划hash全部通过；日志原前缀保全，新文件空白及git diff --check通过。增量凭据模式命中0；全日志扫描的4处既有模式前后计数/值相同，未打印或改写历史内容。只读核对当前进程无judge/NVIDIA凭据变量名，不读值；授权/实际provider调用仍0。测试后的代码/config未再改动，复用29/29与全量279（既有1/4例外），准备本地提交后只读核对实际HEAD/preflight。
