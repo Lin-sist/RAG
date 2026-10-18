@@ -1,6 +1,6 @@
 # C19 full超时后的恢复审阅包
 
-2026-10-18。Report status：`EXTERNAL_CALLS_PAUSED_BY_USER`。用户明确选择“暂不继续外部调用”，不启动新full或其他provider请求；恢复须重新明确授权。独立120秒canary已完成4/4、0错误/重试，见[安全review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)。新full72授权0/实际0，[原审阅计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)及全部证据保留，C19未完成。
+2026-10-18。Report status：`FULL_TIMEOUT120_AUTHORIZED_PENDING_RUN`。用户明确要求“重新恢复C19剩余外部调用”，恢复已披露的独立120秒full最多72次，当前实际0；这是新目录完整24×3，不补旧run剩余30或拼接任一旧结果。独立120秒canary已4/4、0错误/重试，见[安全review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)及[本次full计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)。
 
 ## 已保存的事实
 
@@ -35,5 +35,5 @@ design D8已由本次选择确认，仅授权该独立canary4次；执行前本�
 - clean HEAD193e46cd82d9f46f70517d76de7b9ca13687dca3，run70f38f0e-74c4-43bb-bdda-33c230585564；4个HTTP200且解析有效，elapsed8155/5657/4202/5782ms，error/missing/unknown/retry均0，compiler COMPLETE。三组agreement1.0、mismatch0，仅4条单轮canary；不证明24个case三轮一致性或原60秒full超时修复。
 - raw独立ignored保存，四份artifact hash绑定安全review，独立本地重编译与原safe-summary一致，额外调用0。凭据源未变；累计尝试50（旧canary4+旧full42+新canary4），HTTP200共49、旧timeout1，实际费用未知。
 - 下一步只提请**新增最多72次full**，24个case各3次，同120秒manifest2c1ac168...、同模型/源码/prompt/parser/0.70阈值；发送固定合成请求体合计58191bytes约58KB到integrate.api.nvidia.com。timeout120s/max_tokens1024/context6000/temperature0/间隔至少2s/retry0/首错停止，无redirect/fallback/resume，仍可能超时/限流/解析失败。
-- 沿用用户确认免费额度，继续消耗额度；具体账单/限流未独立核验。新完整run只写唯一ignored目录，不含backend/embedding/rerank/普通ask或业务写入。凭据本地只读进入进程、不写值；不拼接8条canary或旧41条成功记录，先前剩余30不充当本轮授权。若全部获授权并执行，总尝试上限122；当前新full授权/实际仍0。
+- 沿用用户确认免费额度，继续消耗额度；具体账单/限流未独立核验。新完整run只写唯一ignored目录，不含backend/embedding/rerank/普通ask或业务写入。凭据本地只读进入进程、不写值；不拼接8条canary或旧41条成功记录，先前剩余30不充当本轮授权。本次恢复指令覆盖该已披露新full72，当前授权72/实际0，若全执行累计尝试上限122；不含额外查询、重试/补跑。
 - 新full提交授权文档后使用其实际clean HEAD；完整72条才可由compiler出正式全轮指标，低agreement如实保留，不调阈值。仍需用户验收后方可归档，C20不启动。

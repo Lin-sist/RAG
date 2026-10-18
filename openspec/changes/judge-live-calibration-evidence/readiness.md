@@ -1,6 +1,6 @@
 # C19 事前 readiness（2026-10-18）
 
-Report status：`EXTERNAL_CALLS_PAUSED_BY_USER`。用户于2026-10-18选择“暂不继续外部调用”，当前不启动新full或其他provider请求，恢复须重新明确授权。独立120秒canary完成4/4、错误/重试0，见[新canary review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)及[恢复记录](recovery-plan.md)。原60秒full仍INCOMPLETE，正式率N/A；原默认/计划/证据保留，新120秒full72授权0/实际0，C19未完成。
+Report status：`FULL_TIMEOUT120_AUTHORIZED_PENDING_RUN`。用户明确要求“重新恢复C19剩余外部调用”，恢复此前披露的独立120秒full最多72次，当前实际0；新目录24×3，不续跑旧剩余30。独立120秒canary4/4、错误/重试0，见[review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)及[执行包](recovery-plan.md)。原60秒full INCOMPLETE及默认配置保留，C19仍未完成。授权文档提交后先核查实际clean HEAD/source，再执行。
 
 | 项目 | 分类 | 核查结果 |
 | --- | --- | --- |
@@ -11,7 +11,7 @@ Report status：`EXTERNAL_CALLS_PAUSED_BY_USER`。用户于2026-10-18选择“�
 | normal eval 回归 | confirmed（synthetic） | `python -B -m unittest discover -s scripts -p 'test_run_rag_eval.py'`，47/47通过。 |
 | 全部Python回归 | partial / 非GREEN | 模型配置后最新279 tests，1 failure / 4 errors，与前两阶段相同C18失败，含2组setUpClass错误。完整输出曾截断，紧凑unittest结果保全实跑计数/失败集合。 |
 | C19实现 | confirmed（offline） | 运行冻结、预算、逐次ledger、compiler及缺测抑制已实现；最新judge聚焦29/29，含20项C19及9项既有calibration测试。 |
-| live judge | partial（full incomplete） | 两轮独立canary各4/4；原full41有效、1timeout、30未尝试，正式agreement/repeat率N/A。累计50次尝试/49个HTTP200/1旧timeout，远端结果/费用未知，新full未授权。 |
+| live judge | partial（full incomplete） | 两轮独立canary各4/4；原full41有效、1timeout、30未尝试，正式agreement/repeat率N/A。累计50次尝试/49个HTTP200/1旧timeout，远端结果/费用未知，新full已授权72/实际0。 |
 | C20 | out_of_scope | 不改profile/阈值，不启用judge required gate。 |
 
 ## 已复现缺口
@@ -21,7 +21,7 @@ Report status：`EXTERNAL_CALLS_PAUSED_BY_USER`。用户于2026-10-18选择“�
 ## 实现与CLI验证
 
 - 最新full：source HEAD14efadc、run693fcefd-94a2-4b2b-b919-bc7e9395a93d，42次尝试中41有效，第42次cal-ff-rt-02/repeat3在60265ms超时、无HTTP状态；同case前2次7375/8390ms成功。root cause未知，首错停止/不重试按契约生效。独立重编译与原摘要相同，无额外provider请求。
-- 120秒恢复：manifest2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea，与默认486a...仅timeout不同。D8已确认，clean HEAD193e46c下4/4有效、elapsed8155/5657/4202/5782ms，三组agreement1.0/mismatch0；单轮不证明三轮一致性或超时根因修复。独立重编译一致，额外调用0，默认/执行源码/评分规则未改；后续新full仍待授权。
+- 120秒恢复：manifest2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea，与默认486a...仅timeout不同。D8已确认，clean HEAD193e46c下4/4有效、elapsed8155/5657/4202/5782ms，三组agreement1.0/mismatch0；单轮不证明三轮一致性或超时根因修复。独立重编译一致，额外调用0，默认/执行源码/评分规则未改；本次恢复后新full已授权72/实际0。
 
 - 真实canary：source HEAD823b81a、manifest486a6495...，4次HTTP200；latency3531/5171/3734/3702ms。三组agreement100%、mismatch0，单轮不建立三轮一致性。raw本地ignored，identity/ledger/completion/safe-summary hash写入安全报告；独立本地重编译逐对象相同，额外provider调用0。凭据源只读且未变。
 - 原full计划：24×3=72请求、JSON请求体58191bytes、同模型/manifest/源码/runtime，canary不拼接。该run实际在clean HEAD14efadc尝试42次后停止，剩余30未调用；恢复不能续跑旧run。

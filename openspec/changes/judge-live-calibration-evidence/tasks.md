@@ -22,6 +22,7 @@
 - [x] 2.2 独立授权4次canary，在clean HEAD823b81a完成4/4、HTTP200/parse100%、错误/重试0；独立重编译与原摘要完全相同。仅单轮canary，不证明full三轮一致性；4次预算已使用，不补跑。
 - [x] 2.2a 用户明确授权新增最多72次full，沿用已确认免费额度、固定24×3及已披露出站/runtime；授权提交后读取新clean HEAD，不复用canary或扩大调用类型。
 - [x] 2.2b 用户选择D8并新增授权120秒canary4次；clean HEAD193e46c实测4/4、HTTP200/解析100%、错误/重试0，独立compiler COMPLETE且重编译一致。仅单轮小样本，不证明原超时根因解决；4次已用完，新full72授权0/实际0。
+- [x] 2.2c 用户暂停后明确要求恢复C19剩余外调，恢复已披露独立120秒full最多72次、约58KB、同模型/零重试/首错停止；新full授权72/实际0，授权文档提交后读取实际clean HEAD。旧run不续跑或拼接，无额外业务调用授权。
 - [ ] 2.3 本次独立full已执行42次后timeout首错停止：41有效、30未尝试、retry0，compiler INCOMPLETE；完整24×3未达成，不拼接canary/partial。恢复选择及独立新预算见[recovery-plan](recovery-plan.md)。
 - [ ] 2.4 compiler已如实输出partial：valid41/expected72、1 timeout/30 missing、agreement/repeat率N/A；完整72条指标仍未建立，不能用成功子集给结论。
 
@@ -30,4 +31,4 @@
 - [ ] 3.1 形成安全acceptance/report：低agreement如实保留，不自动调参，不声称生产质量或C20通过。
 - [ ] 3.2 用户明确接受本change后delta进入baseline、归档、恢复IDLE；更新技术债与执行日志。
 
-已完成第0–1节及2.0–2.2b；旧canary4+旧full42+新canary4=50次尝试，49个HTTP200/1旧timeout。用户2026-10-18选择“暂不继续外部调用”，当前外调暂停，恢复须重新明确授权；原full余30不可续跑，新120秒full72未授权/未执行。2.3–2.4及第3节仍未完成，保留全部证据，默认60秒不改，change不归档、不接受baseline、不改IDLE。
+已完成第0–1节及2.0–2.2c；旧run累计50次尝试，49个HTTP200/1旧timeout。用户现已明确恢复，独立120秒full授权72/实际0；原剩余30不可续跑，旧结果不拼接。2.3–2.4及第3节仍未完成，保留全部证据，默认60秒不改，change不归档、不接受baseline、不改IDLE。

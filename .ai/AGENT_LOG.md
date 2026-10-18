@@ -3682,3 +3682,14 @@
 - Commit: pending。用户对新增72次full授权请求明确选择“暂不继续外部调用”；当前不启动新full或其他provider请求，恢复须用户重新明确授权。仅同步5份状态文档：ACTIVE_TASK、本日志、recovery-plan、readiness、tasks，保留既有plan/review及raw，不改历史运行结论。
 - 已确认：120秒canary4/4，原60秒full INCOMPLETE；累计50次尝试/49个HTTP200/1旧timeout不变，本轮新增外调0，新full授权/实际0。C19仍ACTIVE且未完成，不接受baseline/归档/置IDLE或推进C20。适用design D8及既有分阶段执行边界，未改代码/配置/依赖/生产行为/受保护目录或凭据源。
 - 验证/跳过：纯文档状态同步，聚焦检查5文件范围、链接、AGENT_LOG前缀、增量凭据模式及git diff --check；无代码改动，跳过Python/Maven/前端build/浏览器及所有live验证，保留既有测试结论与C18例外。不重复请求外调授权，不创建自动恢复任务；本地提交沿用既有授权，未push/PR/部署。建议提交：`docs(评测): 记录C19按用户选择暂停外部调用`。
+
+## 2026-10-18 · C19外调暂停提交补录
+
+- 上一执行提交：`4d5194f545aadcc697597adc5a981cc4e1711aed`，`docs(评测): 记录C19按用户选择暂停外部调用`。5文件，提交后clean/main ahead14；5文件/26链接、日志前缀、增量凭据模式及diff检查通过，新增provider调用0。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19恢复独立120秒full授权
+
+- Commit: pending。用户明确要求“重新恢复C19剩余外部调用”，撤销此前暂不继续的选择，恢复已披露独立120秒full24×3最多72次，当前实际0。此前模型/载荷/runtime/预算/本地副作用未扩大，按AGENTS授权复用规则执行，不另问同一授权；不续跑旧剩余30或拼接8条canary/旧partial。
+- 冻结：NVIDIA NIM / nvidia/nemotron-3-super-120b-a12b，manifest2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea，固定合成请求体58191bytes；timeout120s/max_tokens1024/context6000/temperature0/间隔至少2s/retry0/首错停止。费用沿用用户已确认免费额度，继续消耗额度；具体账单/限流未独立核验，仍可能超时/限流/解析失败，timeout远端结果/费用未知。
+- 新run只写唯一ignored目录；凭据仅从本地源只读映射子进程，不复制聊天值、不写值或改源文件。授权不含额外查询、重试/补跑、backend/embedding/rerank/普通ask或业务写入。原累计50次尝试，若本轮全执行总上限122；实际clean HEAD在授权文档提交后读取。
+- 范围7文件：ACTIVE_TASK/本日志、recovery-plan/readiness/tasks/proposal、新full计划授权状态；适用design D1–D8，无源码/配置/数据/指标/生产行为/依赖/受保护目录变化。沿用本地提交授权，未push/PR/部署。复用judge29/29及全Python279（既有C18 1 failure/4 errors），未改代码不重跑；跳过Maven/build/浏览器，OpenSpec CLI不可用，范围/链接/日志前缀/增量凭据模式/diff及实时preflight核查后执行。建议提交：`docs(评测): 恢复C19独立120秒full校准授权`。
