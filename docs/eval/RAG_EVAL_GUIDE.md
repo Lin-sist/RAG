@@ -453,7 +453,7 @@ normal details JSON 新增 `objectiveMetricStatus`、`judgeMetricStatus`、`metr
 
 #### C19：冻结执行与独立证据编译（2026-10-18离线实现）
 
-C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。默认60秒canary4/4，原full41有效/1timeout/30未尝试、INCOMPLETE，正式率N/A；旧证据保留。独立[120秒canary](reports/c19-canary-timeout120-review-v1.json)已4/4、0错误/重试，仅小样本；[新full72计划](reports/c19-full-timeout120-plan-v1.json)待授权，[执行包](../../openspec/changes/judge-live-calibration-evidence/recovery-plan.md)明确不拼接旧run。120秒入口须同时显式指定候选manifest及--judge-timeout 120；默认未改，费用依据用户免费额度声明，旧timeout远端结果/费用未知。
+C19应使用显式入口，不把旧C9b plan或synthetic当真实校准。原60秒full41有效/1timeout/30未尝试；120秒canary4/4后独立full8有效/1network error/63未调用，见[最新full review](reports/c19-full-timeout120-review-v1.json)。两轮full均INCOMPLETE，正式agreement/repeat率N/A；[执行记录](../../openspec/changes/judge-live-calibration-evidence/recovery-plan.md)保留原证据且不拼接，当前新run授权0。120秒入口须显式指定候选manifest及--judge-timeout 120，默认未改；费用依据用户免费额度声明，失败的远端结果/费用未知。
 
 ```powershell
 python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile canary
@@ -477,7 +477,7 @@ compiler退出码`COMPLETE/INVALID/NOT_COMPARABLE/INCOMPLETE=0/2/3/4`，不改�
 
 #### C19：冻结执行与独立证据编译（2026-10-18离线实现）
 
-C19应使用显式入口，不把旧C9b plan或合成测试当作真实校准。当前[执行manifest](config/c19-judge-calibration-v1.json)的模型为`UNCONFIGURED`，live预算0；完成模型选择、费用/出站/限流披露、阶段授权及clean源码提交前，preflight必须BLOCKED。
+离线初始准备快照：当时[执行manifest](config/c19-judge-calibration-v1.json)的模型为`UNCONFIGURED`，live预算0，preflight应BLOCKED。此段仅解释初始护栏；当前模型与真实运行结果以上方C19最新review/readiness为准，不把初始快照当当前状态。
 
 ```powershell
 python -B scripts/run_judge_calibration.py --c19-manifest --plan-only --profile canary

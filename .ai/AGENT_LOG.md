@@ -3693,3 +3693,18 @@
 - 冻结：NVIDIA NIM / nvidia/nemotron-3-super-120b-a12b，manifest2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea，固定合成请求体58191bytes；timeout120s/max_tokens1024/context6000/temperature0/间隔至少2s/retry0/首错停止。费用沿用用户已确认免费额度，继续消耗额度；具体账单/限流未独立核验，仍可能超时/限流/解析失败，timeout远端结果/费用未知。
 - 新run只写唯一ignored目录；凭据仅从本地源只读映射子进程，不复制聊天值、不写值或改源文件。授权不含额外查询、重试/补跑、backend/embedding/rerank/普通ask或业务写入。原累计50次尝试，若本轮全执行总上限122；实际clean HEAD在授权文档提交后读取。
 - 范围7文件：ACTIVE_TASK/本日志、recovery-plan/readiness/tasks/proposal、新full计划授权状态；适用design D1–D8，无源码/配置/数据/指标/生产行为/依赖/受保护目录变化。沿用本地提交授权，未push/PR/部署。复用judge29/29及全Python279（既有C18 1 failure/4 errors），未改代码不重跑；跳过Maven/build/浏览器，OpenSpec CLI不可用，范围/链接/日志前缀/增量凭据模式/diff及实时preflight核查后执行。建议提交：`docs(评测): 恢复C19独立120秒full校准授权`。
+
+## 2026-10-18 · C19恢复full授权提交补录
+
+- 上一执行提交：`91dc5675ecfef3756de9b45e4ffcb103c46dea43`，`docs(评测): 恢复C19独立120秒full校准授权`。7文件，提交后clean/main ahead15；7文件/33个链接、日志前缀/增量凭据模式/diff通过；实时preflight READY，该clean HEAD为本轮独立full身份。仅追加真实hash，不回改历史。
+
+## 2026-10-18 · C19独立120秒full网络错误首错停止
+
+- Commit: pending。按用户恢复指令运行一次独立120秒full，上限72、实际9次尝试，8个HTTP200/有效响应、第9次judge_network_error、63未调用，retry0。runner exit4、compiler INCOMPLETE，valid8/expected72；errorObservationCount64=1网络错误+63missing，正式agreement/repeat率N/A，不用成功子集/旧partial/canary补齐，不续跑剩余63。当前新run授权0。
+- 实际身份：clean HEAD91dc5675ecfef3756de9b45e4ffcb103c46dea43，manifest2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea，run e3db9573-ed8d-4860-a4fd-7d3e39fad2af；NVIDIA NIM / nvidia/nemotron-3-super-120b-a12b，timeout120s/max_tokens1024/context6000/temperature0/间隔至少2s/retry0。适用design D1–D8，无执行源码/评分规则变化。
+- 失败cal-ft-rt-03/repeat3/attempt9在5032ms发生、无HTTP状态，同case前2次5266/17092ms均HTTP200。本地只读源码核查：judge_network_error来自非TimeoutError reason的URLError；未保存底层reason，无法判断DNS/TLS/代理/连接/上游根因，不能认定429、认证或120秒超时，远端接收/完成/扣费未知。不新增诊断性网络请求或自动重试。
+- raw独立保留ignored tmp/eval/c19-full-timeout120-20261018-8c5bd75d；新增c19-full-timeout120-review-v1.json绑定四份artifact hash，独立compiler重编译与原safe-summary逐对象一致，额外调用0。凭据从本地源只读映射子进程，源文件前后内存比对未变，值不进tracked文件/命令/日志/回复。无backend/embedding/rerank/普通ask/额外查询或业务写入。
+- 累计59次尝试（旧50+本轮9）、57个HTTP200、1旧timeout/1新network error；费用依据用户免费额度声明，未独立核账或探测限流，两次失败远端结果/费用未知。保留原计划为执行前授权快照，不回写历史raw/review。新run/诊断性外调需单独授权，不把原剩余30或本轮剩余63当续跑授权。
+- 修改11文件：ACTIVE_TASK/本日志、proposal/tasks/readiness/recovery-plan、原full执行包最新入口、指南/路线图/技术债和新full安全review；指南初始UNCONFIGURED段显式标为历史快照，避免与当前结果混淆。代码/配置/数据/依赖/accepted baseline/archive/C17/C18/生产行为及受保护本地目录不改；C19仍未完成，不归档/置IDLE或启动C20。沿用本地提交授权，未push/PR/部署。
+- 验证/跳过：真实9次及独立重编译如上；复用源码未变的judge29/29与全Python279（既有C18 1 failure/4 errors，非GREEN），不因新证据重跑。Java/前端未改，跳过Maven/build/浏览器；OpenSpec CLI不可用，文件级范围/链接/JSON/hash/日志前缀/增量凭据模式/diff收尾。建议提交：`docs(评测): 保全C19独立full网络错误证据`。
+- 收尾：11个允许文件/58个本地链接、4份raw hash/ignored状态及独立重编译一致；AGENT_LOG前缀保全、增量凭据模式0、安全JSON字段/无本地绝对路径检查通过，执行源码及两份manifest hash均未变，git diff --check通过。只读核查无额外HTTP请求，本轮provider尝试严格为9；准备本地提交后停止，任何新run需明确授权。

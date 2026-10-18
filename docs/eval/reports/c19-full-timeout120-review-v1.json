@@ -1,0 +1,273 @@
+{
+  "schemaVersion": "c19-full-timeout120-review-v1",
+  "status": "FULL_INCOMPLETE_NETWORK_ERROR",
+  "date": "2026-10-18",
+  "evidence": {
+    "schemaVersion": "c19-judge-evidence-v1",
+    "status": "INCOMPLETE",
+    "reasonCodes": [
+      "incomplete_run"
+    ],
+    "manifestSha256": "2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea",
+    "actual": {
+      "reservedAttempts": 9,
+      "recordedOutcomes": 9,
+      "outcomeUnknownCount": 0,
+      "unattemptedCount": 63,
+      "automaticRetries": 0,
+      "providerAttemptsUpperBound": 9,
+      "confirmedHttpResponses": 8
+    },
+    "metrics": {
+      "calibrationStatus": "PARTIAL",
+      "comparisonEligible": false,
+      "confusionScope": "partial_diagnostic_only",
+      "expectedObservationCount": 72,
+      "receivedObservationCount": 9,
+      "validObservationCount": 8,
+      "errorObservationCount": 64,
+      "missingObservationCount": 63,
+      "duplicateObservationCount": 0,
+      "unexpectedObservationCount": 0,
+      "parseCoverage": 0.1111111111111111,
+      "faithfulness": {
+        "tp": 7,
+        "tn": 0,
+        "fp": 0,
+        "fn": 1,
+        "agreement": "N/A"
+      },
+      "relevance": {
+        "tp": 8,
+        "tn": 0,
+        "fp": 0,
+        "fn": 0,
+        "agreement": "N/A"
+      },
+      "jointPass": {
+        "tp": 7,
+        "tn": 0,
+        "fp": 0,
+        "fn": 1,
+        "agreement": "N/A"
+      },
+      "providerPassMismatchCount": 0,
+      "repeatConsistentCaseCount": 2,
+      "repeatConsistentCaseRate": "N/A",
+      "inconsistentCaseIds": [
+        "cal-ft-rt-03",
+        "cal-ft-rt-04",
+        "cal-ft-rt-05",
+        "cal-ft-rt-06",
+        "cal-ft-rf-01",
+        "cal-ft-rf-02",
+        "cal-ft-rf-03",
+        "cal-ft-rf-04",
+        "cal-ft-rf-05",
+        "cal-ft-rf-06",
+        "cal-ff-rt-01",
+        "cal-ff-rt-02",
+        "cal-ff-rt-03",
+        "cal-ff-rt-04",
+        "cal-ff-rt-05",
+        "cal-ff-rt-06",
+        "cal-ff-rf-01",
+        "cal-ff-rf-02",
+        "cal-ff-rf-03",
+        "cal-ff-rf-04",
+        "cal-ff-rf-05",
+        "cal-ff-rf-06"
+      ],
+      "errorCategoryHistogram": {
+        "judge_network_error": 1,
+        "missing_observation": 63
+      }
+    },
+    "comparisonEligible": false,
+    "liveEvidenceEligible": false,
+    "compilerProviderCalls": 0,
+    "compilerDataOutbound": false,
+    "profile": "full",
+    "runId": "e3db9573-ed8d-4860-a4fd-7d3e39fad2af",
+    "evidenceKind": "LIVE",
+    "sourceHead": "91dc5675ecfef3756de9b45e4ffcb103c46dea43",
+    "judgeContractConfig": {
+      "judgeContractVersion": "rag-judge-v1",
+      "promptVersion": "rag-judge-prompt-v1",
+      "promptSha256": "d98612cdc4f6681e126d3e6fd4dac81f5d76d14ec4bd596e904fa4843999df80",
+      "parserVersion": "strict-json-scores-v1",
+      "faithfulnessThreshold": 0.7,
+      "relevanceThreshold": 0.7,
+      "jointPassRule": "both-scores-gte-threshold-v1",
+      "maxContextChars": 6000,
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "temperature": 0,
+      "endpointIdentity": "https://integrate.api.nvidia.com"
+    },
+    "executionConfig": {
+      "provider": "nvidia-nim",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "temperature": 0,
+      "timeoutSeconds": 120,
+      "maxOutputTokens": 1024,
+      "maxContextChars": 6000,
+      "minIntervalSeconds": 2,
+      "retries": 0
+    },
+    "artifacts": {
+      "identitySha256": "468623fcf5a8806f9fd640a05818939d269eb657005857365924c2048a9a5778",
+      "ledgerSha256": "e14bacb273ec2dda5f379fc31dae91c9c00c59879a81926c78dbd37442f44757"
+    }
+  },
+  "failure": {
+    "attemptIndex": 9,
+    "caseId": "cal-ft-rt-03",
+    "repeatIndex": 3,
+    "elapsedMs": 5032,
+    "httpStatus": null,
+    "errorCategory": "judge_network_error"
+  },
+  "sameCaseOutcomes": [
+    {
+      "attemptIndex": 7,
+      "caseId": "cal-ft-rt-03",
+      "repeatIndex": 1,
+      "elapsedMs": 5266,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 8,
+      "caseId": "cal-ft-rt-03",
+      "repeatIndex": 2,
+      "elapsedMs": 17092,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 9,
+      "caseId": "cal-ft-rt-03",
+      "repeatIndex": 3,
+      "elapsedMs": 5032,
+      "httpStatus": null,
+      "errorCategory": "judge_network_error"
+    }
+  ],
+  "outcomes": [
+    {
+      "attemptIndex": 1,
+      "caseId": "cal-ft-rt-01",
+      "repeatIndex": 1,
+      "elapsedMs": 3469,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 2,
+      "caseId": "cal-ft-rt-01",
+      "repeatIndex": 2,
+      "elapsedMs": 10031,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 3,
+      "caseId": "cal-ft-rt-01",
+      "repeatIndex": 3,
+      "elapsedMs": 2844,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 4,
+      "caseId": "cal-ft-rt-02",
+      "repeatIndex": 1,
+      "elapsedMs": 4796,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 5,
+      "caseId": "cal-ft-rt-02",
+      "repeatIndex": 2,
+      "elapsedMs": 6828,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 6,
+      "caseId": "cal-ft-rt-02",
+      "repeatIndex": 3,
+      "elapsedMs": 3061,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 7,
+      "caseId": "cal-ft-rt-03",
+      "repeatIndex": 1,
+      "elapsedMs": 5266,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 8,
+      "caseId": "cal-ft-rt-03",
+      "repeatIndex": 2,
+      "elapsedMs": 17092,
+      "httpStatus": 200,
+      "errorCategory": null
+    },
+    {
+      "attemptIndex": 9,
+      "caseId": "cal-ft-rt-03",
+      "repeatIndex": 3,
+      "elapsedMs": 5032,
+      "httpStatus": null,
+      "errorCategory": "judge_network_error"
+    }
+  ],
+  "additionalArtifactHashes": {
+    "completionSha256": "2e13c69a5edce03b37340d6e04908f2f1674279b4686a468b889582fc5fa0e4d",
+    "safeSummarySha256": "6d239279b28973691a1cf53e7c1eb416e964e38bd3381846d3ca1ee9888d86e1"
+  },
+  "interpretation": {
+    "expectedObservations": 72,
+    "validObservations": 8,
+    "providerNetworkErrorObservations": 1,
+    "unattemptedObservations": 63,
+    "aggregateErrorObservationCountIncludesMissing": true,
+    "formalAgreementAvailable": false,
+    "formalRepeatConsistencyAvailable": false,
+    "failedAttemptRemoteCompletion": "UNKNOWN",
+    "networkRootCause": "UNKNOWN",
+    "retryOrResumePerformed": false,
+    "successfulSubsetUsedAsFull": false,
+    "priorPartialOrCanarySpliced": false
+  },
+  "callBudget": {
+    "authorizedThisFull": 72,
+    "usedReservationsThisFull": 9,
+    "unusedAllowance": 63,
+    "unusedAllowanceReusableAfterFirstErrorStop": false,
+    "priorAttemptUpperBound": 50,
+    "combinedAttemptUpperBound": 59,
+    "confirmedHttp200Combined": 57,
+    "priorTimeoutCount": 1,
+    "currentNetworkErrorCount": 1,
+    "newRunAuthorizedAttempts": 0
+  },
+  "privacy": {
+    "rawLocalIgnored": true,
+    "credentialValueTracked": false,
+    "localCredentialSourceUnchanged": true,
+    "rawQuestionAnswerContextOrReasonTracked": false
+  },
+  "cost": {
+    "basis": "USER_CONFIRMED_FREE_QUOTA",
+    "billingIndependentlyVerified": false,
+    "observedCharges": null,
+    "failedAttemptDoesNotImplyZeroCost": true
+  }
+}

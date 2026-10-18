@@ -1,6 +1,6 @@
 # C19 full超时后的恢复审阅包
 
-2026-10-18。Report status：`FULL_TIMEOUT120_AUTHORIZED_PENDING_RUN`。用户明确要求“重新恢复C19剩余外部调用”，恢复已披露的独立120秒full最多72次，当前实际0；这是新目录完整24×3，不补旧run剩余30或拼接任一旧结果。独立120秒canary已4/4、0错误/重试，见[安全review](../../../docs/eval/reports/c19-canary-timeout120-review-v1.json)及[本次full计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)。
+2026-10-18。Report status：`FULL_TIMEOUT120_INCOMPLETE_NETWORK_ERROR`。已按恢复指令独立执行120秒full：8个HTTP200有效响应、第9次judge_network_error、余63未调用，零重试/首错停止，compiler INCOMPLETE。见[本次full安全review](../../../docs/eval/reports/c19-full-timeout120-review-v1.json)；原[full计划](../../../docs/eval/reports/c19-full-timeout120-plan-v1.json)保留执行前授权快照，新run授权0，不自动补跑。
 
 ## 已保存的事实
 
@@ -37,3 +37,10 @@ design D8已由本次选择确认，仅授权该独立canary4次；执行前本�
 - 下一步只提请**新增最多72次full**，24个case各3次，同120秒manifest2c1ac168...、同模型/源码/prompt/parser/0.70阈值；发送固定合成请求体合计58191bytes约58KB到integrate.api.nvidia.com。timeout120s/max_tokens1024/context6000/temperature0/间隔至少2s/retry0/首错停止，无redirect/fallback/resume，仍可能超时/限流/解析失败。
 - 沿用用户确认免费额度，继续消耗额度；具体账单/限流未独立核验。新完整run只写唯一ignored目录，不含backend/embedding/rerank/普通ask或业务写入。凭据本地只读进入进程、不写值；不拼接8条canary或旧41条成功记录，先前剩余30不充当本轮授权。本次恢复指令覆盖该已披露新full72，当前授权72/实际0，若全执行累计尝试上限122；不含额外查询、重试/补跑。
 - 新full提交授权文档后使用其实际clean HEAD；完整72条才可由compiler出正式全轮指标，低agreement如实保留，不调阈值。仍需用户验收后方可归档，C20不启动。
+
+## 恢复后的full实测与当前边界
+
+- clean HEAD91dc5675ecfef3756de9b45e4ffcb103c46dea43、run e3db9573-ed8d-4860-a4fd-7d3e39fad2af、manifest2c1ac168...；9 starts/9 outcomes，8有效HTTP200，1个judge_network_error，63未调用，retry0。runner exit4/compiler INCOMPLETE，coverage8/72，正式agreement/repeat率N/A；errorObservationCount64是1网络错误+63missing，不是64次provider失败。
+- 失败是cal-ft-rt-03/repeat3/attempt9，elapsed5032ms、无HTTP状态；同case前2次HTTP200、5266/17092ms。本地只读源码核查表明该类别对应URLError且其reason不是TimeoutError，但未保存底层reason；无法区分DNS/TLS/代理/连接或上游问题，不能认定429、认证失败或120秒timeout。远端是否接收/完成/扣费未知，5秒失败不证明延长等待有用。
+- raw独立保留ignored，identity/ledger/completion/safe-summary四hash绑定安全review，独立重编译一致、额外provider请求0。本地凭据源前后内存比对未变；累计59次尝试/57个HTTP200/1旧timeout/1新网络错误，费用未独立核账。
+- 原剩余30及本轮剩余63均不自动补跑或拼接，任何新run/诊断性网络请求须新的明确授权。可保留现状（0调用），或在用户另行授权后按同120秒manifest独立新full最多72次/约58KB；同模型、max_tokens1024、间隔至少2s、retry0/首错停止、唯一新目录，仍可能失败并继续消耗用户确认的免费额度。新full不含额外查询、backend/embedding或业务写入；当前新run授权0，不预填成功或承诺修复。
