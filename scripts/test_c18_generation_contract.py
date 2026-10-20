@@ -12,9 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import c18_generation_contract as c18
 import run_rag_eval as runner
-
-
-ROOT = Path(__file__).resolve().parents[1]
+from eval_test_support import isolated_c18_repository
 
 
 class C18GenerationContractTest(unittest.TestCase):
@@ -66,7 +64,8 @@ class C18GenerationContractTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.manifest = c18.load_manifest(ROOT)
+        cls.root = cls.enterClassContext(isolated_c18_repository())
+        cls.manifest = c18.load_manifest(cls.root)
 
     def test_manifest_validates_and_plan_is_offline(self) -> None:
         plan = c18.build_plan(self.manifest, "canary")
@@ -83,18 +82,18 @@ class C18GenerationContractTest(unittest.TestCase):
         self.assertEqual(plan["selection"]["ids"][-1], "no-answer-020")
 
     def test_manifest_budget_drift_fails_closed(self) -> None:
-        raw = json.loads((ROOT / c18.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
+        raw = json.loads((self.root / c18.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
         mutated = copy.deepcopy(raw)
         mutated["budgets"]["full"]["ask"] = 149
         with self.assertRaisesRegex(c18.C18ContractError, "c18_budget_identity_invalid"):
-            c18.validate_manifest(ROOT, mutated)
+            c18.validate_manifest(self.root, mutated)
 
     def test_w1_tooling_source_drift_fails_closed(self) -> None:
-        raw = json.loads((ROOT / c18.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
+        raw = json.loads((self.root / c18.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
         mutated = copy.deepcopy(raw)
         mutated["toolingSourceSha256"]["scripts/c18_generation_contract.py"] = "0" * 64
         with self.assertRaisesRegex(c18.C18ContractError, "c18_tooling_source_drift"):
-            c18.validate_manifest(ROOT, mutated)
+            c18.validate_manifest(self.root, mutated)
 
     def test_runner_conflict_and_pacing_fail_closed(self) -> None:
         args = type(

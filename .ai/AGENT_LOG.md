@@ -3767,3 +3767,19 @@
 - 范围13文件：新compiler/test/intake report，C20 proposal/design/tasks/spec/readiness、ACTIVE_TASK/本日志、指南/路线图/技术债。现有draft配置/首切片report/共享计算代码、C17/C18/C19 artifact、accepted baseline/archive、生产Java/前端/依赖/受保护本地配置与凭据均未改；C20仍ACTIVE，不归档或置IDLE。本轮provider/backend/embedding/rerank/ask/judge调用0，无push/PR/部署。
 - 跳过：无Java/前端变化，不跑Maven/build/浏览器；不执行任何live采集或当前C18审计维修；OpenSpec CLI不可用，采用文件级范围/链接/hash/结构/敏感字段/日志前缀/diff核查，不称官方validate。建议提交：`feat(评测): 实现C20三轮参考编译与阈值审阅包`。
 - 收尾：13个允许文件/58个本地链接、7条三行决策、3 requirements/8 scenarios、当前compiler与安全intake逐对象一致均通过；C18 details/metadata与接受报告hash绑定正确，输入/历史报告无改动。日志前缀保全、增量凭据模式0、安全JSON字段/无绝对路径检查及git diff --check通过。最终全量失败集合仅原C18五条，原draft配置/首切片计算及report未变，外部调用0。准备本地提交，C20不归档或激活。
+
+## 2026-10-20 · C20参考intake执行提交补录
+
+- 上一执行提交：`24b3f0b3ef15b59bfb9aed4741eb77e224ee0b39`，`feat(评测): 实现C20三轮参考编译与阈值审阅包`。本次维护开始时main工作区干净；仅追加真实hash，不回改历史记录。
+
+## 2026-10-20 · eval-test-audit-isolation-maintenance（Type B）
+
+- Commit: pending。用户授权处理测试与审计阻塞。本轮为既有契约内测试隔离/故障定位维护，不创建Type C、不接管或归档C20、不更改ACTIVE_TASK及阈值/错误策略。修改5个既有测试文件，新增scripts/eval_test_support.py与test_eval_test_support.py，更新技术债及只追加本日志；未暂存、提交、push、PR或部署。
+- 复现：C20聚焦测试12秒调用栈定位到tempfile.mkdtemp的os.mkdir；对tmp/.tmp单次创建均PermissionError/WinError5，系统临时目录可创建。Python标准库Windows PermissionError分支在os.access报告可写时反复尝试。获批沙箱外运行原有C20 9项全部通过，确认不是编译器业务逻辑挂起。新测试目录只创建一次，拒绝时明确报错；不更改ACL或标准库。
+- C18审计仅3个冻结源码hash漂移：QAController.java、AnswerGeneratorImpl.java、RAGServiceImpl.java；Git来源为后续C21/流式诊断改动。正式拒绝符合历史冻结契约。新增纯测试临时仓库复制最小源码/数据集依赖，只重绑临时audit/manifest身份；正式校验函数未mock/放宽，历史audit/manifest/accepted报告均未写入。该合成夹具不是当前调用图的新审计、当前live readiness或provider证据。
+- C18预算测试改用独立夹具，并将缺样本/错序/畸形预算负例收紧为具体错误原因，避免被无关source drift提前拦截。generation/编译器两组setUpClass恢复，原测试全部实际执行；新增拒绝目录创建仅一次、异常退出清理、合成审计仍拒绝源码漂移且历史文件不变3项回归。
+- 聚焦：`python -B -m unittest discover -s scripts -p 'test_c18_*.py' -v` 28/28；`python -B -m unittest discover -s scripts -p 'test_compile_generation_objective_baseline.py' -v` 18/18；`python -B -m unittest discover -s scripts -p 'test_eval_test_support.py' -v` 3/3。
+- 全量：获批具备仓库写权限的沙箱外执行`python -B -m unittest discover -s scripts -p 'test_*.py'`，336 tests / 28.800s / OK，0 failures、0 errors、无跳过，exit0。相对历史302项恢复两组31项并新增3项，未删测试/放宽生产校验。日志中的INVALID/FAIL/BLOCKED为负例预期输出，不是最终回归结论。
+- 正式C18预算CLI仍返回BLOCKED/budget_source_drift；未来当前源码的新live运行仍需独立审计/版本和授权，不通过更新旧hash放行。C19未补测，C20仍DRAFT，缺三轮参考/数值批准/激活验收；本轮backend/provider/embedding/rerank/ask/judge真实调用0、业务数据出站0。
+- 范围安全：生产Python/Java/前端、依赖、受保护本地配置、数据集、历史reports/config、accepted specs/archive均未改；本轮无新的提交授权，不沿用其他切片的提交权限。跳过Maven/前端正式build/浏览器和live评测，原因是仅测试夹具与说明改动且无相应生产变更；官方OpenSpec CLI未运行，本次Type B不改变spec。文件级链接、日志前缀及diff检查随收尾补记。剩余风险：受限沙箱的tmp写权限与当前源码不兼容旧C18审计仍是显式环境/执行边界。建议提交：`test(评测): 隔离C18审计夹具并修复临时目录重试阻塞`。
+- 收尾：9个允许文件（含2个新增测试支持文件）范围核对通过，新增1个本地链接存在，无新增旧路径；AGENT_LOG原文前缀保全、git diff --check通过，staged files=0。正式C18预算CLI实测exit2/BLOCKED/budget_source_drift；生产代码/数据/历史artifact/config、accepted specs/archive及ACTIVE_TASK均与HEAD一致。完整336项通过后仅追加说明/日志，未触发重复全套验证。

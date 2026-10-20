@@ -5,13 +5,13 @@ import copy
 import io
 import json
 from pathlib import Path
-import tempfile
 import unittest
 from unittest.mock import patch
 
 import compile_objective_gate_reference as compiler
 import review_objective_judge_profile as c20
 import test_c20_profile_review as helpers
+from eval_test_support import workspace_temporary_directory
 
 
 class ObjectiveReferenceCompileTest(unittest.TestCase):
@@ -48,7 +48,7 @@ class ObjectiveReferenceCompileTest(unittest.TestCase):
     def compile(self, details=None, metadata=None):
         details = self.details if details is None else details
         metadata = self.metadata if metadata is None else metadata
-        with tempfile.TemporaryDirectory(dir=self.root / "tmp") as folder:
+        with workspace_temporary_directory(self.root) as folder:
             dp, mp = [], []
             for index, d in enumerate(details):
                 p = Path(folder) / f"d{index}.json"; p.write_text(json.dumps(d), encoding="utf-8"); dp.append(p)
@@ -169,7 +169,7 @@ class ObjectiveReferenceCompileTest(unittest.TestCase):
         self.assertNotIn("PRIVATE", json.dumps(r))
 
     def test_cli_is_exclusive_and_refuses_input_alias_and_outside_root(self):
-        with tempfile.TemporaryDirectory(dir=self.root / "tmp") as folder:
+        with workspace_temporary_directory(self.root) as folder:
             dp, mp, out = Path(folder) / "d.json", Path(folder) / "m.json", Path(folder) / "out.json"
             dp.write_text(json.dumps(self.details[0])); mp.write_text(json.dumps(self.metadata[0]))
             before = dp.read_bytes()

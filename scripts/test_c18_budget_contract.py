@@ -6,15 +6,16 @@ from pathlib import Path
 from unittest.mock import patch
 
 import c18_budget_contract as contract
+from eval_test_support import isolated_c18_repository
 
 
 class C18BudgetContractTest(unittest.TestCase):
     def setUp(self):
-        self.root = Path(__file__).resolve().parents[1]
+        self.root = self.enterContext(isolated_c18_repository())
         self.audit = contract.read_json(self.root / contract.AUDIT_PATH)
 
     def test_full_plan_counts_nested_calls_and_is_not_live_authorization(self):
-        plan = contract.build_plan(Path(__file__).resolve().parents[1], "full")
+        plan = contract.build_plan(self.root, "full")
         self.assertEqual(150, plan["callBudget"]["ask"])
         self.assertEqual(1492, plan["callBudget"]["queryEmbeddingUpperBound"])
         self.assertEqual(150, plan["callBudget"]["generationUpperBound"])
@@ -43,14 +44,16 @@ class C18BudgetContractTest(unittest.TestCase):
             if action == "missing": audit["samples"].pop()
             elif action == "duplicate": audit["samples"][1] = audit["samples"][0]
             else: audit["samples"].reverse()
-            with self.subTest(action=action), self.assertRaises(contract.BudgetContractError):
+            reason = "sample_count_invalid" if action == "missing" else "sample_identity_mismatch"
+            with self.subTest(action=action), self.assertRaisesRegex(contract.BudgetContractError, reason):
                 contract.validate_audit(self.root, audit)
 
     def test_bool_or_omitted_fallback_budget_is_not_a_number(self):
         for value in (True, 0, -1, 902):
             audit = copy.deepcopy(self.audit)
             audit["samples"][0]["queryEmbeddingUpperBound"] = value
-            with self.subTest(value=value), self.assertRaises(contract.BudgetContractError):
+            reason = "budget_sum_mismatch" if value == 902 else "budget_number_invalid"
+            with self.subTest(value=value), self.assertRaisesRegex(contract.BudgetContractError, reason):
                 contract.validate_audit(self.root, audit)
 
     def test_unknown_sensitive_fields_are_not_forwarded(self):

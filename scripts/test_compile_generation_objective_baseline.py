@@ -13,6 +13,7 @@ import c18_generation_contract as c18
 import compile_generation_objective_baseline as compiler
 import eval_dataset_contract as dataset_contract
 import run_rag_eval as runner
+from eval_test_support import isolated_c18_repository
 from argparse import Namespace
 
 
@@ -22,8 +23,9 @@ ROOT = Path(__file__).resolve().parents[1]
 class C18CompilerTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.manifest = c18.load_manifest(ROOT)
-        cls.release = dataset_contract.validate_versioned_release(ROOT, Path("docs/eval/dataset-manifest.json"))
+        cls.root = cls.enterClassContext(isolated_c18_repository())
+        cls.manifest = c18.load_manifest(cls.root)
+        cls.release = dataset_contract.validate_versioned_release(cls.root, Path("docs/eval/dataset-manifest.json"))
 
     def make_artifacts(self) -> tuple[dict, dict]:
         ids = c18.expected_ids(self.manifest, "full")
@@ -227,7 +229,7 @@ class C18CompilerTest(unittest.TestCase):
             metadata_path = root / "metadata.json"
             details_path.write_text(json.dumps(details, ensure_ascii=False), encoding="utf-8")
             metadata_path.write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
-            return compiler.compile_evidence(ROOT, self.manifest, "full", details_path, metadata_path)
+            return compiler.compile_evidence(self.root, self.manifest, "full", details_path, metadata_path)
 
     def test_complete_summary_is_safe_and_reuses_runner_metrics(self) -> None:
         details, metadata = self.make_artifacts()

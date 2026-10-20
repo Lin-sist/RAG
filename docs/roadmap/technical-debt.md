@@ -18,6 +18,13 @@
 - `application.yml` 的开发态 JWT fallback 不属于既有数据库认证 closeout。
 - 需要独立评估本地易用性与误带生产环境的风险；不得顺手修改 `.env.local` 或 `application-dev.yml`。
 
+### 3. 评测测试隔离与历史审计（2026-10-20）
+
+- 已解除 Python 单元测试对当前工作树通过 C18 历史冻结审计的依赖；[测试夹具](../../scripts/eval_test_support.py)只在系统临时目录中复制最小输入、重绑合成审计身份，不改仓库原始 audit/manifest，不构成当前调用图的新审计或真实执行证据。C18 budget、generation、compiler 的正常/畸形/漂移用例均实际执行，旧 `setUpClass` 阻塞不再掩盖这些测试。
+- `python -B -m unittest discover -s scripts -p 'test_*.py'`：336 tests / OK，0 failures / 0 errors（28.800s，具备仓库写权限的沙箱外离线运行）。此前 302 项中的 C18 1 failure/4 errors 为历史结果；本次恢复两组被阻塞测试并新增3项边界回归，未跳过或删除测试。
+- C20 原停滞为 Windows `tempfile.mkdtemp` 在工作区创建被拒后反复重试；测试临时目录改为单次创建，权限不足即报明确错误，不伪造成功。受限沙箱仍可能无权写 `tmp`，需获批在具备写权限的环境运行；未修改目录 ACL 或 Python 标准库。
+- C18 正式 `budget_source_drift` 仍有效：冻结后被 C21/流式诊断更新的 `QAController.java`、`AnswerGeneratorImpl.java`、`RAGServiceImpl.java` 不得直接复用旧执行授权。旧 audit、manifest、报告及 accepted baseline 原样保留；未来基于当前源码的新 live 运行仍需独立版本/审计与授权。C19停放、C20 DRAFT及激活缺口不受本次测试维护影响。
+
 ## P1：真实质量证据与用户结果
 
 ### 1. Generation / citation / no-answer 重复证据与门禁

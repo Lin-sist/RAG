@@ -5,13 +5,13 @@ import copy
 import io
 import json
 from pathlib import Path
-import tempfile
 import unittest
 from unittest.mock import patch
 
 import evaluate_quality_gate as gate
 import review_objective_judge_profile as c20
 import test_evaluate_quality_gate as existing
+from eval_test_support import workspace_temporary_directory
 
 
 class C20ProfileReviewTest(unittest.TestCase):
@@ -29,7 +29,7 @@ class C20ProfileReviewTest(unittest.TestCase):
 
     def run_review(self, details=None, profile=None):
         # These files are synthetic and remain in the ignored workspace.
-        with tempfile.TemporaryDirectory(dir=self.root / "tmp") as folder:
+        with workspace_temporary_directory(self.root) as folder:
             pp, dp = Path(folder) / "profile.json", Path(folder) / "details.json"
             pp.write_text(json.dumps(profile or self.profile), encoding="utf-8")
             dp.write_text(json.dumps(details or self.details), encoding="utf-8")
@@ -89,7 +89,7 @@ class C20ProfileReviewTest(unittest.TestCase):
         r = c20.review(self.root, self.root.parent / "private.json", self.root / "missing.json")
         self.assertEqual("path_outside_repository", r["reason"])
         self.assertNotIn("private", json.dumps(r))
-        with tempfile.TemporaryDirectory(dir=self.root / "tmp") as folder:
+        with workspace_temporary_directory(self.root) as folder:
             dp = Path(folder) / "bad.json"; dp.write_text('not json PRIVATE')
             r = c20.review(self.root, c20.DEFAULT_PROFILE, dp)
             self.assertEqual("INVALID", r["gateStatus"])
@@ -120,7 +120,7 @@ class C20ProfileReviewTest(unittest.TestCase):
         p.update(status="ACTIVE", thresholdStatus="APPROVED")
         for rule in p["rules"]: rule["target"] = 999 if rule["operator"] == "maxInclusive" else 0
         self.details["metricChannels"]["judge"] = {"status": "PARTIAL", "comparisonSafety": "NOT_ELIGIBLE"}
-        with tempfile.TemporaryDirectory(dir=self.root / "tmp") as folder:
+        with workspace_temporary_directory(self.root) as folder:
             pp, dp = Path(folder) / "p.json", Path(folder) / "d.json"
             pp.write_text(json.dumps(p)); dp.write_text(json.dumps(self.details))
             r = gate.evaluate_gate(self.root, pp, dp)
@@ -179,7 +179,7 @@ class C20ProfileReviewTest(unittest.TestCase):
         self.assertNotIn("PRIVATE MALFORMED", json.dumps(r))
 
     def test_output_is_exclusive_and_input_cannot_be_overwritten(self):
-        with tempfile.TemporaryDirectory(dir=self.root / "tmp") as folder:
+        with workspace_temporary_directory(self.root) as folder:
             dp, out = Path(folder) / "d.json", Path(folder) / "out.json"
             dp.write_text(json.dumps(self.details)); before = dp.read_bytes()
             args = ["--details", str(dp), "--output", str(out)]
