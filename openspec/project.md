@@ -1,74 +1,30 @@
 # Enterprise RAG QA System｜项目上下文
 
-## 2026-10-21 当前工程阶段
+## 1. 项目身份与当前阶段（2026-10-21）
 
-Wave 1（C17–C21）已按各自明确接受范围全部归档，ACTIVE_TASK=IDLE。C19接受零外调离线工具链与执行契约，C20接受DRAFT profile/review/intake；完整Live校准、真实参考和数值批准/激活仍为[技术债P1/W1-E1/E2/E3](../docs/roadmap/technical-debt.md#w1-e1)。C20保持DRAFT/空阈值、judge仅辅助，无新增外调或质量达标声明，不自动启动W2。以下按日期保留既有代码事实及历史验收边界；较旧的未执行/未归档描述不覆盖本次工程范围收口。
+- **定位**：可运行、可评测的模块化企业知识库 RAG 问答工程原型（尚未达到生产级多租户 SLA 或完整 Agentic RAG 平台）。
+- **主链路**：数据库认证与服务端租户身份 → 知识库与持久化异步索引（MySQL task ledger + Redis 投影）→ 混合检索（Dense + BM25 + RRF）→ 可归因 Reranker → 有界路由（默认关闭的 `fact-v1`）→ LLM 生成（同步 + 结构化 SSE `structured-v1`）→ 历史与反馈。
+- **阶段坐标**：基础基线（C1–C16）、Wave 1（C17–C21）及前端 Demo（R4/R5/F1–F6）均已按各自接受范围归档，`.ai/ACTIVE_TASK.md = IDLE`。
 
-## 项目身份
+## 2. 技术栈与核心默认配置
 
-- 企业知识库 RAG 问答工程原型。
-- 当前主链路：认证 → 知识库 → 文档异步索引 → 混合检索 → LLM 生成 → 引用校验 → 历史与反馈。
-- 当前目标：先完成可信质量工程、生产化基础和个人掌握闭环；C15 只读 MCP 与 C16 default-off bounded Router 均已验收归档，Agentic RAG 未开始。
+- **后端**：Java 17 + Spring Boot 3.2.1 Maven 多模块（`rag-common`、`rag-auth`、`rag-core`、`rag-admin`），MySQL + Redis + Milvus（默认向量库；Qdrant/ES adapter 在租户强制模式下 fail startup）。
+- **前端**：Vue 3 + TypeScript 5.7 + Vite + Element Plus（已接入 R5 结构化流式终态、知识库上传、历史反馈与双翼登录动效）。
+- **检索与分块**：默认分块 `420/80`；默认检索 `Dense + BM25 + RRF`；默认 reranker 为 `heuristic`（已具备默认关闭的 NVIDIA hosted reranker adapter 与 fallback 归因）。
+- **评测体系**：Python 离线/在线评测与门禁工具链（`scripts/`，336 项单测 GREEN）；默认开发评测集为版本化 150 条 `rag-eval-dev-v2`（兼容 30 条 `v1`）。
 
-## 当前代码事实
+## 3. 已接受能力与当前边界矩阵
 
-- 后端是 Java 17 + Spring Boot 3.2.1 Maven 多模块。
-- 前端是 Vue 3 + TypeScript + Vite + Element Plus。
-- 默认向量库是 Milvus；另有 Qdrant、Elasticsearch adapter。
-- 默认检索是 dense vector + BM25 + RRF。
-- 默认 reranker 仍是 heuristic；除既有通用 HTTP model adapter 外，C6 已实现默认关闭的 NVIDIA ranking adapter、整样本 heuristic fallback 与逐次 requested/effective provider 归因。C7 已在固定 30 条开发样本上完成 clean `R=3,W=3` A/B：NVIDIA Recall@5/MRR/Top1 为 76.47%/0.8241/100%，相对 heuristic 提升 7.84pp/0.0895/3.70pp；该 evidence 已获用户验收并接受进 `evaluation` baseline，不自动修改默认 provider。
-- 默认分块为 `420/80`。
-- 同步问答返回答案、contexts、citations、metadata；SSE 当前主要输出文本 chunk。
-- 当前默认评测 release 是已验收的 150 条 `rag-eval-dev-v2`（30 条 immutable seed + 120 条新增），具备 quota、grounding、duplicate 与 review sidecar 门禁；30 条 v1 仍可显式复现。两者都不是生产数据集或隐藏 benchmark。
-- `c3-integration` Maven/Failsafe 入口可用隔离 MySQL、Redis、etcd、MinIO、Milvus 和 test-scope 确定性 embedding 重复验证登录、上传、索引、retrieval 与删除主链路。
-- LLM、Redis 与默认 Milvus 的故障语义已分别被测试锁定；Milvus dense route 仅在关键词证据可用时显式降级，mutation outcome unknown、删除和统计均不伪造成功。
-- 文档索引已具备 C5a durable input、MySQL durable task ledger 与 C5 恢复债务收口实现：新任务使用稳定 taskId、phase checkpoint 与 deterministic chunk/vector IDs；Redis 是可重建状态投影。legacy 无 ledger 只隔离不合成任务；协调器使用有界 concurrency、持续 heartbeat、DB-time backoff 与 attempt 终态；SQL finalize 以 document row lock 和单一事务保证 chunks/document count/task completion 幂等。provider auto resume 默认继续关闭；相关契约已接受进 `rag-system` baseline，change 已归档。
-- C6 rerank diagnostics 已通过显式 outcome 合入 `RetrievalResult`，同步问答 metadata、debug retrieval 与 Python eval details/report 可区分 requested/effective provider、fallback taxonomy、model calls、候选覆盖与延迟；不记录 query/passages/raw body/凭据。
-- C6 的 4 个 requirements / 11 个 scenarios 已接受进 `rag-system` baseline 并归档；归档后用户独立授权的 1 次纯合成 NVIDIA hosted rerank smoke 已通过，无重试且未使用知识库/用户数据。该结果只确认当前 endpoint/auth/protocol 可用，不替代 C7 的固定身份收益 A/B。
-- C7 full 六个 measured runs 的 strict identity、pairing 与 provider coverage 已通过，comparison=`COMPARABLE`；model 90/90 effective nvidia、fallback=0、coverage=100%。Server-side rerank P50/P95 为 363/688ms；overall latency 受 H1 冷启动异常影响，不能据 aggregate P95 宣称模型更快。
-- C8a 已验收归档：首个 `rag-eval-dev-v1` dataset manifest、`rag-eval-sample-v1` contract 和两个 runner 共用的本地 fail-fast validator 已落地；正式路径固定当前 30 条 question set 与 3 份 fixture，custom 输入只能显式降级为 `UNVERSIONED`。4 个 requirements / 13 个 scenarios 已接受进 `evaluation` baseline。
-- C8b 已验收归档：默认与显式 v2 manifest byte-identical，固定 150 条 exact quota、v1 seed raw/object/order identity、103 条新增 answerable 的 242 个 fixture contexts、150 条 review records 与三份 fixture coverage 49/43/44；4 requirements / 12 scenarios 已接受进 `evaluation` baseline。
-- C9a 已验收归档：direct runner 使用固定 `claim-lexical-v1` 将成功 answerable 输出按句子/列表拆分，并只对 provenance-valid returned citation snippets 做 exact 或 `0.70` claim-token coverage；逐 claim attribution、aggregate support rate 与 `COMPLETE/PARTIAL/SKIPPED/NOT_APPLICABLE` 局部状态已接入 direct/reproducible report/metadata。4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline；真实 150 条 generation evidence 尚未授权和执行。
-- C9b 已验收归档：normal/calibration runner 共用版本化 `rag-judge-v1` contract 与 strict parser；独立 `judge-calibration-v1` 固定 24 条四象限人工 gold case；normal eval 分离 objective/judge/global status 与 per-channel comparison safety。4 requirements / 12 scenarios 已接受进 `evaluation` baseline；live calibration 未授权并按 `SKIPPED` 收口，不能声称已有真实 judge agreement 或生产 faithfulness 结论。
-- C10 已验收归档：新增 `rag-quality-gate-profile-v1`、独立离线 evaluator、固定切片、hard/reference AND、fail-closed completeness、脱敏 summary 与 `PASS/FAIL/NOT_EVALUABLE/INVALID=0/3/4/2`。4 requirements / 12 scenarios 已接受进 `evaluation` baseline；reference calls 未授权并按 `SKIPPED` 收口，首个 v2 retrieval profile 仍为 `DRAFT`，不能声称 active quality gate 或项目质量达标。
-- C11 已验收归档：基于 Spring Boot 3.2.1 BOM 管理的 OTel 1.31 API/SDK 建立默认关闭、fail-open 的进程内 GenAI tracing core；ingest/ask 使用分离 trace，以稳定 `ingestTaskId/documentId/chunkId` lineage 关联，覆盖同步/流式终态、W3C/custom context、MDC bridge 与隐私白名单。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；runtime 不含 network exporter，真实 provider/exporter 调用与数据出站为 0。
-- C12 已验收归档：在 C11 contract 上增加相互独立且默认关闭的 tracing/metrics/export 开关、OTLP gRPC fail-open export 与低基数 operation/stage/provider/fallback/token metrics；本机 reference stack 固定 Collector/Tempo/Prometheus/Grafana 版本，实行关键 trace 全保留、普通成功 trace 10% tail sampling、metrics 不采样、72h/7d retention、localhost 端口边界与 Grafana 认证。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；synthetic 闭环不包含真实业务 provider 或 SaaS 调用。
-- C13a 已验收归档：V10 创建唯一 `legacy-default` tenant，并为所有既有 user/knowledge-base 原地回填非空 tenant identity；数据库认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity(userId, tenantId)` 只使用服务端身份事实，旧无 tenant claim token fail closed。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；该结果只证明 tenant model/context readiness，不证明跨租户隔离。
-- C13b 已验收归档：SQL/API/permission、task/cache/history/feedback、RAG/keyword、Milvus tenant adapter contract，以及默认关闭的 tenant-aware shadow collection/readiness 维护路径已形成指定测试证据。6 requirements / 18 scenarios 已接受进 `rag-system` baseline；真实 Milvus 迁移/切换未授权并 `SKIPPED`，全仓 Maven 仍因既有 OTel collector 时序断言保持非 GREEN。
-- C14 已验收归档：固定 `tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上完成 26/26 required cases，functional/content/error/timing 四通道与 global report 均为 `PASS`。`evaluation` 5 requirements / 15 scenarios 与 `rag-system` 2 requirements / 6 scenarios 已接受进 baseline；provider calls=0、真实 Milvus maintenance=`SKIPPED`。
-- C15 已验收归档：完成 default-off/local-only/sessionless `/mcp`、三种 tenant-scoped Resources、四个固定只读 Tools、严格输入/输出与运行上限。Git HEAD `45959672` 的 clean-HEAD profile、独立 Java SDK client、适用官方 conformance generic scenarios 与双 tenant synthetic side-effect integration 均通过；7 requirements / 26 scenarios 已接受进 `rag-system` baseline，不能描述为 production MCP/OAuth 或真实 provider 已验证。
-- C16 已验收归档：实现 default-off `fact-intent-v1`、closed-world `fact-v1`、`evidence-no-answer-v1`、跨 stage budget/usage、sync/SSE/MCP attribution，以及独立 `bounded-query-router-eval-v1` validator/evaluator。5 requirements / 17 scenarios 已接受进 `rag-system` baseline，4 requirements / 12 scenarios 已接受进 `evaluation` baseline；deterministic 主证据为零 provider 调用/零业务数据出站，live router ask/eval 仍为 `SKIPPED`。
+| 领域 | 已确认能力（Confirmed） | 当前边界与未闭环债务（Partial / Default-Off / Planned） |
+| :--- | :--- | :--- |
+| **认证与多租户 (C1, C13–C14)** | 数据库认证、服务端不可变 `RequestIdentity(userId, tenantId)`、26-case 合成双租户隔离矩阵 PASS | 仅证合成矩阵与 Milvus 路径；开发态 JWT fallback、真实 Milvus shadow 切换与第二业务租户见 [技术债](../docs/roadmap/technical-debt.md) |
+| **持久化索引与故障语义 (C3–C5)** | 确定性 chunk/vector ID、MySQL task ledger、心跳恢复与事务幂等 finalize；LLM/Redis/Milvus 显式故障降级 | 进程中断与长时 outage 恢复演练仍需持续进行；provider auto resume 默认关闭 |
+| **评测与质量门禁 (C6–C10, C17–C20)** | **C17 Retrieval Gate 已 `ACTIVE`**（Recall@5=47.44% 防退化）；C18 单轮 full150 生成基线、C19 校准工具链、C20 DRAFT profile 与三轮 intake 编译器已归档 | C19 完整 24×3 Judge Live、C20 三轮独立 full150 参考证据及阈值激活仍为未闭环 P1 债务（`W1-E1~E3`）；当前源码相对旧 C18 冻结审计存在预期 `budget_source_drift` |
+| **可观测性 (C11–C12)** | 默认关闭的进程内 GenAI tracing core、单机 OTel Collector/Tempo/Prometheus/Grafana 参考栈 | 全仓并发下 `GenAiTracingConfigurationTest` 偶发时序抖动（W0 债务）；生产 HA/容量/SLA 未验证 |
+| **只读 MCP 与有界路由 (C15–C16, C21)** | 默认关闭的本机 sessionless `/mcp`（3 Resources / 4 Tools）；默认关闭的 `fact-v1` 路由与 `evidence-no-answer-v1`；SSE `structured-v1` 终态契约 | MCP 2026-07-28 迁移与远程 OAuth 未开始；Wave 2 高级路由（`multi-hop / compare / temporal / global / high-risk`）尚未启动 |
 
-## 当前边界
+## 4. 长期规格与参考入口
 
-- 不是生产级多租户系统。C13b 已实现指定数据面的服务端 enforcement；Qdrant/Elasticsearch 在 enforcement mode 下仍 fail startup，C17 固定评测 KB 已完成真实 shadow/model-bound rebuild 与 readiness 切换，其他业务 KB 不在本次验证范围。
-- 登录与 refresh 已使用数据库用户、tenant identity、状态和角色；bootstrap 默认关闭，运行时不提供固定默认账号，客户端不能通过 header/query/body/metadata 选择 tenant。
-- LLM judge 默认关闭；C9b 已接受的是离线校准工具、静态 corpus 与状态语义，尚无 live provider evidence，不能声称 judge 已真实校准或逐 claim faithfulness 已成立。
-- C10 最初接受离线门禁 contract/evaluator；C17 已补齐正式 v2 reference、用户批准的阈值与 ACTIVE profile，只支持固定开发态 retrieval 回归。
-- C7 真实 model reranker A/B 已验收归档；默认 provider 继续保持 heuristic。标题感知长块专项仍未完成。C12 已完成默认关闭的单机 reference observability 闭环，但生产 HA、容量、合规 retention、租户观测权限、跨主机传输、通知与 SLA 仍未完成。
-- C14 已验收归档，但结果只支持 Milvus 配置和固定 synthetic attack matrix；不构成生产级多租户、全 adapter、真实迁移或所有 timing side-channel 证明，也不自动开放生产第二业务 tenant、tenant management、C15 MCP 或 C16 Router。
-- C15 已归档但继续默认关闭，证据仍只来自本机 synthetic fixture；远程暴露、TLS/proxy trust、MCP OAuth Authorization Profile、真实 provider/model smoke、Qdrant/Elasticsearch、生产第二业务 tenant 和 C16 Router 均不在已证范围。
-- C16 生产默认仍关闭；当前实现只支持单轮事实型 `fact-v1`，非 fact/ambiguous/invalid fail closed。真实 provider 质量、multi-hop/global/high-risk strategy、生产 SLA、默认开启与 Agentic RAG 均未验证或不在本 change 范围。
-
-## 长期规格
-
-- `openspec/specs/rag-system/spec.md`
-- `openspec/specs/evaluation/spec.md`
-- `openspec/specs/agent-collaboration/spec.md`
-
-## 参考事实源
-
-- `docs/architecture/overview.md`
-- `docs/roadmap/technical-debt.md`
-- `docs/optimization/README.md`
-- `docs/eval/RAG_EVAL_GUIDE.md`
-
-如果参考文档与当前代码或 accepted spec 冲突，先记录差异并请示，不得自行选择对自己实现最方便的版本。
-
-## 2026-09-10 C17 已验收归档
-
-用户批准完整审阅包中的12项hard floor/tolerance及归档。canonical profile 已为 `v1 / ACTIVE / APPROVED`，locked median reference 绑定最终profile SHA-256。固定v2/150×3 reference为450/450、COMPLETE；原始六文件哈希复核通过，三轮离线重放各12/12 required rules PASS。缺样本、身份漂移、错误分别NOT_EVALUABLE/4；完整质量退化FAIL/3。244项Python tests通过。
-
-本次激活/验收backend/provider calls=0、业务数据出站=0；来源仍是2026-09-08 HEAD `082b030` 的c17g3热embedding缓存检索，不能作为冷缓存性能基准。Recall@5=47.44%、MRR=0.52615、Top1=92.31%；只建立固定开发态retrieval回归门禁，不证明generation/citation/no-answer回答质量/judge、生产SLA或Agentic RAG。固定评测KB的真实模型重建/强读回/CAS已完成，其他业务KB迁移及失败generation/source清理不在验收范围。Docker socket复发根因仍未证实。
-
-证据：`docs/eval/references/c17-activation-approval-v1.json`、`c17-retrieval-reference-active-v1.json`、`rag-eval-dev-v2-retrieval-reference-v1.json`、三份`c17-replay-run*-v1.json`。历史DRAFT review/full执行摘要保留原样；它们记录激活前状态，不能覆盖本次已批准状态。
+- **Baseline Specs**：[`rag-system`](specs/rag-system/spec.md)、[`evaluation`](specs/evaluation/spec.md)、[`agent-collaboration`](specs/agent-collaboration/spec.md)
+- **协作与避坑**：[`AGENTS.md`](../AGENTS.md)、[`.ai/ACTIVE_TASK.md`](../.ai/ACTIVE_TASK.md)、[`.ai/GOTCHAS.md`](../.ai/GOTCHAS.md)、[`.ai/AGENT_LOG.md`](../.ai/AGENT_LOG.md)
+- **架构与路线**：[`docs/architecture/overview.md`](../docs/architecture/overview.md)、[`docs/roadmap/iteration-blueprint.md`](../docs/roadmap/iteration-blueprint.md)、[`docs/roadmap/technical-debt.md`](../docs/roadmap/technical-debt.md)、[`docs/eval/RAG_EVAL_GUIDE.md`](../docs/eval/RAG_EVAL_GUIDE.md)
