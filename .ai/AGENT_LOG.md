@@ -3798,3 +3798,7 @@
 - 本地验证：C19 canary/full --c19-manifest --plan-only均exit0，VALID corpus、估计4/72、actualProviderCalls=0/businessDataOutbound=false；C20空输入intake exit4/INCOMPLETE/NOT_EVALUABLE/activationEligible=false；历史C18 details的C20 review exit4/NOT_EVALUABLE、retry_count_exceeded、activationPerformed=false。所有结果仅本地校验，不代表provider已核验或新运行获授权，输出不回写原件。
 - 复用：HEAD3f02225同一源码/相关环境的全Python336 tests / OK（0 failure/error/skip、28.800s）；本次未改Python/Java/前端/配置/依赖或运行环境，不因归档重复全套验证。跳过Maven/前端正式build/浏览器/Live，原因是仅契约文档与治理归档且外部调用未授权。OpenSpec CLI不可用，采用delta精确匹配/结构/状态/链接/历史保全/Git检查，不称官方validate。
 - 范围检查：baseline与AGENT_LOG原文前缀保全，历史reports/config、scripts、生产模块、数据集/fixture和既有archive无改动，DRAFT与三个P1锚点检查通过；git diff --check通过，增量未发现凭据格式。此前结构核查把changes/README.md误算成活动目录，改为仅统计目录后核查通过，未删除README。受限会话写ACTIVE_TASK被拒后使用获批的仓库内写操作完成；没有修改ACL、受保护本地配置或凭据。准备精确暂存/本地提交；本次新增backend/provider/embedding/rerank/ask/judge调用0、业务数据出站0，无push/PR/部署。剩余风险为W1-E1/E2/E3及原前端/生产债务，不以归档关闭这些证据目标。
+
+## 2026-10-21 · Wave 1归档执行提交补录
+
+- 上一执行提交：`2536fb52d569ebec55b0764bff83986546c38756`，`docs(评测): 验收归档C19C20离线工具链并收口Wave1`。本条仅补录上一执行提交，不递归记录补录提交自身hash。
