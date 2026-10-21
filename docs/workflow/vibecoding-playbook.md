@@ -14,9 +14,9 @@
 标准闭环分六步，**写操作严格串行（WIP = 1），只读调研允许 Subagent 并发**：
 
 - **① 开工前置**：确认工作区干净、记录当前 commit hash（或打轻量 tag，如 `pre-W2-1`）作为回滚锚点；读取 `.ai/ACTIVE_TASK.md` 与 `.ai/GOTCHAS.md`。工具链不明时先跑本地 `Preflight`。
-- **② 事前闸门（关键加固）**：先输出"执行计划 / 待改清单"（碰哪些文件、改成什么、影响面），并明确本轮是 `Agent 提交` 还是 `用户手动提交`，经确认后才允许改代码。Type C 的事前闸门天然是 `proposal/design`（含三行式 `## 决策记录`）。跨模块探路可派生只读 Subagent 并发检索，主会话只收精炼结论。
+- **② 事前闸门（关键加固）**：先输出 **`### 💡 30秒人话导读`**（用日常比喻讲透“为什么卡住/要改什么/怎么改”），再输出"执行计划 / 待改清单"（碰哪些文件、改成什么、影响面），并明确本轮是 `Agent 提交` 还是 `用户手动提交`，经确认后才允许改代码。Type C 的事前闸门天然是 `proposal/design`（顶部含人话主旨，末尾含场景化三问 `## 决策记录`）。跨模块探路可派生只读 Subagent 并发检索，主会话只收精炼结论。
 - **③ 执行**：按已确认的计划改代码，Type C 直接在 `openspec/changes/<id>/tasks.md` 勾选进度（不在多处文档重复抄写进度）。
-- **④ 门禁与日志定额写入**：跑对应测试与 `scripts/run_local_quality_gates.ps1 -Mode DocAndScope`；在 `.ai/AGENT_LOG.md` 按 **6 行定额制** 追加本轮记录（若发现反直觉新坑，同步提炼 1～2 行入 `.ai/GOTCHAS.md`）。
+- **④ 门禁与日志定额写入**：跑对应测试与 `scripts/run_local_quality_gates.ps1 -Mode DocAndScope`；在 `.ai/AGENT_LOG.md` 按 **6 行定额制** 追加本轮通透人话记录（若发现反直觉新坑，同步提炼 1～2 行入 `.ai/GOTCHAS.md`）。
 - **⑤ 人工审 diff**：检查 `git diff` 是否超出既定边界。
 - **⑥ 同次定版提交（零补录）**：Type C 验收后归档 change + spec delta 合入 baseline + `ACTIVE_TASK.md` 回 `IDLE`；按事前约定的提交责任将代码/文档与 `AGENT_LOG.md` 在**同一个中文 commit** 中提交（不再写 `Commit: pending`，也不再打后续的 hash 补录 commit）。
 
@@ -26,11 +26,15 @@
 - **Type B（小范围维护）**：局部修复、测试隔离、构建修复、治理微调。不建 change 目录、不写 `proposal.md`，完成后通过 `DocAndScope` 门禁并在 `AGENT_LOG.md` 追加一条 6 行定额记录，同次提交。
 - **Type C（重大变更）**：涉及接口/权限/持久化/状态机/spec 语义/评测门禁口径。必须走完整 OpenSpec 生命周期：建 `openspec/changes/<id>/`（`proposal/design/tasks/spec delta`）、置 `ACTIVE_TASK.md` 为 `ACTIVE`、完成经确认后归档、spec delta 合入 baseline。
 
-## 3. 八条加固纪律
+## 3. 九条加固纪律
 
 ### 3.1 事前闸门：先出计划，确认后再动手
 
 在写任何代码前，先产出可审查的计划物（Type B 是"待改清单"，Type C 是 `proposal/design`）。把关重点是"方向对不对、边界有没有越"，计划未确认禁止改代码。
+
+### 3.2 费曼人话沟通：强制 `💡 30秒人话导读`，严禁电报黑话
+
+Agent 在每次【事前闸门】、【完成汇报】及 `design.md` 开头，必须先写一节 **`### 💡 30秒人话导读`**，用完整句子和生活化比喻（如"秒表定太短"、"阅卷老师断网不能拿半截成绩算总分"）讲透：① 原来哪儿蠢/哪儿卡了、② 这次动手的核心逻辑是什么、③ 改完有什么直观变化。`design.md` 的决策记录与 `AGENT_LOG.md` 严禁写成删掉主谓宾的"机器电报体"（正反例见 [`design-decision-record.md`](prompt-snippets/design-decision-record.md)）。
 
 ### 3.2 git 锚点：每个 change 开工前建立可回滚点
 
