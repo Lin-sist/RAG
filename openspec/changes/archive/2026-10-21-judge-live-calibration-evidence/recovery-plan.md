@@ -1,8 +1,8 @@
 # C19 full超时后的恢复审阅包
 
-最新状态：2026-10-18最后一轮独立full24次尝试/23有效/1network error/48未调用，零重试，compiler INCOMPLETE。按用户明确条件指令保留结果并停放C19 live任务，不再补跑或重复申请外调，推进C20零外调实现；本change未完成、不归档。最新[安全review](../../../docs/eval/reports/c19-final-full-review-v1.json)，下方为各阶段历史事实，新run授权0。
+最新状态：2026-10-18最后一轮独立full24次尝试/23有效/1network error/48未调用，零重试，compiler INCOMPLETE。按用户明确条件指令保留结果并停放C19 live任务，不再补跑或重复申请外调，推进C20零外调实现；本change未完成、不归档。最新[安全review](../../../../docs/eval/reports/c19-final-full-review-v1.json)，下方为各阶段历史事实，新run授权0。
 
-2026-10-18。Report status：`FINAL_FULL_AUTHORIZED_PENDING_RUN`。用户授权最后一次同120秒配置独立full最多72次，当前实际0；此前59次尝试/57个HTTP200保留，新run不拼接旧结果。若再次首错停止，不再请求重复外调，按用户授权保留未完成C19并推进C20零外调切片。最新计划见[最后一次计划](../../../docs/eval/reports/c19-final-full-timeout120-plan-v1.json)，以下记录此前执行事实。
+2026-10-18。Report status：`FINAL_FULL_AUTHORIZED_PENDING_RUN`。用户授权最后一次同120秒配置独立full最多72次，当前实际0；此前59次尝试/57个HTTP200保留，新run不拼接旧结果。若再次首错停止，不再请求重复外调，按用户授权保留未完成C19并推进C20零外调切片。最新计划见[最后一次计划](../../../../docs/eval/reports/c19-final-full-timeout120-plan-v1.json)，以下记录此前执行事实。
 
 ## 已保存的事实
 
@@ -10,7 +10,7 @@
 - 失败为`cal-ff-rt-02 / repeat3`，elapsed60265ms、未记录HTTP状态。同case的repeat1/2分别HTTP200、7375/8390ms。根因仍未知，不能仅据此归因网络、provider排队或数据。
 - compiler=`INCOMPLETE`、calibration=`PARTIAL`，coverage=41/72；agreement/repeat率均N/A。errorObservationCount31含1次实际timeout和30个missing，不是31次provider失败。
 - 有若干已完成三轮的case出现预测变化；因整轮不完整，不产生总体一致性或agreement结论。延长timeout也不会被描述为解决judge质量问题。
-- 原始证据完整保留ignored，独立重编译与原摘要一致；见[full安全review](../../../docs/eval/reports/c19-full-review-v1.json)。timeout的上游完成/费用未知，不保证provider已取消或零费用。
+- 原始证据完整保留ignored，独立重编译与原摘要一致；见[full安全review](../../../../docs/eval/reports/c19-full-review-v1.json)。timeout的上游完成/费用未知，不保证provider已取消或零费用。
 
 ## 可审阅的恢复选择
 
@@ -24,8 +24,8 @@
 
 ## 已选择的120秒独立配置
 
-- 原默认[60秒manifest](../../../docs/eval/config/c19-judge-calibration-v1.json)保留，canonical hash `486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a`。
-- 新增独立[120秒候选](../../../docs/eval/config/c19-judge-calibration-timeout120-v1.json)，沿用v1格式/schema而非更改评分契约，canonical hash `2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea`。逐对象比对只有`judge.timeoutSeconds:60→120`，原件未改。
+- 原默认[60秒manifest](../../../../docs/eval/config/c19-judge-calibration-v1.json)保留，canonical hash `486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a`。
+- 新增独立[120秒候选](../../../../docs/eval/config/c19-judge-calibration-timeout120-v1.json)，沿用v1格式/schema而非更改评分契约，canonical hash `2c1ac168c87df1e85e42508b7608f2d6d2772fac76a7554ebfefe769b4cae3ea`。逐对象比对只有`judge.timeoutSeconds:60→120`，原件未改。
 - 候选调用必须显式指定该manifest及`--judge-timeout 120`；默认执行入口仍为60秒。纯本地validator/plan-only通过，canary预算4/实际0；121秒被现有validator拒绝，无新增依赖或执行源码修改。
 - 本次只执行NVIDIA NIM / `nvidia/nemotron-3-super-120b-a12b`的固定4条canary，向integrate.api.nvidia.com发送合计3308bytes合成请求体；timeout120s、temperature0、max_tokens1024、context6000、间隔至少2s、retry0、首错停止。数据仅tracked合成问题/答案/fixture及system prompt，金标/ID/用户数据不出站；凭据只读进入进程，源文件/日志不写值。
 - 费用依据仍为用户确认免费额度，具体账单/配额未独立核验；新请求继续消耗额度。先4条不含后续72次授权，不变更生产默认配置、metric或C20门禁。

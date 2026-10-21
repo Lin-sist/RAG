@@ -1233,3 +1233,135 @@ C18 generation failure responses SHALL preserve completed retrieval diagnostics,
 ## 2026-09-22 Failure-safe compiler contract
 
 A provider failure MAY yield a sample with errors and attempt facts but no `askRawResponse`. Compiler v6 and later SHALL classify this evidence as INCOMPLETE with stable safe reasons and SHALL NOT crash, invent an observed model or promote a partial run. Structurally malformed or identity-tampered raw evidence remains INVALID or NOT_COMPARABLE under the existing rules. This compiler-only revision MUST NOT change provider/model, retry policy, budgets, samples, prompts or runtime behavior.
+
+### Requirement: C19 Frozen Calibration Execution Identity
+
+C19 SHALL bind the accepted calibration corpus, ordered case/repeat selection, shared judge contract, canonical credential-free endpoint host/port/path, provider/model, temperature, timeout, output/context limits, zero-retry policy, audited source hashes and clean Git HEAD before live execution. Local plan/preflight MUST make zero backend/provider calls. Missing model or invalid identity MUST block live readiness without exposing rejected configuration.
+
+#### Scenario: Local plan without a selected model
+- GIVEN corpus and budget validate but the live judge model is not selected
+- WHEN C19 local readiness runs
+- THEN it reports the 4/72 planned budgets and blocks live execution with zero outbound requests
+
+#### Scenario: Endpoint or source identity drifts
+- GIVEN a frozen approved execution identity
+- WHEN endpoint path, source hash, runtime setting or case/repeat order differs
+- THEN execution or compilation fails closed without using the observations as comparable calibration evidence
+
+### Requirement: C19 Bounded Durable Judge Attempts
+
+C19 SHALL use a fixed four-case one-repeat canary and a separate 24-case three-repeat full with independent authorization, at most 4 and 72 judge POST attempts, respectively. It MUST reserve budget before every request, persist attempt start/outcome in an exclusive no-overwrite local run directory, use zero automatic retries and stop after the first failed observation. It MUST NOT follow redirects to another provider, resume ambiguous calls or splice successful observations from different runs. Gold labels MUST NOT enter provider payloads.
+
+#### Scenario: A request would exceed the approved budget
+- GIVEN the current stage has exhausted its attempt allowance
+- WHEN another request is prepared
+- THEN it is rejected before the network boundary and no additional provider request occurs
+
+#### Scenario: Failure or interruption during a run
+- GIVEN attempts have already been persisted
+- WHEN one observation fails or execution stops before its outcome is known
+- THEN existing evidence is retained without overwrite, unattempted observations stay missing, and unknown outcomes are not silently replayed
+
+### Requirement: C19 Independently Compiled Safe Evidence
+
+C19 SHALL recompute calibration coverage and quality diagnostics from validated case/repeat observations and attempt evidence, rather than trusting a supplied summary. Missing, invalid, duplicate, unexpected or identity-mismatched observations MUST suppress comparable agreement and repeat-consistency rate conclusions. Complete valid evidence with low agreement SHALL remain measurement-complete. Tracked summaries MUST contain only safe identities, hashes, IDs, counts, statuses and aggregate metrics; raw text, provider reason/body, credentials and absolute local paths MUST remain excluded. C19 MUST NOT activate C20 gates or modify accepted thresholds or production behavior.
+
+#### Scenario: A full repeat is missing
+- GIVEN full calibration expects 72 observations and one is absent
+- WHEN the compiler evaluates the run
+- THEN coverage and missing counts remain visible and agreement/repeat rates are unavailable rather than calculated from a successful subset
+
+#### Scenario: Complete measurement has low agreement
+- GIVEN all expected observations, attempts and identities are valid
+- WHEN the measured agreement is low
+- THEN evidence may be COMPLETE with the observed low values and no automatic threshold change or production release decision
+
+#### Scenario: Raw response contains private content
+- GIVEN local raw evidence contains a provider reason or answer text
+- WHEN the safe review summary is compiled
+- THEN that content is excluded and compilation performs no external calls
+
+### Requirement: C19 Offline Acceptance And Deferred Live Evidence
+
+C19 offline execution identity, bounded attempt/ledger tooling and safe evidence compilation MAY be accepted and archived independently of a complete live calibration run when the user explicitly approves that scope. Outstanding full live calibration SHALL remain an identified P1 evidence debt. Historical partial runs MUST retain their original status and MUST NOT become complete or comparable through archive acceptance. Any future live run SHALL require independently reviewed identity and authorization; archive acceptance grants no new provider calls.
+
+#### Scenario: User accepts the implemented offline scope
+- GIVEN offline contract/toolchain checks pass and the user explicitly accepts only that scope
+- WHEN C19 is archived
+- THEN accepted baseline contains the verified contracts and P1 debt retains the incomplete live calibration target
+- AND historical live evidence and unavailable agreement/repeat conclusions remain unchanged
+
+#### Scenario: Live calibration is resumed after archive
+- GIVEN the offline toolchain is archived but the P1 live evidence debt remains open
+- WHEN a future live run is proposed
+- THEN its identity and call budget require separate review and authorization without resuming or splicing old runs
+
+### Requirement: C20 Draft Objective Profile And Independent Judge Advisory
+
+C20 SHALL provide a native C10 DRAFT profile for full accepted dataset and generation/citation identity. Only objective SHALL be required; judge SHALL remain advisory. Numeric targets/tolerances SHALL be unset pending separate approval. DRAFT review MUST remain NOT_EVALUABLE/exit4, without activation or PASS. C19 incomplete calibration SHALL remain deferred rather than accepted as complete live calibration or spliced.
+
+#### Scenario: Objective complete and judge skipped
+- GIVEN compatible full objective evidence and skipped or partial judge
+- WHEN reviewed locally
+- THEN objective observations and denominators remain visible and judge advisory values are unavailable
+- AND judge does not downgrade objective completeness
+
+#### Scenario: Thresholds are not approved
+- GIVEN a DRAFT profile with unset targets
+- WHEN complete measurements exist
+- THEN review remains NOT_EVALUABLE/exit4 and never PASS
+
+### Requirement: C20 Existing Metric Reuse And Safe Local Review
+
+C20 SHALL reuse C9a counts and denominators for keyword, citation, claim and no-answer through the shared evaluator. Missing, malformed, negative or impossible counts MUST suppress comparable observations. Policy/activation status SHALL be distinguished from measurement completeness. Review MUST be local-only, allowlisted, exclusive no-overwrite and MUST NOT change historical evidence, production behavior or numeric thresholds.
+
+#### Scenario: Recovered retries exceed draft policy
+- GIVEN complete objective evidence with retries above the draft policy
+- WHEN reviewed
+- THEN observations may be shown with an explicit policy blocker and no gate approval
+
+#### Scenario: Identity or counts are invalid
+- GIVEN mismatched dataset/ordered selection/run identity or malformed counts
+- WHEN reviewed
+- THEN affected values are unavailable with fixed safe reasons and zero provider calls
+
+#### Scenario: Output exists or aliases input
+- GIVEN a prior output or input selected as output
+- WHEN the CLI writes
+- THEN it refuses without overwriting either artifact
+
+### Requirement: C20 Independent Repeat Intake And Threshold Review Packet
+
+C20 SHALL compile three independently identified full objective candidate repeats from local details/metadata under the DRAFT profile. Index/total, full ordered selection, metadata binding, clean source provenance, runtime/metric identities, distinct artifacts and the existing strict policy MUST be checked. Missing, duplicated, drifted or ineligible evidence MUST NOT produce a successful-subset distribution. Per-rule repeat slots and denominators SHALL remain visible with unavailable values null. Complete comparable repeats MAY expose minimum/median/maximum/spread and an unset target/tolerance worksheet, but MUST NOT approve thresholds, activate profiles or produce a gate PASS. Compilation SHALL perform zero provider calls and exclusive safe output only.
+
+#### Scenario: One historical run is supplied
+- GIVEN only one accepted historical run with total=1 or policy-incompatible retries
+- WHEN the reference intake runs
+- THEN it reports missing/ineligible repeat evidence with no quality distribution or activation
+
+#### Scenario: Three independent complete candidates exist
+- GIVEN repeat indexes 1/2/3, total3, compatible identity and complete policy-eligible observations
+- WHEN compiled locally
+- THEN all three values/denominators and deterministic distribution are shown FOR_REVIEW
+- AND targets/tolerances remain null, gateStatus NOT_EVALUABLE and exit4
+
+#### Scenario: Duplicate or drifted evidence is supplied
+- GIVEN a reused artifact/run timestamp or incompatible runtime identity
+- WHEN compiled
+- THEN status is NOT_COMPARABLE and no rule distribution is emitted
+
+### Requirement: C20 Draft Toolchain Acceptance Without Activation
+
+C20 DRAFT profile, local observation review and independent repeat intake MAY be accepted and archived when the user explicitly approves the implemented offline scope. Missing real reference repeats SHALL remain P1 evidence debt independently of threshold approval and activation debt. Archive acceptance MUST NOT change profile status, targets/tolerances, required channels, metric formulas, error policy or any historical artifact. DRAFT MUST remain NOT_EVALUABLE and MUST NOT yield PASS; judge SHALL remain advisory until separately calibrated and approved.
+
+#### Scenario: Offline DRAFT scope is accepted with missing reference evidence
+- GIVEN the DRAFT toolchain is verified and the user explicitly accepts that scope
+- WHEN C20 is archived
+- THEN real reference and threshold/activation gaps remain open as separately identified P1 debts
+- AND the profile remains DRAFT with unset targets/tolerances and no activation
+
+#### Scenario: Activation is considered after archive
+- GIVEN C20 is archived with an unactivated DRAFT profile
+- WHEN a future activation is proposed
+- THEN complete compatible reference evidence, explicit numeric approval, a new profile version and independent acceptance remain required
+- AND archive status alone never authorizes activation or provider calls

@@ -1,8 +1,8 @@
 # C19 full 执行包（2026-10-18）
 
-Report status：`FULL_INCOMPLETE_TIMEOUT`。本次在clean HEAD14efadc执行42次后按首错停止：41有效/HTTP200、1次timeout，余30未调用、retry0。compiler INCOMPLETE，完整agreement/repeat率N/A。原[full计划](../../../docs/eval/reports/c19-full-plan-v1.json)保留执行前授权状态，实际见[安全review](../../../docs/eval/reports/c19-full-review-v1.json)。新run未授权，见[恢复审阅包](recovery-plan.md)。
+Report status：`FULL_INCOMPLETE_TIMEOUT`。本次在clean HEAD14efadc执行42次后按首错停止：41有效/HTTP200、1次timeout，余30未调用、retry0。compiler INCOMPLETE，完整agreement/repeat率N/A。原[full计划](../../../../docs/eval/reports/c19-full-plan-v1.json)保留执行前授权状态，实际见[安全review](../../../../docs/eval/reports/c19-full-review-v1.json)。新run未授权，见[恢复审阅包](recovery-plan.md)。
 
-此页专属原60秒full，原状态保留。后续120秒canary4/4；用户恢复后独立120秒full尝试9次、8有效/1network error/63未调用，见[最新review](../../../docs/eval/reports/c19-full-timeout120-review-v1.json)。两轮full均INCOMPLETE，不拼接；原plan保留执行前快照，当前新run授权0。
+此页专属原60秒full，原状态保留。后续120秒canary4/4；用户恢复后独立120秒full尝试9次、8有效/1network error/63未调用，见[最新review](../../../../docs/eval/reports/c19-full-timeout120-review-v1.json)。两轮full均INCOMPLETE，不拼接；原plan保留执行前快照，当前新run授权0。
 
 ## 本轮执行约束与实际
 

@@ -1,5 +1,9 @@
 # Enterprise RAG QA System｜项目上下文
 
+## 2026-10-21 当前工程阶段
+
+Wave 1（C17–C21）已按各自明确接受范围全部归档，ACTIVE_TASK=IDLE。C19接受零外调离线工具链与执行契约，C20接受DRAFT profile/review/intake；完整Live校准、真实参考和数值批准/激活仍为[技术债P1/W1-E1/E2/E3](../docs/roadmap/technical-debt.md#w1-e1)。C20保持DRAFT/空阈值、judge仅辅助，无新增外调或质量达标声明，不自动启动W2。以下按日期保留既有代码事实及历史验收边界；较旧的未执行/未归档描述不覆盖本次工程范围收口。
+
 ## 项目身份
 
 - 企业知识库 RAG 问答工程原型。

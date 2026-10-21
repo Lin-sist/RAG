@@ -1,12 +1,14 @@
 # C19 事前 readiness（2026-10-18）
 
-最新状态覆盖下方历史准备记录：`LIVE_DEFERRED_BY_USER`。最后一轮24次尝试/23有效/1network error/48未调用、retry0、INCOMPLETE，正式率N/A，见[最终review](../../../docs/eval/reports/c19-final-full-review-v1.json)。累计83次尝试/80个HTTP200/1timeout/2network error，根因及失败远端结果/费用未知。凭据源未变、独立重编译一致；遵从用户条件授权不再外调，未完C19保留，转C20零外调切片，不接受/归档或改baseline。
+> 2026-10-21当前状态：用户已接受离线工具链与执行契约，按`ACCEPTED_OFFLINE_SCOPE_LIVE_DEFERRED`归档，见[验收](acceptance.md)。完整Live转P1/W1-E1；复用2026-10-20全Python336项通过，替代下方旧测试失败作为当前工程验证状态。下方“保持ACTIVE/不归档”和旧调用计数均为当时历史语境，最终Live状态仍以c19-final-full-review-v1.json为准，本次不修改报告。
+
+最新状态覆盖下方历史准备记录：`LIVE_DEFERRED_BY_USER`。最后一轮24次尝试/23有效/1network error/48未调用、retry0、INCOMPLETE，正式率N/A，见[最终review](../../../../docs/eval/reports/c19-final-full-review-v1.json)。累计83次尝试/80个HTTP200/1timeout/2network error，根因及失败远端结果/费用未知。凭据源未变、独立重编译一致；遵从用户条件授权不再外调，未完C19保留，转C20零外调切片，不接受/归档或改baseline。
 
 Report status：`FINAL_FULL_AUTHORIZED_PENDING_RUN`。用户授权最后一次独立full最多72次，原120秒manifest/模型/载荷/首错停止策略不变，实际0；旧证据保留。若再中断则不重跑，C19 live任务保留待后续，转C20零外调objective独立门禁/judge辅助实现。
 
 | 项目 | 分类 | 核查结果 |
 | --- | --- | --- |
-| 前端阶段 | confirmed（已接受范围） | [收口索引](../../../docs/roadmap/frontend-demo-closeout-2026-10-18.md)完成；原始archive/证据不动。 |
+| 前端阶段 | confirmed（已接受范围） | [收口索引](../../../../docs/roadmap/frontend-demo-closeout-2026-10-18.md)完成；原始archive/证据不动。 |
 | corpus / shared contract | confirmed | 24 cases，四象限各6；manifest SHA-256 `54c891c45ac682e38373bab293893d22695a938b7fc5ac9fa205c7f620dedb55`，prompt `d98612cdc4f6681e126d3e6fd4dac81f5d76d14ec4bd596e904fa4843999df80`。 |
 | canary / full 本地plan | confirmed（纯本地） | 4×1=4、24×3=72；validator=VALID；judge已冻结为用户提供的`nvidia/nemotron-3-super-120b-a12b`，不表示认证或live已获授权。 |
 | calibration 聚焦测试 | confirmed（synthetic） | `python -B -m unittest discover -s scripts -p 'test_judge_calibration.py'`，9/9通过。 |
@@ -32,7 +34,7 @@ Report status：`FINAL_FULL_AUTHORIZED_PENDING_RUN`。用户授权最后一次�
 
 - 最新模型准备：29/29通过；新增测试证明已选模型与clean源码只能得到本地READY，providerAuthentication=NOT_CHECKED。缺模型负例改用独立UNCONFIGURED测试副本，不依赖正式manifest为空。本次只改模型配置及测试，四个执行源码hash与e107b2c一致。
 - 模型配置提交前的本地preflight仅因`clean_frozen_source_required`为BLOCKED，原`model_not_selected`已消除；提交后只读复核实际clean HEAD。准备时仅检查变量名，当前环境未配置judge/NVIDIA凭据变量；未读取凭据值或后端私有配置，live前需本地配置。
-- 以下28/28、占位模型BLOCKED和合成CLI为首次离线实现时证据；原[offline report](../../../docs/eval/reports/c19-offline-readiness-v1.json)不改写。新的模型/预算/载荷摘要见[canary plan](../../../docs/eval/reports/c19-canary-plan-v1.json)。
+- 以下28/28、占位模型BLOCKED和合成CLI为首次离线实现时证据；原[offline report](../../../../docs/eval/reports/c19-offline-readiness-v1.json)不改写。新的模型/预算/载荷摘要见[canary plan](../../../../docs/eval/reports/c19-canary-plan-v1.json)。
 
 - `python -B -m unittest discover -s scripts -p 'test_*judge*.py'`：28/28通过，纯内存/合成transport。
 - C19 canary/full `--plan-only`退出0，计划4/72，实际调用0；`--preflight-only`退出4，reasons为`model_not_selected`、`clean_frozen_source_required`。未选模型和未提交工作区均不冒称live就绪。

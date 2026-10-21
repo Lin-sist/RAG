@@ -3783,3 +3783,18 @@
 - 正式C18预算CLI仍返回BLOCKED/budget_source_drift；未来当前源码的新live运行仍需独立审计/版本和授权，不通过更新旧hash放行。C19未补测，C20仍DRAFT，缺三轮参考/数值批准/激活验收；本轮backend/provider/embedding/rerank/ask/judge真实调用0、业务数据出站0。
 - 范围安全：生产Python/Java/前端、依赖、受保护本地配置、数据集、历史reports/config、accepted specs/archive均未改；本轮无新的提交授权，不沿用其他切片的提交权限。跳过Maven/前端正式build/浏览器和live评测，原因是仅测试夹具与说明改动且无相应生产变更；官方OpenSpec CLI未运行，本次Type B不改变spec。文件级链接、日志前缀及diff检查随收尾补记。剩余风险：受限沙箱的tmp写权限与当前源码不兼容旧C18审计仍是显式环境/执行边界。建议提交：`test(评测): 隔离C18审计夹具并修复临时目录重试阻塞`。
 - 收尾：9个允许文件（含2个新增测试支持文件）范围核对通过，新增1个本地链接存在，无新增旧路径；AGENT_LOG原文前缀保全、git diff --check通过，staged files=0。正式C18预算CLI实测exit2/BLOCKED/budget_source_drift；生产代码/数据/历史artifact/config、accepted specs/archive及ACTIVE_TASK均与HEAD一致。完整336项通过后仅追加说明/日志，未触发重复全套验证。
+
+## 2026-10-21 · 测试隔离维护提交补录
+
+- 上一执行提交：`3f02225de582846c488a47a257ef35e34d1eec62`，`test(评测): 隔离C18审计夹具并修复临时目录重试阻塞`。本轮开始main工作区干净，无待提交文件，不创建空提交；仅补录真实hash，不回改历史。
+
+## 2026-10-21 · C19/C20离线工程范围接受与Wave 1归档
+
+- Commit: pending。用户明确授权本地提交、按已完成零外调离线工具链/DRAFT契约正式验收归档C19/C20，并把完整Live/参考/阈值激活移交technical-debt P1；另授权清理两个已确认空壳目录。先更新proposal/design/spec接受边界（C19 D9、C20 D8），再迁移archive/baseline与导航。没有新增业务调用/阈值批准/门禁激活授权，不push/PR/发布/部署；验证及实际结果随收尾追加。
+- 完成：C19归档至`archive/2026-10-21-judge-live-calibration-evidence`，C20归档至`archive/2026-10-21-objective-judge-quality-gate-profile`；新增各自acceptance，proposal/design记录用户缩窄接受范围，tasks新增工程收口检查项并保留下方未完成Live/激活任务为历史移交记录，不勾成真实通过。4+4 requirements、9+10 scenarios逐字接受进evaluation baseline，原baseline前缀保全；ACTIVE_TASK恢复IDLE，Wave 1各阶段按已接受工程范围全员归档，不自动推进W2。
+- 证据移交：technical-debt P1/W1-E1=完整24×3 judge Live，W1-E2=三轮独立full150真实参考，W1-E3=逐规则数值/容差批准、新version/locked reference/激活及judge升级required。保留C19最终24尝试/23有效/1network error/48未调用与累计83尝试/80 HTTP200的事实；C20 profile仍DRAFT/空阈值/7 objective required+3 judge advisory，intake仍INCOMPLETE/NOT_EVALUABLE，历史报告/config及生产源码未变。
+- 导航同步：project、迭代蓝图、评测指南、前端接入总说明/收口索引与technical-debt改用archive入口并明确工程/真实证据边界；原C17/C18/C21及其他archive不改。C19/C20归档文件内部相对链接按新目录层级更新，152个受影响本地链接均存在，无旧活动change路径；日志历史链接/原文不回写。
+- 空目录清理：执行前验证两个指定绝对路径均位于仓库openspec/changes内，无文件/隐藏文件/重解析点，且仅含specs与specs/rag-system；仅使用自底向上的空目录rmdir删除`frontend-demo-experience-alignment`、`frontend-chat-source-alignment`。原正式前端archive保留。完成后changes仅有archive目录与既有README.md，无其他活动变更。
+- 本地验证：C19 canary/full --c19-manifest --plan-only均exit0，VALID corpus、估计4/72、actualProviderCalls=0/businessDataOutbound=false；C20空输入intake exit4/INCOMPLETE/NOT_EVALUABLE/activationEligible=false；历史C18 details的C20 review exit4/NOT_EVALUABLE、retry_count_exceeded、activationPerformed=false。所有结果仅本地校验，不代表provider已核验或新运行获授权，输出不回写原件。
+- 复用：HEAD3f02225同一源码/相关环境的全Python336 tests / OK（0 failure/error/skip、28.800s）；本次未改Python/Java/前端/配置/依赖或运行环境，不因归档重复全套验证。跳过Maven/前端正式build/浏览器/Live，原因是仅契约文档与治理归档且外部调用未授权。OpenSpec CLI不可用，采用delta精确匹配/结构/状态/链接/历史保全/Git检查，不称官方validate。
+- 范围检查：baseline与AGENT_LOG原文前缀保全，历史reports/config、scripts、生产模块、数据集/fixture和既有archive无改动，DRAFT与三个P1锚点检查通过；git diff --check通过，增量未发现凭据格式。此前结构核查把changes/README.md误算成活动目录，改为仅统计目录后核查通过，未删除README。受限会话写ACTIVE_TASK被拒后使用获批的仓库内写操作完成；没有修改ACL、受保护本地配置或凭据。准备精确暂存/本地提交；本次新增backend/provider/embedding/rerank/ask/judge调用0、业务数据出站0，无push/PR/部署。剩余风险为W1-E1/E2/E3及原前端/生产债务，不以归档关闭这些证据目标。

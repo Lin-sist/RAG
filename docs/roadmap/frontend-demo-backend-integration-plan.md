@@ -1,6 +1,6 @@
 # 前端 Demo 接入总说明与分阶段推进规划
 
-> 2026-10-18最终阶段状态：`ACCEPTED_WITH_TRACKED_DEBT`。用户确认接入工程完成并授权归档；各Type C切片均已归档，F1/F6为Type B，已补[整体收口索引](frontend-demo-closeout-2026-10-18.md)。下方历史快照按当时日期理解；10:36用户流式成功单例已补[诊断证据](frontend-stream-failure-diagnosis-2026-10-18.md)，原失败根因及完整真实链条等债务保留。[C19](../../openspec/changes/judge-live-calibration-evidence/proposal.md)已获具体设计批准并完成零外调实现，保持ACTIVE；不表示judge调用获授权或C19/C20已完成。
+> 2026-10-18最终阶段状态：`ACCEPTED_WITH_TRACKED_DEBT`。用户确认接入工程完成并授权归档；各Type C切片均已归档，F1/F6为Type B，已补[整体收口索引](frontend-demo-closeout-2026-10-18.md)。下方历史快照按当时日期理解；10:36用户流式成功单例已补[诊断证据](frontend-stream-failure-diagnosis-2026-10-18.md)，原失败根因及完整真实链条等债务保留。[C19](../../openspec/changes/archive/2026-10-21-judge-live-calibration-evidence/proposal.md)已按零外调离线工具链接受归档，C20 DRAFT工具链同日接受；完整Live/参考/阈值激活移交P1证据债务，当前IDLE，不表示judge校准或质量门禁激活完成。
 
 ## 现行推进规则（2026-09-29 修订）
 

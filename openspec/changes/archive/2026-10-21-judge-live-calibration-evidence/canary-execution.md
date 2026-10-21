@@ -1,6 +1,6 @@
 # C19 canary 执行包（2026-10-18）
 
-Report status：`CANARY_COMPLETE`。本次在授权提交clean HEAD823b81a完成4/4，错误/重试0。执行前授权计划保留于[原plan](../../../docs/eval/reports/c19-canary-plan-v1.json)，真实结果见[安全摘要](../../../docs/eval/reports/c19-canary-review-v1.json)。4次授权已耗尽；后续full新增72已获独立授权，状态见[full执行包](full-execution.md)。
+Report status：`CANARY_COMPLETE`。本次在授权提交clean HEAD823b81a完成4/4，错误/重试0。执行前授权计划保留于[原plan](../../../../docs/eval/reports/c19-canary-plan-v1.json)，真实结果见[安全摘要](../../../../docs/eval/reports/c19-canary-review-v1.json)。4次授权已耗尽；后续full新增72已获独立授权，状态见[full执行包](full-execution.md)。
 
 ## 固定目标及载荷
 
@@ -8,7 +8,7 @@ Report status：`CANARY_COMPLETE`。本次在授权提交clean HEAD823b81a完成
 | --- | --- |
 | provider / endpoint | NVIDIA NIM，`https://integrate.api.nvidia.com/v1/chat/completions` |
 | judge model | `nvidia/nemotron-3-super-120b-a12b`，按用户本次提供信息选定；不是从生产配置隐式继承 |
-| manifest | [c19-judge-calibration-v1.json](../../../docs/eval/config/c19-judge-calibration-v1.json) |
+| manifest | [c19-judge-calibration-v1.json](../../../../docs/eval/config/c19-judge-calibration-v1.json) |
 | manifest canonical SHA-256 | `486a649590bd06d617349436a8e94635fd536048ce0c855848a7a4ab1a69190a` |
 | corpus / contract | 既有24条`judge-calibration-v1` / `rag-judge-v1`；canary每象限第一条 |
 | selection | `cal-ft-rt-01`、`cal-ft-rf-01`、`cal-ff-rt-01`、`cal-ff-rf-01`，顺序固定，各1次 |
@@ -43,7 +43,7 @@ Report status：`CANARY_COMPLETE`。本次在授权提交clean HEAD823b81a完成
 - 免费额度可用为用户声明，独立账单/具体限流、模型访问权限和真实认证仍未核验；不把旧前端成功或模型信息当作已校准。
 - 准备时只检查环境变量名称：运行环境中没有`RAG_EVAL_JUDGE_API_KEY`或`NVIDIA_API_KEY`；没有读取变量值或后端私有配置。live前仍需完成本地凭据配置，聊天中的值不注入工具或文件。
 
-[任务](tasks.md) · [readiness](readiness.md) · [安全计划摘要](../../../docs/eval/reports/c19-canary-plan-v1.json)
+[任务](tasks.md) · [readiness](readiness.md) · [安全计划摘要](../../../../docs/eval/reports/c19-canary-plan-v1.json)
 
 ## 真实结果与限制
 

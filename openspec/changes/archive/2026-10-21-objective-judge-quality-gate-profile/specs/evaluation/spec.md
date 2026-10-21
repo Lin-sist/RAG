@@ -2,7 +2,7 @@
 
 ### Requirement: C20 Draft Objective Profile And Independent Judge Advisory
 
-C20 SHALL provide a native C10 DRAFT profile for full accepted dataset and generation/citation identity. Only objective SHALL be required; judge SHALL remain advisory. Numeric targets/tolerances SHALL be unset pending separate approval. DRAFT review MUST remain NOT_EVALUABLE/exit4, without activation or PASS. C19 incomplete calibration SHALL remain deferred rather than accepted or spliced.
+C20 SHALL provide a native C10 DRAFT profile for full accepted dataset and generation/citation identity. Only objective SHALL be required; judge SHALL remain advisory. Numeric targets/tolerances SHALL be unset pending separate approval. DRAFT review MUST remain NOT_EVALUABLE/exit4, without activation or PASS. C19 incomplete calibration SHALL remain deferred rather than accepted as complete live calibration or spliced.
 
 #### Scenario: Objective complete and judge skipped
 - GIVEN compatible full objective evidence and skipped or partial judge
@@ -53,3 +53,19 @@ C20 SHALL compile three independently identified full objective candidate repeat
 - GIVEN a reused artifact/run timestamp or incompatible runtime identity
 - WHEN compiled
 - THEN status is NOT_COMPARABLE and no rule distribution is emitted
+
+### Requirement: C20 Draft Toolchain Acceptance Without Activation
+
+C20 DRAFT profile, local observation review and independent repeat intake MAY be accepted and archived when the user explicitly approves the implemented offline scope. Missing real reference repeats SHALL remain P1 evidence debt independently of threshold approval and activation debt. Archive acceptance MUST NOT change profile status, targets/tolerances, required channels, metric formulas, error policy or any historical artifact. DRAFT MUST remain NOT_EVALUABLE and MUST NOT yield PASS; judge SHALL remain advisory until separately calibrated and approved.
+
+#### Scenario: Offline DRAFT scope is accepted with missing reference evidence
+- GIVEN the DRAFT toolchain is verified and the user explicitly accepts that scope
+- WHEN C20 is archived
+- THEN real reference and threshold/activation gaps remain open as separately identified P1 debts
+- AND the profile remains DRAFT with unset targets/tolerances and no activation
+
+#### Scenario: Activation is considered after archive
+- GIVEN C20 is archived with an unactivated DRAFT profile
+- WHEN a future activation is proposed
+- THEN complete compatible reference evidence, explicit numeric approval, a new profile version and independent acceptance remain required
+- AND archive status alone never authorizes activation or provider calls

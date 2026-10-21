@@ -46,3 +46,18 @@ C19 SHALL recompute calibration coverage and quality diagnostics from validated 
 - GIVEN local raw evidence contains a provider reason or answer text
 - WHEN the safe review summary is compiled
 - THEN that content is excluded and compilation performs no external calls
+
+### Requirement: C19 Offline Acceptance And Deferred Live Evidence
+
+C19 offline execution identity, bounded attempt/ledger tooling and safe evidence compilation MAY be accepted and archived independently of a complete live calibration run when the user explicitly approves that scope. Outstanding full live calibration SHALL remain an identified P1 evidence debt. Historical partial runs MUST retain their original status and MUST NOT become complete or comparable through archive acceptance. Any future live run SHALL require independently reviewed identity and authorization; archive acceptance grants no new provider calls.
+
+#### Scenario: User accepts the implemented offline scope
+- GIVEN offline contract/toolchain checks pass and the user explicitly accepts only that scope
+- WHEN C19 is archived
+- THEN accepted baseline contains the verified contracts and P1 debt retains the incomplete live calibration target
+- AND historical live evidence and unavailable agreement/repeat conclusions remain unchanged
+
+#### Scenario: Live calibration is resumed after archive
+- GIVEN the offline toolchain is archived but the P1 live evidence debt remains open
+- WHEN a future live run is proposed
+- THEN its identity and call budget require separate review and authorization without resuming or splicing old runs

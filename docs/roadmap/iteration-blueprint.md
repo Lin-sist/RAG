@@ -3,7 +3,11 @@
 > 文档性质：长期迭代的方向母文档，不是可执行的 OpenSpec change，也不改变当前能力声明。
 > 状态日期：2026-08-10
 > 审批状态：用户已一次性批准 D01–D36，并授权本版蓝图落盘。
-> 当前起点：C1–C16 已完成范围验收、baseline 接受与归档；`.ai/ACTIVE_TASK.md=IDLE`。
+> v6冻结时起点：C1–C16 已完成范围验收、baseline 接受与归档；`.ai/ACTIVE_TASK.md=IDLE`。
+
+## 2026-10-21 Wave 1工程范围收口
+
+C17检索门禁、C18单次生成基线、C19离线执行工具链、C20 DRAFT审阅/intake工具链、C21结构化SSE均已按各自接受范围归档，活动指针恢复IDLE。用户本次明确缩窄C19/C20工程验收范围；完整Live、真实三轮参考、数值批准/激活分别移交[技术债P1/W1-E1/E2/E3](technical-debt.md#w1-e1)。本状态覆盖下方旧日期的“不归档/保持ACTIVE”描述，不改变旧证据状态、不宣称质量全部达标、不自动启动W2。
 
 ## 0. 执行与事实边界
 
@@ -159,7 +163,9 @@
 
 ### C19. `judge-live-calibration-evidence`
 
-2026-10-18最新：C19最后一次full24尝试/23有效/1network error/48未调用，见[最终review](../eval/reports/c19-final-full-review-v1.json)。累计83尝试/80个HTTP200/1timeout/2network error，正式率N/A；按用户条件指令停放未完live任务，后续独立授权补测，不拼接/归档。C20零外调工程先行，judge硬门禁仍未启用。
+2026-10-21已按零外调离线工具链与执行契约接受归档，见[验收](../../openspec/changes/archive/2026-10-21-judge-live-calibration-evidence/acceptance.md)。完整Live移交P1/W1-E1；下方2026-10-18记录为历史语境，原partial状态不变。
+
+2026-10-18历史执行：C19最后一次full24尝试/23有效/1network error/48未调用，见[最终review](../eval/reports/c19-final-full-review-v1.json)。累计83尝试/80个HTTP200/1timeout/2network error，正式率N/A；按用户条件指令停放未完live任务，后续独立授权补测，不拼接/归档。C20零外调工程先行，judge硬门禁仍未启用。
 
 **目标**：在既有 `rag-judge-v1` 与 `judge-calibration-v1` contract 上形成真实 judge agreement 与 repeat consistency evidence。
 
@@ -175,9 +181,11 @@
 
 ### C20. `objective-judge-quality-gate-profile`
 
+2026-10-21用户已接受DRAFT契约和离线review/intake工具链并归档，见[验收](../../openspec/changes/archive/2026-10-21-objective-judge-quality-gate-profile/acceptance.md)。正式参考与数值/激活移交P1/W1-E2/E3；profile仍DRAFT、空阈值、judge仅辅助，复用全Python336项通过。下方2026-10-18不归档与旧测试结果保留历史语境。
+
 2026-10-18后续归档核查：整个C20仍缺正式参考重复证据/阈值批准/激活验收，按用户指令不归档并继续零外调实现。新增[三轮intake编译器](../../scripts/compile_objective_gate_reference.py)及[安全缺口报告](../eval/reports/c20-objective-reference-intake-v1.json)，检查唯一性/metadata/dataset/执行策略身份，完整才出分布且阈值仍空；新9/9通过，全Python302仍既有C18 1 failure/4 errors。真实三轮采集和审批尚未执行，不伪造参考或门禁PASS。
 
-2026-10-18用户条件授权已满足：C19最后一轮23有效/1网络错误后停止并停放live，C20零外调首切片已实现。见[readiness](../../openspec/changes/objective-judge-quality-gate-profile/readiness.md)、[DRAFT profile](../eval/config/c20-objective-judge-draft-v1.json)及[安全review](../eval/reports/c20-objective-judge-draft-review-v1.json)。7项objective/3项judge辅助、空阈值不激活；22/22+14/14通过，全Python293仍既有C18 1 failure/4 errors。C19未完成/未归档，C20参考重复证据/数值批准/硬门禁仍未完成。
+2026-10-18用户条件授权已满足：C19最后一轮23有效/1网络错误后停止并停放live，C20零外调首切片已实现。见[readiness](../../openspec/changes/archive/2026-10-21-objective-judge-quality-gate-profile/readiness.md)、[DRAFT profile](../eval/config/c20-objective-judge-draft-v1.json)及[安全review](../eval/reports/c20-objective-judge-draft-review-v1.json)。7项objective/3项judge辅助、空阈值不激活；22/22+14/14通过，全Python293仍既有C18 1 failure/4 errors。C19未完成/未归档，C20参考重复证据/数值批准/硬门禁仍未完成。
 
 **目标**：在 C18/C19 evidence 充分后，以新 profile/version 建立 objective 与 judge 的独立门禁。
 
@@ -188,6 +196,8 @@
 - 不因门禁难以通过而修改 metric、dataset 或生产默认行为。
 
 ### C21. `structured-sse-terminal-contract`
+
+2026-09-29后端契约及前端R5已按各自范围接受归档，见[C21验收](../../openspec/changes/archive/2026-09-29-structured-sse-terminal-contract/acceptance.md)；真实长期稳定性继续由F6证据债务跟踪。
 
 **目标**：在保留文本 chunk 兼容性的同时，为 SSE 增加可验证的结构化 terminal event。
 

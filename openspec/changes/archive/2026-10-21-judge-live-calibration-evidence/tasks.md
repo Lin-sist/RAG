@@ -1,5 +1,14 @@
 # C19 执行任务
 
+## 2026-10-21 离线范围接受与归档
+
+- [x] A1 用户明确批准离线工具链/执行契约范围，proposal/design D9及delta已补充归档边界。
+- [x] A2 同一源码全Python336项通过结果可复用；旧Live/原始报告及未完成状态保全。
+- [x] A3 当前4 requirements/9 scenarios逐字接受进baseline，目录归档及受影响链接核对通过。
+- [x] A4 完整Live目标移交technical-debt P1/W1-E1，Wave 1工程收口；本地提交责任已明确，执行hash由提交补录记录。
+
+下方为2026-10-18历史执行任务。原2.3/2.4/3.1中的完整Live证据目标转W1-E1，不作为本次缩窄后的归档前置；不把这些未完成Live任务勾为通过。原3.2的工程归档由上方A3/A4及acceptance按用户新指令完成。
+
 ## 0. 事前闸门
 
 - [x] 0.1 核查 Git / ACTIVE_TASK、前端接受归档和 C19 accepted contract/现有 runner。
@@ -16,7 +25,7 @@
 
 ## 2. Live 分阶段授权与执行
 
-- 2026-10-18用户授权的最后一次full已在clean HEAD8f37a7d尝试24次后首错停止：23有效/1network error/48未调用，retry0、compiler INCOMPLETE、正式率N/A。按用户条件指令停放未完live任务并推进C20零外调切片；本change不接受、不归档，既有2.3/2.4/3.*仍未完成。见[最终安全review](../../../docs/eval/reports/c19-final-full-review-v1.json)。后续补齐须独立新run/新授权，不续跑或拼接。
+- 2026-10-18用户授权的最后一次full已在clean HEAD8f37a7d尝试24次后首错停止：23有效/1network error/48未调用，retry0、compiler INCOMPLETE、正式率N/A。按用户条件指令停放未完live任务并推进C20零外调切片；本change不接受、不归档，既有2.3/2.4/3.*仍未完成。见[最终安全review](../../../../docs/eval/reports/c19-final-full-review-v1.json)。后续补齐须独立新run/新授权，不续跑或拼接。
 
 - [x] 2.2d 用户明确授权最后一次同120秒配置独立full最多72次，当前实际0；如中断保留全部证据，C19 live任务延后，继续C20零外调切片，不再自动补跑或反复申请重跑。
 

@@ -15,14 +15,14 @@
 | F2 剩余登录动效 | [登录动效](../../openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/acceptance.md) | 2 requirements / 6 scenarios 与 baseline 逐字一致。 |
 | F1 退出、F6 客户端总验收 | [F1](frontend-f1-logout-acceptance.md)、[F6](frontend-f6-client-acceptance.md) | Type B，无独立 Type C 可搬迁；本次接受并关闭该阶段，证据原位保留。 |
 
-两个旧非 archive 目录 `frontend-demo-experience-alignment`、`frontend-chat-source-alignment` 仅剩空的 specs/rag-system 文件夹，无待归档文件；本次不删除目录、不重复归档或复制 baseline。
+2026-10-18核查两个旧非archive目录仅剩空specs/rag-system文件夹，无待归档正文。2026-10-21按用户明确授权再次核实无文件/隐藏文件/重解析点后，仅自底向上删除空目录：`openspec/changes/frontend-demo-experience-alignment`、`openspec/changes/frontend-chat-source-alignment`。原正式archive及baseline保留，不重复归档。
 
 ## 证据及分流
 
 - confirmed：本次重新核对上述六个现行 delta，共 19 requirements / 52 scenarios；F6 清单全部 77 张图片 hash（57 正式、20 排除）与三个正式源码指纹均一致。复用原正式 build、聚焦测试、视觉与键盘结果，不称本轮重新执行浏览器矩阵。
 - confirmed：用户普通路径手工确认及 10:36 流式成功单例；详见[用户验收](frontend-user-manual-acceptance-2026-10-18.md)、[脱敏诊断](frontend-stream-failure-diagnosis-2026-10-18.md)。不外推质量或长期稳定性。
 - partial / unknown：[技术债](technical-debt.md#f6-客户端整体验收后的证据分流2026-10-16)继续保留 F4-LIVE/DROP/CLEANUP、F5-LIVE/CLEANUP、F6-DEVICE/LIVE/STREAM/SIZE；前次上游失败原因、真实权限/撤销、完整持久化、删除清理不关闭。[L1/L2 执行包](frontend-live-integration-execution.md)未由 Agent 执行。
-- planned：下一独立阶段为 [C19](../../openspec/changes/judge-live-calibration-evidence/proposal.md)；C20 门禁仍延后。
+- 2026-10-21后续工程收口：[C19离线工具链](../../openspec/changes/archive/2026-10-21-judge-live-calibration-evidence/acceptance.md)与[C20 DRAFT工具链](../../openspec/changes/archive/2026-10-21-objective-judge-quality-gate-profile/acceptance.md)已按用户明确范围接受归档，Wave 1全员归档、当前IDLE；完整Live/参考/阈值激活保留在[技术债P1](technical-debt.md#w1-e1)，不改变本前端阶段原接受范围。
 - out_of_scope：全量搜索、多轮会话、账号/工作台、生产化与质量达标声明。
 
 本次不搬动已有 archive、不修改原始证据 JSON/图片或 accepted specs。OpenSpec CLI 不可用，文件级比对不是官方 validate。Agent 新增真实业务/provider 调用与数据出站均为 0。本阶段接受不授予 C19 本地提交或真实 judge 调用权限。

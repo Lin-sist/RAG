@@ -2,32 +2,31 @@
 
 ## Status
 
-`ACTIVE`
+`IDLE`
 
-- 当前唯一活动Type C：`objective-judge-quality-gate-profile`（C20），执行用户已授权的零外调切片。见[proposal](../openspec/changes/objective-judge-quality-gate-profile/proposal.md)、[design](../openspec/changes/objective-judge-quality-gate-profile/design.md)、[tasks](../openspec/changes/objective-judge-quality-gate-profile/tasks.md)。objective草案/judge仅辅助、阈值待批、不激活；C19未完成live任务停放在原目录，未接受/归档，后续独立授权补测。
-
-- 用户本轮要求核查归档，不能则继续实现。核查仍缺参考重复证据/数值审批/激活验收，故不归档；当前推进零外调参考intake编译与阈值审阅包，真实三轮采集及阈值批准不在本轮授权内。设计D6–D7已先行记录。
-
-- 本轮下一切片已实现：三轮参考intake/唯一性与metadata/runtime绑定、缺口槽位、完整分布及空阈值审阅表；新聚焦9/9通过，全Python302仍原C18 1 failure/4 errors。现有C18单轮[安全intake](../docs/eval/reports/c20-objective-reference-intake-v1.json)为INCOMPLETE（缺2/3、total1/retry31），无分布/激活；C20归档仍待真实证据与独立数值批准，外部调用0。
-
-- C19 live已按用户条件指令停放：最后一轮24次尝试/23有效/1network error/48未调用、零重试、INCOMPLETE，正式率N/A，未接受/归档。C20已完成[零外调首切片](../openspec/changes/objective-judge-quality-gate-profile/readiness.md)：7项objective草案/3项judge辅助与安全review；profile仍DRAFT，参考重复证据/阈值批准/激活未完成，当前指针继续ACTIVE。
-- 前端Demo于2026-10-18按用户确认的客户端/手工使用范围完成整体接受收口；各Type C已归档，F1/F6为Type B，无新delta待归档。见[收口索引](../docs/roadmap/frontend-demo-closeout-2026-10-18.md)。真实权限/持久化/拖放/清理/设备/流式稳定性债务保留。
-- 最新[最后一轮review](../docs/eval/reports/c19-final-full-review-v1.json)绑定clean HEAD8f37a7d及独立run b82b2ce3-35c4-4b36-a235-a0c28e170b34。第24次cal-ft-rf-02/repeat3在5030ms报network error、无HTTP状态；根因/远端结果及费用未知，未认定限流。
-- 按用户最新条件授权：C21/R5与前端已接受范围保留，C19 live校准停放，C20零外调工程先行；硬门禁激活须后续充分证据与独立批准，分别验收。
+2026-10-21用户明确接受C19/C20已完成的零外调离线工具链与DRAFT契约，授权按该工程范围归档，将完整Live/参考/阈值激活留作P1证据债务。Wave 1（C17–C21）已按各自接受范围全部归档；当前无活动Type C，不自动启动W2。
 
 ## Last Completed Stage
 
-- 前端Demo：2026-10-18整体接受，见[收口索引](../docs/roadmap/frontend-demo-closeout-2026-10-18.md)；F4/F5真实链条partial，F6单次成功不外推长期稳定性。最后完成的Type C为下列登录动效。
+| 阶段 | 已接受范围与归档入口 |
+| --- | --- |
+| C17 | [固定开发集检索门禁](../openspec/changes/archive/2026-09-10-retrieval-quality-gate-activation/acceptance.md)，ACTIVE retrieval profile，不代表生成/judge质量达标 |
+| C18 | [单次full150生成/客观指标基线](../openspec/changes/archive/2026-09-22-generation-objective-evidence-baseline/acceptance.md)，judge SKIPPED |
+| C19 | [离线校准执行工具链/契约](../openspec/changes/archive/2026-10-21-judge-live-calibration-evidence/acceptance.md)，完整Live未完成 |
+| C20 | [DRAFT profile/review/三轮intake](../openspec/changes/archive/2026-10-21-objective-judge-quality-gate-profile/acceptance.md)，空阈值、judge仅辅助、未激活 |
+| C21 | [structured-v1后端终态契约](../openspec/changes/archive/2026-09-29-structured-sse-terminal-contract/acceptance.md)，前端[R5](../openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/acceptance.md)已接入 |
 
-- Change ID：`frontend-auth-motion-alignment`（F2剩余正式登录双翼动效）。
-- 归档路径：`openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/`。
-- 2026-10-16用户确认接受并要求归档；2项delta/6场景逐字进入baseline；实现62961a2，102/102、含vue-tsc正式build、41/41浏览器结果复用，本轮26图/4报告hash一致。
-- 入口：[验收](../openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/acceptance.md)、[tasks](../openspec/changes/archive/2026-10-16-frontend-auth-motion-alignment/tasks.md)。原始采证元数据保留。
+前端Demo于2026-10-18按客户端/手工使用范围接受收口，见[收口索引](../docs/roadmap/frontend-demo-closeout-2026-10-18.md)。F4/F5真实链条、权限/持久化/拖放/清理、设备与流式长期稳定性债务继续保留。两个无正文的旧前端空壳目录已按本次授权核实并删除，原archive不动。
+
+## Remaining Evidence Debt
+
+- [P1/W1-E1](../docs/roadmap/technical-debt.md#w1-e1)：完整24×3 judge Live校准及正式agreement/repeat证据。最后一轮24尝试/23有效/1network error/48未调用、retry0，累计83尝试/80 HTTP200/1timeout/2network errors；[最终review](../docs/eval/reports/c19-final-full-review-v1.json)状态与hash不变，不拼接或续跑旧run。
+- [P1/W1-E2](../docs/roadmap/technical-debt.md#w1-e2)：三个独立、完整且身份/策略相容的full150真实参考；现有C18历史单轮intake仍INCOMPLETE，不构成三轮参考。
+- [P1/W1-E3](../docs/roadmap/technical-debt.md#w1-e3)：逐规则target/tolerance批准、新profile版本/locked reference与激活验收；judge升级required须另有完整校准与批准。C20仍DRAFT/NOT_EVALUABLE。
 
 ## Current Boundary
 
-- 2026-10-18用户明确要求“为我提交commit，继续下一步”，授权Agent暂存并本地提交本轮前端收口/C19离线实现及随后C19准备文件；push/PR/发布/部署均未授权。
-- 用户明确要求最后一轮再中断则保留证据并继续C20；该条件已满足。本轮不再外调或重复申请，后续补live须独立新run与授权，不续跑旧48/63/30或拼接旧结果。
-- 累计83次尝试/80个HTTP200/1timeout/2network error，凭据源只读且未变，值不进入命令/日志。未push/PR/部署；C19校准仍未完成，C20只推进零外调objective草案/judge辅助，不批准阈值或启用质量门禁。
-- 全量搜索、多轮、账号/工作台、数值阈值批准/ACTIVE激活、生产默认prompt/parser/retrieval/SSE不在本切片范围；C20 DRAFT工程实现已获条件授权，设计先行，外部调用0。
-- 前端[F4/F5执行包](../docs/roadmap/frontend-live-integration-execution.md)尚未执行；[F6](../docs/roadmap/frontend-f6-client-acceptance.md)和[诊断](../docs/roadmap/frontend-stream-failure-diagnosis-2026-10-18.md)原证据保留。前次STREAM_FAILED根因unknown，不关闭真实债务，不承诺服务端取消或零provider费用。
+- 本次用户授权验收归档、清理指定空目录及Agent本地提交；不包含push、PR、发布、部署、新provider调用、阈值批准或门禁激活。
+- 本轮新增backend/provider/embedding/rerank/ask/judge调用0，业务数据出站0。历史partial/raw/安全报告、C17/C18 baseline与原审计不回写。
+- 同一源码的全Python336 tests/OK（2026-10-20，0 failure/error/skip）可复用；该结果不证明真实业务或生产质量。当前源码不兼容旧C18冻结审计是有意保留的执行边界，新采集须独立审阅版本/预算。
+- 后续Live补测或质量激活作为独立工作审阅/授权；W2–W6仍属长期规划，不因Wave 1工程归档而自动开工。

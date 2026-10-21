@@ -1,10 +1,16 @@
 # C19：Judge 真实校准证据
 
+## 2026-10-21 用户批准的归档范围
+
+用户明确验收已实现的零外调离线工具链与执行契约，并授权归档；完整Live样本/正式agreement与repeat一致性移交`technical-debt.md`的P1证据债务W1-E1。本次接受manifest/身份冻结、本地plan/preflight、请求前预算/逐次ledger、失败保全及独立安全compiler；不接受partial为完整Live校准，不新增外调或恢复旧预算。验收见[acceptance](acceptance.md)。
+
+本节取代下文关于“完整72条才可归档”的原工程收口条件；完整72条仍是未来正式Live证据的必要条件。以下2026-10-18记录保留历史执行语境。
+
 ## 问题与目标
 
 C9b 已接受 `rag-judge-v1`、24 条 `judge-calibration-v1` 和离线 runner，真实 judge 仍为 SKIPPED。C19 为固定四象限 corpus 建立独立 judge agreement / repeat consistency 证据，不从前端或 C18 objective 结果推断 judge 已校准。
 
-2026-10-18 用户批准设计并授权本地提交；原60秒full41有效/1timeout，独立120秒canary4/4。用户恢复指令后独立120秒full尝试9次首错停止：8有效/1网络错误/63未调用，见[新full review](../../../docs/eval/reports/c19-full-timeout120-review-v1.json)。compiler INCOMPLETE，正式率N/A，不续跑或拼接；新run授权0。change保持ACTIVE，不归档或推进C20；本地提交授权继续，不含push/PR/部署。
+2026-10-18 用户批准设计并授权本地提交；原60秒full41有效/1timeout，独立120秒canary4/4。用户恢复指令后独立120秒full尝试9次首错停止：8有效/1网络错误/63未调用，见[新full review](../../../../docs/eval/reports/c19-full-timeout120-review-v1.json)。compiler INCOMPLETE，正式率N/A，不续跑或拼接；新run授权0。change保持ACTIVE，不归档或推进C20；本地提交授权继续，不含push/PR/部署。
 
 ## 范围
 
@@ -29,4 +35,4 @@ C9b 已接受 `rag-judge-v1`、24 条 `judge-calibration-v1` 和离线 runner，
 
 ## 事实源
 
-[路线图 C19](../../../docs/roadmap/iteration-blueprint.md#c19-judge-live-calibration-evidence) · [accepted evaluation](../../specs/evaluation/spec.md) · [design](design.md) · [tasks](tasks.md) · [readiness](readiness.md)
+[路线图 C19](../../../../docs/roadmap/iteration-blueprint.md#c19-judge-live-calibration-evidence) · [accepted evaluation](../../../specs/evaluation/spec.md) · [design](design.md) · [tasks](tasks.md) · [readiness](readiness.md)

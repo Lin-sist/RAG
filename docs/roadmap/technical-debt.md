@@ -1,6 +1,6 @@
 # RAG 项目技术债清单
 
-> 状态日期：2026-09-22
+> 状态日期：2026-10-21；历史测量及验收日期分别保留
 > 本文只登记当前未完成或仍需独立证据的债务，不是活动任务计划。重大改动必须进入独立 OpenSpec change；完成状态以 accepted spec、代码、正式 evidence 和 archive 为准。
 > 长期顺序见 `docs/roadmap/iteration-blueprint.md` v6。
 
@@ -23,37 +23,39 @@
 - 已解除 Python 单元测试对当前工作树通过 C18 历史冻结审计的依赖；[测试夹具](../../scripts/eval_test_support.py)只在系统临时目录中复制最小输入、重绑合成审计身份，不改仓库原始 audit/manifest，不构成当前调用图的新审计或真实执行证据。C18 budget、generation、compiler 的正常/畸形/漂移用例均实际执行，旧 `setUpClass` 阻塞不再掩盖这些测试。
 - `python -B -m unittest discover -s scripts -p 'test_*.py'`：336 tests / OK，0 failures / 0 errors（28.800s，具备仓库写权限的沙箱外离线运行）。此前 302 项中的 C18 1 failure/4 errors 为历史结果；本次恢复两组被阻塞测试并新增3项边界回归，未跳过或删除测试。
 - C20 原停滞为 Windows `tempfile.mkdtemp` 在工作区创建被拒后反复重试；测试临时目录改为单次创建，权限不足即报明确错误，不伪造成功。受限沙箱仍可能无权写 `tmp`，需获批在具备写权限的环境运行；未修改目录 ACL 或 Python 标准库。
-- C18 正式 `budget_source_drift` 仍有效：冻结后被 C21/流式诊断更新的 `QAController.java`、`AnswerGeneratorImpl.java`、`RAGServiceImpl.java` 不得直接复用旧执行授权。旧 audit、manifest、报告及 accepted baseline 原样保留；未来基于当前源码的新 live 运行仍需独立版本/审计与授权。C19停放、C20 DRAFT及激活缺口不受本次测试维护影响。
+- C18 正式 `budget_source_drift` 仍有效：冻结后被 C21/流式诊断更新的 `QAController.java`、`AnswerGeneratorImpl.java`、`RAGServiceImpl.java` 不得直接复用旧执行授权。旧 audit、manifest、报告及 accepted baseline 原样保留；未来基于当前源码的新 live 运行仍需独立版本/审计与授权。C19/C20离线工程已于2026-10-21接受归档；完整Live、真实参考及激活缺口分别由下方P1/W1-E1/E2/E3跟踪。
 
 ## P1：真实质量证据与用户结果
 
-### 1. Generation / citation / no-answer 重复证据与门禁
+2026-10-21用户接受C19/C20已完成的零外调离线工具链与DRAFT契约并授权归档，Wave 1（C17–C21）各自已接受的工程范围均已收口。以下W1-E1/E2/E3是仍未完成的证据/审批债务，不是已完成Live或质量达标声明；归档不授予任何新增外调或激活权限。验收入口：[C19](../../openspec/changes/archive/2026-10-21-judge-live-calibration-evidence/acceptance.md)、[C20](../../openspec/changes/archive/2026-10-21-objective-judge-quality-gate-profile/acceptance.md)。
 
-- C18已在judge off下完成一次真实v2/150基线：generation keyword hit=79.74%、citation source hit=91.91%、lexical claim support=5.22%、no-answer=95%；31次503均恢复。
-- 该结果只有单次固定开发态身份，不是objective release gate；后续仍需独立profile/version和批准的重复evidence决定阈值。
-- 词法 claim support不能表述为语义蕴含或完整事实正确性；1次no-answer citation violation与低claim support必须保持可见，不得调题或调prompt掩盖。
+<a id="w1-e2"></a>
+### 1. W1-E2：Generation / citation / no-answer真实重复参考（OPEN）
 
-### 2. Judge 真实校准
+- C18已有一次真实v2/150基线：keyword hit=79.74%、citation source hit=91.91%、lexical claim support=5.22%、no-answer=95%，31次503按批准策略恢复。单次测量不等于release gate；词法支持不是语义蕴含，低值及1次no-answer citation violation保留。
+- C20三轮参考intake/空阈值审阅包已接受；[历史单轮intake](../eval/reports/c20-objective-reference-intake-v1.json)仍INCOMPLETE：缺repeat2/3、total1、retry31不符合严格策略，distribution=null，不可拼接或把同一run复用三次。
+- 关闭条件：后续独立执行范围/审计身份及调用预算获批后，形成三个独立、完整full150且运行身份/策略相容的真实候选，独立核验provider执行与原件hash，再由本地编译器生成可审阅分布。不得为放行调整数据、公式、生产prompt或既有严格策略。当前没有为此新增调用授权。
+- 当前源码不兼容旧C18冻结审计；新采集前须重新审阅版本/预算，不回写旧audit/manifest/接受报告。原C20 tasks2.1中的参考证据目标移交本项。
 
-- C20下一零外调切片已交付三轮参考intake/空阈值审阅表；[现有C18单轮intake](../eval/reports/c20-objective-reference-intake-v1.json)仍INCOMPLETE（缺2/3、total1/retry31），无分布/激活。归档仍缺真实参考重复证据、数值/容差批准与激活验收；没有因工具就绪而关闭该债务或C19未完live。新9/9/全Python302既有C18例外见[readiness](../../openspec/changes/objective-judge-quality-gate-profile/readiness.md)，本轮外部调用0。
+<a id="w1-e1"></a>
+### 2. W1-E1：Judge完整Live校准（OPEN）
 
-- 2026-10-18最新条件分支：最后一次C19 full24尝试/23有效/1network error/48未调用，零重试、INCOMPLETE；累计83尝试/80个HTTP200，根因/失败费用未知。见[最终review](../eval/reports/c19-final-full-review-v1.json)。按用户决定停放未完live任务，不拼接或续跑，后续独立授权补测；C19未接受/未归档。C20零外调首切片已实现，见[readiness](../../openspec/changes/objective-judge-quality-gate-profile/readiness.md)：profile仍DRAFT、judge仅辅助，数值/重复参考证据/ACTIVE激活继续保留债务；C18当前源码审计漂移亦未修复。
+- C19 manifest/plan/preflight、请求前硬预算、逐次ledger/失败保全及独立安全compiler已经按离线范围接受归档；未接受完整Live校准结论。
+- [最后一轮review](../eval/reports/c19-final-full-review-v1.json)仍为24 attempts/23 valid/1 network error/48未调用、retry0、INCOMPLETE；累计83 attempts/80 HTTP200/1 timeout/2 network errors，正式agreement/repeat率N/A，失败远端完成/费用及根因未知。旧独立canary/partial/raw和hash原样保留，不续跑或拼接。
+- 关闭条件：未来独立授权并核对当前完整执行身份后，完成一份24 cases×3 repeats=72 observations的正式full，ledger/coverage/三组confusion与agreement/mismatch/repeat一致性全部可审计，并独立接受。低agreement可如实记录，不能自动改阈值或从成功子集补齐。
+- 原C19 tasks2.3/2.4/3.1中的完整Live目标移交本项；原执行预算不恢复，新增授权0。未经独立校准及批准，judge不升级为required门禁。
 
-- 2026-10-18：原60秒full41有效/1timeout；独立120秒canary4/4后，新full8有效/1network error/63未调用、INCOMPLETE，见[最新review](../eval/reports/c19-full-timeout120-review-v1.json)。正式率N/A，累计59次尝试/57个HTTP200，根因/账单未知；不拼接或自动补跑，新run授权0。C19未完成，不进C20；29/29及全Python279既有C18例外保留。
+<a id="w1-e3"></a>
+### 3. W1-E3：阈值批准、独立新版本激活与judge升级（OPEN）
 
-- C9b tooling、24-case 四象限 gold corpus 与状态语义已完成；C9b接受时live calibration为`SKIPPED`，当前C19真实执行进展以上述review为准。
-- accepted contract 固定 canary 4 × 1、full 24 × 3，最大 judge calls 为 4 + 72；任一 case/repeat 缺失不得从成功子集下 agreement 结论。
-- 校准通过前 judge 不应成为 required release gate，也不得自动搜索阈值。
+- [C20 profile](../eval/config/c20-objective-judge-draft-v1.json)仍为v1-draft/DRAFT，7项objective required、3项judge仅辅助，target/tolerance均null；requiredChannels/errorPolicy及指标公式未改。归档接受的是工具链/DRAFT契约。
+- 关闭条件：W1-E2充分参考证据完成后，逐规则审阅并独立批准target/tolerance，建立新profile version及locked reference，再完成门禁回放/激活验收。没有数值批准或证据不足时继续NOT_EVALUABLE，不能从archive或FOR_REVIEW推导PASS。
+- judge升级required须先完成W1-E1，再独立批准；不因objective完整而混用C19校准摘要作为普通full150 judge证据。原C20 tasks2.1中的数值/激活与2.2移交本项。
 
-### 3. Objective / judge quality profile
+### 4. SSE结构化契约已归档，真实稳定性仍需证据
 
-- 当前首个 C10 profile 只覆盖 retrieval，不包含 generation/objective 或 judge gate。
-- 需要在真实 evidence 充分后分别建立新 profile/version；retrieval、objective 与 judge 保持独立，judge 可先作为 advisory rule。
-
-### 4. SSE 结构化 terminal result
-
-- 当前流式路径仍以文本 chunk 为主，客户端不能稳定获得 citations、final state、reason、route/budget attribution 与 cancel/error 终态。
-- 需要设计兼容 terminal event，并保证同步、SSE 与 MCP 的 final-state 语义一致；中断或 partial output 不得保存为正常成功历史。
+- C21后端structured-v1与前端R5已经验收归档，不能再按“尚未实现结构化terminal”重复立项。
+- 完整真实非答案/断连/取消/长期稳定性及前次零正文失败根因仍由F6-STREAM/F6-LIVE跟踪；客户端停止接收不证明服务端取消或零provider费用。
 
 ### 5. 分块结构专项
 
