@@ -22,3 +22,10 @@
 - **改动与大白话**：更新 [`AGENTS.md`](../AGENTS.md)、[`design-decision-record.md`](../docs/workflow/prompt-snippets/design-decision-record.md)、[`vibecoding-playbook.md`](../docs/workflow/vibecoding-playbook.md) 与 [`agent-collaboration/spec.md`](../openspec/specs/agent-collaboration/spec.md)。改前只要求“简短/半句话”，导致 Agent 为了省字数删掉主谓宾和因果逻辑，写出天书般的机器电报体；改后强制每次事前闸门、完成汇报和 `design.md` 开头先写 `💡 30秒人话导读`，并植入“❌ 电报黑话 vs ✅ 通透人话”正反例对照表，让主人 10 秒看懂每次改动。
 - **验证与门禁**：运行 `scripts/run_local_quality_gates.ps1 -Mode DocAndScope` 门禁 PASS；纯治理文案与模板升级，跳过 Maven/Python/前端构建及外部调用。
 - **踩坑与风险**：发现给大模型下达“用半句话说清”指令极易诱发无主谓宾的名词堆砌，必须用正反面 Few-Shot 示例约束文风；紧接着在 W0.1 OTel 修复任务中检验 Codex 汇报效果。
+
+## 2026-10-21 · W0.1（Type B：稳定 OTel 测试等待）
+
+- **改动与大白话**：修改 1 个 Java 测试文件和 4 个说明文件。原来的秒表只给后台线程 2 秒，全仓繁忙时容易误报；现在统一给最多 10 秒，等到导出结束和失败计数出现就继续，只开 trace 的测试也不再白等没开的 metric。
+- **验证与门禁**：两类聚焦测试连续三轮通过，每轮 12 项；全仓 `mvn -q test` 退出码为 0，682 项测试没有失败或错误，21 项跳过，目标测试类 9 项全部通过。DocAndScope 已通过，差异格式、受保护路径、Markdown 链接和热日志行数检查均合格。
+- **跳过原因**：19 项 Docker 测试因环境不可用而跳过，2 项 OTel 烟测因未开启而跳过；本次没有修改 Python 或前端，因此没有重跑它们的验证。
+- **踩坑与风险**：已将“导出超时不等于后台回调完成时间”的区别写入 GOTCHAS 第 4 节；生产导出配置、业务耗时断言和 fail-open 行为保持原样，本轮通过不能代替真实 Collector 烟测或生产容量验证。

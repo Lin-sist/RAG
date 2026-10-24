@@ -20,7 +20,7 @@
 | **认证与多租户 (C1, C13–C14)** | 数据库认证、服务端不可变 `RequestIdentity(userId, tenantId)`、26-case 合成双租户隔离矩阵 PASS | 仅证合成矩阵与 Milvus 路径；开发态 JWT fallback、真实 Milvus shadow 切换与第二业务租户见 [技术债](../docs/roadmap/technical-debt.md) |
 | **持久化索引与故障语义 (C3–C5)** | 确定性 chunk/vector ID、MySQL task ledger、心跳恢复与事务幂等 finalize；LLM/Redis/Milvus 显式故障降级 | 进程中断与长时 outage 恢复演练仍需持续进行；provider auto resume 默认关闭 |
 | **评测与质量门禁 (C6–C10, C17–C20)** | **C17 Retrieval Gate 已 `ACTIVE`**（Recall@5=47.44% 防退化）；C18 单轮 full150 生成基线、C19 校准工具链、C20 DRAFT profile 与三轮 intake 编译器已归档 | C19 完整 24×3 Judge Live、C20 三轮独立 full150 参考证据及阈值激活仍为未闭环 P1 债务（`W1-E1~E3`）；当前源码相对旧 C18 冻结审计存在预期 `budget_source_drift` |
-| **可观测性 (C11–C12)** | 默认关闭的进程内 GenAI tracing core、单机 OTel Collector/Tempo/Prometheus/Grafana 参考栈 | 全仓并发下 `GenAiTracingConfigurationTest` 偶发时序抖动（W0 债务）；生产 HA/容量/SLA 未验证 |
+| **可观测性 (C11–C12)** | 默认关闭的进程内 GenAI tracing core、单机 OTel Collector/Tempo/Prometheus/Grafana 参考栈；W0.1 测试等待机制已于 2026-10-21 修复，目标测试在全仓 Maven 验证中通过 | 本轮未开启真实 OTel 烟测；生产 HA/容量/SLA 未验证 |
 | **只读 MCP 与有界路由 (C15–C16, C21)** | 默认关闭的本机 sessionless `/mcp`（3 Resources / 4 Tools）；默认关闭的 `fact-v1` 路由与 `evidence-no-answer-v1`；SSE `structured-v1` 终态契约 | MCP 2026-07-28 迁移与远程 OAuth 未开始；Wave 2 高级路由（`multi-hop / compare / temporal / global / high-risk`）尚未启动 |
 
 ## 4. 长期规格与参考入口

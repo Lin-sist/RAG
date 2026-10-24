@@ -18,10 +18,10 @@
 - **陷阱**：部分本地或 Agent 会话环境中 `npm.cmd` 不在 `PATH` 上，但 `node` 与 `rag-frontend/node_modules` 存在；此外 TypeScript 5.7.3 不支持 `ignoreDeprecations: "6.0"`（会报 `TS5103`）。
 - **对策**：运行前端验证时优先调用 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_local_quality_gates.ps1 -Mode FrontendBuild`（脚本会自动回退至 direct `vue-tsc -b` + `vite build`）；切勿单独用 `vite build` 跳过类型检查。
 
-## 4. Java / OTel 全仓并发测试时序抖动（W0 债务）
+## 4. Java / OTel 全仓并发测试时序抖动（W0.1 已修复）
 
-- **陷阱**：`GenAiTracingConfigurationTest` 中针对 unavailable collector 的异步导出断言，在全仓 `mvn -q test` 高负载并发下偶发时序失败，而单独运行该测试类往往通过。
-- **对策**：单测独立复跑通过不能将全仓测试结果改写为 GREEN；修复该债务（W0.1）时只能在既有契约内稳定测试同步机制，不得破坏生产 fail-open 导出语义。
+- **陷阱**：exporter 的 100ms 超时不等于后台线程和回调一定能在 100ms 内完成；原来的 2 秒测试等待在全仓高负载时可能误报。共用的等待函数还会让只启用 trace 的测试白等未启用的 metric。
+- **对策**：2026-10-21 已改为在共同的 10 秒宽限期内等待 flush 完成及预期信号的失败计数，条件满足就立即继续；只启用 trace 时只等 trace。全仓 Maven 已通过，生产 fail-open 语义没有改变；以后仍不能用独立复跑通过掩盖全仓失败。
 
 ## 5. Wave 1 质量门禁的真实状态边界
 

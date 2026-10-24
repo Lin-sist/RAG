@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,9 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 class GenAiTracingConfigurationTest {
+
+    // Allow for SDK worker scheduling under full-suite load, not a longer exporter timeout.
+    private static final long EXPORT_WAIT_NANOS = TimeUnit.SECONDS.toNanos(10);
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(GenAiTracingConfiguration.class);
@@ -169,14 +173,14 @@ class GenAiTracingConfigurationTest {
                             }
                         });
 
-                        assertTrue(context.getBean(SdkTracerProvider.class)
-                                .forceFlush().join(2, TimeUnit.SECONDS).isDone());
-                        assertTrue(context.getBean(SdkMeterProvider.class)
-                                .forceFlush().join(2, TimeUnit.SECONDS).isDone());
+                        CompletableResultCode traceFlush = context.getBean(SdkTracerProvider.class)
+                                .forceFlush();
+                        CompletableResultCode metricFlush = context.getBean(SdkMeterProvider.class)
+                                .forceFlush();
 
                         GenAiExportDiagnostics diagnostics =
                                 context.getBean(GenAiExportDiagnostics.class);
-                        awaitExportFailures(diagnostics);
+                        awaitExportFailures(diagnostics, List.of("trace", "metric"), traceFlush, metricFlush);
                         assertTrue(diagnostics.failureCount("trace", "export") >= 1L);
                         assertTrue(diagnostics.failureCount("metric", "export") >= 1L);
                         assertEquals(0L, diagnostics.failureCount("trace", "raw-exception"));
@@ -255,16 +259,29 @@ class GenAiTracingConfigurationTest {
                             System.nanoTime() - started);
                     assertTrue(elapsedMillis < 5_000L);
                     pendingExport.fail();
-                    awaitExportFailures(diagnostics);
+                    awaitExportFailures(diagnostics, List.of("trace"));
                     assertTrue(diagnostics.failureCount("trace", "export") >= 1L);
                 });
     }
 
-    private static void awaitExportFailures(GenAiExportDiagnostics diagnostics) {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
-        while (System.nanoTime() < deadline
-                && (diagnostics.failureCount("trace", "export") < 1L
-                || diagnostics.failureCount("metric", "export") < 1L)) {
+    private static void awaitExportFailures(GenAiExportDiagnostics diagnostics,
+            List<String> signals, CompletableResultCode... flushResults) {
+        long started = System.nanoTime();
+        while (true) {
+            // Completion is required; successful export is not expected for an unavailable collector.
+            boolean flushesDone = Arrays.stream(flushResults).allMatch(CompletableResultCode::isDone);
+            boolean failuresRecorded = signals.stream()
+                    .allMatch(signal -> diagnostics.failureCount(signal, "export") >= 1L);
+            if (flushesDone && failuresRecorded) {
+                return;
+            }
+            assertFalse(Thread.currentThread().isInterrupted(), "Interrupted while awaiting export failures");
+            assertTrue(System.nanoTime() - started < EXPORT_WAIT_NANOS,
+                    () -> "Timed out awaiting export failures; flush completion="
+                            + Arrays.stream(flushResults).map(CompletableResultCode::isDone).toList()
+                            + "; export failure counts=" + signals.stream()
+                                    .map(signal -> signal + "=" + diagnostics.failureCount(signal, "export"))
+                                    .toList());
             LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
         }
     }

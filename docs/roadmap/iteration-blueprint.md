@@ -112,9 +112,9 @@ C17检索门禁、C18单次生成基线、C19离线执行工具链、C20 DRAFT�
 
 ### 5.1 OTel 测试时序债务
 
-- 目标：稳定 `GenAiTracingConfigurationTest` 中 unavailable collector 的全仓并发时序断言。
-- 边界：独立复跑通过不能把全仓失败改写为 GREEN；不得借维护切片改变 tracing/exporter 契约。
-- 分级：readiness 若确认只是既有契约内测试稳定性修复，可按 Type B；若需要改变运行语义，升级 Type C。
+- 状态：W0.1 已于 2026-10-21 按 Type B 修复。`GenAiTracingConfigurationTest` 现在给后台导出和失败计数共同预留最多 10 秒，条件满足就立即继续；只启用 trace 的测试不再等待未启用的 metric。
+- 验证：两类聚焦测试连续三轮通过，每轮 12 项；全仓 `mvn -q test` 退出码为 0，682 项测试中没有失败或错误，21 项跳过，目标测试类 9 项全部通过。
+- 边界：本次只调整测试同步，生产 tracing/exporter 契约和 fail-open 行为保持不变。19 项 Docker 测试因环境不可用而跳过，2 项 OTel 烟测因未开启而跳过；本轮通过不代表这些集成场景已验证。
 
 ### 5.2 Provider 与 evidence readiness
 
