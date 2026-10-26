@@ -1,68 +1,35 @@
 # RAG 前端当前状态与维护边界
 
-> 状态日期：2026-07-14
-> 本文合并旧前端脚手架计划、V2 视觉提案和长期维护文档中仍符合当前代码的内容。
+> 核对日期：2026-10-26。依据正式路由、聊天页、SSE 与展示转换代码及已接受归档。本轮未重新执行真实联调或浏览器矩阵。
 
-## 1. 技术栈
+## 正式入口与验证
 
-- Vue 3.5、TypeScript 5.7、Vite 6。
-- Element Plus、Pinia、Vue Router、Axios。
-- Markdown 渲染使用 `markdown-it` 与 `highlight.js`。
+正式前端位于 `rag-frontend/`，采用 Vue 3、TypeScript 5.7、Vite、Element Plus、Pinia、Vue Router 与 Axios。原型仅作参考。
 
-标准验证命令是 `npm run build`，其含义为 `vue-tsc -b && vite build`。`tsconfig.json` 的 `ignoreDeprecations` 已调整为与 TypeScript 5.7.3 兼容的 `"5.0"`，两段正式构建均已通过。
-
-## 2. 当前路由
-
-| 路径 | 当前组件/行为 |
-|---|---|
-| `/login` | `LoginView.vue` |
-| `/chat`、`/chat/:id` | `ChatPanel.vue` |
-| `/chat-v2` | 同样指向 `ChatPanel.vue`，属于兼容入口 |
-| `/kb` | `KnowledgeBaseList.vue` |
-| `/kb/:id` | `KnowledgeBaseDetail.vue` |
+| 路径 | 当前组件或行为 |
+| --- | --- |
+| `/login` | `AuthLayout.vue` + `LoginView.vue`，保留真实表单 |
+| `/chat`、`/chat/:id`、`/chat-v2` | `ChatPanel.vue`；历史详情是一问一答 |
+| `/kb`、`/kb/:id` | `KnowledgeBaseList.vue`、`KnowledgeBaseDetail.vue` |
 | `/history` | `ChatHistory.vue` |
-| `/history-v2`、`/knowledge-base*`、`/profile` | 兼容重定向 |
+| `/history-v2`、`/knowledge-base*`、`/profile` | 兼容重定向，具体行为以路由为准 |
 
-`RagChatInterface.vue` 包含 mock data，但当前正式路由没有引用它；后续代码清理应在确认无动态引用后单独删除。`ChatView.vue` 也不是当前 `/chat` 的正式入口。
+标准验证为 `npm run build`（`vue-tsc -b && vite build`），统一入口为 `scripts/run_local_quality_gates.ps1 -Mode FrontendBuild`。单独 `vite build` 不能替代类型检查。
 
-## 3. 当前能力
+## 同步、流式与历史的来源边界
 
-- 登录态由 `stores/auth.ts` 管理，路由守卫负责未登录跳转。
-- 知识库列表、详情、上传和任务状态已接真实 API。
-- `ChatPanel.vue` 支持历史加载、文本流式问答和已有历史 citations 展示。
-- 同步回答类型已包含 `citations / contexts / metadata`。
-- 历史页面能够展示已保存的 citations。
+- 聊天默认同步问答，流式需要显式选择；同步来源使用同次响应字段。
+- 正式流式请求携带 `X-RAG-Stream-Contract: structured-v1`，同一次请求消费文本和 `terminal`；只有有效 `ANSWER` 终态才展示本次流式来源，不能用半截文本推断成功。
+- 缺少有效终态时按 `INCOMPLETE` 处理；停止接收只表示客户端停止接收，不能证明服务端取消或费用为零。
+- 后端对可保存的完整业务结果持久化答案与引用；历史页展示实际字段。旧历史或无来源记录保持中性提示，不能补造引用。
+- 未协商结构化契约的 legacy 文本流仍是兼容路径，不具备同样的终态和来源保证。
 
-## 4. 后端能力边界
+实现入口：[路由](../../../rag-frontend/src/router/index.ts)、[聊天页](../../../rag-frontend/src/components/chat/ChatPanel.vue)、[SSE](../../../rag-frontend/src/composables/useSSE.ts)、[parser](../../../rag-frontend/src/composables/sseParser.ts)、[展示转换](../../../rag-frontend/src/utils/qaPresentation.ts)。契约依据：[C21](../../../openspec/changes/archive/2026-09-29-structured-sse-terminal-contract/acceptance.md)、[R5](../../../openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/acceptance.md)。
 
-- 同步 `/api/qa/ask` 可以返回结构化答案、contexts、citations 和 metadata。
-- SSE `/api/qa/ask/stream` 当前输出文本 chunk；流式完成后不能假设实时拿到完整 citations/metadata。
-- 后端保存流式历史时 citations 为空，界面应明确表达“当前记录未保存来源”，不能制造伪引用。
-- 前端不得自行推断知识库权限、置信度或生成质量。
+## 接受范围与维护方式
 
-## 5. 当前维护优先级
+客户端接入的接受范围见[前端收口索引](../../roadmap/frontend-demo-closeout-2026-10-18.md)。上传、历史分页/本页查找、记录绑定反馈等客户端契约已接受，不等于真实权限、持久化、拖放、删除清理、设备与长稳全部通过。
 
-### P0
+余项只在[技术债](../../roadmap/technical-debt.md)维护。原文精确定位、全量搜索、多轮会话、账号管理和工作台不因原型展示而成为已实现能力；检索相关度不是回答正确率。
 
-1. 修复正式 TypeScript build。
-2. 删除或收敛未路由的 mock/兼容组件和重复聊天实现。
-3. 保证同步来源完整、流式来源降级的表达不被后续 UI 改造破坏。
-
-### P1
-
-1. 统一颜色、间距、圆角、阴影等 design token，减少硬编码。
-2. 统一空态、错误态、权限态、处理中态。
-3. 强化文档处理任务进度和失败恢复入口。
-4. 让知识库、聊天和历史页形成一致的信息架构。
-
-### P2
-
-1. 响应式与键盘可访问性。
-2. 前端性能和关键交互观测。
-3. 在后端提供结构化 SSE 完成事件后，再增强实时 citation/context 体验。
-
-## 6. 文档维护规则
-
-- 本文只描述当前实现和稳定维护边界，不记录每次 change 的详细任务。
-- 具体改造应进入 OpenSpec change；完成后只在必要时更新本文的“当前状态”。
-- 视觉探索稿不能冒充已实现能力。
+仅在正式入口、稳定能力或失败边界变化时更新本文。任务和执行证据保留在对应 tasks、验收记录或日志；新增能力按 [AGENTS.md](../../../AGENTS.md) 判断风险与流程。

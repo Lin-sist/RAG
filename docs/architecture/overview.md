@@ -1,7 +1,7 @@
 # RAG 项目当前架构
 
-> 状态日期：2026-07-30
-> 本文只描述当前代码中已确认的结构与能力。阶段指标以 `docs/optimization/` 和 `docs/eval/reports/` 中的当前文件为准。
+> 核对日期：2026-10-26。本轮核对结构化流式与能力边界，没有重跑真实联调或评测。
+> 本文解释模块与调用链；定位和阶段接受范围见[项目上下文](../../openspec/project.md)，执行进度及余项见[活动指针](../../.ai/ACTIVE_TASK.md)与[技术债](../roadmap/technical-debt.md)。
 
 ## 1. 项目定位
 
@@ -58,57 +58,30 @@
 
 C16 已验收归档：主链路前增加 `rag.router.enabled=false` 的 bounded Router。开启时，`fact-intent-v1` 只把明确单事实/定义查询交给 closed-world `fact-v1`；multi-hop、global、high-risk、ambiguous 与 invalid 输入在 retrieval/provider 前停止。`FactQueryStrategyExecutor` 复用现有 tenant scope、hybrid/RRF/rerank、generation/citation contract，并通过 immutable budget/usage 与 `evidence-no-answer-v1` 统一 sync/SSE/MCP read-only ask 的 final state/reason。生产默认仍关闭。
 
-同步问答返回完整答案、contexts、citations 和 metadata。SSE 路径当前使用 `SseEmitter` 输出文本流；流式历史保存的 citations 仍为空，这是已确认的能力边界。
+同步问答返回答案、contexts、citations 和 metadata。SSE 使用 `SseEmitter` 传输；协商 `X-RAG-Stream-Contract: structured-v1` 后，文本之外还有表达业务终态、reason、citations 与 metadata 的 `terminal`。正式前端只在有效 `ANSWER` 终态展示本次引用；缺终态按未完成处理，停止接收不证明服务端取消。后端对可保存的完整业务结果保存答案与引用，旧记录可能没有来源。未协商的 legacy 文本流不具备同样的终态和引用保证。依据见 [C21](../../openspec/changes/archive/2026-09-29-structured-sse-terminal-contract/acceptance.md) 与 [R5](../../openspec/changes/archive/2026-09-29-frontend-structured-stream-r5/acceptance.md)。
 
-## 4. 质量工程现状
+## 4. 质量工程的职责边界
 
-- v3 已完成固定评测 KB、分块矩阵和 reranker adapter 工程接入。
-- C6 已把 reranker attribution 透传到同步问答 metadata、debug retrieval 与评测 runner 的逐样本/聚合报告；这只证明协议与覆盖，不代表 NVIDIA 优于 heuristic。
-- C6 provider/attribution 契约已接受进 `rag-system` baseline；归档后 1 次纯合成 NVIDIA hosted smoke 已通过，确认当前 key、模型专属 endpoint、真实响应解析和完整候选覆盖。该证据不代表生产 SLA 或 NVIDIA 相对 heuristic 的收益成立。
-- C7 full `R=3,W=3` comparison 为 `COMPARABLE`；heuristic 继续复现 Recall@5 `68.63%`、MRR `0.7346`、Top1 `96.30%`，NVIDIA 为 `76.47%`、`0.8241`、`100%`，三个 repeat 一致且无 fallback。
-- C8a 已验收归档：runner 前的纯本地 dataset contract 层由 tracked manifest 固定 release/question/schema/annotation/corpus version 与 artifact identity，共享 validator 在 login、preflight、KB mutation 和 provider 调用前校验 path/hash/count/order、sample contract、fixture source 和 distribution。未版本化 custom 输入只能显式标记为 `UNVERSIONED`，不能形成可比较结论；4 个 requirements / 13 个 scenarios 已接受进 `evaluation` baseline。
-- C8b 已验收归档：`rag-eval-dev-v2` 含 150 条（30 seed + 120 new），固定 type×difficulty、answerability、fixture coverage、exact grounding、duplicate 与 review evidence；v1/v2 可同时验证，默认 manifest 已切换为与显式 v2 manifest byte-identical。该验收不构成质量收益结论。
-- C9a 已验收归档：成功 answerable answer 经 `sentence-list-v1` 确定性拆成 claims，只使用通过既有 citation-context provenance 校验的 returned citation snippets，以 exact 或固定 `0.70` claim-token coverage 形成逐 claim attribution；aggregate 单独报告客观 claim 通道的完整性与 support rate，不改变全局 Report status 或 judge 语义。4 个 requirements / 12 个 scenarios 已接受进 `evaluation` baseline。
-- C9b 已验收归档：`rag-judge-v1` 固定 prompt/parser/`0.70` 双分数 threshold/model config identity；24 条独立静态 calibration v1 按 faithful×relevant 四象限各 6 条；normal eval 输出独立 objective/judge/global status 与 comparison safety。4 requirements / 12 scenarios 已接受进 `evaluation` baseline；live judge calibration 按 `SKIPPED` 收口，不能形成真实 agreement 或生产质量结论。
-- C11 已验收归档：默认关闭、fail-open 的 OTel 1.31 tracing core 为 durable ingest 与 ask 建立分离 trace，固定实际执行阶段 topology，并以稳定 task/document/chunk lineage 关联两条链路；W3C/custom context、MDC bridge、同步/流式终态和隐私白名单均由进程内 exporter/fake tests 锁定。4 requirements / 12 scenarios 已接受进 `rag-system` baseline。
-- C12 已验收归档：tracing/metrics/export 三个开关独立且默认关闭；OTLP gRPC exporter 使用有界 queue/batch/timeout 并保持业务 fail-open。低基数 metrics 独立于 trace sampling；本机 Collector→Tempo/Prometheus→Grafana reference stack 固定关键 trace 全保留、普通成功 trace 10% tail sampling、72h/7d retention、localhost 端口与认证边界。4 requirements / 12 scenarios 已接受进 `rag-system` baseline，synthetic evidence 不代表生产容量或 SLA。
-- C13a 已验收归档：V10 建立唯一 legacy tenant，并为 user/knowledge-base 回填非空 tenant identity；认证、access/refresh JWT、refresh reload 与 immutable `RequestIdentity` 使用服务端数据库事实，旧无 tenant claim token 被拒绝。4 requirements / 12 scenarios 已接受进 `rag-system` baseline；后续 C13b data-plane enforcement 也已验收归档，但 C14 前仍不构成租户隔离结论。
-- C15 已验收归档：default-off/local-only/sessionless MCP adapter、三种 bounded Resource 与四个固定只读 Tool 已形成长期契约；`rag.ask` 走无 history/query-count 的 service boundary。Git HEAD `45959672` 的 clean-HEAD 双 tenant Testcontainers、独立官方 Java SDK client 与适用 conformance 0.1.15 generic scenarios 通过；7 requirements / 26 scenarios 已接受进 baseline，但不代表 MCP OAuth、远程生产部署或真实 provider 已验证。
-- C16 版本化 `bounded-query-router-eval-v1` 已随归档接受：固定 v2 dataset identity、20 条 ID-only route sidecar、budget profile、本地 plan-only validator 与七通道 evaluator。deterministic tests 为零 provider 调用/零业务数据出站；live router evaluation 未授权并 `SKIPPED`，不外推真实质量或生产 SLA。
-- NVIDIA server-side rerank P50/P95 为 `363/688ms`，overall retrieval P50 比 heuristic 增加 `188ms`。H1 冷启动造成 heuristic run1 P95 `14484ms`，因此 aggregate overall P95 只保留为诊断，不用于宣称 model 更快。
-- v4 Stage 1 已完成两轮 30 条 CLEAN objective baseline。
-- 当前生成侧客观指标覆盖 answer keyword、citation source/snippet、unsupported citation 和 no-answer。
-- LLM judge 默认关闭；C9b 的离线工具就绪不等于 live calibration 已完成，C9a lexical alignment 也不是语义蕴含，因此仍不能宣称逐 claim faithfulness 已验证。
+检索、生成、citation、no-answer 与 Judge 分开评估。脚本在真实调用前校验数据集和运行身份，离线 evaluator 按 profile 检查完整性与指标，归档只接受明确的工程或证据范围。
+
+- 当前只有 C17 Retrieval Gate 已激活；C18 保留单轮生成基线，不能替代三轮独立参考。
+- C19 离线工具链与 C20 DRAFT 契约已归档；完整 Live Judge、三轮参考和阈值批准/激活仍有缺口。历史部分调用不能拼成完整校准。
+- 词法 Claim 支持率不是语义忠实度；合成测试、真实 provider 与生产质量分别表述。
+
+指标、测试数量和逐阶段过程不在此重复维护。方法见[评测指南](../eval/RAG_EVAL_GUIDE.md)，结论见[优化证据导航](../optimization/README.md)，余项见[技术债](../roadmap/technical-debt.md)。
 
 ## 5. 当前边界
 
 - `UserDetailsServiceImpl` 从数据库加载未删除用户、有效 tenant 与角色；运行时不再初始化固定默认账号。客户端 tenant selector 不进入认证 context。
 - 真实 model reranker 已完成并验收 30 条开发样本 A/B，C7 delta 已接受进 `evaluation` baseline 并归档；默认 provider 仍为 heuristic。
 - 当前默认、已验收的 150 条 v2 是开发评测 release；30 条 v1 仍可显式复现。两者都不是生产数据集、隐藏 benchmark 或论文级基准。
-- C8b 只扩充并复核 question/annotation；C9a/C9b/C10 离线能力均已验收归档。C17 已完成用户批准的 ACTIVE retrieval profile 与三轮 reference replay；live judge calibration 与 v2 真实 generation evidence 仍未完成。
+- C8b 只扩充并复核 question/annotation；C9a/C9b/C10 离线能力均已验收归档。C17 已完成用户批准的 ACTIVE retrieval profile 与三轮 reference replay；完整 live judge calibration 未完成；C18 已有 v2 单轮真实 generation evidence，独立三轮参考仍未完成。
 - 标题感知、长代码块和长段落专项仍待验证。
 - C12 已形成默认关闭的 OTLP export、低基数 metrics 与本机 reference backend 闭环，但它不是生产观测平台；生产 HA、容量、合规 retention、租户权限、跨主机传输、外部通知与 SLA 仍未知或 out of scope。
 - C14 已验收归档：`tenant-isolation-adversarial-v1` 在 Git HEAD `dc9e3e6` 上以自有 MySQL/Redis/Milvus 双 tenant fixture 得到 26/26 cases 与 functional/content/error/timing 四通道 `PASS`；`evaluation` 5 requirements / 15 scenarios、`rag-system` 2 requirements / 6 scenarios 已接受进 baseline。provider calls=0、真实 maintenance=`SKIPPED`；结论仅适用于 Milvus 支持配置和固定 synthetic matrix，Qdrant/Elasticsearch enforcement mode 继续 fail startup。
 
-## 6. 文档真相源
+## 6. 文档与证据入口
 
-治理与事实源优先级：
+事实源优先级只在 [AGENTS.md](../../AGENTS.md) 维护。日常资料从[文档导航](../README.md)进入；本页不维护第二份规则、测试计数或阶段验收记录。
 
-1. `AGENTS.md`：协作和安全规则。
-2. `.ai/ACTIVE_TASK.md` 与 active OpenSpec change：当前范围、契约和验收。
-3. `openspec/specs/`：已接受的长期能力契约。
-4. 当前代码与配置：已实现事实；与 spec 冲突时记录为 gap。
-5. `docs/architecture/overview.md`。
-6. `docs/optimization/README.md` 及其 v3/v4 子目录。
-7. `docs/eval/RAG_EVAL_GUIDE.md` 与当前正式报告。
-8. `docs/roadmap/technical-debt.md`。
-
-`docs/optimization/history/` 只保存演进证据，不负责约束当前阶段。
-
-## 2026-09-10 C17 已验收归档
-
-用户批准完整审阅包中的12项hard floor/tolerance及归档。canonical profile 已为 `v1 / ACTIVE / APPROVED`，locked median reference 绑定最终profile SHA-256。固定v2/150×3 reference为450/450、COMPLETE；原始六文件哈希复核通过，三轮离线重放各12/12 required rules PASS。缺样本、身份漂移、错误分别NOT_EVALUABLE/4；完整质量退化FAIL/3。244项Python tests通过。
-
-本次激活/验收backend/provider calls=0、业务数据出站=0；来源仍是2026-09-08 HEAD `082b030` 的c17g3热embedding缓存检索，不能作为冷缓存性能基准。Recall@5=47.44%、MRR=0.52615、Top1=92.31%；只建立固定开发态retrieval回归门禁，不证明generation/citation/no-answer回答质量/judge、生产SLA或Agentic RAG。固定评测KB的真实模型重建/强读回/CAS已完成，其他业务KB迁移及失败generation/source清理不在验收范围。Docker socket复发根因仍未证实。
-
-证据：`docs/eval/references/c17-activation-approval-v1.json`、`c17-retrieval-reference-active-v1.json`、`rag-eval-dev-v2-retrieval-reference-v1.json`、三份`c17-replay-run*-v1.json`。历史DRAFT review/full执行摘要保留原样；它们记录激活前状态，不能覆盖本次已批准状态。
+[优化证据导航](../optimization/README.md)保留 v3/v4 与 C 系列入口；旧阶段参数、指标与跳过状态只适用于各自快照，不约束当前任务。

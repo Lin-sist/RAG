@@ -2,7 +2,8 @@ docs/学习文档
 target/
 **/target/
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .vite/
 *.iml
 *.log
@@ -20,10 +21,15 @@ data/
 **/__pycache__/
 *.py[cod]
 *test-data/
+!/test-data/
+/test-data/*
+!/test-data/manual/
 *diagnostics/
 
 # Local evaluation runtime evidence; commit only compact summaries from docs/eval/reports.
 /tmp/eval/
+/tmp/
+/.tmp/
 
 # Local docker overrides (machine-specific, do not commit)
 .env

@@ -94,7 +94,7 @@
 - `GET /api/tasks/{taskId}`
 - `GET /api/tasks/{taskId}/result`
 
-> 完整接口示例见 `docs/API-调用教程.md` 与 Swagger 页面。
+> 完整接口示例见 [API 调用教程](docs/开发文档/API-调用教程.md) 与 Swagger 页面。
 
 ## 6. 快速启动
 
@@ -247,6 +247,8 @@ $env:AUTH_BOOTSTRAP_PASSWORD="<your-strong-password>"
 
 ## 10. 常用文档
 
+先从[文档导航](docs/README.md)选择资料，它区分现行说明、历史证据和目录保留建议。Antigravity IDE 直接打开本项目时，会读取[目录隐藏设置](.vscode/settings.json)，在资源管理器中隐藏日常不看的生成目录；完整文件仍保留在磁盘上。
+
 - `AGENTS.md`
 - `.ai/ACTIVE_TASK.md`
 - `.ai/AGENT_LOG.md`
@@ -257,7 +259,8 @@ $env:AUTH_BOOTSTRAP_PASSWORD="<your-strong-password>"
 - `docs/eval/RAG_EVAL_GUIDE.md`
 - `docs/optimization/README.md`
 - `docs/roadmap/technical-debt.md`
-- `docs/learning/LEARNING_ROADMAP.md`
+- [学习与协作路线讨论稿](docs/rag-learning-and-ownership-roadmap.md)
+- [早期 8 周学习计划](docs/learning/LEARNING_ROADMAP.md)（历史参考，不自动代表现行学习安排）
 
 ---
 

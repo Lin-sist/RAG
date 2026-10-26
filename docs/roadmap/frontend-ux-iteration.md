@@ -1,5 +1,7 @@
 # 前端 UX 迭代建议（Frontend UX Iteration）
 
+> 2026-10-26 整理说明：本文为 2026-08-29 的历史建议池，以下 proposed 状态和实现判断不再作为当前待办。现行实现见[前端说明](../开发文档/前端文档/frontend-current-state.md)，接受范围见[收口索引](frontend-demo-closeout-2026-10-18.md)，余项只在[技术债](technical-debt.md)维护；本文件不再追加进度。
+
 > 文档性质：前端体验迭代的建议池与优先级排序，Type B 建议文档；不是可执行 OpenSpec change，不改变任何既有能力声明。
 > 状态日期：2026-08-29
 > 事实基线：基于 2026-08-29 的 `main` 分支代码与 `http://localhost:5173/chat` 实际页面审查；已核实的代码事实见 §2，未逐项核实的均标注"待确认"。

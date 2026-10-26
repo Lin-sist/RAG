@@ -4,6 +4,8 @@
 > 事实依据：基于代码仓库（Git HEAD `31ad3f8`）、配置文件、Flyway 数据库迁移脚本、OpenSpec 迭代归档与实测报告。  
 > 编写原则：只陈述代码、配置、测试与文档中客观存在的事实，标明具体文件路径与类/方法名；未完成或未验证内容明确标注，不推测、不美化。
 
+> 2026-10-26 定点修订：本轮仅纠正阶段状态、Judge 证据边界、流式历史说明与 C18 审计处理建议，没有重跑全文代码统计或真实评测。下文参数、行号、规模与指标仍按原报告快照理解；现行定位与能力边界见[项目上下文](openspec/project.md)，任务见[活动指针](.ai/ACTIVE_TASK.md)，未完成事项见[技术债](docs/roadmap/technical-debt.md)。本报告不再单独维护执行进度。
+
 ---
 
 ## 执行摘要（Executive Summary）
@@ -14,7 +16,7 @@
 4. **Agent 现状**：**无自主 Agent 循环，无 LLM Tool Calling**；仅实现了外部只读 MCP Server 接口（C15）与单轮闭域事实路由器（C16 `fact-v1`，默认关闭）。
 5. **工程治理**：完备的数据库驱动认证、滑动窗口限流、Redis 幂等防重、MySQL Durable Task 状态机账本、Flyway 数据面租户隔离。
 6. **实测基线**：在 150 条开发评测集（`rag-eval-dev-v2`）上，Recall@5 为 `47.44%`，Top1 命中率 `92.31%`，关键词命中率 `79.74%`，准确拒答率 `95.0%`，检索 P50 延迟 `2219ms`。
-7. **已知风险**：Milvus 字符串主键与 MySQL 自增 Long 主键存在双体系映射；C18 评测审计因后续 C21 代码修改出现 `budget_source_drift` 离线校验失败；客观词法 Claim 支持率仅 `5.22%`；Live Judge 未完成线上校准（处于 SKIPPED）。
+7. **已知风险**：Milvus 字符串主键与 MySQL 自增 Long 主键存在双体系映射；当前源码不再匹配 C18 冻结审计，正式 CLI 的 `budget_source_drift` 是预期保护；历史单轮客观词法 Claim 支持率为 `5.22%`；完整 Live Judge 校准仍未完成，不能将历史部分调用作为完整校准证据。
 8. **代码体量**：Java 59,294 行（主工程 32,526 行 + 测试 26,768 行），Python 评测 16,331 行，前端 9,799 行，总计约 8.5 万行；27 个 REST 端点与 1 个 MCP 端点。
 
 ---
@@ -46,7 +48,7 @@
 | **扩展与控制** | 只读 MCP Server 适配器 | 已完整实现 | `rag-admin/.../mcp/McpServletConfig.java`<br>`rag-admin/.../mcp/McpProtocolHandler.java` | 实现 MCP 协议，暴露 4 个只读 Tool 与 3 个 Resource，默认关闭（local-only） |
 | | 有界意图路由器（Router） | 部分实现 | `rag-core/.../router/BoundedQueryRouter.java`<br>`rag-core/.../router/FactQueryStrategyExecutor.java` | 实现了单轮事实型查询 `fact-v1`；multi-hop、compare、temporal 等策略仅占位未实现 |
 | | 离线质量门禁 Evaluator | 已完整实现 | `scripts/evaluate_quality_gate.py`<br>`docs/eval/schema/rag-quality-gate-profile-v1.json` | 具备 12 项指标的 hard floor 与 tolerance 组合门禁校验能力 |
-| | LLM 自动化 Judge 评测 | 仅占位与离线工具就绪 | `scripts/rag_judge_contract.py`<br>`scripts/run_judge_calibration.py` | 静态 24-case 校准合约与严格 JSON 解析器就绪；线上调用为 `SKIPPED`，无真实打分数据 |
+| | LLM 自动化 Judge 评测 | 离线工具链已归档；完整 Live 校准未完成 | `scripts/rag_judge_contract.py`<br>`scripts/run_judge_calibration.py` | C19 接受范围是离线工具链；历史部分真实调用不构成完整 24×3 agreement evidence，Judge 不升级为 required 门禁 |
 | | Agentic RAG / 工具循环 / 智能体 | **无** | 长期禁区与 W4 规划 | 当前代码库无自主 Agent 循环，无模型主动 Function Calling |
 
 ### 1.3 OpenSpec 完整演进历程、当前阶段与后续规划
@@ -74,16 +76,17 @@
 - **C18** (`generation-objective-evidence-baseline`，2026-09-22 验收归档)：完成首个端到端客观生成基线评测，真实记录 Recall@5 (47.44%)、关键词命中率 (79.74%)、引用准确率 (91.91%)、拒答率 (95.0%) 与客观 Claim 覆盖率 (5.22%)。
 - **C21** (`structured-sse-terminal-contract`，2026-09-29 验收归档)：确立前后端 SSE 流式终端契约（`structured-v1`），在流结束时以 `event: terminal` 确定性推送终态枚举、结构化引用与错误原因。
 
-#### 4. 前端交付与体验对齐阶段（F1 ~ F5，2026-09 ~ 2026-10）
-- **F1 / F2**：实现文本流式与结构化流式终端事件消费渲染。
-- **F3** (`frontend-chat-source-alignment`)：对齐侧边栏 Citation 来源定位与片段折叠交互。
+#### 4. 前端交付与体验对齐阶段（F1 ~ F6，2026-09 ~ 2026-10）
+- **R4 / R5**：分别保留纯文本流历史切片与正式结构化流式终态、来源展示契约。
+- **F1 / F2**：退出接线、应用框架、品牌、主题、设置与登录动效。
+- **F3** (`frontend-chat-source-alignment`)：聊天正文、代码块操作与来源片段展开；不表示已实现原文精确定位。
 - **F4** (`frontend-kb-upload-alignment`，2026-10-02 验收归档)：对齐知识库管理面板、文档多格式上传与异步进度轮询展示。
-- **F5** (`frontend-history-feedback-alignment`，**当前 ACTIVE 阶段**)：对齐历史会话记录、用户点赞/点踩反馈与检索高亮。
+- **F5** (`frontend-history-feedback-alignment`，2026-10-14 归档)：完成客户端分页、本页查找、删除快照及记录绑定反馈；历史仍是一问一答，不是多轮会话。
+- **F6**：前端阶段已于 2026-10-18 按接受范围收口。正式入口见[收口索引](docs/roadmap/frontend-demo-closeout-2026-10-18.md)，真实权限、持久化、清理、拖放及长稳余项只在[技术债](docs/roadmap/technical-debt.md)维护。
 
 #### 5. 后续演进路线图（Wave 2 ~ Wave 6 规划）
 - **近期（2026 Q4 / W1 收尾与 W2）**：
-  - **C19**：推动 Live LLM Judge 真实调用校准，完善 Faithfulness / Relevance 线上评分。
-  - **C20**：激活生成质量门禁（Objective Generation Quality Gate）。
+  - **C19 / C20**：2026-10-21 已分别按零外调离线工具链与 DRAFT 契约接受归档；完整 Judge Live、三轮生成参考及阈值批准/激活移交技术债 W1-E1～E3。Wave 1 工程范围收口不表示质量全部达标，也不自动启动 W2。
   - **W2（有界策略扩展）**：在 Router 中逐步推进 multi-hop 多跳推理、compare 对比检索、temporal 时序检索等复合策略。
 - **中期（2027 H1 / W3 ~ W4）**：
   - **W3（权限感知知识源联邦）**：接入更多异构数据源（Confluence, Notion, GitLab），实现多源统一权限下推。
@@ -410,16 +413,16 @@
 
 ### 7.2 其他代码与工程风险
 1. **C18 预算审计源文件哈希漂移（budget_source_drift）**：
-   - 现场验证证据：执行 `python -B -m unittest discover -s scripts -p "test_*.py"` 时，`test_c18_generation_contract.py` 等 4 个测试报错 `c18_budget_contract.BudgetContractError: budget_source_drift`。
-   - 根因：`scripts/c18_budget_contract.py` 在 C18 归档时锁定了相关源码的 SHA-256 哈希。随后 C21（`structured-sse-terminal-contract`）修改了 `QAController.java`、`AnswerGeneratorImpl.java` 和 `RAGServiceImpl.java`，导致离线防御校验按设计要求 Fail-closed 报警。需要更新 C18 审计记录或解除已归档版本的源码哈希强绑定。
+   - 历史现象：旧测试直接校验当前工作树时曾触发 `budget_source_drift`；该记录不是当前测试失败结论。现行单测已通过合成审计夹具隔离验证，见[避坑备忘第 2 节](.ai/GOTCHAS.md#2-c18-预算审计源码冻结锁budget_source_drift)。
+   - 处理原则：C18 审计冻结了源码 SHA-256，后续 C21 与诊断改动使当前源码不再匹配旧身份，正式 C18 CLI 应继续拒绝执行。保留旧 audit、manifest、报告和 baseline 原样；基于新源码评测时独立建立新版本审计与授权，不能改旧哈希或解除冻结锁来放行。
 2. **客观词法 Claim 覆盖率极低（5.22%）**：
    - 5.22% 的数值反映出基于字面词法（Jaccard / Token overlap）校验自然语言长答案的局限性；模型回答常使用同义词替换或抽象概括，词法校验无法建立语义等价，亟需未来引入 NLI（自然语言推理）模型或校准后的 LLM Judge。
-3. **Live Judge 处于 SKIPPED 状态**：
-   - C9b 仅完成了离线校准工具和 24 条静态 Gold 数据集；由于未获真实 API 调用授权，线上 Judge 的 Faithfulness / Relevance 评分未完成校准，不可作为发布门禁。
+3. **完整 Live Judge 校准未完成**：
+   - C9b 的历史 `SKIPPED`、C19 后续部分真实调用与完整 24×3 校准是不同证据。C19 仅接受离线工具链，原始未完成状态保持不变；完整独立 run 与 agreement 审阅见[技术债 W1-E1](docs/roadmap/technical-debt.md#w1-e1)，不可作为已校准的发布门禁。
 4. **Qdrant 与 Elasticsearch 多租户未闭环**：
    - `rag-core/src/main/java/com/enterprise/rag/core/vectorstore/config/VectorStoreConfig.java`（L142）：当 `rag.tenant.enforcement.enabled=true` 时，若配置为非 Milvus 向量库，应用启动直接抛异常退出。
-5. **SSE 流式历史在 Legacy 模式下不持久化引用**：
-   - `QAController.java` 中，当客户端未携带 `X-RAG-Stream-Contract: structured-v1` 请求头时，服务端退化为 legacy 格式下发纯文本流，无法在流式结束时携带结构化引用，历史表 `qa_history.citations` 保存为 null。只有在 `structured-v1` 契约且终态为 `ANSWER` 时，Citations 才会随流结束完成校验并持久化。
+5. **流式传输格式与历史引用必须分开判断**：
+   - `QAController.java` 在 legacy 路径下发送文本与 `[DONE]`，不向客户端发送结构化引用；但历史保存取决于是否有可保存的 `ANSWER` execution result 及交付状态，不以是否协商 `structured-v1` 为条件。结构化路径可在同次流的 `terminal` 中返回来源；历史页仍以实际保存字段为准，不能据 legacy 传输格式推断数据库引用必为空。
 
 ---
 

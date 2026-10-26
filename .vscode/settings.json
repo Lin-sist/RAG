@@ -1,0 +1,19 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    ".agents": true,
+    ".codex": true,
+    ".idea": true,
+    ".vscode": true,
+    ".m2repo": true,
+    ".tmp": true,
+    "tmp": true,
+    "logs": true,
+    "data": true,
+    "**/target": true,
+    "**/node_modules": true,
+    "rag-frontend/dist": true,
+    "**/__pycache__": true,
+    "**/*.log": true
+  }
+}
