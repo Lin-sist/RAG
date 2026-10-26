@@ -216,6 +216,12 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
     server.middlewares.use((req, res, next) => {
       const url = req.url?.split('?')[0]
       const pageFixture = new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('fixture')
+      if (url === '/__particle-checks' && req.method === 'GET') {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8')
+        readFile(new URL('./particle-checks.html', import.meta.url), 'utf8').then(html => res.end(html))
+          .catch(() => { res.statusCode = 500; res.end('Synthetic fixture unavailable') })
+        return
+      }
       if (!url?.startsWith('/api/') && !url?.startsWith('/auth/') && authMotionScenarios.has(pageFixture)) {
         const id = randomUUID(); authMotionSessions.set(id, { scenario: pageFixture, calls: 0 })
         res.setHeader('Set-Cookie', `auth-motion-preview=${id}; Path=/; SameSite=Strict`)

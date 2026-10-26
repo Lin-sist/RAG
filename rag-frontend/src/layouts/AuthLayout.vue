@@ -23,14 +23,14 @@
         <p class="auth-subtitle">基于知识库的检索与问答</p>
         <router-view />
       </section>
-      <LoginLogoMotion class="auth-art" />
+      <LoginParticleScene class="auth-art" />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import LoginLogoMotion from '@/components/common/LoginLogoMotion.vue'
+import LoginParticleScene from '@/components/common/LoginParticleScene.vue'
 import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
@@ -151,6 +151,6 @@ function toggleTheme() {
   .auth-topbar-note { display: none; }
   .auth-hero { padding: 42px 20px 48px; }
   .auth-intro h1 { font-size: clamp(42px, 11vw, 56px); }
-  .auth-art { margin-top: 8px; width: min(230px, 60vw); }
+  .auth-art { margin-top: 8px; width: min(300px, 100%); }
 }
 </style>

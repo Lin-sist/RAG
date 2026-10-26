@@ -2,13 +2,13 @@
 
 ## Status
 
-`IDLE`
+`ACTIVE · AWAITING_ACCEPTANCE`
 
-当前无活动 Type C 变更（WIP = 0/1）。Wave 1（C17–C21）及前端 Demo（F1–F6）已按各自接受范围归档收口，Vibecoding 工作流已升级至 v2.0；不自动启动 Wave 2。
+登录页粒子图样改造处于客户端交付审阅阶段（WIP = 1/1），等待用户接受效果及归档授权；Wave 1 与既有前端接受范围保持归档。
 
 ## Active (WIP Limit = 1)
 
-- `None`（启动新 Type C 时在此处登记唯一 Change ID、授权边界与 `tasks.md` 入口链接）。
+- **login-particle-story**：[任务与设计闸门](../openspec/changes/login-particle-story/tasks.md)。2026-10-26 用户确认方案并授权实现/验证；仅登录页右侧，真实业务调用预算 0，提交与接受/归档未授权。
 
 ## Parked & Remaining Evidence Debt
 

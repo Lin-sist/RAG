@@ -1,0 +1,921 @@
+{
+  "status": "CLIENT_VALIDATED_AWAITING_ACCEPTANCE",
+  "date": "2026-10-26",
+  "sourceHead": "158b56d016083cf2a3414be2a51eb83db50e63ea",
+  "workingTree": "Implementation not committed; hashes identify captured source files.",
+  "artifactRoot": "C:/Users/Lin/.codex/visualizations/2026/10/26/01a1770b-f249-7230-97f2-6d25cdebb97a/login-particle-story",
+  "browser": "Chrome extension via CUA; GPU backend and hardware fps not measured",
+  "realBusinessCalls": 0,
+  "baseline": {
+    "tests": 102,
+    "failed": 0,
+    "buildWithVueTsc": "PASS",
+    "authRouteJsBytes": 14627,
+    "authRouteJsGzipKbFromVite": 6.11
+  },
+  "implementation": {
+    "tests": 114,
+    "failed": 0,
+    "skipped": 0,
+    "focusedTests": 12,
+    "buildWithVueTsc": "PASS",
+    "mainBundleWarning": "Existing >500 kB warning remains",
+    "officialOpenSpecValidate": "NOT_RUN_CLI_UNAVAILABLE"
+  },
+  "counts": {
+    "cssViewportThemeGroups": 6,
+    "productionImages": 17,
+    "harnessImages": 14,
+    "images": 31
+  },
+  "notes": [
+    "All credentials and auth requests were localhost fixtures.",
+    "Reduce and document-hidden preferences were simulated only in the harness.",
+    "Wheel modifier cases used synthetic DOM WheelEvents; physical OS zoom was not tested.",
+    "Context loss/restoration used the real WEBGL_lose_context extension.",
+    "CSS viewport sizes were checked with innerWidth/innerHeight; image pixel sizes are recorded separately.",
+    "Image pixel sizes are original and may differ from CSS viewport sizes.",
+    "390x844 CSS checks yielded 385x832 image pixels; no stretching applied.",
+    "diagnostic.jpg and stale captures are excluded.",
+    "Visual acceptance and baseline/archive are not authorized."
+  ],
+  "interaction": {
+    "scrollBefore": 0.18,
+    "scrollAfter": 0.1193,
+    "brushAfter": 0.0978
+  },
+  "sourceFiles": [
+    {
+      "path": "rag-frontend/src/layouts/AuthLayout.vue",
+      "sha256": "3c4a585a8212fc8e2d0fc4835af5fe086dbd3a1d12aae033cb6d6bfab91800f9"
+    },
+    {
+      "path": "rag-frontend/src/components/common/LoginParticleScene.vue",
+      "sha256": "7cf539c7043269818e6afb61aa77f5a2fe6def001ac35fbea565f4b0733731d0"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleGeometry.ts",
+      "sha256": "40665347d41c64783b2c1775ef568be6932248dd7c7af78fc66e91e84e3cbd86"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleMotion.ts",
+      "sha256": "714723e6ff81ba1375edb532b683722eac20e70bb915709d4cb4a481b587cdfe"
+    },
+    {
+      "path": "rag-frontend/tests/login-particle.test.mjs",
+      "sha256": "685395ec077d3ec1edfbfaeef6eff19931aff7899157dea3ef9783c7c5251794"
+    },
+    {
+      "path": "rag-frontend/tests/preview.mjs",
+      "sha256": "6ace710b9a69103b0da1872f8606c1cca67026589a466c84563429464f87fa3f"
+    },
+    {
+      "path": "rag-frontend/tests/particle-checks.html",
+      "sha256": "c6b1b15869ed544f56fc0f30c06244ef297bd9055090b0bb39e4be63e3fd258d"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "path": "rag-frontend/src/views/login/LoginView.vue",
+      "sha256": "6c0b9a024bfbabaebaa08259cf5ca7467917b7b3f6cc896d1d22b67aa8853b2f",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/components/common/LoginLogoMotion.vue",
+      "sha256": "5a2bc7aa0290dc765ed0ed1076670db34635ddfeccedc97fb8f31402263e248d",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/utils/loginLogoMotion.ts",
+      "sha256": "760748d01046032215067b405d1471534d3a46d6f8d5069398aac4a6935679af",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/assets/login-logo.svg",
+      "sha256": "74ff1d62f1d4168f302bab6158036da5d528e2b3f87ad668ccf9f16d83648ac7",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/stores/theme.ts",
+      "sha256": "a3405ee40288de6f75eb2f63ab307a8e4f952c40495ee71368d9a1febdf78f03",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/router/index.ts",
+      "sha256": "436e93fd9242235d93a05ecb49e304379cb0e9a8680019c596f92096e799c31c",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/package.json",
+      "sha256": "2c210ca281c720be8e15a89f8e83fa048fa16c30613fb9d8d53eec907b607588",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/package-lock.json",
+      "sha256": "8798527dd0385b70c5ed8e292f1e8b01d28ff1029a5731e8668e03da7c21f567",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "prototype/rag-login-motion-demo/js/logo-motion.js",
+      "sha256": "ec8e309e3ff1aaa0436c215532e530f3d5593227886f631e4051b420006cd4da",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "prototype/rag-login-motion-demo/assets/logo.svg",
+      "sha256": "74ff1d62f1d4168f302bab6158036da5d528e2b3f87ad668ccf9f16d83648ac7",
+      "gitDiffHeadUnchanged": true
+    }
+  ],
+  "images": [
+    {
+      "name": "dark-1440-document",
+      "canvas": {
+        "frame": "174",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "0.0000",
+        "renderer": "webgl",
+        "time": "12.482",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "dark-1440-document.jpg",
+      "sha256": "9d5124f28534dfc7554a1d2a75ee519300d4c9f9cd13d95eb0272e66b89fdb34",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "dark-1440-graph",
+      "canvas": {
+        "frame": "175",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "1.0000",
+        "renderer": "webgl",
+        "time": "12.482",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "dark-1440-graph.jpg",
+      "sha256": "690862d8b4b68a8926dc6c937c05acca929a5e356658dc9d62902037687f1e13",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "dark-1440-answer",
+      "canvas": {
+        "frame": "176",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "2.0000",
+        "renderer": "webgl",
+        "time": "12.482",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "dark-1440-answer.jpg",
+      "sha256": "70ac79135989ce1fdb46b288301b6400f0cdc2516d3b17b2f9571775fdc8f065",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "light-1440-answer",
+      "canvas": {
+        "frame": "177",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "2.0000",
+        "renderer": "webgl",
+        "time": "12.482",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "light-1440-answer.jpg",
+      "sha256": "fc8532754ecfecd7ac6bdb851252737276b4bed17285199a7b18c534c3760cb8",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "light-1440-graph",
+      "canvas": {
+        "frame": "178",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "1.0000",
+        "renderer": "webgl",
+        "time": "12.482",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "light-1440-graph.jpg",
+      "sha256": "0ef172d4abb721b5123ede5c74b1b9180a19cd45b08dedd1f2308cb183e16995",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "light-1440-document",
+      "canvas": {
+        "frame": "179",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "0.0000",
+        "renderer": "webgl",
+        "time": "12.482",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "light-1440-document.jpg",
+      "sha256": "8623ddc34d8b54bb6c292ddeaced2b6309ac7f6fae5f7a8083225f879f1f1691",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "light-1440-middle",
+      "canvas": {
+        "frame": "304",
+        "offset": "0.0255",
+        "points": "4800",
+        "progress": "0.5400",
+        "renderer": "webgl",
+        "time": "19.940",
+        "vF18d67ea": ""
+      },
+      "paused": "false",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "light-1440-middle.jpg",
+      "sha256": "32f4098735943245e8cf7f6543ed2843eaae75268f787f46e464ef11e3a41312",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "dark-1440-middle",
+      "canvas": {
+        "frame": "297",
+        "offset": "0.0533",
+        "points": "4800",
+        "progress": "0.5400",
+        "renderer": "webgl",
+        "time": "19.693",
+        "vF18d67ea": ""
+      },
+      "paused": "false",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "dark-1440-middle.jpg",
+      "sha256": "57df8060c89ff87826624da4ec281d007f318e2db971d26efa5e83f4bd2bd87c",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "light-1024-document",
+      "canvas": {
+        "frame": "8",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "0.0000",
+        "renderer": "webgl",
+        "time": "0.000",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 1024,
+      "scrollY": 0,
+      "viewport": [
+        1024,
+        768
+      ],
+      "file": "light-1024-document.jpg",
+      "sha256": "0e704e4666d53d709168cab56fb7cb617db47c5873f05e96fcef1aa84664babf",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "dark-1024-document",
+      "canvas": {
+        "frame": "312",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "0.0000",
+        "renderer": "webgl",
+        "time": "20.124",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 1024,
+      "scrollY": 0,
+      "viewport": [
+        1024,
+        768
+      ],
+      "file": "dark-1024-document.jpg",
+      "sha256": "7eb84c308ee6dd09251c0b5f3ac47674ba8cc7d28ebcad4764b8a9c3095ee8e0",
+      "imageSize": [
+        1024,
+        768
+      ]
+    },
+    {
+      "name": "dark-390-top",
+      "canvas": {
+        "frame": "313",
+        "offset": "0.0000",
+        "points": "2000",
+        "progress": "0.0000",
+        "renderer": "webgl",
+        "time": "20.124",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 385,
+      "scrollY": 0,
+      "viewport": [
+        390,
+        844
+      ],
+      "file": "dark-390-top.jpg",
+      "sha256": "85ddef7b8ea488c321c5f04d556d06cfe2b04036a0d674372809f44fe0ebbbea",
+      "imageSize": [
+        385,
+        832
+      ]
+    },
+    {
+      "name": "dark-390-bottom",
+      "canvas": {
+        "frame": "313",
+        "offset": "0.0000",
+        "points": "2000",
+        "progress": "0.0000",
+        "renderer": "webgl",
+        "time": "20.124",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 385,
+      "scrollY": 170.39999389648438,
+      "viewport": [
+        390,
+        844
+      ],
+      "file": "dark-390-bottom.jpg",
+      "sha256": "d325076af52eff050c5ca663bf9a086e255bfd17dfc2f7f129566ad9a743a58a",
+      "imageSize": [
+        385,
+        832
+      ]
+    },
+    {
+      "name": "light-390-bottom",
+      "canvas": {
+        "frame": "315",
+        "offset": "0.0000",
+        "points": "2000",
+        "progress": "2.0000",
+        "renderer": "webgl",
+        "time": "20.124",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 385,
+      "scrollY": 170.39999389648438,
+      "viewport": [
+        390,
+        844
+      ],
+      "file": "light-390-bottom.jpg",
+      "sha256": "e46dbe10eb3544e1a6e593c40733ac5fc9f4a968f28e66ee26ac4e67a48b3c46",
+      "imageSize": [
+        385,
+        832
+      ]
+    },
+    {
+      "name": "light-390-top",
+      "canvas": {
+        "frame": "315",
+        "offset": "0.0000",
+        "points": "2000",
+        "progress": "2.0000",
+        "renderer": "webgl",
+        "time": "20.124",
+        "vF18d67ea": ""
+      },
+      "paused": "true",
+      "renderer": "webgl",
+      "scrollWidth": 385,
+      "scrollY": 0,
+      "viewport": [
+        390,
+        844
+      ],
+      "file": "light-390-top.jpg",
+      "sha256": "c3231542ac1fb4ec644fc0501d867b6d6bad630b3f2f69e62d74cb2885954990",
+      "imageSize": [
+        385,
+        832
+      ]
+    },
+    {
+      "name": "login-error",
+      "canvas": {
+        "frame": "13",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "0.0000",
+        "renderer": "webgl",
+        "time": "0.288",
+        "vF18d67ea": ""
+      },
+      "paused": "false",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "login-error.jpg",
+      "sha256": "4ac0ff67324dcdf589e560aa8639a765f7f71860d29bbba6732f664a6bf26c37",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "login-loading",
+      "canvas": {
+        "frame": "13",
+        "offset": "0.0000",
+        "points": "4800",
+        "progress": "0.0000",
+        "renderer": "webgl",
+        "time": "0.330",
+        "vF18d67ea": ""
+      },
+      "paused": "false",
+      "renderer": "webgl",
+      "scrollWidth": 1440,
+      "scrollY": 0,
+      "viewport": [
+        1440,
+        900
+      ],
+      "file": "login-loading.jpg",
+      "sha256": "d14f25192e319f36ed04f237cf0d044d8c71b7412b6f5ffb4b06f0b4359f71af",
+      "imageSize": [
+        1440,
+        900
+      ]
+    },
+    {
+      "name": "harness-reduced",
+      "state": {
+        "renderer": "webgl",
+        "scene": 0,
+        "paused": false,
+        "reduced": true
+      },
+      "pendingFrames": 0,
+      "disposed": false,
+      "frame": "2219",
+      "progress": "0.0000",
+      "time": "77.781",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "file": "harness-reduced.jpg",
+      "sha256": "49a495312398e7edb7de26d8d3fde6059f55242cc93e54e1970689db50a50e1c",
+      "imageSize": [
+        1428,
+        636
+      ]
+    },
+    {
+      "name": "harness-reduced-select",
+      "state": {
+        "renderer": "webgl",
+        "scene": 1,
+        "paused": false,
+        "reduced": true
+      },
+      "pendingFrames": 0,
+      "disposed": false,
+      "frame": "2220",
+      "progress": "1.0000",
+      "time": "77.781",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "file": "harness-reduced-select.jpg",
+      "sha256": "2b15f8c3c3aaee5baa85544e6d2006a7bd7b0ce8ae3eff7bbdc6c253a473c130",
+      "imageSize": [
+        1428,
+        636
+      ]
+    },
+    {
+      "name": "harness-hidden",
+      "state": {
+        "renderer": "webgl",
+        "scene": 1,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 0,
+      "disposed": false,
+      "frame": "2227",
+      "progress": "1.0000",
+      "time": "77.955",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "file": "harness-hidden.jpg",
+      "sha256": "417bd2d04616380fdfdfc33148b3b68ff4029d894a6bcccf912a25f8e24148fb",
+      "imageSize": [
+        1428,
+        636
+      ]
+    },
+    {
+      "name": "harness-hidden-still",
+      "state": {
+        "renderer": "webgl",
+        "scene": 1,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 0,
+      "disposed": false,
+      "frame": "2227",
+      "progress": "1.0000",
+      "time": "77.955",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "file": "harness-hidden-still.jpg",
+      "sha256": "78ccf67c6baf19f36bc91fa346e82c694db11b2fee75e27886db1ab4bedcc469",
+      "imageSize": [
+        1428,
+        636
+      ]
+    },
+    {
+      "name": "harness-visible",
+      "state": {
+        "renderer": "webgl",
+        "scene": 1,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 1,
+      "disposed": false,
+      "frame": "2235",
+      "progress": "1.0000",
+      "time": "78.171",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "file": "harness-visible.jpg",
+      "sha256": "62f07eb8c0593bd2685eb9b3880f559e82242c701e6244f81cc591d596b3a8b3",
+      "imageSize": [
+        1428,
+        636
+      ]
+    },
+    {
+      "name": "harness-context-lost",
+      "state": {
+        "renderer": "static",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 0,
+      "disposed": false,
+      "frame": "6",
+      "progress": "0.0000",
+      "time": "0.080",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "eventGuards": [],
+      "file": "harness-context-lost.jpg",
+      "sha256": "f53281b84d50be55a55062e88bcfa319f9b2f14848dc3fe1d6dc24e3bbfa7328",
+      "imageSize": [
+        1428,
+        893
+      ]
+    },
+    {
+      "name": "harness-context-restored",
+      "state": {
+        "renderer": "webgl",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 1,
+      "disposed": false,
+      "frame": "7",
+      "progress": "0.0000",
+      "time": "0.080",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "eventGuards": [],
+      "file": "harness-context-restored.jpg",
+      "sha256": "6dc35dcfbbedb7779e9a4974c3bd21a9c0e8a02e9b576a84aaf0cf152bcd7c66",
+      "imageSize": [
+        1428,
+        893
+      ]
+    },
+    {
+      "name": "harness-disposed",
+      "state": {
+        "renderer": "webgl",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 0,
+      "disposed": true,
+      "frame": "32",
+      "progress": "0.0000",
+      "time": "0.958",
+      "canvasSize": [
+        0,
+        0
+      ],
+      "file": "harness-disposed.jpg",
+      "sha256": "4e4b23a1367f62569dea7163426136cb03e51270118b312e5abeae0f2733483a",
+      "imageSize": [
+        1428,
+        636
+      ]
+    },
+    {
+      "name": "harness-remounted",
+      "state": {
+        "renderer": "webgl",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 1,
+      "disposed": false,
+      "frame": "10",
+      "progress": "0.0000",
+      "time": "0.139",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "file": "harness-remounted.jpg",
+      "sha256": "d64e97dd7f8b3f069792eb48de47ef1c952c497fe12f4025ba8d62ecdf078742",
+      "imageSize": [
+        1428,
+        636
+      ]
+    },
+    {
+      "name": "harness-unsupported",
+      "state": {
+        "renderer": "static",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 0,
+      "disposed": false,
+      "frame": "18",
+      "progress": "0.0000",
+      "time": "0.417",
+      "canvasSize": [
+        0,
+        0
+      ],
+      "file": "harness-unsupported.jpg",
+      "sha256": "af1cf24d7ce50bc7bd56b015877bf50b681f3bae103d3adb478f4b03768fc244",
+      "imageSize": [
+        1428,
+        636
+      ]
+    },
+    {
+      "name": "harness-intersection-hidden",
+      "state": {
+        "renderer": "webgl",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 1,
+      "disposed": false,
+      "frame": "6",
+      "progress": "0.0000",
+      "time": "0.000",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "file": "harness-intersection-hidden.jpg",
+      "sha256": "e136a7f6c2e56e12378513e2551e72d9b17ed7a94a2411c660bad8f37d98c1cc",
+      "imageSize": [
+        1428,
+        893
+      ]
+    },
+    {
+      "name": "harness-intersection-still",
+      "state": {
+        "renderer": "webgl",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 0,
+      "disposed": false,
+      "frame": "9",
+      "progress": "0.0000",
+      "time": "0.080",
+      "canvasSize": [
+        1,
+        1
+      ],
+      "file": "harness-intersection-still.jpg",
+      "sha256": "041632e9167be4e5347e4564bd1a2f9dd4cd14ce9bc48aff65146a9c8e1aabd1",
+      "imageSize": [
+        1428,
+        893
+      ]
+    },
+    {
+      "name": "harness-intersection-visible",
+      "state": {
+        "renderer": "webgl",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 1,
+      "disposed": false,
+      "frame": "12",
+      "progress": "0.0000",
+      "time": "0.115",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "file": "harness-intersection-visible.jpg",
+      "sha256": "367b6c5db15a1e329661aacfa8c91733a231829c81a1681a213ea5e35ca26103",
+      "imageSize": [
+        1428,
+        893
+      ]
+    },
+    {
+      "name": "harness-wheel-guards",
+      "state": {
+        "renderer": "webgl",
+        "scene": 0,
+        "paused": false,
+        "reduced": false
+      },
+      "pendingFrames": 1,
+      "disposed": false,
+      "frame": "6",
+      "progress": "0.0000",
+      "time": "0.000",
+      "canvasSize": [
+        525,
+        469
+      ],
+      "eventGuards": [
+        {
+          "name": "ctrl",
+          "prevented": false
+        },
+        {
+          "name": "meta",
+          "prevented": false
+        },
+        {
+          "name": "horizontal",
+          "prevented": false
+        },
+        {
+          "name": "uncancelable",
+          "prevented": false
+        },
+        {
+          "name": "outward-start",
+          "prevented": false
+        },
+        {
+          "name": "outside-canvas",
+          "prevented": false
+        }
+      ],
+      "file": "harness-wheel-guards.jpg",
+      "sha256": "b22e28df41ca7b62be55d31612f324456ab6fbefd796a0c23507701e6400dd57",
+      "imageSize": [
+        1428,
+        893
+      ]
+    },
+    {
+      "name": "login-success",
+      "file": "login-success.jpg",
+      "sha256": "2bb344cd2e735215da07bda48b40ba7088ddb0fa5cf1344da9cd66c9a59c782d",
+      "imageSize": [
+        1440,
+        900
+      ],
+      "observation": "Synthetic /chat reached; login canvas count was 0."
+    }
+  ]
+}

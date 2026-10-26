@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>粒子控制器 · 合成浏览器检查</title>
+<style>
+body{margin:30px auto;max-width:760px;padding:0 20px;background:#181715;color:#eee;font:15px/1.6 system-ui}
+button{font:inherit;padding:9px 14px;margin:4px;border:1px solid #777;border-radius:8px;background:#252420;color:inherit}
+.stage{position:relative;width:420px;max-width:100%;aspect-ratio:1.12;--art-ink:#eeeeea;--art-accent:#c9a15a}
+canvas,img{position:absolute;width:100%;height:100%;inset:0} img{object-fit:contain}pre{white-space:pre-wrap}
+</style>
+<h1>粒子控制器 · 合成浏览器检查</h1>
+<p>仅由本地测试服务器提供。偏好与隐藏状态在本页模拟，不改变系统设置，不连接真实认证或模型。</p>
+<div class="stage"><canvas aria-label="测试粒子画布"></canvas><img src="/src/assets/login-logo.svg" alt="静态品牌降级"></div>
+<div id="actions">
+<button data-action="scene">切换图样</button><button data-action="pause">暂停或继续</button>
+<button data-action="reduce">切换减少动态效果</button><button data-action="hidden">切换模拟后台</button>
+<button data-action="offscreen">隐藏或显示画布</button>
+<button data-action="guards">检查滚轮放行</button>
+<button data-action="lost">丢失上下文</button><button data-action="restore">恢复上下文</button>
+<button data-action="fail">模拟不支持 WebGL</button><button data-action="destroy">销毁实例</button><button data-action="mount">重新挂载</button>
+</div>
+<pre role="status" id="result"></pre>
+<script type="module">
+import { mountParticles } from '/src/utils/loginParticleMotion.ts'
+const canvas=document.querySelector('canvas'), fallback=document.querySelector('img'), result=document.querySelector('#result')
+const nativeMedia=window.matchMedia.bind(window), media=new EventTarget()
+media.matches=false
+window.matchMedia=query=>query.includes('prefers-reduced-motion')?media:nativeMedia(query)
+const hiddenGetter=Object.getOwnPropertyDescriptor(Document.prototype,'hidden').get.bind(document)
+let hidden=false, controller, state={}, scene=0, disposed=false, contextExtension, eventGuards=[]
+Object.defineProperty(document,'hidden',{configurable:true,get:()=>hidden||hiddenGetter()})
+const nativeFrame=window.requestAnimationFrame.bind(window), nativeCancel=window.cancelAnimationFrame.bind(window), pending=new Set()
+window.requestAnimationFrame=fn=>{const id=nativeFrame(time=>{pending.delete(id);fn(time)});pending.add(id);return id}
+window.cancelAnimationFrame=id=>{pending.delete(id);nativeCancel(id)}
+const getContext=canvas.getContext.bind(canvas)
+function paint(){result.textContent=JSON.stringify({state,pendingFrames:pending.size,disposed,frame:canvas.dataset.frame,progress:canvas.dataset.progress,time:canvas.dataset.time,canvasSize:[canvas.width,canvas.height],eventGuards},null,2)}
+function onState(value){state=value;fallback.hidden=value.renderer==='webgl';canvas.style.visibility=value.renderer==='webgl'?'visible':'hidden';paint()}
+function mount(){controller?.destroy();canvas.getContext=getContext;disposed=false;controller=mountParticles(canvas,onState);paint()}
+document.querySelector('#actions').addEventListener('click',event=>{
+const action=event.target.dataset.action
+if(action==='scene')controller?.select(scene=(scene+1)%3)
+if(action==='pause')controller?.pause()
+if(action==='reduce'){media.matches=!media.matches;media.dispatchEvent(new Event('change'))}
+if(action==='hidden'){hidden=!hidden;document.dispatchEvent(new Event('visibilitychange'))}
+if(action==='offscreen')canvas.hidden=!canvas.hidden
+if(action==='guards')eventGuards=[['ctrl',{ctrlKey:true}],['meta',{metaKey:true}],['horizontal',{deltaX:200}],['uncancelable',{cancelable:false}],['outward-start',{deltaY:-120}],['outside-canvas',{}]].map(([name,values])=>{const event=new WheelEvent('wheel',{deltaY:120,cancelable:true,...values});(name==='outside-canvas'?window:canvas).dispatchEvent(event);return {name,prevented:event.defaultPrevented}})
+if(action==='lost'){contextExtension=getContext('webgl')?.getExtension('WEBGL_lose_context');contextExtension?.loseContext()}
+if(action==='restore')contextExtension?.restoreContext()
+if(action==='destroy'){controller?.destroy();disposed=true}
+if(action==='fail'){controller?.destroy();canvas.getContext=()=>null;controller=mountParticles(canvas,onState)}
+if(action==='mount')mount()
+paint()
+})
+mount();setInterval(paint,100)
+</script></html>
