@@ -1,6 +1,7 @@
 // Original procedural models for the login illustration. No external geometry or assets.
-export const PARTICLE_SCENES = ['知识文档', '检索关联', '引用回答'] as const
-export const clamp = (value: number, low = 0, high = 2) => Math.max(low, Math.min(high, value))
+import { chapterBlend, LAST_SCENE, LOGIN_STORY } from './loginParticleStory'
+export { PARTICLE_SCENES } from './loginParticleStory'
+export const clamp = (value: number, low = 0, high = LAST_SCENE) => Math.max(low, Math.min(high, value))
 const fraction = (value: number) => value - Math.floor(value)
 type Point = [number, number, number]
 type Sample = (u: number, v: number) => Point
@@ -8,7 +9,7 @@ type Part = { sample: Sample; weight: number; tone: number }
 
 export function makeModels(count: number): Float32Array[] {
   if (!Number.isInteger(count) || count < 1 || count > 4800) throw Error('Invalid particle budget')
-  const models: Part[][] = [[], [], []]
+  const models: Part[][] = LOGIN_STORY.map(() => [])
   function line(parts: Part[], a: Point, b: Point, weight = 1, tone = 0) {
     parts.push({ weight, tone, sample: (u, v) => [
       a[0] + (b[0] - a[0]) * u + (v - .5) * .008,
@@ -20,7 +21,37 @@ export function makeModels(count: number): Float32Array[] {
     const corners: Point[] = [[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]]
     for (let i = 0; i < 4; i++) line(parts, corners[i], corners[(i + 1) % 4], i % 2 ? h : w, tone)
   }
-  const book = models[0]
+  // The three paths match the existing wordmark/login-logo.svg. Curves are
+  // sampled only during model creation, never parsed or allocated per frame.
+  type XY = [number, number]
+  const cubic = (p: XY[], t: number): XY => {
+    const s = 1 - t
+    return [0, 1].map(axis => s ** 3 * p[0][axis] + 3 * s * s * t * p[1][axis]
+      + 3 * s * t * t * p[2][axis] + t ** 3 * p[3][axis]) as XY
+  }
+  const logo = models[0]
+  function wing(top: XY[], bottom: XY[], weight: number) {
+    logo.push({ weight, tone: .04, sample: (u, v) => {
+      const a = cubic(top, u), b = cubic(bottom, 1 - u)
+      const across = v < .16 ? 0 : v > .84 ? 1 : (v - .16) / .68
+      return [(a[0] + (b[0] - a[0]) * across - 303) / 175,
+        (256.5 - a[1] - (b[1] - a[1]) * across) / 175, (across - .5) * .035]
+    } })
+  }
+  wing([[141, 133], [252, 170], [372, 222], [465, 268]],
+    [[465, 268], [372, 236], [250, 184], [141, 133]], 5)
+  wing([[226, 380], [310, 372], [396, 326], [465, 268]],
+    [[465, 268], [398, 340], [302, 388], [226, 380]], 3.7)
+  const tip: XY[] = [[412, 238], [465, 268], [412, 298], [427, 268], [412, 238]]
+  const controls: XY[] = [[447, 252], [447, 284], [427, 283], [427, 253]]
+  logo.push({ weight: 1.1, tone: 1, sample: (u, v) => {
+    const segment = Math.min(3, Math.floor(u * 4)), t = u * 4 - segment, s = 1 - t
+    const x = s * s * tip[segment][0] + 2 * s * t * controls[segment][0] + t * t * tip[segment + 1][0]
+    const y = s * s * tip[segment][1] + 2 * s * t * controls[segment][1] + t * t * tip[segment + 1][1]
+    const radius = Math.sqrt(v)
+    return [(438 + (x - 438) * radius - 303) / 175, (256.5 - 268 - (y - 268) * radius) / 175, .024]
+  } })
+  const book = models[1]
   for (let layer = 0; layer < 3; layer++) {
     const x = -.64 + layer * .065, y = -.77 + layer * .045, z = -.17 + layer * .17
     rectangle(book, x, y, 1.05, 1.45, z)
@@ -35,7 +66,7 @@ export function makeModels(count: number): Float32Array[] {
       }
     }
   }
-  const graph = models[1]
+  const graph = models[2]
   const nodes: Array<[number, number, number, number]> = [
     [0, 0, .12, .25], [-.82, .48, -.12, .13], [.72, .62, -.18, .16],
     [.91, -.2, .08, .12], [.25, -.79, -.1, .15], [-.7, -.58, .2, .14], [-.98, -.05, -.32, .08],
@@ -50,7 +81,7 @@ export function makeModels(count: number): Float32Array[] {
   for (const [a, b] of [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]) {
     line(graph, nodes[a].slice(0, 3) as Point, nodes[b].slice(0, 3) as Point, .55, .05)
   }
-  const answer = models[2]
+  const answer = models[3]
   rectangle(answer, -.85, -.35, 1.7, 1.13, 0)
   rectangle(answer, -.8, -.4, 1.7, 1.13, -.14)
   answer.push({ weight: 2, tone: .08, sample: (u, v) => [-.85 + u * 1.7, -.35 + v * 1.13, 0] })
@@ -87,14 +118,25 @@ export function spring(value: number, velocity: number, target: number, dt: numb
 }
 
 export function morphPoint(models: Float32Array[], index: number, progress: number, out: Float32Array, offset = 0) {
-  const p = clamp(progress), scene = Math.min(1, Math.floor(p)), phase = p - scene
-  const mix = phase * phase * (3 - 2 * phase), spread = Math.sin(Math.PI * mix) ** 2
+  const p = clamp(progress), scene = Math.min(models.length - 2, Math.floor(p)), phase = p - scene
+  const mix = chapterBlend(phase), spread = Math.sin(Math.PI * phase) ** 2
   const start = index * 4, a = models[scene], b = models[scene + 1]
-  for (let axis = 0; axis < 4; axis++) {
-    const random = fraction(Math.sin(index * 17.13 + axis * 41.7) * 9271.83) - .5
-    out[offset + axis] = a[start + axis] * (1 - mix) + b[start + axis] * mix + (axis < 3 ? random * spread * (axis === 2 ? .7 : 1.45) : 0)
-  }
+  for (let axis = 0; axis < 4; axis++) out[offset + axis] = a[start + axis] * (1 - mix) + b[start + axis] * mix
+  // A bounded, centre-weighted disk follows the interpolated silhouette.
+  // Radial/tangential coordinates avoid independent Cartesian scatter edges.
+  const angle = fraction(index * .61803398875 + .17) * Math.PI * 2
+  const radius = fraction(Math.sin(index * 17.13 + 3.7) * 9271.83) ** 2 * .26 * spread
+  const x = out[offset], y = out[offset + 1], length = Math.hypot(x, y)
+  const nx = length > .001 ? x / length : Math.cos(angle), ny = length > .001 ? y / length : Math.sin(angle)
+  const radial = Math.cos(angle) * radius, tangent = Math.sin(angle) * radius
+  out[offset] += nx * radial - ny * tangent
+  out[offset + 1] += ny * radial + nx * tangent
+  out[offset + 2] += Math.sin(angle * 2) * radius * .3
 }
+
+// Stable framing for every chapter, including scatter and the .2-axis brush.
+// Short viewports scale down as a whole instead of clipping or fitting each frame.
+export const projectionScale = (aspect: number) => .55 * Math.min(1, Math.max(.01, aspect))
 
 export interface WheelInput { deltaY: number; deltaX: number; deltaMode: number; ctrlKey: boolean; metaKey: boolean; cancelable: boolean }
 export function wheelTarget(current: number, event: WheelInput, height: number): number {

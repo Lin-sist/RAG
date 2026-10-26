@@ -1,8 +1,8 @@
-import { clamp, makeModels, morphPoint, spring, wheelTarget } from './loginParticleGeometry'
+import { clamp, makeModels, morphPoint, projectionScale, spring, wheelTarget } from './loginParticleGeometry'
 
 const VERTEX = `
   attribute vec4 a_particle;
-  uniform float u_time, u_aspect, u_size;
+  uniform float u_time, u_aspect, u_size, u_scale;
   varying float v_tone, v_alpha;
   void main() {
     vec3 p = a_particle.xyz;
@@ -11,7 +11,7 @@ const VERTEX = `
     p = vec3(p.x*c+p.z*s, p.y, p.z*c-p.x*s);
     p.y += sin(u_time*.6) * .016;
     float depth = 3.8 / (3.8-p.z*.45);
-    gl_Position = vec4(p.x * .98 * depth / u_aspect, p.y * .98 * depth, -p.z*.15, 1.0);
+    gl_Position = vec4(p.x * u_scale * depth / u_aspect, p.y * u_scale * depth, -p.z*.15, 1.0);
     gl_PointSize = u_size * depth;
     v_tone = a_particle.w;
     v_alpha = .66 + .30 * (p.z + .6) / 1.2;
@@ -26,7 +26,7 @@ const FRAGMENT = `
     gl_FragColor = vec4(mix(u_ink, u_accent, v_tone * .85), coverage * clamp(v_alpha, .3, .95));
   }
 `
-export interface ParticleState { renderer: 'static' | 'webgl'; scene: number; paused: boolean; reduced: boolean }
+export interface ParticleState { renderer: 'static' | 'webgl'; scene: number; progress: number; paused: boolean; reduced: boolean }
 export interface ParticleController { select(index: number): void; pause(): void; refresh(): void; destroy(): void }
 
 export function mountParticles(canvas: HTMLCanvasElement, onState: (state: ParticleState) => void = () => {}): ParticleController {
@@ -44,7 +44,8 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
   const moving = () => drawable() && !paused && !media?.matches
   function report() {
     if (disposed) return
-    const state: ParticleState = { renderer: available() ? 'webgl' : 'static', scene: Math.round(position), paused, reduced: media?.matches ?? false }
+    const progress = available() ? Number(position.toFixed(4)) : 0
+    const state: ParticleState = { renderer: available() ? 'webgl' : 'static', scene: Math.round(progress), progress, paused, reduced: media?.matches ?? false }
     const key = JSON.stringify(state)
     if (key !== reported) { reported = key; safe(() => onState(state)) }
   }
@@ -92,7 +93,7 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
       const attribute = gl.getAttribLocation(program, 'a_particle')
       if (attribute < 0) throw Error('Particle attribute unavailable')
       gl.enableVertexAttribArray(attribute); gl.vertexAttribPointer(attribute, 4, gl.FLOAT, false, 0, 0)
-      uniforms = Object.fromEntries(['time', 'aspect', 'size', 'ink', 'accent'].map(name => [name, gl!.getUniformLocation(program!, 'u_' + name)]))
+      uniforms = Object.fromEntries(['time', 'aspect', 'size', 'scale', 'ink', 'accent'].map(name => [name, gl!.getUniformLocation(program!, 'u_' + name)]))
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.clearColor(0, 0, 0, 0)
       canvas.dataset.renderer = 'webgl'
     } catch { fail() }
@@ -144,6 +145,7 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
       const style = getComputedStyle(canvas)
       gl.useProgram(program); gl.viewport(0, 0, w, h); gl.clear(gl.COLOR_BUFFER_BIT)
       gl.uniform1f(uniforms.time, time); gl.uniform1f(uniforms.aspect, width / height)
+      gl.uniform1f(uniforms.scale, projectionScale(width / height))
       gl.uniform1f(uniforms.size, (width < 360 ? 1.9 : 2.3) * dpr)
       gl.uniform3fv(uniforms.ink, color(style, '--art-ink', '#34593d'))
       gl.uniform3fv(uniforms.accent, color(style, '--art-accent', '#9b7b40'))
@@ -173,8 +175,9 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
   function move(event: PointerEvent) {
     if (!moving() || event.pointerType === 'touch') return
     const r = canvas.getBoundingClientRect()
-    const x = (event.clientX - r.left - r.width / 2) / (r.height * .49)
-    const y = -(event.clientY - r.top - r.height / 2) / (r.height * .49)
+    const unit = r.height * .5 * projectionScale(r.width / r.height)
+    const x = (event.clientX - r.left - r.width / 2) / unit
+    const y = -(event.clientY - r.top - r.height / 2) / unit
     if (!pointer.active) { pointer.px = x; pointer.py = y }
     pointer.x = x; pointer.y = y; pointer.active = true
   }

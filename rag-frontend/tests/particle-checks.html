@@ -20,6 +20,7 @@ canvas,img{position:absolute;width:100%;height:100%;inset:0} img{object-fit:cont
 <pre role="status" id="result"></pre>
 <script type="module">
 import { mountParticles } from '/src/utils/loginParticleMotion.ts'
+import { PARTICLE_SCENES } from '/src/utils/loginParticleStory.ts'
 const canvas=document.querySelector('canvas'), fallback=document.querySelector('img'), result=document.querySelector('#result')
 const nativeMedia=window.matchMedia.bind(window), media=new EventTarget()
 media.matches=false
@@ -36,7 +37,7 @@ function onState(value){state=value;fallback.hidden=value.renderer==='webgl';can
 function mount(){controller?.destroy();canvas.getContext=getContext;disposed=false;controller=mountParticles(canvas,onState);paint()}
 document.querySelector('#actions').addEventListener('click',event=>{
 const action=event.target.dataset.action
-if(action==='scene')controller?.select(scene=(scene+1)%3)
+if(action==='scene')controller?.select(scene=(scene+1)%PARTICLE_SCENES.length)
 if(action==='pause')controller?.pause()
 if(action==='reduce'){media.matches=!media.matches;media.dispatchEvent(new Event('change'))}
 if(action==='hidden'){hidden=!hidden;document.dispatchEvent(new Event('visibilitychange'))}

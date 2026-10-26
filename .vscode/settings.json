@@ -1,7 +1,7 @@
 {
   "files.exclude": {
     "**/.git": true,
-    ".agents": true,
+    ".agents": false,
     ".codex": true,
     ".idea": true,
     ".vscode": true,

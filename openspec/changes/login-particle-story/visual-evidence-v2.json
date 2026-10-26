@@ -1,0 +1,672 @@
+{
+  "status": "CLIENT_VALIDATED_AWAITING_ACCEPTANCE",
+  "date": "2026-10-26",
+  "revision": 2,
+  "sourceHead": "4b842f58832837ca0853eca03ac10783579776ca",
+  "workingTree": "Second iteration uncommitted; source file hashes identify captured implementation. Separate .vscode/settings.json edit excluded.",
+  "artifactRoot": "C:/Users/Lin/.codex/visualizations/2026/10/26/01a1770b-f249-7230-97f2-6d25cdebb97a/login-particle-story-v2",
+  "browser": {
+    "version": "155.0.8059.85",
+    "mode": "headless system Chrome via bundled Playwright; built-in bridge unavailable",
+    "limitations": "Desktop emulated preferences and viewports; no physical mobile, hardware GPU or sustained fps claim"
+  },
+  "realBusinessCalls": 0,
+  "validation": {
+    "focused": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "frontendAll": {
+      "passed": 117,
+      "failed": 0,
+      "skipped": 0
+    },
+    "formalBuild": "PASS: vue-tsc -b followed by vite build",
+    "routeBundleGzipKB": 7.89,
+    "routeCssGzipKB": 1.91,
+    "existingMainBundleWarning": "1022.08 kB raw, greater than 500 kB"
+  },
+  "checks": [
+    {
+      "name": "dark-logo-matches-existing-svg",
+      "outside": 0,
+      "accent": 539,
+      "count": 4800
+    },
+    {
+      "name": "dark-native-wheel-reverse-preserves-input-focus",
+      "progress": "1.4002"
+    },
+    {
+      "name": "dark-pointer-recovers",
+      "observedOffset": "0.0663"
+    },
+    {
+      "name": "dark-pause-reduce-loss-restore-copy-synchronized",
+      "inputNodeRetained": true
+    },
+    {
+      "name": "light-logo-matches-existing-svg",
+      "outside": 0,
+      "accent": 539,
+      "count": 4800
+    },
+    {
+      "name": "light-native-wheel-reverse-preserves-input-focus",
+      "progress": "1.4002"
+    },
+    {
+      "name": "light-pointer-recovers",
+      "observedOffset": "0.0664"
+    },
+    {
+      "name": "light-pause-reduce-loss-restore-copy-synchronized",
+      "inputNodeRetained": true
+    },
+    {
+      "name": "auth-motion-error",
+      "passed": true
+    },
+    {
+      "name": "auth-motion-loading",
+      "passed": true,
+      "canvasAfterNavigation": 0
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "rag-frontend/src/layouts/AuthLayout.vue",
+      "sha256": "782af806ea1a7119b8fbe03f27feac1ad8dff6740b9e80252a5c672831223d0c"
+    },
+    {
+      "path": "rag-frontend/src/components/common/LoginParticleScene.vue",
+      "sha256": "1d8d0a9f79be0a3cf11dcff54c7bf8502a13c3bdfb0abdf18b4f6344deba6049"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleGeometry.ts",
+      "sha256": "8fe855286a09ddbafb3c1c24d3948f59aa1b51d75ab03eaba5795b420e9eb3b4"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleMotion.ts",
+      "sha256": "2a554fd1ce96f3764540e8f51e67ef89e1fe83219f3d27b5ba9b134a9caf8367"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleStory.ts",
+      "sha256": "397417815b533b950d3f3253a429bb65be26f27c809133e5a3a1459d49d48336"
+    },
+    {
+      "path": "rag-frontend/tests/login-particle.test.mjs",
+      "sha256": "9c4e26aea2b0f25c2389872b65d3f1676b72f28c7cd630d8da5572809bc60982"
+    },
+    {
+      "path": "rag-frontend/tests/particle-checks.html",
+      "sha256": "0b2f552bddf9e59eb98028bc0d8ca464e6d4d597c9852853c0054773b8cb6575"
+    },
+    {
+      "path": "rag-frontend/tests/login-particle-browser.mjs",
+      "sha256": "cf901cc934a20a00d0bf7eac8cfd84832e1ac441f33e2694b5b96b0aa801cde7"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "path": "rag-frontend/src/views/login/LoginView.vue",
+      "sha256": "6c0b9a024bfbabaebaa08259cf5ca7467917b7b3f6cc896d1d22b67aa8853b2f",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/components/common/LoginLogoMotion.vue",
+      "sha256": "5a2bc7aa0290dc765ed0ed1076670db34635ddfeccedc97fb8f31402263e248d",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/utils/loginLogoMotion.ts",
+      "sha256": "760748d01046032215067b405d1471534d3a46d6f8d5069398aac4a6935679af",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/assets/login-logo.svg",
+      "sha256": "74ff1d62f1d4168f302bab6158036da5d528e2b3f87ad668ccf9f16d83648ac7",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/stores/theme.ts",
+      "sha256": "a3405ee40288de6f75eb2f63ab307a8e4f952c40495ee71368d9a1febdf78f03",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/router/index.ts",
+      "sha256": "436e93fd9242235d93a05ecb49e304379cb0e9a8680019c596f92096e799c31c",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/package.json",
+      "sha256": "2c210ca281c720be8e15a89f8e83fa048fa16c30613fb9d8d53eec907b607588",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/package-lock.json",
+      "sha256": "8798527dd0385b70c5ed8e292f1e8b01d28ff1029a5731e8668e03da7c21f567",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "prototype/rag-login-motion-demo/js/logo-motion.js",
+      "sha256": "ec8e309e3ff1aaa0436c215532e530f3d5593227886f631e4051b420006cd4da",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "prototype/rag-login-motion-demo/assets/logo.svg",
+      "sha256": "74ff1d62f1d4168f302bab6158036da5d528e2b3f87ad668ccf9f16d83648ac7",
+      "gitDiffHeadUnchanged": true
+    }
+  ],
+  "previousManifest": {
+    "file": "visual-evidence.json",
+    "sha256": "0b3ad9812ac4349bdeb00f7af6505967e2609ea83837442e415ad276f5adc51a",
+    "note": "Preserved first-iteration evidence only"
+  },
+  "browserRecords": {
+    "file": "browser-records.json",
+    "sha256": "1da253de107d9fad0be8122cb5f43515a4133c0ae510d829d60fcd0db321758d"
+  },
+  "reviewSheets": [
+    {
+      "file": "review-dark-compact.jpg",
+      "sha256": "145a50096abeae68dad21c498e9fca08465dbc14ddf5c635c5a979ea849c13c4"
+    },
+    {
+      "file": "review-dark-desktop.jpg",
+      "sha256": "4ae53424e1ab3f2ec4d5e3fb012cfc47aa4708647aef6a1482552ab9b18b7c0c"
+    },
+    {
+      "file": "review-light-compact.jpg",
+      "sha256": "1c4b8e1af3c5bf0d71864acf87fc27b5984cbd78dd669f594f7c0541c3eb9d65"
+    },
+    {
+      "file": "review-light-desktop.jpg",
+      "sha256": "0b8d51b221a2e39468fb9bb79ed566c88cf8609ab4a9cd382b805252536c1a44"
+    }
+  ],
+  "images": [
+    {
+      "file": "dark-1440-scene-0.png",
+      "sha256": "6423b032f11df41a2f1310be239727f3f213e3378ab40fb8d4c0b33edb268398",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1440-scene-1.png",
+      "sha256": "c3bcf147ff696a6b926dc56117082f01e7239a88d89a03a9366caa89d58d9242",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.9998",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1440-scene-2.png",
+      "sha256": "939077e42bf82002767ea9a0d0d90e1b78520a64d5332d8e8fafe6c6ac17ff9f",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.9998",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1440-scene-3.png",
+      "sha256": "4d00ad720cdbd2445623c02b33fb6fe7a6d7a0804da1f9af5f2d5cb91c74bc2d",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.9998",
+      "scene": "3"
+    },
+    {
+      "file": "dark-1440-transition-0-0.25.png",
+      "sha256": "4ba31d66eca2f1ad0516c78d1b1fc118c1ec5efc5d78166c10d0ec50fcd10079",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.2499",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1440-transition-0-0.5.png",
+      "sha256": "d6bbf70341e318ecfb5ce0a1917b108a9a80db85f43408da07b4ff90a55f5e98",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.4998",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1440-transition-0-0.75.png",
+      "sha256": "603d920a82a0c4dd98183de2d28baecb79139fcd1f2a11831eee0a8cdb6f8724",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.7498",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1440-transition-1-0.25.png",
+      "sha256": "e44e3117ee2b5322d744c931984204aded59976db0fba0cfe1255620a40ba1e0",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.2498",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1440-transition-1-0.5.png",
+      "sha256": "fefb5019947eb34e3aaec3be111660fb80e7d333dad02b835f1b6acf650188c9",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.4998",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1440-transition-1-0.75.png",
+      "sha256": "fd0d21190a7b8de124eeb58ecdb599bd05e8bb07a6fc79a0defb73caa9c43e20",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.7498",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1440-transition-2-0.25.png",
+      "sha256": "398dffbfc2579707a893bb3fc86dc930fc9bcf43b6a6a907f7f6539bc605e646",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.2498",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1440-transition-2-0.5.png",
+      "sha256": "431c459fc44b3c2b7da9fef0a6c45c520d1bfd31f917425f4512e063170f7ae6",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.4998",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1440-transition-2-0.75.png",
+      "sha256": "2086dee1462c6698a1565b1035c313d32fe89ef00c99f386fee0f34ff31adbb1",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.7498",
+      "scene": "3"
+    },
+    {
+      "file": "dark-paused-answer.png",
+      "sha256": "bdd841ea8508aff0ce8cf20f12ec77ab2616da46c658ce6e93cbf994b64b5f54",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "3",
+      "scene": "3"
+    },
+    {
+      "file": "dark-reduced-document.png",
+      "sha256": "6872a599d1832b96d710aa8dc362ad228f086c157c177cb619d1c5012da3ed0a",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1",
+      "scene": "1"
+    },
+    {
+      "file": "dark-fallback-brand.png",
+      "sha256": "21f26eebd5750e13050712d1e0f1e510b5a0529a29b5dd09890e384b418f2793",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1024-scene-0.png",
+      "sha256": "9729b266211a1ee9a79d8062da1c406604ee916b358a8a2a88b924696432e3ac",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "0",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1024-scene-1.png",
+      "sha256": "579d77308b3cbcc07802365f118500184ffa54f9dcabdff3d1f8051dc5d099dc",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "1",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1024-scene-2.png",
+      "sha256": "e9d783f1e655cd17142c93f3339c4ce452c6409d7c0260e167ad7d258257f797",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "2",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1024-scene-3.png",
+      "sha256": "1b53f1130af4899338f34ccb4d50e4d87b6f37875482e01f8599e39bb95b6fd0",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "3",
+      "scene": "3"
+    },
+    {
+      "file": "dark-390-scene-0.png",
+      "sha256": "6e268c152dc38e8823b55411fb0a753749d506a1bf14b4c19a3b7390e5c0f510",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "0",
+      "scene": "0"
+    },
+    {
+      "file": "dark-390-scene-1.png",
+      "sha256": "127d3d4263b53040610f2d2d09afcbb1257402da5fe9aecb56313f1f3b4a2c1e",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "1",
+      "scene": "1"
+    },
+    {
+      "file": "dark-390-scene-2.png",
+      "sha256": "3c1996ccb312f9c1febd489522bd9b16d1ad18b13e0b54a9e92c5d8507df0648",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "2",
+      "scene": "2"
+    },
+    {
+      "file": "dark-390-scene-3.png",
+      "sha256": "64ac5d610771b7d26970befff28f86a1e4b01d600fbd3597d5e7f6644c2d5778",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "3",
+      "scene": "3"
+    },
+    {
+      "file": "light-1440-scene-0.png",
+      "sha256": "192bbbbfcac6420c0cdd31fcd0656ee5cce50465301e25addd757c0a150d0f54",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0",
+      "scene": "0"
+    },
+    {
+      "file": "light-1440-scene-1.png",
+      "sha256": "e001cdb44673baa7cafcc1134576722d0335aaafdcdc86252abca4ba98cc40fe",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.9998",
+      "scene": "1"
+    },
+    {
+      "file": "light-1440-scene-2.png",
+      "sha256": "e24f8d2479c6349f00745dd3eb364aedaca91522a02e52b2969975b134e96727",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.9998",
+      "scene": "2"
+    },
+    {
+      "file": "light-1440-scene-3.png",
+      "sha256": "8f7c4eb98f91d5276a48765a00b09a7f5619afb71b3c77ce1cfdf1163d3a428f",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.9998",
+      "scene": "3"
+    },
+    {
+      "file": "light-1440-transition-0-0.25.png",
+      "sha256": "776a35a1069d9d8b5e5dc339217d30f6163c0cb4c858ba918ffe33af778e775c",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.2499",
+      "scene": "0"
+    },
+    {
+      "file": "light-1440-transition-0-0.5.png",
+      "sha256": "fd82d6e8af954208f2749ac9f7c33a98740474b497990c5915ff4868c02eaa62",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.4998",
+      "scene": "0"
+    },
+    {
+      "file": "light-1440-transition-0-0.75.png",
+      "sha256": "21bcc5ddf3409e8b75046005e155489f6b7cf00f305786366f629537e7d6cfdf",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.7498",
+      "scene": "1"
+    },
+    {
+      "file": "light-1440-transition-1-0.25.png",
+      "sha256": "4e8b5c839941c1c888dee18675d8c9ed7d7be57e5d991ad9a45300422ffc84f8",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.2498",
+      "scene": "1"
+    },
+    {
+      "file": "light-1440-transition-1-0.5.png",
+      "sha256": "56571bbb3ac2f6474e31dd0e2e69a9bd82a96cc3469782ebb2fcf772711d2f2c",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.4998",
+      "scene": "1"
+    },
+    {
+      "file": "light-1440-transition-1-0.75.png",
+      "sha256": "fdf16dc8b7df6c461aceb7e3c32e0e4519007c7e5c2afef564e76beedf6b8cbd",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.7498",
+      "scene": "2"
+    },
+    {
+      "file": "light-1440-transition-2-0.25.png",
+      "sha256": "d48132301d23f63216668a985ffd782f30d657cdd4d92d2fd2ab8ed9fc3c9c67",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.2498",
+      "scene": "2"
+    },
+    {
+      "file": "light-1440-transition-2-0.5.png",
+      "sha256": "244f7c0c4e5f250d6ff6fd5faea48cdf3b19f2fe45c7e2cf56c9e4388ea40d94",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.4998",
+      "scene": "2"
+    },
+    {
+      "file": "light-1440-transition-2-0.75.png",
+      "sha256": "4c28be98f04f00a043a1910c93c441b14c91538e1b6e2248581a2bba4df45958",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.7498",
+      "scene": "3"
+    },
+    {
+      "file": "light-paused-answer.png",
+      "sha256": "d7b0e297bb0e2d4e3dd58ba7840fa1ea872d45082b209a04925442d262090ad2",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "3",
+      "scene": "3"
+    },
+    {
+      "file": "light-reduced-document.png",
+      "sha256": "87a13087b24199938c0766912c5dd3c16db3eca30f771e899c70613d4739fa19",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1",
+      "scene": "1"
+    },
+    {
+      "file": "light-fallback-brand.png",
+      "sha256": "0703cadb499acdb6dc6fe579bb879d9caf7ab28833a34c339fc76ee95de048ca",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0",
+      "scene": "0"
+    },
+    {
+      "file": "light-1024-scene-0.png",
+      "sha256": "5dc0fd0d89b86e343e99dc16e886908816536346dea24534159e6bf6673f2b59",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "0",
+      "scene": "0"
+    },
+    {
+      "file": "light-1024-scene-1.png",
+      "sha256": "705bf035fbadfa37a4f98fbdd5357a4a76e4fc3a1272d4a5ada86cae1dd966be",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "1",
+      "scene": "1"
+    },
+    {
+      "file": "light-1024-scene-2.png",
+      "sha256": "c7a86721062798b39b36d249fab0ee6c00b2827272d9ccfba1fa500645f8207f",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "2",
+      "scene": "2"
+    },
+    {
+      "file": "light-1024-scene-3.png",
+      "sha256": "b3f5f22fa352acf410a49018cf016f38f081d15bc3bbffca811b9a73aee944f1",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "3",
+      "scene": "3"
+    },
+    {
+      "file": "light-390-scene-0.png",
+      "sha256": "35513ea94686731dfd04bb74617a7b00330f8f6853f3dc79ef54cad8bcb30542",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "0",
+      "scene": "0"
+    },
+    {
+      "file": "light-390-scene-1.png",
+      "sha256": "61b643f7a18aa834c5347e15a76f959ee90222b06fa7da42e730077d1f441ad5",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "1",
+      "scene": "1"
+    },
+    {
+      "file": "light-390-scene-2.png",
+      "sha256": "038fde01be00c74ec5fb5941ffb5886c68e8883b1d731c69eaffe55e1f62c52f",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "2",
+      "scene": "2"
+    },
+    {
+      "file": "light-390-scene-3.png",
+      "sha256": "9d1213794f6614fafd1a7380e110f9bf5e74cf03faffac82840a921bd277edd9",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "3",
+      "scene": "3"
+    }
+  ]
+}

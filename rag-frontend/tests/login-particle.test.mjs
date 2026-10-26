@@ -62,18 +62,19 @@ function fixture(failure = '', reduced = false, width = 560) {
 }
 
 try {
-  const { makeModels, morphPoint, spring, wheelTarget } = await server.ssrLoadModule('/src/utils/loginParticleGeometry.ts')
+  const { makeModels, morphPoint, projectionScale, spring, wheelTarget } = await server.ssrLoadModule('/src/utils/loginParticleGeometry.ts')
+  const { LOGIN_STORY, LAST_SCENE, copyStyle } = await server.ssrLoadModule('/src/utils/loginParticleStory.ts')
   const { mountParticles } = await server.ssrLoadModule('/src/utils/loginParticleMotion.ts')
-  await test('three deterministic point clouds have equal budgets, meaningful depth and finite bounded coordinates', () => {
+  await test('four deterministic point clouds have equal budgets, meaningful depth and finite bounded coordinates', () => {
     for (const count of [2000, 4800]) {
       const models = makeModels(count)
-      assert.equal(models.length, 3); assert.deepEqual(models, makeModels(count))
-      for (const points of models) {
+      assert.equal(models.length, LOGIN_STORY.length); assert.deepEqual(models, makeModels(count))
+      for (const [index, points] of models.entries()) {
         assert.equal(points.length, count * 4)
         assert.ok(points.every(Number.isFinite))
         assert.ok(points.every(value => Math.abs(value) < 1.5))
         const depths = [...points].filter((_, index) => index % 4 === 2)
-        assert.ok(Math.max(...depths) - Math.min(...depths) > .2)
+        assert.ok(Math.max(...depths) - Math.min(...depths) > (index === 0 ? .02 : .2))
       }
       assert.notDeepEqual(models[0], models[1]); assert.notDeepEqual(models[1], models[2])
     }
@@ -81,15 +82,75 @@ try {
   })
   await test('morph endpoints match source models, intermediate scatter is deterministic and models stay immutable', () => {
     const models = makeModels(100), before = models.map(value => value.slice()), out = new Float32Array(4), again = new Float32Array(4)
-    for (let scene = 0; scene < 3; scene++) for (let i = 0; i < 100; i++) {
+    for (let scene = 0; scene <= LAST_SCENE; scene++) for (let i = 0; i < 100; i++) {
       morphPoint(models, i, scene, out)
       assert.ok(out.every((value, axis) => Math.abs(value - models[scene][i * 4 + axis]) < 1e-6))
     }
     morphPoint(models, 31, .5, out); morphPoint(models, 31, .5, again); assert.deepEqual(out, again)
-    assert.ok(out.some((value, axis) => axis < 3 && Math.abs(value - (models[0][124 + axis] + models[1][124 + axis]) / 2) > .01))
+    let visiblyDispersed = 0
+    for (let i = 0; i < 100; i++) {
+      morphPoint(models, i, .5, again)
+      const x = (models[0][i * 4] + models[1][i * 4]) / 2
+      const y = (models[0][i * 4 + 1] + models[1][i * 4 + 1]) / 2
+      if (Math.hypot(again[0] - x, again[1] - y) > .03) visiblyDispersed++
+    }
+    assert.ok(visiblyDispersed > 25)
     const near = new Float32Array(4); morphPoint(models, 31, .5001, near)
     assert.ok(near.every((value, axis) => Math.abs(value - out[axis]) < .002))
     assert.deepEqual(models, before)
+  })
+  await test('all transitions use bounded disk scatter, continuous reversible paths and safe projected margins', () => {
+    const models = makeModels(2000), out = new Float32Array(4), near = new Float32Array(4)
+    for (let scene = 0; scene < LAST_SCENE; scene++) for (const phase of [.001, .25, .5, .75, .999]) {
+      const envelope = Math.sin(Math.PI * phase) ** 2
+      for (let i = 0; i < 2000; i++) {
+        morphPoint(models, i, scene + phase, out)
+        const ax = models[scene][i * 4], ay = models[scene][i * 4 + 1]
+        const dx = models[scene + 1][i * 4] - ax, dy = models[scene + 1][i * 4 + 1] - ay
+        const length = dx * dx + dy * dy
+        const along = length ? Math.max(0, Math.min(1, ((out[0] - ax) * dx + (out[1] - ay) * dy) / length)) : 0
+        const x = ax + dx * along, y = ay + dy * along
+        assert.ok(Math.hypot(out[0] - x, out[1] - y) <= .26001 * envelope + 1e-6)
+        morphPoint(models, i, scene + phase - .00001, near)
+        assert.ok(near.every((value, axis) => Math.abs(value - out[axis]) < .001))
+        for (const aspect of [.75, 1.12, 1.8]) for (const yaw of [.09, .29]) {
+          const px = out[0] * Math.cos(yaw) + out[2] * Math.sin(yaw)
+          const pz = out[2] * Math.cos(yaw) - out[0] * Math.sin(yaw)
+          // Worst brush offsets on both axes, plus breathing/depth and point radius.
+          const depth = 3.8 / (3.8 - (pz + .2 * Math.sin(yaw)) * .45)
+          const scale = projectionScale(aspect)
+          assert.ok((Math.abs(px) + .2) * scale * depth / aspect + .01 < .9)
+          assert.ok((Math.abs(out[1]) + .2 + .016) * scale * depth + .01 < .9)
+        }
+      }
+    }
+    // Traversal direction is not an input: returning to a progress reproduces it.
+    morphPoint(models, 41, 1.47, out); morphPoint(models, 41, 2.1, near)
+    morphPoint(models, 41, 1.47, near); assert.deepEqual(out, near)
+  })
+  await test('copy weights preserve one full combined opacity with only adjacent chapters and exact endpoints', () => {
+    for (let progress = 0; progress <= LAST_SCENE; progress += .01) {
+      const styles = LOGIN_STORY.map((_, index) => copyStyle(index, progress))
+      assert.ok(Math.abs(styles.reduce((sum, style) => sum + style.opacity, 0) - 1) < 1e-10)
+      assert.ok(styles.filter(style => style.opacity > 0).length <= 2)
+    }
+    for (let i = 0; i <= LAST_SCENE; i++) assert.deepEqual(copyStyle(i, i), { opacity: 1, transform: 'translateY(0px)' })
+  })
+  await test('reported copy progress follows painted frames and matches pause, reduce, fallback and restoration', () => {
+    const f = fixture(), states = [], motion = mountParticles(f.canvas, value => states.push(value))
+    assert.equal(states.at(-1).progress, 0)
+    motion.select(LAST_SCENE); assert.equal(states.at(-1).progress, 0)
+    f.advance(5); const mid = states.at(-1)
+    assert.ok(mid.progress > 0 && mid.progress < LAST_SCENE)
+    assert.equal(mid.progress, Number(f.canvas.dataset.progress))
+    motion.pause(); assert.equal(states.at(-1).progress, Math.round(mid.progress))
+    motion.select(2); assert.equal(states.at(-1).progress, 2); assert.equal(f.callbacks.size, 0)
+    f.canvas.emit('webglcontextlost'); assert.equal(states.at(-1).scene, 0); assert.equal(states.at(-1).progress, 0)
+    f.canvas.emit('webglcontextrestored'); assert.equal(states.at(-1).scene, 2); assert.equal(states.at(-1).progress, 2)
+    f.media.matches = true; f.media.emit('change'); motion.select(1)
+    assert.equal(states.at(-1).progress, 1); assert.equal(f.callbacks.size, 0)
+    motion.destroy(); const length = states.length
+    f.advance(); motion.refresh(); assert.equal(states.length, length)
   })
   await test('spring retargeting is continuous, settles and has comparable timing at 30 and 60 fps', () => {
     const run = (step, count, target, start = [0, 0]) => { let state = start; for (let i = 0; i < count; i++) state = spring(...state, target, step); return state }
@@ -105,7 +166,7 @@ try {
     assert.equal(px, wheelTarget(1, { ...event, deltaY: 16 / 500, deltaMode: 2 }, 500))
     assert.equal(wheelTarget(1, { ...event, deltaY: 10000 }, 500), 1.18)
     for (const patch of [{ ctrlKey: true }, { metaKey: true }, { cancelable: false }, { deltaX: 100 }, { deltaY: NaN }]) assert.equal(wheelTarget(1, { ...event, ...patch }, 500), 1)
-    assert.equal(wheelTarget(2, event, 500), 2); assert.equal(wheelTarget(0, { ...event, deltaY: -16 }, 500), 0)
+    assert.equal(wheelTarget(LAST_SCENE, event, 500), LAST_SCENE); assert.equal(wheelTarget(0, { ...event, deltaY: -16 }, 500), 0)
   })
   await test('new controller draws point clouds within pixel budgets and owns one frame chain', () => {
     for (const width of [300, 560, 1800]) {
@@ -127,7 +188,7 @@ try {
     assert.equal(f.wheel({ ctrlKey: true }), false); assert.equal(f.wheel({ cancelable: false }), false)
     assert.equal(f.wheel({ deltaY: -120 }), true); f.advance()
     assert.ok(Number(f.canvas.dataset.progress) < before)
-    motion.select(2); f.advance(); assert.equal(f.wheel(), false); motion.destroy()
+    motion.select(LAST_SCENE); f.advance(); assert.equal(f.wheel(), false); motion.destroy()
   })
   await test('pause/reduce snap to a complete scene; manual selection paints once without an active clock', () => {
     const f = fixture(), states = [], motion = mountParticles(f.canvas, value => states.push(value))
@@ -193,12 +254,16 @@ try {
       setText(n, t) { n.text = t }, setElementText(n, t) { n.text = t }, insert(n, p) { n.parent = p; p.children.push(n) },
       remove(n) { n.parent.children = n.parent.children.filter(x => x !== n) }, parentNode: n => n.parent, nextSibling: () => null, patchProp() {} })
     const pinia = createPinia(), theme = useThemeStore(pinia)
-    const app = renderer.createApp({ ...Component, render() { const instance = getCurrentInstance(); return h('canvas', { ref: el => { instance.setupState.canvas = el } }) } })
+    const emitted = []
+    const app = renderer.createApp({ ...Component, render() { const instance = getCurrentInstance(); return h('canvas', { ref: el => { instance.setupState.canvas = el } }) } }, { onChange: value => emitted.push(value) })
     app.use(pinia); app.provide(ssrContextKey, {}); app.mount({ children: [] })
     theme.setPreference('dark'); await nextTick(); await nextTick(); assert.equal(calls[0].refreshes, 1)
+    calls[0].cb({ renderer: 'webgl', scene: 1, progress: 1.4, paused: false, reduced: false })
+    await nextTick(); assert.equal(emitted.length, 1); assert.equal(emitted[0].progress, 1.4)
     const state = app._instance.setupState; theme.setPreference('light'); app.unmount(); await nextTick(); await nextTick()
     calls[0].cb({ renderer: 'webgl', scene: 2, paused: false, reduced: false })
-    assert.equal(state.state.renderer, 'static'); assert.equal(calls[0].destroyed, 1); assert.equal(calls[0].refreshes, 1)
+    assert.equal(state.state.progress, 1.4); assert.equal(emitted.length, 1)
+    assert.equal(calls[0].destroyed, 1); assert.equal(calls[0].refreshes, 1)
     const template = await readFile(new URL('../src/components/common/LoginParticleScene.vue', import.meta.url), 'utf8')
     assert.match(template, /type="button"/); assert.match(template, /aria-pressed/); assert.match(template, /选择粒子图样/)
   })

@@ -19,22 +19,35 @@
 
     <main class="auth-hero">
       <section class="auth-intro">
-        <h1>让每个回答<br />都有出处</h1>
-        <p class="auth-subtitle">基于知识库的检索与问答</p>
+        <div class="auth-story" :data-progress="story.progress" :data-scene="story.scene">
+          <div class="auth-sr-only">
+            <h1>{{ currentCopy.title.join('，') }}</h1>
+            <p>{{ currentCopy.description }}</p>
+          </div>
+          <div v-for="(chapter, index) in LOGIN_STORY" :key="chapter.label" class="auth-story-layer"
+            aria-hidden="true" :style="copyStyle(index, story.progress)">
+            <div class="auth-headline"><span v-for="line in chapter.title" :key="line">{{ line }}</span></div>
+            <p class="auth-subtitle">{{ chapter.description }}</p>
+          </div>
+        </div>
         <router-view />
       </section>
-      <LoginParticleScene class="auth-art" />
+      <LoginParticleScene class="auth-art" @change="story = $event" />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import LoginParticleScene from '@/components/common/LoginParticleScene.vue'
 import { useThemeStore } from '@/stores/theme'
+import { copyStyle, LOGIN_STORY } from '@/utils/loginParticleStory'
+import type { ParticleState } from '@/utils/loginParticleMotion'
 
 const theme = useThemeStore()
 const isDark = computed(() => theme.effectiveTheme === 'dark')
+const story = ref<ParticleState>({ renderer: 'static', scene: 0, progress: 0, paused: false, reduced: false })
+const currentCopy = computed(() => LOGIN_STORY[story.value.scene])
 
 function toggleTheme() {
   theme.setPreference(isDark.value ? 'light' : 'dark')
@@ -131,7 +144,10 @@ function toggleTheme() {
   gap: 56px;
   align-items: center;
 }
-.auth-intro h1 {
+.auth-story { position: relative; display: grid; margin-bottom: 0; }
+.auth-story-layer { grid-area: 1 / 1; min-width: 0; pointer-events: none; }
+.auth-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.auth-headline {
   margin: 0 0 20px;
   font-family: Georgia, 'Times New Roman', 'Songti SC', 'STSong', 'SimSun', serif;
   font-size: clamp(46px, 5.4vw, 82px);
@@ -139,6 +155,7 @@ function toggleTheme() {
   font-weight: 600;
   letter-spacing: .015em;
 }
+.auth-headline span { display: block; white-space: nowrap; }
 .auth-subtitle { color: var(--auth-muted); font-size: 15.5px; letter-spacing: .02em; }
 .auth-art { width: min(560px, 100%); justify-self: center; }
 @media (max-width: 980px) {
@@ -150,7 +167,7 @@ function toggleTheme() {
   .auth-topbar { height: 58px; padding: 0 20px; }
   .auth-topbar-note { display: none; }
   .auth-hero { padding: 42px 20px 48px; }
-  .auth-intro h1 { font-size: clamp(42px, 11vw, 56px); }
+  .auth-headline { font-size: clamp(42px, 11vw, 56px); }
   .auth-art { margin-top: 8px; width: min(300px, 100%); }
 }
 </style>

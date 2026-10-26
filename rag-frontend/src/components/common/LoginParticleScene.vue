@@ -6,7 +6,7 @@
     </div>
     <div class="particle-caption">
       <span class="particle-eyebrow">从知识到回答</span>
-      <span class="particle-count">0{{ state.scene + 1 }} <span>/ 03</span></span>
+      <span class="particle-count">{{ String(state.scene + 1).padStart(2, '0') }} <span>/ {{ String(PARTICLE_SCENES.length).padStart(2, '0') }}</span></span>
     </div>
     <div class="particle-controls" role="group" aria-label="选择粒子图样">
       <button v-for="(label, index) in PARTICLE_SCENES" :key="label" type="button"
@@ -33,12 +33,15 @@ import { PARTICLE_SCENES } from '@/utils/loginParticleGeometry'
 import { mountParticles, type ParticleController, type ParticleState } from '@/utils/loginParticleMotion'
 import staticLogo from '@/assets/login-logo.svg'
 const canvas = ref<HTMLCanvasElement>()
-const state = ref<ParticleState>({ renderer: 'static', scene: 0, paused: false, reduced: false })
+const emit = defineEmits<{ change: [state: ParticleState] }>()
+const state = ref<ParticleState>({ renderer: 'static', scene: 0, progress: 0, paused: false, reduced: false })
 const theme = useThemeStore()
 let controller: ParticleController | undefined, mounted = false
 onMounted(() => {
   mounted = true
-  if (canvas.value) controller = mountParticles(canvas.value, value => { if (mounted) state.value = value })
+  if (canvas.value) controller = mountParticles(canvas.value, value => {
+    if (mounted) { state.value = value; emit('change', value) }
+  })
 })
 watch(() => theme.effectiveTheme, async () => { await nextTick(); if (mounted) controller?.refresh() })
 onUnmounted(() => { mounted = false; controller?.destroy(); controller = undefined })
@@ -55,7 +58,7 @@ canvas { touch-action: pan-y pinch-zoom; }
 .particle-eyebrow { font-size: 12px; letter-spacing: .12em; }
 .particle-count { color: var(--auth-ink); font-size: 13px; font-variant-numeric: tabular-nums; }
 .particle-count span { color: var(--auth-muted); margin-left: 5px; }
-.particle-controls { display: flex; align-items: center; gap: 6px; padding-top: 10px; }
+.particle-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 10px; }
 .particle-controls button { min-height: 44px; padding: 8px 13px; border: 1px solid transparent; border-radius: 24px; background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
 .particle-controls button[aria-pressed="true"] { color: var(--auth-ink); border-color: var(--auth-line); background: var(--auth-paper); }
 .particle-controls button:hover:enabled { color: var(--auth-ink); }
@@ -64,7 +67,8 @@ canvas { touch-action: pan-y pinch-zoom; }
 .particle-controls .particle-pause { display: grid; place-items: center; flex: none; width: 44px; padding: 0; margin-left: auto; }
 .particle-hint { margin: 6px 0 0; font-size: 11px; line-height: 1.6; letter-spacing: .02em; }
 @media (max-width: 520px) {
-  .particle-controls { gap: 0; }
+  .particle-controls { display: grid; grid-template-columns: 1fr 1fr 44px; gap: 2px 4px; }
+  .particle-controls .particle-pause { grid-column: 3; grid-row: 1 / 3; align-self: center; }
   .particle-controls button { padding-inline: 9px; font-size: 11px; }
   .particle-caption { padding-bottom: 10px; }
   .particle-hint { font-size: 10px; }
