@@ -195,7 +195,7 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
     media = window.matchMedia('(prefers-reduced-motion: reduce)'); initialize()
     if (program) {
       resizeObserver = new ResizeObserver(refresh); resizeObserver.observe(canvas)
-      intersection = new IntersectionObserver(entries => { if (!disposed) { visible = entries[0]?.isIntersecting ?? false; visibilityChange() } }); intersection.observe(canvas)
+      intersection = new IntersectionObserver(entries => { if (!disposed) { visible = entries[entries.length - 1]?.isIntersecting ?? false; visibilityChange() } }); intersection.observe(canvas)
       listen(canvas, 'wheel', wheel as EventListener, { passive: false })
       listen(canvas, 'pointermove', move as EventListener, { passive: true })
       for (const name of ['pointerleave', 'pointercancel', 'pointerup']) listen(canvas, name, leave)

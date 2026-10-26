@@ -1,18 +1,12 @@
 <template>
   <section class="particle-scene" :data-renderer="state.renderer" aria-label="从知识到回答">
-    <div class="particle-stage" aria-hidden="true">
-      <canvas ref="canvas" />
+    <button class="particle-stage" type="button" :disabled="state.renderer !== 'webgl'"
+      :aria-label="'图样：' + PARTICLE_SCENES[state.scene] + '。点击切换下一幕，左右方向键选择图样。'"
+      aria-keyshortcuts="ArrowLeft ArrowRight Home End" @click="nextScene" @keydown="navigate">
+      <canvas ref="canvas" aria-hidden="true" />
       <img v-if="state.renderer === 'static'" class="particle-fallback" :src="staticLogo" alt="" />
-    </div>
-    <div class="particle-caption">
-      <span class="particle-eyebrow">从知识到回答</span>
-      <span class="particle-count">{{ String(state.scene + 1).padStart(2, '0') }} <span>/ {{ String(PARTICLE_SCENES.length).padStart(2, '0') }}</span></span>
-    </div>
-    <div class="particle-controls" role="group" aria-label="选择粒子图样">
-      <button v-for="(label, index) in PARTICLE_SCENES" :key="label" type="button"
-        :aria-pressed="state.scene === index" :disabled="state.renderer !== 'webgl'" @click="controller?.select(index)">
-        {{ label }}
-      </button>
+    </button>
+    <div class="particle-controls">
       <button class="particle-pause" type="button" :disabled="state.renderer !== 'webgl' || state.reduced"
         :aria-label="state.reduced ? '系统已减少动态效果' : state.paused ? '继续粒子动画' : '暂停粒子动画'"
         :aria-pressed="state.paused" @click="controller?.pause()">
@@ -22,7 +16,6 @@
         </svg>
       </button>
     </div>
-    <p class="particle-hint">{{ state.renderer === 'static' ? '让知识彼此关联，让回答有据可循' : state.reduced || state.paused ? '静态画面 · 点击名称切换图样' : '滚动探索图样 · 移动鼠标，拨动粒子' }}</p>
   </section>
 </template>
 
@@ -37,6 +30,17 @@ const emit = defineEmits<{ change: [state: ParticleState] }>()
 const state = ref<ParticleState>({ renderer: 'static', scene: 0, progress: 0, paused: false, reduced: false })
 const theme = useThemeStore()
 let controller: ParticleController | undefined, mounted = false
+function nextScene() {
+  controller?.select((state.value.scene + 1) % PARTICLE_SCENES.length)
+}
+function navigate(event: KeyboardEvent) {
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+  const choices: Record<string, number> = { ArrowLeft: state.value.scene - 1, ArrowRight: state.value.scene + 1, Home: 0, End: PARTICLE_SCENES.length - 1 }
+  const index = choices[event.key]
+  if (index === undefined) return
+  event.preventDefault()
+  controller?.select(Math.max(0, Math.min(PARTICLE_SCENES.length - 1, index)))
+}
 onMounted(() => {
   mounted = true
   if (canvas.value) controller = mountParticles(canvas.value, value => {
@@ -49,28 +53,15 @@ onUnmounted(() => { mounted = false; controller?.destroy(); controller = undefin
 
 <style scoped>
 .particle-scene { min-width: 0; color: var(--auth-muted); }
-.particle-stage { position: relative; width: 100%; aspect-ratio: 1.12; }
+.particle-stage { position: relative; display: block; width: 100%; aspect-ratio: 1; border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; }
 canvas, .particle-fallback { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 canvas { touch-action: pan-y pinch-zoom; }
 .particle-fallback { object-fit: contain; }
 [data-renderer="static"] canvas { visibility: hidden; }
-.particle-caption { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 15px; border-bottom: 1px solid var(--auth-line); }
-.particle-eyebrow { font-size: 12px; letter-spacing: .12em; }
-.particle-count { color: var(--auth-ink); font-size: 13px; font-variant-numeric: tabular-nums; }
-.particle-count span { color: var(--auth-muted); margin-left: 5px; }
-.particle-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 10px; }
-.particle-controls button { min-height: 44px; padding: 8px 13px; border: 1px solid transparent; border-radius: 24px; background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
-.particle-controls button[aria-pressed="true"] { color: var(--auth-ink); border-color: var(--auth-line); background: var(--auth-paper); }
-.particle-controls button:hover:enabled { color: var(--auth-ink); }
-.particle-controls button:focus-visible { outline: 2px solid var(--auth-focus); outline-offset: 2px; }
-.particle-controls button:disabled { cursor: default; opacity: .55; }
-.particle-controls .particle-pause { display: grid; place-items: center; flex: none; width: 44px; padding: 0; margin-left: auto; }
-.particle-hint { margin: 6px 0 0; font-size: 11px; line-height: 1.6; letter-spacing: .02em; }
-@media (max-width: 520px) {
-  .particle-controls { display: grid; grid-template-columns: 1fr 1fr 44px; gap: 2px 4px; }
-  .particle-controls .particle-pause { grid-column: 3; grid-row: 1 / 3; align-self: center; }
-  .particle-controls button { padding-inline: 9px; font-size: 11px; }
-  .particle-caption { padding-bottom: 10px; }
-  .particle-hint { font-size: 10px; }
-}
+.particle-controls { display: flex; justify-content: flex-end; }
+.particle-pause { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.particle-pause:hover:enabled { color: var(--auth-ink); }
+button:focus-visible { outline: 2px solid var(--auth-focus); outline-offset: 3px; }
+button:disabled { cursor: default; }
+.particle-pause:disabled { opacity: .55; }
 </style>

@@ -1,0 +1,729 @@
+{
+  "status": "CLIENT_VALIDATED_AWAITING_ACCEPTANCE",
+  "date": "2026-10-26",
+  "revision": 3,
+  "sourceHead": "2a0543deebe5d1f2e4594acd8e49d80f193c37e1",
+  "workingTree": "Third iteration uncommitted; source hashes identify captured implementation; no unrelated changes at start.",
+  "artifactRoot": "C:/Users/Lin/.codex/visualizations/2026/10/26/01a1770b-f249-7230-97f2-6d25cdebb97a/login-particle-story-v3",
+  "browser": {
+    "version": "155.0.8059.85",
+    "mode": "Headless existing system Chrome via bundled Playwright",
+    "limitations": "Desktop emulated touch, viewports and preferences; physical mobile, screen reader, GPU backend and sustained fps not measured."
+  },
+  "realBusinessCalls": 0,
+  "validation": {
+    "focusedPassed": 15,
+    "frontendAllPassed": 117,
+    "failures": 0,
+    "skipped": 0,
+    "formalBuild": "PASS: vue-tsc -b followed by vite build",
+    "routeBundleGzipKB": 7.84,
+    "routeCssGzipKB": 1.65,
+    "existingMainBundleWarning": "1022.08 kB raw; larger than 500 kB"
+  },
+  "checks": [
+    {
+      "name": "dark-white-wings-preserved-gold-shares-lower-seam",
+      "outsideWhite": 0,
+      "accent": 539,
+      "sharedSeam": 48,
+      "count": 4800
+    },
+    {
+      "name": "dark-native-wheel-reverse-preserves-input-focus",
+      "progress": "1.4002"
+    },
+    {
+      "name": "dark-pointer-recovers",
+      "observedOffset": "0.0630"
+    },
+    {
+      "name": "dark-pause-reduce-loss-restore-copy-synchronized",
+      "inputNodeRetained": true
+    },
+    {
+      "name": "dark-touch-space-enter-cycle-while-reduced",
+      "passed": true
+    },
+    {
+      "name": "light-white-wings-preserved-gold-shares-lower-seam",
+      "outsideWhite": 0,
+      "accent": 539,
+      "sharedSeam": 48,
+      "count": 4800
+    },
+    {
+      "name": "light-native-wheel-reverse-preserves-input-focus",
+      "progress": "1.4002"
+    },
+    {
+      "name": "light-pointer-recovers",
+      "observedOffset": "0.0779"
+    },
+    {
+      "name": "light-pause-reduce-loss-restore-copy-synchronized",
+      "inputNodeRetained": true
+    },
+    {
+      "name": "light-touch-space-enter-cycle-while-reduced",
+      "passed": true
+    },
+    {
+      "name": "auth-motion-error",
+      "passed": true
+    },
+    {
+      "name": "auth-motion-loading",
+      "passed": true,
+      "canvasAfterNavigation": 0
+    }
+  ],
+  "sizeComparison": [
+    {
+      "viewportWidth": 1440,
+      "oldStage": {
+        "x": 770.71875,
+        "y": 171.375,
+        "width": 545.265625,
+        "height": 486.84375
+      },
+      "stage": {
+        "x": 770.71875,
+        "y": 177.359375,
+        "width": 545.265625,
+        "height": 545.265625
+      },
+      "linearScaleRatio": 1.2421832420099317,
+      "projectedAreaRatio": 1.5430192067303046
+    },
+    {
+      "viewportWidth": 1024,
+      "oldStage": {
+        "x": 557.59375,
+        "y": 160.234375,
+        "width": 422.390625,
+        "height": 377.125
+      },
+      "stage": {
+        "x": 557.59375,
+        "y": 172.796875,
+        "width": 422.390625,
+        "height": 422.390625
+      },
+      "linearScaleRatio": 1.2422130653569168,
+      "projectedAreaRatio": 1.5430932997434277
+    },
+    {
+      "viewportWidth": 390,
+      "oldStage": {
+        "x": 45,
+        "y": 374.171875,
+        "width": 300,
+        "height": 267.84375
+      },
+      "stage": {
+        "x": 25,
+        "y": 504.171875,
+        "width": 340,
+        "height": 340
+      },
+      "linearScaleRatio": 1.407876454428782,
+      "projectedAreaRatio": 1.9821161109349585
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "rag-frontend/src/layouts/AuthLayout.vue",
+      "sha256": "e69ccab55fd4e981dd7d5e7ca8d8eaba8b2f89be298ad4fb409ccfaef255edc8"
+    },
+    {
+      "path": "rag-frontend/src/components/common/LoginParticleScene.vue",
+      "sha256": "ebbef6a70cfc046bab2ead031d6bc6af82d5219ed7992550299ec8371d597ea6"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleGeometry.ts",
+      "sha256": "849fb051ec404293781e940851b4255fd4f417b210f5cc4fbf3a45353a93dea2"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleMotion.ts",
+      "sha256": "4b206524a2b4f0f37d325469351acfd35f37e6d43944ecca9fcf3784a32ac105"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleStory.ts",
+      "sha256": "397417815b533b950d3f3253a429bb65be26f27c809133e5a3a1459d49d48336"
+    },
+    {
+      "path": "rag-frontend/tests/login-particle.test.mjs",
+      "sha256": "77c84ac861fcd28ed32c17c6eaf3fe276316f2a670f65229b5e90773309a650a"
+    },
+    {
+      "path": "rag-frontend/tests/particle-checks.html",
+      "sha256": "0b2f552bddf9e59eb98028bc0d8ca464e6d4d597c9852853c0054773b8cb6575"
+    },
+    {
+      "path": "rag-frontend/tests/login-particle-browser.mjs",
+      "sha256": "6a93b4167e8f986788504f7fe6c1dbc9e35f032574362480a182b3015c97cec7"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "path": "rag-frontend/src/views/login/LoginView.vue",
+      "sha256": "6c0b9a024bfbabaebaa08259cf5ca7467917b7b3f6cc896d1d22b67aa8853b2f",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/components/common/LoginLogoMotion.vue",
+      "sha256": "5a2bc7aa0290dc765ed0ed1076670db34635ddfeccedc97fb8f31402263e248d",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/utils/loginLogoMotion.ts",
+      "sha256": "760748d01046032215067b405d1471534d3a46d6f8d5069398aac4a6935679af",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/assets/login-logo.svg",
+      "sha256": "74ff1d62f1d4168f302bab6158036da5d528e2b3f87ad668ccf9f16d83648ac7",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/stores/theme.ts",
+      "sha256": "a3405ee40288de6f75eb2f63ab307a8e4f952c40495ee71368d9a1febdf78f03",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/router/index.ts",
+      "sha256": "436e93fd9242235d93a05ecb49e304379cb0e9a8680019c596f92096e799c31c",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/package.json",
+      "sha256": "2c210ca281c720be8e15a89f8e83fa048fa16c30613fb9d8d53eec907b607588",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/package-lock.json",
+      "sha256": "8798527dd0385b70c5ed8e292f1e8b01d28ff1029a5731e8668e03da7c21f567",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "prototype/rag-login-motion-demo/js/logo-motion.js",
+      "sha256": "ec8e309e3ff1aaa0436c215532e530f3d5593227886f631e4051b420006cd4da",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "prototype/rag-login-motion-demo/assets/logo.svg",
+      "sha256": "74ff1d62f1d4168f302bab6158036da5d528e2b3f87ad668ccf9f16d83648ac7",
+      "gitDiffHeadUnchanged": true
+    }
+  ],
+  "browserRecords": {
+    "file": "browser-records.json",
+    "sha256": "7173c3288167b08dc7634d676bc5960f82921116b1cd553d367a89f5b59fef2d"
+  },
+  "screenshots": [
+    {
+      "file": "dark-1440-scene-0.png",
+      "sha256": "7d889c75aa84a2cc6c33ec768cfd2f7a939be3b4009256acc59aacfc1e5d34b3",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.0000",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1440-scene-1.png",
+      "sha256": "6c0a99a916e945819e76e6b5856895a45c4d2df496858262e72bc7b38a1de7a8",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.9998",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1440-scene-2.png",
+      "sha256": "e86e07a3a606cf3bcd20335e527b81463b7bd17f7114fc7c4ee35e2a301d23e7",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.9998",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1440-scene-3.png",
+      "sha256": "60f3131574c21f7f7f71b310fa4fec4f783098cbd7c7e3babd2842248eb4cf04",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.9998",
+      "scene": "3"
+    },
+    {
+      "file": "dark-1440-transition-0-0.25.png",
+      "sha256": "97af745b82c5df48597dba1f39e4fb3f91f02976f3a67a2eb6f6092095acaed6",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.2499",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1440-transition-0-0.5.png",
+      "sha256": "2f4082b48699622c679579f6996141b82d26e9acf2e45ffd11fceb2daf7d1632",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.4998",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1440-transition-0-0.75.png",
+      "sha256": "b0dd9d1034ec6e378baaddae8de4cedce3d14eba8326bf1844cfd79037f90604",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.7498",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1440-transition-1-0.25.png",
+      "sha256": "6c68e1030b8bc33d5f80a37eed6812d5a790ba98d3d28a8b3121bef0daa87fd9",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.2498",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1440-transition-1-0.5.png",
+      "sha256": "1b2c4e93756669f03dc7153dfe641ec42ec6bb38f7cd6a15722b2aa865fa298f",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.4998",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1440-transition-1-0.75.png",
+      "sha256": "7ad880dec0f980704095f56c69ba1d9371c2208e2c7c8515a1483aaa705604f4",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.7498",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1440-transition-2-0.25.png",
+      "sha256": "f9acd3095980ee9cfd4055a0e002be2d1a30682ee2fb76c41cf24485e6d413f3",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.2498",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1440-transition-2-0.5.png",
+      "sha256": "d200faccfaa4cd7c7d6c11451ced655554b79249ede470a605b60b0bf5b573c0",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.4998",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1440-transition-2-0.75.png",
+      "sha256": "3ce12706738ea7ea6254ed914d78c36967589f52b8e600c2208f076191ca902b",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.7498",
+      "scene": "3"
+    },
+    {
+      "file": "dark-paused-answer.png",
+      "sha256": "96f42a8500c3de5922121f5bae4df352619c59120f57608406010f5204b9e594",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "3.0000",
+      "scene": "3"
+    },
+    {
+      "file": "dark-reduced-document.png",
+      "sha256": "79d2e2f097b9e003f4298b8d054807e8658d0a4fea350e20f8d9004860746cd1",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.0000",
+      "scene": "1"
+    },
+    {
+      "file": "dark-fallback-brand.png",
+      "sha256": "8021e3ec7c0158a575da218bc460bf14e17a17540074d4af56c2ad3cbdbb29e2",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.0000",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1024-scene-0.png",
+      "sha256": "fe7b01b9b59e48973a120f724990de158ecf584503280be91f85c16f60d7709f",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "0.0000",
+      "scene": "0"
+    },
+    {
+      "file": "dark-1024-scene-1.png",
+      "sha256": "e6aa1c6247fd3fb620a9f786cd47de4fea562fc8136748d6d1b8932a06e88c7d",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "1.0000",
+      "scene": "1"
+    },
+    {
+      "file": "dark-1024-scene-2.png",
+      "sha256": "e326d19b038dd16420bcea739ad361f6bad03b510afe9b882b2a7f2b8a371973",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "2.0000",
+      "scene": "2"
+    },
+    {
+      "file": "dark-1024-scene-3.png",
+      "sha256": "853d421f209f926bc9604a8e9486ccee6245169bc492cf271ff840ecc928a4b1",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "3.0000",
+      "scene": "3"
+    },
+    {
+      "file": "dark-390-scene-0.png",
+      "sha256": "78f405f87a8fbc44b6fa743ec6cb99b4afca978650b365618de4bc253c7966bf",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "0.0000",
+      "scene": "0"
+    },
+    {
+      "file": "dark-390-scene-1.png",
+      "sha256": "dd89c7b5bcb14249736a67b9fb5cb104470e0049a7d0ce4de046055142b863f3",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "1.0000",
+      "scene": "1"
+    },
+    {
+      "file": "dark-390-scene-2.png",
+      "sha256": "dacae7729cbdaa3807527a608134fe6ba7d3a3dfac7c407604c09739e4c2f2fc",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "2.0000",
+      "scene": "2"
+    },
+    {
+      "file": "dark-390-scene-3.png",
+      "sha256": "166038a2fe46756054c70ef00e459229d56c8ebf687e9623b12309c9f276cc69",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "3.0000",
+      "scene": "3"
+    },
+    {
+      "file": "light-1440-scene-0.png",
+      "sha256": "b88eca565ad8a8e0982c2d0e1785882a22c57efe5b63deb7f469f758a0c0e191",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.0000",
+      "scene": "0"
+    },
+    {
+      "file": "light-1440-scene-1.png",
+      "sha256": "902d117f79ff3b95282a9ce8ceb349bbcbcdd4c879e55570538e1236a94d7678",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.9998",
+      "scene": "1"
+    },
+    {
+      "file": "light-1440-scene-2.png",
+      "sha256": "17ac9327950bccff9ac022ddd1d219a3bc73b51660fb31303ad53451f13eedca",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.9998",
+      "scene": "2"
+    },
+    {
+      "file": "light-1440-scene-3.png",
+      "sha256": "dc2ac140df5a2de3b44bdb82ff09a2179a7e2a0468825b1c212efd8d4675a792",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.9998",
+      "scene": "3"
+    },
+    {
+      "file": "light-1440-transition-0-0.25.png",
+      "sha256": "118aad2abd757cc8f849abd32deb1a274ffaaa8ecba980bf2ea3799d2fea63c9",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.2499",
+      "scene": "0"
+    },
+    {
+      "file": "light-1440-transition-0-0.5.png",
+      "sha256": "88c78af74f95bf6c1b6fab31a196377142d5009511e737485d0e727eac2e2aa0",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.4998",
+      "scene": "0"
+    },
+    {
+      "file": "light-1440-transition-0-0.75.png",
+      "sha256": "194951feaf4d72d5211071864b57c900f6550c0d32d4b6ac1bf2bc0cb5f726a4",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "0.7498",
+      "scene": "1"
+    },
+    {
+      "file": "light-1440-transition-1-0.25.png",
+      "sha256": "4df5f1133c91986931cca1ff1927676f553940a3aadb8c853e3a398b37b3e6d8",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.2498",
+      "scene": "1"
+    },
+    {
+      "file": "light-1440-transition-1-0.5.png",
+      "sha256": "e57994681e07c2e591a64fe140ea13eec0d6e4554c252e54bb9c89c101419c12",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.4998",
+      "scene": "1"
+    },
+    {
+      "file": "light-1440-transition-1-0.75.png",
+      "sha256": "2c195611dbc933f248e82ecbdb2e9b9ec7052c55cbb57024e97e630717663830",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.7498",
+      "scene": "2"
+    },
+    {
+      "file": "light-1440-transition-2-0.25.png",
+      "sha256": "8855b13e4939b41337e00b5e516b904ff881ff0a93dceed9b9a098e3bb4a9b28",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.2498",
+      "scene": "2"
+    },
+    {
+      "file": "light-1440-transition-2-0.5.png",
+      "sha256": "566cd6e400e39afaefe2dc88f3f7fea2d56418bb8c34ca6993ed5e563a535c7c",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.4998",
+      "scene": "2"
+    },
+    {
+      "file": "light-1440-transition-2-0.75.png",
+      "sha256": "79c470dc6400dec800b2d6b000a0ac7e87aa8d5ecf57b3bbe0e66dbb87fd7253",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "2.7498",
+      "scene": "3"
+    },
+    {
+      "file": "light-paused-answer.png",
+      "sha256": "69e14d1bb615dbb9a5f31771003f0b6e9e529ab6f89ed063819b323e9ea82801",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "3.0000",
+      "scene": "3"
+    },
+    {
+      "file": "light-reduced-document.png",
+      "sha256": "67605065c1136118d7ed8cf48d35437f4dc28e1e909e85aac8d62dabf826e1b1",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.0000",
+      "scene": "1"
+    },
+    {
+      "file": "light-fallback-brand.png",
+      "sha256": "2e7c5cfb439d1d1777abc89cbf3b7a1cbc5b76bd584bfd3849acc0430c0c678c",
+      "viewport": [
+        1440,
+        900
+      ],
+      "progress": "1.0000",
+      "scene": "0"
+    },
+    {
+      "file": "light-1024-scene-0.png",
+      "sha256": "3066ef3352c9ca476e88d0afab7d4542a6957c0a86336cd2df15b6e14a994ac0",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "0.0000",
+      "scene": "0"
+    },
+    {
+      "file": "light-1024-scene-1.png",
+      "sha256": "81b7d7b9422734f19af3d645e933411f1f1e06af01924c0ebfeb985184843f3b",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "1.0000",
+      "scene": "1"
+    },
+    {
+      "file": "light-1024-scene-2.png",
+      "sha256": "0da6d03e792fd96229373ab047b7cfd058174bb561bf583e3d8f1d521205f8e9",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "2.0000",
+      "scene": "2"
+    },
+    {
+      "file": "light-1024-scene-3.png",
+      "sha256": "1b11314c163f87a7d9761038b1d4b0a6ae317fae3913cab1ab8ff4a5b81a3d6c",
+      "viewport": [
+        1024,
+        768
+      ],
+      "progress": "3.0000",
+      "scene": "3"
+    },
+    {
+      "file": "light-390-scene-0.png",
+      "sha256": "298e3cea4c31d365cb1de5dc1ba250c7fc4d4d2d4adecbd292f0a2cea3784aed",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "0.0000",
+      "scene": "0"
+    },
+    {
+      "file": "light-390-scene-1.png",
+      "sha256": "a7696de8b56de63a19898dd73d655b982debabdf979c963b8f8a27f522aa24db",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "1.0000",
+      "scene": "1"
+    },
+    {
+      "file": "light-390-scene-2.png",
+      "sha256": "e8b49c722658dff290334697d67df815dd5f5eced3302fea631635d84bbcff7a",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "2.0000",
+      "scene": "2"
+    },
+    {
+      "file": "light-390-scene-3.png",
+      "sha256": "3c2cfc8bbc9b9f2abadc8b82a62949611698faef654ec1f4031226367191f6fe",
+      "viewport": [
+        390,
+        844
+      ],
+      "progress": "3.0000",
+      "scene": "3"
+    }
+  ],
+  "contactSheets": [
+    {
+      "file": "contact-dark-scenes.jpg",
+      "sha256": "48e6a16828298d56ce7b1031e1038f6a04141c644215e585ae36772a93ffde4f"
+    },
+    {
+      "file": "contact-dark-transitions.jpg",
+      "sha256": "6befcafb5804f6ddf8ce66fefbc9148f22ba29aa0c9a80c4fc77433f4398f226"
+    },
+    {
+      "file": "contact-light-scenes.jpg",
+      "sha256": "a406535537ba18923ae03ebdabe1d89f3beab8134564165207d28edb6e8a45db"
+    },
+    {
+      "file": "contact-light-transitions.jpg",
+      "sha256": "a1fc2becb1f68e7d3af6374ea1eb0917c0debfb4bf62d884fd340a5af76bb549"
+    }
+  ],
+  "detail": {
+    "file": "gold-seam-detail.png",
+    "sha256": "ced1c2bbe95f66cbfae4cbac292b932d6a17fe006bbed6c77a1d0f86b7d07f13",
+    "note": "Unmodified crop enlarged from dark-1440-scene-0.png for seam review."
+  }
+}

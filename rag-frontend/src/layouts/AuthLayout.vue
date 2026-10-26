@@ -161,13 +161,13 @@ function toggleTheme() {
 @media (max-width: 980px) {
   .auth-topbar { padding: 0 24px; }
   .auth-hero { grid-template-columns: 1fr; gap: 24px; padding: 32px 24px 56px; min-height: 0; }
-  .auth-art { width: min(300px, 72vw); }
+  .auth-art { width: min(380px, 92vw); }
 }
 @media (max-width: 520px) {
   .auth-topbar { height: 58px; padding: 0 20px; }
   .auth-topbar-note { display: none; }
   .auth-hero { padding: 42px 20px 48px; }
   .auth-headline { font-size: clamp(42px, 11vw, 56px); }
-  .auth-art { margin-top: 8px; width: min(300px, 100%); }
+  .auth-art { margin-top: 8px; width: min(340px, 100%); }
 }
 </style>

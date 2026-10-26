@@ -1,0 +1,567 @@
+{
+  "status": "CLIENT_VALIDATED_AWAITING_ACCEPTANCE",
+  "revision": 4,
+  "date": "2026-10-26",
+  "scope": "Type B: tuck gold upper corner and edge inside existing white wing contour; lower seam and layout retained",
+  "artifactRoot": "C:/Users/Lin/.codex/visualizations/2026/10/26/01a1770b-f249-7230-97f2-6d25cdebb97a/login-particle-story-v4",
+  "sourceHead": "2a0543deebe5d1f2e4594acd8e49d80f193c37e1",
+  "focusedPassed": 15,
+  "formalBuild": "PASS: vue-tsc -b then vite build",
+  "routeBundleGzipKB": 7.87,
+  "checks": [
+    {
+      "name": "dark-gold-within-wings-shares-upper-and-lower-seams",
+      "outsideWhite": 0,
+      "accent": 539,
+      "sharedSeam": 49,
+      "sharedUpperSeam": 69,
+      "outsideGold": 0,
+      "count": 4800
+    },
+    {
+      "name": "dark-native-wheel-reverse-preserves-input-focus",
+      "progress": "1.4002"
+    },
+    {
+      "name": "dark-pointer-recovers",
+      "observedOffset": "0.0631"
+    },
+    {
+      "name": "dark-pause-reduce-loss-restore-copy-synchronized",
+      "inputNodeRetained": true
+    },
+    {
+      "name": "dark-touch-space-enter-cycle-while-reduced",
+      "passed": true
+    },
+    {
+      "name": "light-gold-within-wings-shares-upper-and-lower-seams",
+      "outsideWhite": 0,
+      "accent": 539,
+      "sharedSeam": 49,
+      "sharedUpperSeam": 69,
+      "outsideGold": 0,
+      "count": 4800
+    },
+    {
+      "name": "light-native-wheel-reverse-preserves-input-focus",
+      "progress": "1.4002"
+    },
+    {
+      "name": "light-pointer-recovers",
+      "observedOffset": "0.0630"
+    },
+    {
+      "name": "light-pause-reduce-loss-restore-copy-synchronized",
+      "inputNodeRetained": true
+    },
+    {
+      "name": "light-touch-space-enter-cycle-while-reduced",
+      "passed": true
+    },
+    {
+      "name": "auth-motion-error",
+      "passed": true
+    },
+    {
+      "name": "auth-motion-loading",
+      "passed": true,
+      "canvasAfterNavigation": 0
+    }
+  ],
+  "realBusinessCalls": 0,
+  "browser": {
+    "version": "155.0.8059.85",
+    "limitations": "Headless existing Chrome with emulated views/touch/preferences; no physical device, GPU or sustained fps validation"
+  },
+  "sourceFiles": [
+    {
+      "path": "rag-frontend/src/layouts/AuthLayout.vue",
+      "sha256": "e69ccab55fd4e981dd7d5e7ca8d8eaba8b2f89be298ad4fb409ccfaef255edc8"
+    },
+    {
+      "path": "rag-frontend/src/components/common/LoginParticleScene.vue",
+      "sha256": "ebbef6a70cfc046bab2ead031d6bc6af82d5219ed7992550299ec8371d597ea6"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleGeometry.ts",
+      "sha256": "fed4f43f36627fc4aae9d2994bb01d13032a7297307cb1fce07502a91ae23999"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleMotion.ts",
+      "sha256": "4b206524a2b4f0f37d325469351acfd35f37e6d43944ecca9fcf3784a32ac105"
+    },
+    {
+      "path": "rag-frontend/src/utils/loginParticleStory.ts",
+      "sha256": "397417815b533b950d3f3253a429bb65be26f27c809133e5a3a1459d49d48336"
+    },
+    {
+      "path": "rag-frontend/tests/login-particle.test.mjs",
+      "sha256": "77c84ac861fcd28ed32c17c6eaf3fe276316f2a670f65229b5e90773309a650a"
+    },
+    {
+      "path": "rag-frontend/tests/particle-checks.html",
+      "sha256": "0b2f552bddf9e59eb98028bc0d8ca464e6d4d597c9852853c0054773b8cb6575"
+    },
+    {
+      "path": "rag-frontend/tests/login-particle-browser.mjs",
+      "sha256": "6f61059736e9b8c4dfe76a5f2e4393f28b099739ca27e3356a26528f2236fa00"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "path": "rag-frontend/src/views/login/LoginView.vue",
+      "sha256": "6c0b9a024bfbabaebaa08259cf5ca7467917b7b3f6cc896d1d22b67aa8853b2f",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/components/common/LoginLogoMotion.vue",
+      "sha256": "5a2bc7aa0290dc765ed0ed1076670db34635ddfeccedc97fb8f31402263e248d",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/utils/loginLogoMotion.ts",
+      "sha256": "760748d01046032215067b405d1471534d3a46d6f8d5069398aac4a6935679af",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/assets/login-logo.svg",
+      "sha256": "74ff1d62f1d4168f302bab6158036da5d528e2b3f87ad668ccf9f16d83648ac7",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/stores/theme.ts",
+      "sha256": "a3405ee40288de6f75eb2f63ab307a8e4f952c40495ee71368d9a1febdf78f03",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/src/router/index.ts",
+      "sha256": "436e93fd9242235d93a05ecb49e304379cb0e9a8680019c596f92096e799c31c",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/package.json",
+      "sha256": "2c210ca281c720be8e15a89f8e83fa048fa16c30613fb9d8d53eec907b607588",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "rag-frontend/package-lock.json",
+      "sha256": "8798527dd0385b70c5ed8e292f1e8b01d28ff1029a5731e8668e03da7c21f567",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "prototype/rag-login-motion-demo/js/logo-motion.js",
+      "sha256": "ec8e309e3ff1aaa0436c215532e530f3d5593227886f631e4051b420006cd4da",
+      "gitDiffHeadUnchanged": true
+    },
+    {
+      "path": "prototype/rag-login-motion-demo/assets/logo.svg",
+      "sha256": "74ff1d62f1d4168f302bab6158036da5d528e2b3f87ad668ccf9f16d83648ac7",
+      "gitDiffHeadUnchanged": true
+    }
+  ],
+  "previousManifest": {
+    "path": "visual-evidence-v3.json",
+    "sha256": "d21934a1bbd4a78c1374177c95c70c5d2ff47be835b59de62541673a13823b58"
+  },
+  "screenshots": [
+    {
+      "file": "dark-1440-scene-0.png",
+      "sha256": "992895effacabd9b095167392c105999cc28a7966599263def49f5e318ac2e0c",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-scene-1.png",
+      "sha256": "7abb477d14afe41dc17bec2952b01d2277823ce6300a569fa127069f68c2b9ac",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-scene-2.png",
+      "sha256": "a7427bab73d3e5f46a216a6ae1476be36128b8bed80bcff6843bddb30834efee",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-scene-3.png",
+      "sha256": "d9ceec4e40627b0cccbd05f6fc530cee0fd6db6d4b366f1959b3a3b17fcfb5f9",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-0-0.25.png",
+      "sha256": "17c4d419d615bfe5f629b084b3a6f7d773f8f14ca39f64eac84957b4ed57614f",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-0-0.5.png",
+      "sha256": "333eb2c887eb9a179bc0ceed6c733e4b1a19cc781485ba8a03cbf5734c2a38e8",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-0-0.75.png",
+      "sha256": "b908bacf5d6de1ac8833a0fd039c1e575dd04360d6e54d6bd5e682da190b7d01",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-1-0.25.png",
+      "sha256": "ee8611d614e728710839b022a282ca3f24bbf50d9d2b8d8fd338710e5a34c2bf",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-1-0.5.png",
+      "sha256": "3ba4ef9d7bb9c569a2cd20db9e8483f7087b8cccfcda8f2f66935c9f2e951b18",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-1-0.75.png",
+      "sha256": "bcbfbcb7137addf07f0986d0e6fd24866add308f8d4c89b11aab8b2ef2c8dec7",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-2-0.25.png",
+      "sha256": "77a6fa290f2dd4ac5454bd15587dbe65b588351e118b94e3fd349e5ef175decb",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-2-0.5.png",
+      "sha256": "788e74239995ea7ff7ee4ead8b6b38c31d4cbc739155327e5cccaa46c14d0b49",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1440-transition-2-0.75.png",
+      "sha256": "3a9b1dfaf0662b5eb0f5a1054c0f442988e47b91b23fb307b7c88dc22426c665",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-paused-answer.png",
+      "sha256": "7003431da265bd392a7a679c7bfbce06f4c9fa0e82df03343c73c0f06eae3c52",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-reduced-document.png",
+      "sha256": "cb34c59f15b182a98d26b6d8837d2c0cdb05324ca7f7d2ce5fee7e7ba5af28d2",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-fallback-brand.png",
+      "sha256": "8021e3ec7c0158a575da218bc460bf14e17a17540074d4af56c2ad3cbdbb29e2",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "dark-1024-scene-0.png",
+      "sha256": "dba59f70bd4485f1ab5273201150e1bf331ff7790bebf34e90f464004321f3d6",
+      "viewport": [
+        1024,
+        768
+      ]
+    },
+    {
+      "file": "dark-1024-scene-1.png",
+      "sha256": "e6aa1c6247fd3fb620a9f786cd47de4fea562fc8136748d6d1b8932a06e88c7d",
+      "viewport": [
+        1024,
+        768
+      ]
+    },
+    {
+      "file": "dark-1024-scene-2.png",
+      "sha256": "e326d19b038dd16420bcea739ad361f6bad03b510afe9b882b2a7f2b8a371973",
+      "viewport": [
+        1024,
+        768
+      ]
+    },
+    {
+      "file": "dark-1024-scene-3.png",
+      "sha256": "853d421f209f926bc9604a8e9486ccee6245169bc492cf271ff840ecc928a4b1",
+      "viewport": [
+        1024,
+        768
+      ]
+    },
+    {
+      "file": "dark-390-scene-0.png",
+      "sha256": "f6359ec52fbc3f43678877de4d71d349ab8d15699143b4d1bf59731d62b1dfa3",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "file": "dark-390-scene-1.png",
+      "sha256": "dd89c7b5bcb14249736a67b9fb5cb104470e0049a7d0ce4de046055142b863f3",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "file": "dark-390-scene-2.png",
+      "sha256": "dacae7729cbdaa3807527a608134fe6ba7d3a3dfac7c407604c09739e4c2f2fc",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "file": "dark-390-scene-3.png",
+      "sha256": "166038a2fe46756054c70ef00e459229d56c8ebf687e9623b12309c9f276cc69",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "file": "light-1440-scene-0.png",
+      "sha256": "9d683736dd34f5ba7f098bab810e27499e61f5f04dfd27d48cd82e9adae482f3",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-scene-1.png",
+      "sha256": "5fdb02f320f349ee3343079f04f24275af478dec6567c4b9302da77c24477b5c",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-scene-2.png",
+      "sha256": "34e04ae935d178391589d4839a61740c4b2b83ef8144c40dd5fd7804d7ee0304",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-scene-3.png",
+      "sha256": "35a42e8f463f531382b46017397ed5c7cb9977051493e1f2c64f0503d6d4d891",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-0-0.25.png",
+      "sha256": "9948038aae10e42e7ae0ea99db6da5a1bd9fff9d547cef023c51236ce5c38525",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-0-0.5.png",
+      "sha256": "09a068452e906d13537ba234d03bf516ff1c8119ad02b5e2dadf435ca222a6e8",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-0-0.75.png",
+      "sha256": "c350c98031bdafce160906c55742bc361e87a6e73932ecdda54aa133bdee44d2",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-1-0.25.png",
+      "sha256": "c7689a364b45decfc2ffa94e81bddb51ea6ad160db494486849fe675276273ae",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-1-0.5.png",
+      "sha256": "5474bb9d6d04f8e9f9472c334ebffd774ac6d36949e575b34520eea51975ce6e",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-1-0.75.png",
+      "sha256": "4c288e67285ab000c08e92347aee808782001b9ba279fcfe0fd2428f686e4ec3",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-2-0.25.png",
+      "sha256": "bf7e74eab7dd7b2480a85b170b8310636e6721a3fbd00bc82a0ef275a2397275",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-2-0.5.png",
+      "sha256": "a2f0789eda36b22a73fd4799e43c3a31701fa342cf4417e046c5a3c54bea57b8",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1440-transition-2-0.75.png",
+      "sha256": "94be6900ec6d7731380e38f39be5e9df645592b6f350cca7a287679d3304b115",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-paused-answer.png",
+      "sha256": "9dcbf13a871ac12a43cd6ea70360af56f7220bc9bc55fe8f79e823d672cd7ab7",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-reduced-document.png",
+      "sha256": "7bde5097b83d0e2d47d505398ca4d03516836d73ef506f48a33893b468cf887c",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-fallback-brand.png",
+      "sha256": "2e7c5cfb439d1d1777abc89cbf3b7a1cbc5b76bd584bfd3849acc0430c0c678c",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "file": "light-1024-scene-0.png",
+      "sha256": "62bac0bbe398515ada1030dcb5cf476dbb9661eb92957ea36cd5420bd56d8fbe",
+      "viewport": [
+        1024,
+        768
+      ]
+    },
+    {
+      "file": "light-1024-scene-1.png",
+      "sha256": "81b7d7b9422734f19af3d645e933411f1f1e06af01924c0ebfeb985184843f3b",
+      "viewport": [
+        1024,
+        768
+      ]
+    },
+    {
+      "file": "light-1024-scene-2.png",
+      "sha256": "0da6d03e792fd96229373ab047b7cfd058174bb561bf583e3d8f1d521205f8e9",
+      "viewport": [
+        1024,
+        768
+      ]
+    },
+    {
+      "file": "light-1024-scene-3.png",
+      "sha256": "1b11314c163f87a7d9761038b1d4b0a6ae317fae3913cab1ab8ff4a5b81a3d6c",
+      "viewport": [
+        1024,
+        768
+      ]
+    },
+    {
+      "file": "light-390-scene-0.png",
+      "sha256": "053511e5828a23425752d7bfe35e1788592f33f7d766b20c727b7edde35b51de",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "file": "light-390-scene-1.png",
+      "sha256": "a7696de8b56de63a19898dd73d655b982debabdf979c963b8f8a27f522aa24db",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "file": "light-390-scene-2.png",
+      "sha256": "e8b49c722658dff290334697d67df815dd5f5eced3302fea631635d84bbcff7a",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "file": "light-390-scene-3.png",
+      "sha256": "3c2cfc8bbc9b9f2abadc8b82a62949611698faef654ec1f4031226367191f6fe",
+      "viewport": [
+        390,
+        844
+      ]
+    }
+  ],
+  "details": [
+    {
+      "file": "dark-gold-seam-detail.png",
+      "sha256": "0f8141872498f865ec667eb4fcf245c0389ada9f458e69576c15ecb759622c96"
+    },
+    {
+      "file": "light-gold-seam-detail.png",
+      "sha256": "72efcc3d4f1c4e5d0bcf79cce20ce28e0e9583e76906e0c5d72b7cd317635da7"
+    }
+  ],
+  "browserRecords": {
+    "file": "browser-records.json",
+    "sha256": "b77251776064e0d2f764173f5baaec421679fdc639dacbd2326515fa5c59b644"
+  }
+}

@@ -218,6 +218,9 @@ try {
     motion.refresh(); f.tick(50000); assert.equal(f.draws, draws)
     f.document.hidden = false; f.document.emit('visibilitychange'); assert.equal(f.canvas.dataset.time, time)
     f.observers[1].fn([{ isIntersecting: false }]); const offscreen = f.draws; motion.refresh(); assert.equal(f.draws, offscreen)
+    // A resize/scroll can queue both edges in one callback; the newest wins.
+    f.observers[1].fn([{ isIntersecting: false }, { isIntersecting: true }]); assert.equal(f.callbacks.size, 1)
+    f.observers[1].fn([{ isIntersecting: true }, { isIntersecting: false }]); assert.equal(f.callbacks.size, 0)
     f.observers[1].fn([{ isIntersecting: true }]); assert.equal(f.callbacks.size, 1); motion.destroy()
   })
   await test('unsupported and partial initialization failures release every acquired GPU resource', () => {
@@ -245,8 +248,8 @@ try {
   await test('Vue integration refreshes one controller, disposes once and ignores late state after unmount', async () => {
     const calls = []
     install('__particleComponent', (canvas, cb) => {
-      const entry = { canvas, cb, refreshes: 0, destroyed: 0 }; calls.push(entry)
-      return { select() {}, pause() {}, refresh() { entry.refreshes++ }, destroy() { entry.destroyed++ } }
+      const entry = { canvas, cb, refreshes: 0, destroyed: 0, selected: [] }; calls.push(entry)
+      return { select(index) { entry.selected.push(index) }, pause() {}, refresh() { entry.refreshes++ }, destroy() { entry.destroyed++ } }
     })
     const { useThemeStore } = await server.ssrLoadModule('/src/stores/theme.ts')
     const Component = (await server.ssrLoadModule('/src/components/common/LoginParticleScene.vue')).default
@@ -260,12 +263,19 @@ try {
     theme.setPreference('dark'); await nextTick(); await nextTick(); assert.equal(calls[0].refreshes, 1)
     calls[0].cb({ renderer: 'webgl', scene: 1, progress: 1.4, paused: false, reduced: false })
     await nextTick(); assert.equal(emitted.length, 1); assert.equal(emitted[0].progress, 1.4)
+    const setup = app._instance.setupState
+    setup.nextScene()
+    let prevented = 0
+    for (const key of ['ArrowLeft', 'End']) setup.navigate({ key, preventDefault() { prevented++ } })
+    setup.navigate({ key: 'Home', ctrlKey: true, preventDefault() { throw Error('must preserve modified key') } })
+    assert.deepEqual(calls[0].selected, [2, 0, 3]); assert.equal(prevented, 2)
     const state = app._instance.setupState; theme.setPreference('light'); app.unmount(); await nextTick(); await nextTick()
     calls[0].cb({ renderer: 'webgl', scene: 2, paused: false, reduced: false })
     assert.equal(state.state.progress, 1.4); assert.equal(emitted.length, 1)
     assert.equal(calls[0].destroyed, 1); assert.equal(calls[0].refreshes, 1)
     const template = await readFile(new URL('../src/components/common/LoginParticleScene.vue', import.meta.url), 'utf8')
-    assert.match(template, /type="button"/); assert.match(template, /aria-pressed/); assert.match(template, /选择粒子图样/)
+    assert.match(template, /type="button"/); assert.match(template, /aria-pressed/); assert.match(template, /aria-keyshortcuts="ArrowLeft ArrowRight Home End"/)
+    assert.doesNotMatch(template, /particle-caption|particle-hint|particle-count|v-for=/)
   })
 } finally {
   await server.close()

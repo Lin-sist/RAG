@@ -21,7 +21,7 @@ export function makeModels(count: number): Float32Array[] {
     const corners: Point[] = [[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]]
     for (let i = 0; i < 4; i++) line(parts, corners[i], corners[(i + 1) % 4], i % 2 ? h : w, tone)
   }
-  // The three paths match the existing wordmark/login-logo.svg. Curves are
+  // White wings follow the existing wordmark/login-logo.svg. Curves are
   // sampled only during model creation, never parsed or allocated per frame.
   type XY = [number, number]
   const cubic = (p: XY[], t: number): XY => {
@@ -38,18 +38,24 @@ export function makeModels(count: number): Float32Array[] {
         (256.5 - a[1] - (b[1] - a[1]) * across) / 175, (across - .5) * .035]
     } })
   }
-  wing([[141, 133], [252, 170], [372, 222], [465, 268]],
-    [[465, 268], [372, 236], [250, 184], [141, 133]], 5)
-  wing([[226, 380], [310, 372], [396, 326], [465, 268]],
+  const upperInner: XY[] = [[465, 268], [372, 236], [250, 184], [141, 133]]
+  wing([[141, 133], [252, 170], [372, 222], [465, 268]], upperInner, 5)
+  const lowerWing: XY[] = [[226, 380], [310, 372], [396, 326], [465, 268]]
+  wing(lowerWing,
     [[465, 268], [398, 340], [302, 388], [226, 380]], 3.7)
-  const tip: XY[] = [[412, 238], [465, 268], [412, 298], [427, 268], [412, 238]]
+  const upperJoin = cubic(upperInner, .18)
+  const tip: XY[] = [upperJoin, [465, 268], cubic(lowerWing, .76), [427, 268], upperJoin]
   const controls: XY[] = [[447, 252], [447, 284], [427, 283], [427, 253]]
   logo.push({ weight: 1.1, tone: 1, sample: (u, v) => {
     const segment = Math.min(3, Math.floor(u * 4)), t = u * 4 - segment, s = 1 - t
-    const x = s * s * tip[segment][0] + 2 * s * t * controls[segment][0] + t * t * tip[segment + 1][0]
-    const y = s * s * tip[segment][1] + 2 * s * t * controls[segment][1] + t * t * tip[segment + 1][1]
-    const radius = Math.sqrt(v)
-    return [(438 + (x - 438) * radius - 303) / 175, (256.5 - 268 - (y - 268) * radius) / 175, .024]
+    // Tuck the upper corner along the upper wing's inner edge; keep the lower seam.
+    const boundary = segment === 0 ? cubic(upperInner, .18 * (1 - t)) : segment === 1 ? cubic(lowerWing, 1 - t * .24) : [
+      s * s * tip[segment][0] + 2 * s * t * controls[segment][0] + t * t * tip[segment + 1][0],
+      s * s * tip[segment][1] + 2 * s * t * controls[segment][1] + t * t * tip[segment + 1][1],
+    ]
+    const radius = v < .18 || v > .86 ? 1 : Math.sqrt((v - .18) / .68)
+    return [(438 + (boundary[0] - 438) * radius - 303) / 175,
+      (256.5 - 268 - (boundary[1] - 268) * radius) / 175, -.0175]
   } })
   const book = models[1]
   for (let layer = 0; layer < 3; layer++) {
@@ -136,7 +142,7 @@ export function morphPoint(models: Float32Array[], index: number, progress: numb
 
 // Stable framing for every chapter, including scatter and the .2-axis brush.
 // Short viewports scale down as a whole instead of clipping or fitting each frame.
-export const projectionScale = (aspect: number) => .55 * Math.min(1, Math.max(.01, aspect))
+export const projectionScale = (aspect: number) => .61 * Math.min(1, Math.max(.01, aspect))
 
 export interface WheelInput { deltaY: number; deltaX: number; deltaMode: number; ctrlKey: boolean; metaKey: boolean; cancelable: boolean }
 export function wheelTarget(current: number, event: WheelInput, height: number): number {

@@ -2,13 +2,13 @@
 
 ## Status
 
-`ACTIVE · AWAITING_ACCEPTANCE`
+`ACTIVE · AWAITING_VISUAL_ACCEPTANCE`
 
-登录页粒子图样改造第二轮实现与客户端验证完成（WIP = 1/1），等待用户视觉接受与独立归档授权；首轮证据保留。Wave 1 与既有前端接受范围保持归档。
+登录页第三轮及金标上沿内收修正已完成客户端验证（WIP = 1/1），等待用户视觉接受；此前证据保留。Wave 1 与既有前端接受范围保持归档。
 
 ## Active (WIP Limit = 1)
 
-- **login-particle-story**：[任务与设计闸门](../openspec/changes/login-particle-story/tasks.md)。2026-10-26 用户回复“开始实现”，授权第二轮实现与验证。真实业务调用预算 0；Agent 提交与接受/归档未授权。
+- **login-particle-story**：[任务与设计闸门](../openspec/changes/login-particle-story/tasks.md)。2026-10-26 已完成三项视觉微调及[金标上沿修正验证](../openspec/changes/login-particle-story/acceptance-v4.md)。真实业务调用预算 0；Agent 提交与接受/归档未授权。
 
 ## Parked & Remaining Evidence Debt
 
