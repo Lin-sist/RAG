@@ -4,11 +4,11 @@
 
 `ACTIVE · REVIEW_READY`
 
-正式轨迹组件及同步/流式数据接线已实现，输入区模板/CSS 指纹一致；本地验收见[接入记录](../openspec/changes/rag-execution-trace-view/implementation-review.md)。真实业务联调与接受/归档仍待授权（WIP = 1/1）。
+正式轨迹及数据接线已实现；输入区按用户最新要求对齐 Demo 并修复菜单遮挡，本地验收见[接入记录](../openspec/changes/rag-execution-trace-view/implementation-review.md)。真实业务联调与接受/归档仍待授权（WIP = 1/1）。
 
 ## Active (WIP Limit = 1)
 
-- **rag-execution-trace-view**：[设计](../openspec/changes/rag-execution-trace-view/design.md) / [任务](../openspec/changes/rag-execution-trace-view/tasks.md)。2026-10-27 用户认可第二版并授权正式接入，明确输入框不变；真实业务调用预算 0，Agent 提交及接受/归档未授权。
+- **rag-execution-trace-view**：[设计](../openspec/changes/rag-execution-trace-view/design.md) / [任务](../openspec/changes/rag-execution-trace-view/tasks.md)。2026-10-27 已授权正式接入，后续授权现有输入区完整对齐 Demo 样式；真实业务调用预算 0，Agent 提交及接受/归档未授权。
 
 ## Parked & Remaining Evidence Debt
 

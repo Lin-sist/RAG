@@ -68,10 +68,6 @@
 
     <div class="input-wrapper">
       <button v-if="showScrollBottom && messages.length" class="scroll-bottom" aria-label="回到底部" @click="scrollToBottom(true)"><ArrowDown :size="18" /></button>
-      <div v-if="!isHistoryDetail" class="response-mode" aria-label="回答方式">
-        <button type="button" :class="{ selected: responseMode === 'sync' }" :disabled="isSubmitting" @click="responseMode = 'sync'">同步问答 · 显示来源</button>
-        <button type="button" :class="{ selected: responseMode === 'stream' }" :disabled="isSubmitting" @click="responseMode = 'stream'">流式问答 · 显示终态与来源</button>
-      </div>
       <p v-if="!isHistoryDetail && (kbNavigationError || (kbLoading && route.query?.kbId !== undefined))" class="kb-navigation-status" role="status">{{ kbNavigationError || '正在确认指定知识库…' }}<button v-if="kbNavigationRetry" type="button" @click="applyKbNavigation">重试指定知识库</button></p>
       <div
         v-if="selectedKb"
@@ -80,68 +76,54 @@
         <div
           class="kb-scope-chip"
         >
-          <span :title="selectedKb.name">知识库：{{ selectedKb.name }}</span>
+          <Database :size="14" aria-hidden="true" />
+          <span :title="selectedKb.name">知识库范围：<b>{{ selectedKb.name }}</b></span>
           <button
             type="button"
             title="取消选择"
             aria-label="取消选择知识库"
             :disabled="isHistoryDetail"
             @click="clearSelectedKb"
-            style="border: none; background: transparent; color: var(--rag-text-secondary); cursor: pointer; font-size: 14px; line-height: 1; padding: 0;"
+            class="kb-scope-x"
           >
-            x
+            <X :size="12" aria-hidden="true" />
           </button>
         </div>
       </div>
 
-      <div class="input-container">
-        <div ref="kbDropdownRoot" style="position: relative; display: flex;">
-          <button class="attach-btn" title="选择知识库" aria-label="选择知识库" :aria-expanded="kbDropdownOpen" :disabled="isHistoryDetail" @click.stop="toggleKbDropdown">
-            <Plus :size="16" />
+      <div ref="composerRoot" class="input-container">
+        <div ref="kbDropdownRoot" class="kb-picker" @keydown.esc.stop.prevent="closeKbDropdown(true)" @focusout="handleKbFocusout">
+          <button ref="kbDropdownTrigger" class="attach-btn" title="选择知识库" aria-label="选择知识库" aria-controls="composer-kb-menu" :aria-expanded="kbDropdownOpen" :disabled="isHistoryDetail" @click.stop="toggleKbDropdown">
+            <Plus :size="18" />
           </button>
           <div
             v-if="kbDropdownOpen"
             @click.stop
-            class="kb-dropdown"
+            id="composer-kb-menu"
+            class="composer-menu kb-dropdown"
+            :data-placement="menuPlacement"
+            :style="{ maxHeight: `${menuMaxHeight}px` }"
           >
-            <div
-              v-if="kbLoading"
-              style="padding: 10px 12px; color: var(--rag-text-secondary); font-size: 13px;"
-            >
-              正在加载知识库…
-            </div>
+            <div class="menu-label">选择知识库范围</div>
+            <div v-if="kbLoading" class="kb-load-status">正在加载知识库…</div>
             <div v-else-if="kbLoadError" class="kb-load-status" role="status">知识库加载失败<button type="button" @click="loadKbListIfNeeded()">重试知识库</button></div>
             <div v-else-if="kbList.length === 0" class="kb-load-status">暂无知识库</div>
-            <button
-              v-for="kb in kbList"
-              :key="kb.id"
-              type="button"
-              @click="selectKbFromDropdown(kb)"
-              :style="{
-                width: '100%',
-                textAlign: 'left',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '8px 10px',
-                background: selectedKbId === kb.id ? 'var(--rag-bg-user-msg)' : 'transparent',
-                cursor: 'pointer',
-                marginBottom: '4px',
-              }"
-            >
-              <div
-                :style="{
-                  fontSize: '13px',
-                  color: 'var(--rag-text-primary)',
-                  fontWeight: selectedKbId === kb.id ? '600' : '500',
-                  lineHeight: '1.4',
-                }"
+            <div v-else class="kb-menu-scroll">
+              <button
+                v-for="kb in kbList"
+                :key="kb.id"
+                type="button"
+                class="kb-menu-item"
+                :class="{ selected: selectedKbId === kb.id }"
+                :aria-pressed="selectedKbId === kb.id"
+                :title="kb.name"
+                @click="selectKbFromDropdown(kb)"
               >
-                {{ kb.name }}
-              </div>
-              <div style="font-size: 12px; color: var(--rag-text-secondary); margin-top: 2px;">
-                {{ kb.documentCount }} 篇文档
-              </div>
-            </button>
+                <Database :size="16" aria-hidden="true" />
+                <span>{{ kb.name }}</span>
+                <Check v-if="selectedKbId === kb.id" :size="15" aria-hidden="true" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -150,21 +132,57 @@
           v-model="inputText"
           rows="1"
           class="pill-input"
-          :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : selectedKbId ? '问问 RAG 知识库' : '请选择知识库后输入问题'"
+          :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : selectedKb ? `在「${selectedKb.name}」中提问…` : '请选择知识库后输入问题'"
           :disabled="isHistoryDetail"
           @keydown="handleKeydown"
         ></textarea>
 
-        <button v-if="streaming" class="stop-receiving" type="button" @click="stopReceiving">停止接收</button>
-        <button
-          :class="['send-btn-pill', { active: canSend }]"
-          :disabled="!canSend"
-          aria-label="发送问题"
-          @click="handleSend"
-        >
-          <ArrowUp :size="18" />
-        </button>
+        <div class="composer-actions">
+          <div v-if="!isHistoryDetail" ref="responseOptionsRoot" class="response-options" @keydown.esc.stop.prevent="closeResponseOptions(true)" @focusout="handleOptionsFocusout">
+            <button
+              ref="responseOptionsTrigger"
+              type="button"
+              class="options-btn"
+              :class="{ 'is-open': responseOptionsOpen }"
+              aria-label="高级选项"
+              :title="`高级选项 · 当前${responseMode === 'stream' ? '流式问答' : '同步问答'}`"
+              aria-haspopup="dialog"
+              aria-controls="response-options-panel"
+              :aria-expanded="responseOptionsOpen"
+              :disabled="isSubmitting"
+              @click="toggleResponseOptions"
+            >
+              <SlidersHorizontal :size="18" aria-hidden="true" />
+              <span v-if="responseMode === 'stream'" class="options-indicator" aria-hidden="true"></span>
+            </button>
+            <div v-if="responseOptionsOpen" id="response-options-panel" class="composer-menu response-options-panel" :data-placement="menuPlacement" :style="{ maxHeight: `${menuMaxHeight}px` }" role="dialog" aria-label="高级选项">
+              <p class="options-heading">高级选项</p>
+              <fieldset class="response-options-group" :disabled="isSubmitting">
+                <legend>回答方式</legend>
+                <label v-for="mode in responseModes" :key="mode.value" class="response-option" :class="{ selected: responseMode === mode.value }">
+                  <input v-model="responseMode" type="radio" name="response-mode" :value="mode.value" />
+                  <span class="response-option-copy"><span class="response-option-title">{{ mode.label }}</span><span class="response-option-hint">{{ mode.hint }}</span></span>
+                  <Check :size="16" class="response-option-check" aria-hidden="true" />
+                </label>
+              </fieldset>
+            </div>
+          </div>
+          <button v-if="streaming" class="send-btn-pill stop-receiving" type="button" title="停止接收" aria-label="停止接收" @click="stopReceiving"><Square :size="14" fill="currentColor" aria-hidden="true" /></button>
+          <button
+            v-else
+            :class="['send-btn-pill', { active: canSend }]"
+            :disabled="!canSend"
+            aria-label="发送问题"
+            @click="handleSend"
+          >
+            <ArrowUp :size="17" />
+          </button>
+        </div>
       </div>
+
+      <p class="disclaimer">
+        {{ isHistoryDetail ? '这里展示的是一条历史问答记录，不代表多轮会话。' : responseMode === 'stream' ? '仅完整回答终态展示来源；停止接收不代表服务端已取消。' : 'AI 可能产生不准确内容，请核对引用来源' }}
+      </p>
 
       <div v-if="messages.length === 0" class="example-questions" aria-label="示例问题">
         <button
@@ -179,9 +197,6 @@
         </button>
       </div>
 
-      <p class="disclaimer">
-        {{ isHistoryDetail ? '这里展示的是一条历史问答记录，不代表多轮会话。' : responseMode === 'stream' ? '仅完整回答终态展示来源；停止接收不代表服务端已取消。' : 'AI 可能产生不准确内容，请核对引用来源' }}
-      </p>
     </div>
   </main>
 </template>
@@ -196,6 +211,11 @@ import {
   ArrowUp,
   ArrowDown,
   Plus,
+  SlidersHorizontal,
+  Check,
+  Database,
+  X,
+  Square,
 } from 'lucide-vue-next'
 import BrandMark from '@/components/common/BrandMark.vue'
 import AnswerContent from './AnswerContent.vue'
@@ -241,8 +261,19 @@ function viewTabKey(event: KeyboardEvent, current: 'conversation' | 'trace') {
 }
 const inputText = ref('')
 const composerInput = ref<HTMLTextAreaElement | null>(null)
+const composerRoot = ref<HTMLElement>()
+const menuPlacement = ref<'above' | 'below'>('below')
+const menuMaxHeight = ref(350)
+let composerResizeObserver: ResizeObserver | undefined
 const isSubmitting = ref(false)
 const responseMode = ref<'sync' | 'stream'>('sync')
+const responseModes = [
+  { value: 'sync', label: '同步问答', hint: '完整返回回答与来源' },
+  { value: 'stream', label: '流式问答', hint: '逐步输出，完整回答后展示来源' },
+] as const
+const responseOptionsRoot = ref<HTMLElement>()
+const responseOptionsTrigger = ref<HTMLButtonElement>()
+const responseOptionsOpen = ref(false)
 const streaming = ref(false)
 const sse = useSSE()
 const messageViewport = ref<HTMLElement>()
@@ -251,6 +282,7 @@ const showScrollBottom = ref(false)
 const answerCopyStatus = ref<Record<string, string>>({})
 const copyingAnswer = ref<string | null>(null)
 const kbDropdownRoot = ref<HTMLElement>()
+const kbDropdownTrigger = ref<HTMLButtonElement>()
 const kbDropdownOpen = ref(false)
 const selectedKbId = ref<number | null>(null)
 const route = useRoute()
@@ -289,9 +321,41 @@ const selectedKb = computed(() => kbList.value.find(kb => kb.id === selectedKbId
 const isHistoryDetail = computed(() => route.name === 'ChatSession')
 watch(inputText, async () => {
   await nextTick()
+  resizeComposerInput()
+})
+
+function resizeComposerInput() {
   if (!composerInput.value) return
   composerInput.value.style.height = 'auto'
-  composerInput.value.style.height = Math.min(composerInput.value.scrollHeight, 180) + 'px'
+  composerInput.value.style.height = Math.min(composerInput.value.scrollHeight, 200) + 'px'
+}
+
+function handleComposerResize() {
+  resizeComposerInput()
+  updateComposerMenuSpace()
+}
+
+function updateComposerMenuSpace() {
+  if ((!kbDropdownOpen.value && !responseOptionsOpen.value) || !composerRoot.value) return
+  const rect = composerRoot.value.getBoundingClientRect()
+  const viewport = window.visualViewport
+  const top = viewport?.offsetTop ?? 0
+  const bottom = top + (viewport?.height ?? window.innerHeight)
+  const above = Math.max(0, rect.top - top - 14)
+  const below = Math.max(0, bottom - rect.bottom - 14)
+  const desired = kbDropdownOpen.value ? 350 : 220
+  const preferBelow = messages.value.length === 0
+  const preferred = preferBelow ? below : above
+  const alternative = preferBelow ? above : below
+  const useBelow = preferred < Math.min(desired, 240) && alternative > preferred ? !preferBelow : preferBelow
+  menuPlacement.value = useBelow ? 'below' : 'above'
+  menuMaxHeight.value = Math.min(desired, useBelow ? below : above)
+}
+
+watch([kbDropdownOpen, responseOptionsOpen], async ([kbOpen, optionsOpen]) => {
+  if (!kbOpen && !optionsOpen) return
+  await nextTick()
+  updateComposerMenuSpace()
 })
 
 async function loadKbListIfNeeded(force = false) {
@@ -391,6 +455,8 @@ async function loadHistorySession(id: number) {
 function retryHistorySession() { const id = parseRouteHistoryId(); if (id) void loadHistorySession(id) }
 
 function resetNewChat() {
+  closeResponseOptions()
+  closeKbDropdown()
   qaRequestSequence++
   view.value = 'conversation'; selectedTraceId.value = ''
   isSubmitting.value = false; streaming.value = false
@@ -408,15 +474,53 @@ function resetNewChat() {
   answerCopyStatus.value = {}
 }
 
-function toggleKbDropdown() {
+async function toggleKbDropdown() {
+  closeResponseOptions()
   kbDropdownOpen.value = !kbDropdownOpen.value
+  if (kbDropdownOpen.value) {
+    await nextTick()
+    const root = kbDropdownRoot.value
+    const option = root?.querySelector<HTMLButtonElement>('.kb-menu-item.selected') ?? root?.querySelector<HTMLButtonElement>('.kb-menu-item')
+    option?.focus()
+  }
 }
+
+function closeKbDropdown(restoreFocus = false) {
+  kbDropdownOpen.value = false
+  if (restoreFocus) kbDropdownTrigger.value?.focus()
+}
+
+function handleKbFocusout(event: FocusEvent) {
+  if (!kbDropdownRoot.value?.contains(event.relatedTarget as Node | null)) closeKbDropdown()
+}
+
+function closeResponseOptions(restoreFocus = false) {
+  responseOptionsOpen.value = false
+  if (restoreFocus) responseOptionsTrigger.value?.focus()
+}
+
+async function toggleResponseOptions() {
+  if (isSubmitting.value) return
+  responseOptionsOpen.value = !responseOptionsOpen.value
+  kbDropdownOpen.value = false
+  if (responseOptionsOpen.value) {
+    await nextTick()
+    responseOptionsRoot.value?.querySelector<HTMLInputElement>('input:checked')?.focus()
+  }
+}
+
+function handleOptionsFocusout(event: FocusEvent) {
+  if (!responseOptionsRoot.value?.contains(event.relatedTarget as Node | null)) closeResponseOptions()
+}
+
+watch(isSubmitting, busy => { if (busy) closeResponseOptions() })
 
 function selectKbFromDropdown(kb: KnowledgeBaseDTO) {
   kbNavigationSequence++
   kbNavigationError.value = ''; kbNavigationRetry.value = false
   selectedKbId.value = kb.id
   kbDropdownOpen.value = false
+  nextTick(() => composerInput.value?.focus())
 }
 
 function clearSelectedKb() {
@@ -426,9 +530,9 @@ function clearSelectedKb() {
 }
 
 function handleOutsideClick(event: MouseEvent) {
-  if (!kbDropdownOpen.value) return
   const target = event.target as Node | null
   if (!target) return
+  if (!responseOptionsRoot.value?.contains(target)) closeResponseOptions()
   if (kbDropdownRoot.value?.contains(target)) return
   kbDropdownOpen.value = false
 }
@@ -609,6 +713,8 @@ async function copyToClipboard(message: Message) {
 watch(
   () => route.fullPath,
   async () => {
+    closeResponseOptions()
+    closeKbDropdown()
     const historyId = parseRouteHistoryId()
 
     if (route.name === 'ChatSession' && historyId) {
@@ -638,9 +744,16 @@ watch(() => authStore.sessionRevision, () => {
   queueMicrotask(() => { if (historyAlive && revision === authStore.sessionRevision && authStore.isLoggedIn) retryHistorySession() })
 }, { flush: 'sync' })
 
-onMounted(async () => {
-  await loadKbListIfNeeded()
+onMounted(() => {
+  void loadKbListIfNeeded()
   document.addEventListener('click', handleOutsideClick)
+  window.addEventListener('resize', handleComposerResize)
+  window.visualViewport?.addEventListener('resize', handleComposerResize)
+  window.visualViewport?.addEventListener('scroll', updateComposerMenuSpace)
+  if (typeof ResizeObserver !== 'undefined' && composerRoot.value) {
+    composerResizeObserver = new ResizeObserver(handleComposerResize)
+    composerResizeObserver.observe(composerRoot.value)
+  }
 })
 
 onUnmounted(() => {
@@ -649,6 +762,10 @@ onUnmounted(() => {
   kbNavigationSequence++
   sse.disconnect()
   document.removeEventListener('click', handleOutsideClick)
+  window.removeEventListener('resize', handleComposerResize)
+  window.visualViewport?.removeEventListener('resize', handleComposerResize)
+  window.visualViewport?.removeEventListener('scroll', updateComposerMenuSpace)
+  composerResizeObserver?.disconnect()
 })
 </script>
 
@@ -666,7 +783,7 @@ onUnmounted(() => {
 
 .chat-panel.is-empty {
   justify-content: center;
-  padding-bottom: min(9vh, 76px);
+  padding-bottom: 9vh;
 }
 
 .messages-container {
@@ -694,7 +811,7 @@ onUnmounted(() => {
 .welcome-title {
   font-size: 30px;
   font-weight: 500;
-  letter-spacing: .2px;
+  letter-spacing: .3px;
   color: var(--rag-text-primary);
   margin: 0 0 30px;
   overflow-wrap: anywhere;
@@ -712,19 +829,18 @@ onUnmounted(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
-  max-width: 760px;
-  margin-top: 16px;
+  max-width: 820px;
+  margin-top: 26px;
 }
 
 .example-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 52px;
   gap: 11px;
   padding: 13px 15px;
   background: var(--rag-bg-surface);
-  border: 1px solid var(--rag-border);
+  border: 1px solid var(--composer-border);
   border-radius: 14px;
   color: var(--rag-text-secondary);
   text-align: left;
@@ -888,13 +1004,31 @@ onUnmounted(() => {
 
 
 .input-wrapper {
+  --composer-border: rgba(0, 0, 0, .1);
+  --composer-border-focus: rgba(0, 0, 0, .18);
+  --composer-hover: rgba(0, 0, 0, .05);
+  --composer-muted: #8f8f8f;
+  --composer-chip: rgba(0, 0, 0, .045);
+  --composer-shadow: 0 2px 14px rgba(0, 0, 0, .07);
+  --composer-menu-shadow: 0 14px 44px rgba(0, 0, 0, .16), 0 2px 8px rgba(0, 0, 0, .08);
   position: sticky;
   bottom: 0;
-  padding: 12px 24px 20px;
+  flex: none;
+  padding: 6px 24px env(safe-area-inset-bottom, 0px);
   background: linear-gradient(to top, var(--rag-bg-page) 80%, transparent);
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+html.dark .input-wrapper {
+  --composer-border: rgba(255, 255, 255, .075);
+  --composer-border-focus: rgba(255, 255, 255, .14);
+  --composer-hover: rgba(255, 255, 255, .055);
+  --composer-muted: #8d8d8d;
+  --composer-chip: rgba(255, 255, 255, .055);
+  --composer-shadow: 0 2px 14px rgba(0, 0, 0, .12);
+  --composer-menu-shadow: 0 18px 50px rgba(0, 0, 0, .55), 0 2px 10px rgba(0, 0, 0, .4);
 }
 
 .is-empty .input-wrapper {
@@ -904,25 +1038,30 @@ onUnmounted(() => {
 }
 
 .input-container {
+  position: relative;
   display: flex;
   align-items: flex-end;
-  gap: 12px;
-  max-width: 760px;
+  gap: 6px;
+  max-width: 820px;
   width: 100%;
   background: var(--rag-bg-input);
-  border: 1px solid var(--rag-border);
+  border: 1px solid var(--composer-border);
   border-radius: 28px;
-  padding: 10px 12px;
-  box-shadow: var(--rag-shadow-sm);
+  padding: 8px 10px 8px 14px;
+  box-shadow: var(--composer-shadow);
+  transition: border-color 150ms, box-shadow 150ms;
 }
 
 .input-container:focus-within {
-  border-color: var(--rag-text-placeholder);
+  border-color: var(--composer-border-focus);
 }
 
+.kb-picker { display: flex; flex: none; }
+.composer-actions { display: flex; align-items: center; gap: 4px; flex: none; padding-bottom: 1px; }
+
 .attach-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -936,15 +1075,15 @@ onUnmounted(() => {
 }
 
 .attach-btn:hover {
-  background: var(--rag-bg-hover);
+  background: var(--composer-hover);
   color: var(--rag-text-regular);
 }
 
 .pill-input {
   flex: 1;
   min-width: 0;
-  min-height: 36px;
-  max-height: 180px;
+  min-height: 38px;
+  max-height: 200px;
   border: none;
   outline: none;
   resize: none;
@@ -958,32 +1097,13 @@ onUnmounted(() => {
 }
 
 .pill-input::placeholder {
-  color: var(--rag-text-placeholder);
-}
-
-.mic-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--rag-text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.mic-btn:hover {
-  color: var(--rag-text-regular);
-  background: rgba(0, 0, 0, 0.05);
+  color: var(--composer-muted);
+  white-space: nowrap;
 }
 
 .send-btn-pill {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border: none;
   border-radius: 50%;
   background: var(--rag-border);
@@ -996,7 +1116,7 @@ onUnmounted(() => {
   transition: background-color 150ms, color 150ms, scale 150ms;
 }
 
-.send-btn-pill.active {
+.send-btn-pill.active, .send-btn-pill.stop-receiving {
   background: var(--rag-text-primary);
   color: var(--rag-bg-primary);
   cursor: pointer;
@@ -1011,22 +1131,57 @@ onUnmounted(() => {
 }
 
 .disclaimer {
+  width: 100%;
+  max-width: 820px;
   text-align: center;
-  font-size: 11px;
-  color: var(--rag-text-placeholder);
-  margin-top: 10px;
+  font-size: 12px;
+  color: var(--composer-muted);
+  padding: 10px 0 2px;
+  overflow-wrap: anywhere;
 }
 
-.response-mode { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; max-width: 760px; margin-bottom: 10px; }
-.response-mode button { border: 1px solid var(--rag-border); border-radius: 999px; background: transparent; color: var(--rag-text-secondary); padding: 6px 12px; font-size: 12px; cursor: pointer; }
-.response-mode button.selected { background: var(--rag-bg-user-msg); border-color: var(--rag-text-secondary); color: var(--rag-text-primary); }
-.response-mode button:disabled { opacity: .5; cursor: not-allowed; }
+.response-options { display: flex; flex: none; }
+.options-btn { position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--rag-text-secondary); cursor: pointer; transition: background-color 150ms, color 150ms; }
+.options-btn:hover, .options-btn.is-open { background: var(--composer-hover); color: var(--rag-text-primary); }
+.options-btn:focus-visible { outline: 2px solid var(--rag-primary); outline-offset: 2px; }
+.options-btn:disabled { opacity: .5; cursor: not-allowed; }
+.options-indicator { position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.composer-menu { position: absolute; z-index: 30; padding: 7px; border: 1px solid var(--composer-border); border-radius: 16px; background: var(--rag-bg-overlay); color: var(--rag-text-primary); box-shadow: var(--composer-menu-shadow); }
+.composer-menu[data-placement="above"] { bottom: calc(100% + 6px); top: auto; }
+.composer-menu[data-placement="below"] { top: calc(100% + 6px); bottom: auto; }
+.response-options-panel { right: 10px; width: min(280px, calc(100vw - 48px)); overflow-y: auto; }
+.options-heading { margin: 4px 10px 12px; font-size: 12px; color: var(--rag-text-secondary); }
+.response-options-group { min-width: 0; margin: 0; padding: 0; border: 0; }
+.response-options-group legend { padding: 0 10px 6px; font-size: 12px; color: var(--rag-text-secondary); }
+.response-option { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; cursor: pointer; transition: background-color 150ms; }
+.response-option:hover { background: var(--composer-hover); }
+.response-option.selected { background: var(--rag-success-light); box-shadow: inset 0 0 0 2px var(--rag-primary); }
+.response-option:has(input:focus-visible) { outline: 2px solid var(--rag-text-secondary); outline-offset: 2px; }
+/* The native radio covers the full row so pointer focus stays inside the panel
+   before label activation; a 1px radio lets focusout dismiss it too early. */
+.response-option input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.response-option-copy { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.response-option-title { font-size: 14px; }
+.response-option-hint { font-size: 12px; line-height: 1.5; color: var(--rag-text-secondary); }
+.response-option-check { flex: none; visibility: hidden; color: var(--rag-primary); }
+.response-option.selected .response-option-title { font-weight: 600; }
+.response-option.selected .response-option-check { visibility: visible; }
 .stream-state { margin: 10px 0 0; font-size: 12px; color: var(--rag-text-secondary); }
-.stop-receiving { flex-shrink: 0; border: 1px solid var(--rag-border); border-radius: 999px; background: var(--rag-bg-surface); color: var(--rag-text-primary); padding: 5px 10px; font-size: 12px; cursor: pointer; }
-.kb-scope-row { width: 100%; max-width: 760px; margin-bottom: 8px; display: flex; }
-.kb-scope-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--rag-border); border-radius: 999px; background: var(--rag-bg-hover); color: var(--rag-text-secondary); font-size: 12px; max-width: 100%; }
+.kb-scope-row { width: 100%; max-width: 820px; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px 8px; }
+.kb-scope-chip { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 6px 0 10px; border: 1px solid var(--composer-border); border-radius: 999px; background: var(--composer-chip); color: var(--rag-text-primary); font-size: 13px; max-width: 100%; }
+.kb-scope-chip svg { flex: none; color: var(--rag-text-secondary); }
+.kb-scope-chip b { font-weight: 500; }
 .kb-scope-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kb-dropdown { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 30; width: min(300px, calc(100vw - 60px)); max-height: 280px; overflow-y: auto; border: 1px solid var(--rag-border); border-radius: 12px; background: var(--rag-bg-overlay); box-shadow: var(--rag-shadow-md); padding: 8px; }
+.kb-scope-x { width: 20px; height: 20px; flex: none; border: 0; border-radius: 50%; background: transparent; display: grid; place-items: center; cursor: pointer; }
+.kb-scope-x:hover { background: var(--composer-hover); }
+.kb-dropdown { left: 14px; width: min(260px, calc(100vw - 48px)); display: flex; flex-direction: column; }
+.menu-label { flex: none; font-size: 12px; color: var(--composer-muted); padding: 8px 10px 4px; }
+.kb-menu-scroll { min-height: 0; max-height: 300px; overflow-y: auto; margin: 0 -4px; padding: 0 4px; overscroll-behavior: contain; }
+.kb-menu-item { display: flex; align-items: center; gap: 11px; width: 100%; height: 38px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; font-size: 14px; color: var(--rag-text-primary); text-align: left; cursor: pointer; }
+.kb-menu-item:hover, .kb-menu-item.selected { background: var(--composer-hover); }
+.kb-menu-item svg { flex: none; color: var(--rag-text-secondary); }
+.kb-menu-item span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-menu-item:focus-visible { outline-offset: -2px; }
 .kb-load-status { padding: 10px 12px; color: var(--rag-text-secondary); font-size: 13px; }
 .kb-load-status button { display: block; margin-top: 8px; color: inherit; background: transparent; border: none; cursor: pointer; text-decoration: underline; }
 
@@ -1035,7 +1190,7 @@ onUnmounted(() => {
   .chat-panel.is-empty { padding-bottom: 0; }
   .welcome-title { font-size: 24px; }
   .welcome-screen { padding: 0 16px; }
-  .input-wrapper { padding: 10px 16px 16px; }
+  .input-wrapper { padding: 6px 16px env(safe-area-inset-bottom, 0px); }
   .example-questions { grid-template-columns: 1fr; }
   .example-card { min-height: 46px; }
   .user-content {

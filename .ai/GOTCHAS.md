@@ -36,3 +36,11 @@
 ## 7. 流式终态与阶段收尾顺序
 
 - **陷阱与对策**：Reactor 的下游完成回调可能先于上游 doFinally 执行，因此不能在那里才关闭供界面使用的阶段，否则 terminal 前的快照仍会显示 RUNNING。轨迹投影在实际 doOnComplete/doOnError 收尾，既有 OTel/metrics 保留 doFinally；异步 finalization 必须恢复订阅时捕获的 Context。
+
+## 8. 隐藏单选框与失焦关闭弹层
+
+- **陷阱与对策**：1px 透明 radio 的 label 文字被鼠标点下时，旧输入可能先产生 relatedTarget=null 的 focusout，弹层在 label 激活前就被销毁。原生 radio 应覆盖整行点击区；回归必须实际点击文字/说明/空白，直接调用 radio.check() 会绕过该故障。
+
+## 9. 菜单 max-height 不等于视口内可见
+
+- **陷阱与对策**：固定向上展开的菜单即使设了 max-height，仍可能在矮窗口越过顶部。应按锚点与实际视口的上下空间选方向、限高，并在窗口/visualViewport/输入尺寸变化后更新；回归同时覆盖长列表和打开后的缩窗。
