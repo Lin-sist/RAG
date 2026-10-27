@@ -1,7 +1,7 @@
 <template>
   <div class="kb-list-view">
     <header class="page-header">
-      <div><p class="eyebrow">知识空间</p><h1>知识库</h1><p class="subtitle">管理文档，让回答有据可查。</p></div>
+      <div><p class="eyebrow">知识空间</p><h1>知识库</h1><p class="subtitle">这里只显示当前账号可以访问的知识库。</p></div>
       <el-button type="primary" @click="openCreate"><Plus :size="16" />创建知识库</el-button>
     </header>
     <div class="list-toolbar">
@@ -24,7 +24,7 @@
         <span class="doc-count">{{ kb.documentCount }} 篇</span>
         <time>{{ formatDate(kb.updatedAt) }}</time>
         <div class="row-actions">
-          <el-tag size="small" type="info">{{ kb.isPublic ? '公开' : '私有' }}</el-tag>
+          <el-tag size="small" type="info">{{ kb.isPublic ? '组织内公开' : '非公开' }}</el-tag>
           <el-dropdown trigger="click" :disabled="deleting.has(kb.id)" @command="(command: string) => act(command, kb)">
             <button class="more-button" :aria-label="'管理 ' + kb.name">•••</button>
             <template #dropdown><el-dropdown-menu>
@@ -36,7 +36,7 @@
         </div>
       </article>
     </section>
-    <el-empty v-else :description="query.trim() ? '没有匹配的知识库' : '还没有知识库'">
+    <el-empty v-else :description="query.trim() ? '没有匹配的知识库' : '暂无可访问的知识库'">
       <el-button v-if="query.trim()" @click="query = ''">清除筛选</el-button>
       <el-button v-else type="primary" @click="openCreate">创建知识库</el-button>
     </el-empty>

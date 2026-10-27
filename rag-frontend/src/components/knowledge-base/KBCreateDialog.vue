@@ -30,15 +30,15 @@
           show-word-limit
         />
       </el-form-item>
-      <el-form-item label="可见性">
+      <el-form-item label="可见范围">
         <el-switch
           v-model="form.isPublic"
-          active-text="公开"
-          inactive-text="私有"
+          active-text="组织内公开"
+          inactive-text="非公开"
           inline-prompt
         />
         <span class="visibility-hint">
-          {{ form.isPublic ? '当前租户内公开，访问以服务端授权为准' : '非公开，访问以服务端授权为准' }}
+          {{ form.isPublic ? '本工作空间内的用户可以读取，其他工作空间不可见。' : '创建者及已获授权的本工作空间用户可以访问。' }}
         </span>
       </el-form-item>
     </el-form>

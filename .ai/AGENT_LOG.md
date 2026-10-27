@@ -5,30 +5,7 @@
 > - **简短记录**：每个可验证切片记一次改动原因、验证与跳过原因、新增风险；已有专项证据直接链接，可复用教训才提炼入 [`.ai/GOTCHAS.md`](GOTCHAS.md)，不为行数凑内容。
 > - **历史冷归档**：Wave 0 ～ Wave 1 收口（2026-07-12 至 2026-10-21，共 3,804 行）已无损封存至 [`.ai/logs/2026-07-to-10-wave1.md`](logs/2026-07-to-10-wave1.md)。
 
-## 2026-10-21 · wave1-offline-closeout（阶段里程碑锚点）
-
-- **改动与大白话**：完成 `eval_test_support.py` 测试隔离修复及 C19/C20 零外调离线工具链归档（`3f02225`、`2536fb5`），清理 2 个旧前端空壳目录，`.ai/ACTIVE_TASK.md` 恢复 `IDLE`。改前全仓 Python 测试受旧 C18 源码漂移阻塞且 Wave 1 挂起项挤占活动指针；改后 Wave 1（C17–C21）全员归档，未完 Live 采证转入 P1 证据债务 `W1-E1~E3`。
-- **验证与门禁**：`python -B -m unittest discover -s scripts -p 'test_*.py'` 336 tests GREEN（0 failure/error）；C19 plan-only 与 C20 空输入/C18 回放烟测全部符合契约。
-- **踩坑与风险**：定位并隔离了 Windows 沙箱 `tempfile.mkdtemp` 权限重试卡顿与 C18 冻结审计 SHA 漂移（已收录入 `.ai/GOTCHAS.md`）；真实 Judge 校准与三轮 full150 参考仍待后续独立授权。
-
-## 2026-10-21 · workflow-v2-context-lean-governance（Type B 治理升级）
-
-- **改动与大白话**：升级 [`AGENTS.md`](../AGENTS.md)、[`vibecoding-playbook.md`](../docs/workflow/vibecoding-playbook.md)、[`agent-collaboration/spec.md`](../openspec/specs/agent-collaboration/spec.md)、[`ACTIVE_TASK.md`](ACTIVE_TASK.md)、[`project.md`](../openspec/project.md) 與 [`run_local_quality_gates.ps1`](../scripts/run_local_quality_gates.ps1)，新增 [`GOTCHAS.md`](GOTCHAS.md) 并将原 3,804 行日志封存入 [`.ai/logs/2026-07-to-10-wave1.md`](logs/2026-07-to-10-wave1.md)。改前 730KB 单文件日志只写不读、每次提交需额外补录 SHA 且多处文档重复抄写进度；改后实行“≤200 行滚动热窗口 + 6 行定额 + 同次提交零补录 + `Parked` 挂起表 + `DocAndScope` 自动门禁”。
-- **验证与门禁**：运行 `scripts/run_local_quality_gates.ps1 -Mode DocAndScope` 与 `-Mode SensitiveLogs` 均 PASS；核对冷归档文件与原日志 3,804 行字节完全一致；未改业务代码，跳过 Maven/前端构建/外部调用。
-- **踩坑与风险**：无新陷阱（首批已从历史日志提炼 6 条核心避坑指南入 `GOTCHAS.md`）；后续在 W0 OTel 时序修复及 Wave 2 首个 Change 中实测检验 v2.0 模板顺滑度。
-
-## 2026-10-21 · workflow-v2-plain-language-patch（Type B 治理微调）
-
-- **改动与大白话**：更新 [`AGENTS.md`](../AGENTS.md)、[`design-decision-record.md`](../docs/workflow/prompt-snippets/design-decision-record.md)、[`vibecoding-playbook.md`](../docs/workflow/vibecoding-playbook.md) 与 [`agent-collaboration/spec.md`](../openspec/specs/agent-collaboration/spec.md)。改前只要求“简短/半句话”，导致 Agent 为了省字数删掉主谓宾和因果逻辑，写出天书般的机器电报体；改后强制每次事前闸门、完成汇报和 `design.md` 开头先写 `💡 30秒人话导读`，并植入“❌ 电报黑话 vs ✅ 通透人话”正反例对照表，让主人 10 秒看懂每次改动。
-- **验证与门禁**：运行 `scripts/run_local_quality_gates.ps1 -Mode DocAndScope` 门禁 PASS；纯治理文案与模板升级，跳过 Maven/Python/前端构建及外部调用。
-- **踩坑与风险**：发现给大模型下达“用半句话说清”指令极易诱发无主谓宾的名词堆砌，必须用正反面 Few-Shot 示例约束文风；紧接着在 W0.1 OTel 修复任务中检验 Codex 汇报效果。
-
-## 2026-10-21 · W0.1（Type B：稳定 OTel 测试等待）
-
-- **改动与大白话**：修改 1 个 Java 测试文件和 4 个说明文件。原来的秒表只给后台线程 2 秒，全仓繁忙时容易误报；现在统一给最多 10 秒，等到导出结束和失败计数出现就继续，只开 trace 的测试也不再白等没开的 metric。
-- **验证与门禁**：两类聚焦测试连续三轮通过，每轮 12 项；全仓 `mvn -q test` 退出码为 0，682 项测试没有失败或错误，21 项跳过，目标测试类 9 项全部通过。DocAndScope 已通过，差异格式、受保护路径、Markdown 链接和热日志行数检查均合格。
-- **跳过原因**：19 项 Docker 测试因环境不可用而跳过，2 项 OTel 烟测因未开启而跳过；本次没有修改 Python 或前端，因此没有重跑它们的验证。
-- **踩坑与风险**：已将“导出超时不等于后台回调完成时间”的区别写入 GOTCHAS 第 4 节；生产导出配置、业务耗时断言和 fail-open 行为保持原样，本轮通过不能代替真实 Collector 烟测或生产容量验证。
+> - 2026-10-21 的早期治理与验证记录原文迁入 [上下文治理冷归档](logs/2026-10-context-governance.md)。
 
 ## 2026-10-22 · workflow-v2.1-risk-based-maintenance（Type B：精简协作流程）
 
@@ -187,3 +164,17 @@
 - **验证与门禁**：DocAndScope PASS；全仓 Markdown 相对链接目标检查通过，20 份历史正文在扣除归档说明和路径调整后与迁移前一致，7 张图片及 2 份 JSON 清单哈希不变；范围外 tracked 文件保持原样。
 - **保留与边界**：eval 的路径、全部内容和可见性均不变，个人学习资料、OpenSpec、活动指针与原有日志保留；仅移除 9 个空旧目录，旧兼容目录从 IDE 日常视图隐藏。API 教程同步修正页码、Token 打印及结构化流说明，联调方法从旧执行包提炼而不恢复旧预算。
 - **跳过与提交**：本轮不改业务源码、评测逻辑或生产默认值；未重跑 Maven/Python 业务测试、前端构建或真实外调。门禁脚本仅更新核心文档路径并通过 PowerShell 语法检查；未暂存、提交或接管活动 change，建议 `docs(治理): 按回看用途重组规划维护与历史文档`。
+
+## 2026-10-27 · workspace-context-design（Type B：设计规划与 Skill 试用）
+
+- **改动与大白话**：新增工作空间归属规划及两份独立示意文件，更新文档索引；此前前端难以看出组织归属和公开范围，现在用侧栏、个人资料与统一文案形成可审阅方案，正式接口和业务源码待独立 Type C 接入。
+- **Skill 试用**：按用户指定仓库固定版本安装 landing-page-design、design-to-motion 到用户级 skills；采用前者的信息层级与完整状态方法，后者仅安装，详见[规划](../docs/01-规划与调研/工作空间归属与可见范围-设计规划.md)。
+- **验证与门禁**：示意稿 JavaScript 语法、HTML ID/标签引用、无网络/存储引用及安装文件检查通过；DocAndScope PASS。未改正式业务代码，未跑 Maven、Python 业务测试或正式前端构建。
+- **边界与风险**：浏览器桥不可用且备用通道拒绝 file 协议，未绕过；视觉/点击/窄屏均 SKIPPED，真实业务调用 0；示例不证明隔离效果，活动指针和 OpenSpec 保持。未暂存或提交，建议 `docs(前端): 规划工作空间归属与资料可见范围`。
+
+## 2026-10-27 · workspace-context-visibility（Type C：正式接入）
+
+- **改动与大白话**：新增服务端只读上下文并接入侧栏/资料，统一知识库可见范围；此前看不出组织且刷新丢资料，现在显示真实归属并区分加载/失败/长名，Token 轮换不清草稿，归属变化清会话重登（D1–D4）。
+- **验证与门禁**：聚焦接口、完整 Maven/前端回归、含 vue-tsc 正式构建、DocAndScope 与 SensitiveLogs 均通过，结果和合成浏览器 13 项检查见[实施记录](../openspec/changes/workspace-context-visibility/implementation-review.md)。未改 Python 评测，未跑无关业务回归；OpenSpec CLI 不可用。
+- **踩坑与风险**：单独注册 Mapper 的 SQL 测试未发现包路径漏出既有扫描范围，首次全仓失败后按原约定移包并完整重跑通过；窗口最小化使截图未取得，真实数据库/后端启动、provider、实体设备与逐像素外观未验，真实业务调用 0。旧热记录以原文块无损归档。
+- **状态与提交**：按用户确认登记执行轨迹 USER_ACCEPTED，归档待处理；本 change 为 REVIEW_READY，未暂存、提交、push、部署或接受/归档，建议 `feat(工作空间): 展示账号归属并明确知识库可见范围`。

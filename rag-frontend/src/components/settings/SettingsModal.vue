@@ -24,7 +24,8 @@
               <div class="profile-summary"><span class="profile-avatar">{{ username.charAt(0).toUpperCase() }}</span><div><strong>{{ username }}</strong><p>当前登录资料</p></div></div>
               <p v-if="!auth.userInfo" class="settings-hint" role="status">资料暂不可用</p>
               <dl v-else><div><dt>用户名</dt><dd>{{ auth.userInfo.username || '未提供' }}</dd></div><div><dt>邮箱</dt><dd>{{ auth.userInfo.email || '未提供' }}</dd></div></dl>
-              <p class="settings-hint">此处仅展示当前登录资料。</p>
+              <dl class="workspace-details"><div><dt>所属工作空间</dt><dd><WorkspaceContext mode="profile" /></dd></div></dl>
+              <p class="settings-hint">资料可见范围以当前工作空间及知识库授权为准。</p>
             </template>
           </div>
         </div>
@@ -37,6 +38,7 @@ import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { X, User, Settings2 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore, type ThemePreference } from '@/stores/theme'
+import WorkspaceContext from '@/components/common/WorkspaceContext.vue'
 // Existing alternate shell still passes legacy tabs; unsupported tabs open general appearance.
 const props = withDefaults(defineProps<{ modelValue: boolean; initialTab?: 'general' | 'profile' | 'security' | 'apiKey' }>(), { initialTab: 'general' })
 const emit = defineEmits<{ (event: 'update:modelValue', value: boolean): void }>()
@@ -108,6 +110,8 @@ select { min-width: 120px; max-width: 100%; border: 1px solid var(--rag-border);
 dl { font-size: 13px; margin-top: 20px; }
 dl div { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--rag-border); }
 dt { color: var(--rag-text-secondary); } dd { overflow-wrap: anywhere; }
+.workspace-details { margin-top: 0; }
+.workspace-details div { grid-template-columns: 88px minmax(0, 1fr); }
 @media (max-width: 600px) {
   .settings-body { grid-template-columns: 1fr; min-height: 320px; }
   nav { display: flex; gap: 4px; padding: 12px; border-right: 0; border-bottom: 1px solid var(--rag-border); }

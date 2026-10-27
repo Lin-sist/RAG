@@ -58,6 +58,10 @@ export function createRequestClient(session: Session, adapter?: AxiosAdapter) {
         return config
     })
     request.interceptors.response.use(response => {
+        const config = response.config as RetryConfig
+        if (config.authRevision !== undefined && config.authRevision !== session.revision()) {
+            throw new ApiError('登录状态已变更', 401)
+        }
         const body = response.data
         if (typeof body?.code === 'number' && (body.code < 200 || body.code >= 300)) {
             throw new ApiError(body.message || '请求失败', response.status, String(body.code), body.traceId)

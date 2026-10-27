@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>工作空间归属 · 设计审阅稿</title>
+  <style>
+    :root { color-scheme:light; --page:#fff; --sidebar:#f9f9f9; --hover:#f4f4f4; --text:#0d0d0d; --secondary:#5d5d5d; --border:#e5e5e5; --accent:#0d7a60; --accent-bg:#e6f6f3; --backdrop:rgba(0,0,0,.4); --canvas:#eceeed; }
+    html.dark { color-scheme:dark; --page:#000; --sidebar:#0a0a0a; --hover:#242424; --text:#ececec; --secondary:#b5b5b5; --border:#343434; --accent:#65d4b0; --accent-bg:#123328; --canvas:#161616; --backdrop:rgba(0,0,0,.65); }
+    * { box-sizing:border-box; } body { margin:0; background:var(--canvas); color:var(--text); font:14px/1.6 'Segoe UI','Microsoft YaHei UI','Microsoft YaHei',system-ui,sans-serif; }
+    button,select { font:inherit; color:inherit; } button { cursor:pointer; } button:disabled { cursor:default; opacity:.55; }
+    button,select { border:1px solid var(--border); background:var(--page); border-radius:8px; padding:8px 12px; }
+    button:not(:disabled):hover { background:var(--hover); } button:not(:disabled):active { transform:translateY(1px); }
+    button:focus-visible,select:focus-visible,a:focus-visible { outline:2px solid var(--text); outline-offset:3px; }
+    [hidden] { display:none!important; } .skip { position:absolute; top:-80px; left:12px; z-index:20; background:var(--page); color:var(--text); padding:12px; } .skip:focus { top:12px; }
+    .review { max-width:1440px; margin:auto; padding:24px 32px 16px; }
+    .review-top { display:flex; justify-content:space-between; align-items:start; gap:24px; }
+    .kicker { font-size:12px; color:var(--secondary); letter-spacing:.08em; } h1,h2,h3,p { margin:0; } h1 { font-size:24px; line-height:32px; font-weight:600; margin:4px 0 8px; }
+    .review p { color:var(--secondary); max-width:850px; } .version { font-size:12px; border:1px solid var(--border); border-radius:8px; padding:4px 8px; white-space:nowrap; }
+    .controls { margin-top:16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px 24px; } .controls label { display:flex; gap:8px; align-items:center; font-size:12px; }
+    .controls select { font-size:14px; max-width:100%; } .help { margin-top:12px; font-size:12px; }
+    .stage { width:min(1440px,calc(100% - 64px)); margin:0 auto 24px; border:1px solid var(--border); border-radius:16px; overflow:hidden; background:var(--page); container-type:inline-size; }
+    .stage.narrow { width:min(390px,calc(100% - 32px)); } .stage.medium { width:min(768px,calc(100% - 32px)); }
+    .app { display:grid; grid-template-columns:300px minmax(0,1fr); min-height:740px; }
+    .sidebar { background:var(--sidebar); border-right:1px solid var(--border); padding:16px 12px; display:flex; flex-direction:column; }
+    .brand { padding:4px 12px 20px; display:flex; gap:8px; align-items:center; font-size:18px; font-weight:600; }
+    .brand-symbol { background:var(--accent); width:24px; height:24px; border-radius:8px; display:grid; place-items:center; color:var(--page); font-size:14px; }
+    .workspace { padding:12px; margin-bottom:16px; border-radius:12px; border:1px solid var(--border); min-height:108px; }
+    .eyebrow { color:var(--secondary); font-size:12px; line-height:16px; margin-bottom:8px; }
+    .workspace-line { display:flex; align-items:start; gap:8px; } .org-icon { flex:none; width:18px; height:18px; margin-top:2px; }
+    .workspace-name { font-weight:500; font-size:14px; line-height:20px; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .text-button { padding:4px 0; margin-top:4px; font-size:12px; color:var(--secondary); border:0; background:transparent; text-decoration:underline; text-underline-offset:3px; }
+    .text-button:not(:disabled):hover { background:transparent; color:var(--text); }
+    .nav { display:grid; gap:4px; } .nav button { border:0; background:transparent; text-align:left; padding:12px; display:flex; align-items:center; gap:12px; }
+    .nav .selected { background:var(--hover); } .nav svg { width:18px; height:18px; flex:none; }
+    .recent { flex:1; padding:24px 12px; } .recent h2 { font-size:12px; color:var(--secondary); font-weight:500; margin-bottom:12px; }
+    .recent p { font-size:12px; color:var(--secondary); } .account { border-top:1px solid var(--border); padding-top:12px; }
+    .account button { width:100%; display:flex; align-items:center; gap:12px; border:0; background:transparent; text-align:left; }
+    .avatar { width:32px; height:32px; display:grid; place-items:center; flex:none; border:1px solid var(--border); background:var(--hover); border-radius:50%; font-size:12px; }
+    .account small { color:var(--secondary); margin-left:auto; } main { min-width:0; } .mobilebar { display:none; }
+    .content { padding:40px; max-width:1080px; margin:auto; } .page-head { display:flex; justify-content:space-between; align-items:start; gap:16px; margin-bottom:24px; }
+    .page-head h2 { font-size:24px; line-height:32px; font-weight:600; margin-bottom:8px; } .muted { color:var(--secondary); } .primary { background:var(--accent); color:var(--page); border-color:var(--accent); white-space:nowrap; }
+    .scope-note { margin-bottom:24px; padding:12px 16px; border-radius:8px; background:var(--hover); color:var(--secondary); font-size:12px; }
+    .kb-list { border-top:1px solid var(--border); } .kb { padding:24px 0; border-bottom:1px solid var(--border); }
+    .kb-top { display:flex; gap:12px; align-items:start; justify-content:space-between; } .kb h3 { font-size:16px; line-height:24px; font-weight:600; }
+    .tag { font-size:12px; padding:2px 8px; border:1px solid var(--border); border-radius:8px; white-space:nowrap; color:var(--secondary); }
+    .tag.public { background:var(--accent-bg); color:var(--accent); border-color:transparent; } .kb p { margin-top:8px; color:var(--secondary); font-size:14px; }
+    .kb .explain { font-size:12px; margin-top:12px; } .page-foot { margin-top:24px; font-size:12px; color:var(--secondary); }
+    .empty { padding:64px 16px; text-align:center; border:1px solid var(--border); border-radius:12px; } .empty h3 { font-size:18px; font-weight:500; margin-bottom:8px; }
+    .loading-shape { display:block; height:16px; border-radius:4px; background:var(--border); width:80%; margin:8px 0; } .loading-shape.short { width:50%; }
+    dialog { border:1px solid var(--border); background:var(--page); color:var(--text); width:min(760px,calc(100% - 32px)); max-height:calc(100dvh - 32px); padding:0; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,.12); }
+    dialog::backdrop { background:var(--backdrop); } .dialog-head { padding:24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .dialog-head h2 { font-size:20px; line-height:28px; font-weight:600; } .close { padding:4px 12px; font-size:20px; border:0; background:transparent; }
+    .settings-grid { display:grid; grid-template-columns:180px minmax(0,1fr); min-height:360px; } .settings-tabs { padding:16px 12px; border-right:1px solid var(--border); }
+    .settings-tabs button { width:100%; text-align:left; border:0; margin-bottom:4px; background:transparent; } .settings-tabs .selected { background:var(--hover); }
+    .settings-content { padding:24px; min-width:0; } .settings-content h3 { font-size:18px; font-weight:600; margin-bottom:24px; }
+    dialog.compact { width:min(390px,calc(100% - 32px)); } dialog.compact .settings-grid { grid-template-columns:1fr; } dialog.compact .settings-tabs { display:flex; border-right:0; border-bottom:1px solid var(--border); } dialog.compact .settings-tabs button { width:auto; } dialog.compact dl>div { grid-template-columns:1fr; gap:4px; }
+    .profile-top { display:flex; align-items:center; gap:12px; margin-bottom:16px; } .profile-top .avatar { width:40px; height:40px; } dl { margin:0; font-size:14px; }
+    dl>div { display:grid; grid-template-columns:100px minmax(0,1fr); gap:16px; padding:16px 0; border-bottom:1px solid var(--border); } dt { color:var(--secondary); } dd { margin:0; overflow-wrap:anywhere; }
+    .profile-hint { font-size:12px; color:var(--secondary); margin-top:16px; } .nav-dialog { width:min(320px,calc(100% - 32px)); } .nav-dialog-body { padding:16px; }
+    .review-foot { max-width:1440px; padding:0 32px 24px; margin:auto; color:var(--secondary); font-size:12px; }
+    @container (max-width:768px) { .app { grid-template-columns:1fr; min-height:740px; } .sidebar { display:none; } .mobilebar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); } .mobilebar strong { font-weight:500; font-size:14px; } .content { padding:24px 16px; } .page-head { flex-wrap:wrap; } .page-head h2 { font-size:20px; line-height:28px; } }
+    @media (max-width:600px) { .review { padding:16px; } .review-top { flex-wrap:wrap; gap:8px; } .stage { width:calc(100% - 32px); } .review-foot { padding:0 16px 24px; } .settings-grid { grid-template-columns:1fr; } .settings-tabs { display:flex; border-right:0; border-bottom:1px solid var(--border); } .settings-tabs button { width:auto; } dl>div { grid-template-columns:1fr; gap:4px; } }
+    @media (prefers-reduced-motion:no-preference) { button { transition:background-color 200ms cubic-bezier(.22,1,.36,1); } }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">跳到主要内容</a>
+<header class="review">
+  <div class="review-top"><div><div class="kicker">RAG / DESIGN REVIEW / 01</div><h1>先看清归属，再使用资料。</h1><p>在现有工作台中补充工作空间与可见范围。以下组织、账号和资料都是设计样例；所有交互只在本页内模拟。</p></div><span class="version">设计稿 · 尚未接入</span></div>
+  <div class="controls" aria-label="设计审阅控制台">
+    <label>状态演示<select id="state"><option value="ready">正常归属</option><option value="loading">正在加载</option><option value="error">资料读取失败</option><option value="long">超长组织名</option><option value="empty">无可访问知识库</option></select></label>
+    <label>画布宽度<select id="width"><option value="wide">跟随窗口</option><option value="medium">768 px 画布</option><option value="narrow">390 px 画布</option></select></label>
+    <button id="theme">切换深色</button><button id="review-profile">查看个人资料</button>
+  </div>
+  <p class="help" id="review-status" role="status">审阅重点：归属位于导航上方；“组织内公开”说明共享范围；个人资料展示完整名称。</p>
+</header>
+<div class="stage" id="stage"><div class="app">
+  <aside class="sidebar" aria-label="主导航">
+    <div class="brand"><span class="brand-symbol" aria-hidden="true">R</span>RAG</div>
+    <section class="workspace" aria-label="当前工作空间"><div class="eyebrow">当前工作空间</div><div class="workspace-line"><svg class="org-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 21V3h12v18M16 10h4v11M2 21h20M8 7h4M8 11h4M8 15h4M8 21v-3h4v3"/></svg><div><div class="workspace-name" data-workspace-name></div><button class="text-button" data-context-action>查看归属</button></div></div></section>
+    <nav class="nav" aria-label="主要入口">
+      <button data-page="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 4H4v16h16v-8M14 3l7 7M11 13l10-10-3-1-10 10-1 5z"/></svg>新问答</button>
+      <button class="selected" data-page="kb" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6h7l2 3h9l-2 11H3zM3 9V4h7l2 2h7v3"/></svg>知识库</button>
+      <button data-page="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2 7M3 4v7h7M12 7v6l4 2"/></svg>历史记录</button>
+    </nav>
+    <div class="recent"><h2>最近问答</h2><p>设计示意，未载入问答记录。</p></div>
+    <div class="account"><button data-open-profile><span class="avatar" aria-hidden="true">样</span>样例账号<small>个人资料</small></button></div>
+  </aside>
+  <main id="main" tabindex="-1"><div class="mobilebar"><button id="mobile-nav">打开导航</button><strong>RAG</strong><button data-open-profile>个人资料</button></div>
+    <div class="content">
+      <section id="kb-view">
+        <header class="page-head"><div><h2>知识库</h2><p class="muted">这里只显示当前账号可以访问的知识库。</p></div><button class="primary" disabled title="独立设计稿不创建资料">创建知识库</button></header>
+        <div class="scope-note">公开范围限定在当前工作空间。非公开资料仍可能通过知识库授权共享。</div>
+        <div class="kb-list" id="kb-list">
+          <article class="kb"><div class="kb-top"><h3>产品使用指南</h3><span class="tag public">组织内公开</span></div><p>产品功能、操作步骤与常见问题。</p><p class="explain">本工作空间内的用户可以读取，其他工作空间不可见。</p></article>
+          <article class="kb"><div class="kb-top"><h3>项目交付资料</h3><span class="tag">非公开</span></div><p>按知识库授权开放的项目说明与交付文档。</p><p class="explain">创建者及已获授权的本工作空间用户可以访问。</p></article>
+          <article class="kb"><div class="kb-top"><h3>服务操作手册</h3><span class="tag public">组织内公开</span></div><p>供工作空间内用户查阅的标准操作说明。</p><p class="explain">公开读取不等于开放编辑；修改仍按知识库权限执行。</p></article>
+        </div>
+        <div id="empty-view" class="empty" hidden><h3>暂无可访问的知识库</h3><p class="muted">当前工作空间仍然有效，资料列表暂时为空。</p></div>
+        <p class="page-foot">以上为设计样例，不包含实际文档、统计或安全验收数据。</p>
+      </section>
+      <section id="chat-view" hidden><header class="page-head"><div><h2>新问答</h2><p class="muted">归属留在侧栏，问答继续使用现有输入区。</p></div></header><div class="scope-note">此页仅说明信息位置，不模拟回答、来源或执行轨迹。</div><p class="muted">正式接入保留现有知识库选择、同步／流式方式与输入布局。</p></section>
+      <section id="history-view" hidden><header class="page-head"><div><h2>历史记录</h2><p class="muted">保留当前账号的历史记录入口。</p></div></header><div class="empty"><h3>未载入真实历史记录</h3><p class="muted">这份设计稿只演示工作空间归属，不连接服务端。</p></div></section>
+    </div>
+  </main>
+</div></div>
+<footer class="review-foot">设计边界：一个账号归属一个工作空间；不提供创建组织、邀请成员或切换组织。本页状态选择器是审阅工具，不是产品功能。</footer>
+<dialog id="settings" aria-labelledby="settings-title"><header class="dialog-head"><h2 id="settings-title">设置</h2><button class="close" data-close="settings" aria-label="关闭设置">×</button></header><div class="settings-grid"><nav class="settings-tabs" aria-label="设置分类"><button data-tab="general">常规</button><button data-tab="profile" class="selected" aria-current="page">个人资料</button></nav><div class="settings-content">
+  <section id="profile"><h3>个人资料</h3><div class="profile-top"><span class="avatar" aria-hidden="true">样</span><div><strong>样例账号</strong><p class="muted">当前登录资料 · 设计样例</p></div></div><dl><div><dt>用户名</dt><dd>design-example</dd></div><div><dt>邮箱</dt><dd>未提供</dd></div><div><dt>所属工作空间</dt><dd id="profile-workspace"></dd></div></dl><p class="profile-hint">资料可见范围以当前工作空间及知识库授权为准。</p><div id="profile-retry" hidden><button class="text-button" data-retry>重试工作空间资料</button></div></section>
+  <section id="general" hidden><h3>常规</h3><p class="muted">沿用现有主题设置。你可以通过设计稿顶部的按钮查看深浅主题。</p></section>
+</div></div></dialog>
+<dialog class="nav-dialog" id="nav-dialog" aria-labelledby="nav-title"><header class="dialog-head"><h2 id="nav-title">主导航</h2><button class="close" data-close="nav-dialog" aria-label="关闭导航">×</button></header><div class="nav-dialog-body"><section class="workspace" aria-label="移动端当前工作空间"><div class="eyebrow">当前工作空间</div><div class="workspace-name" data-workspace-name></div><button class="text-button" data-context-action>查看归属</button></section><nav class="nav" aria-label="移动端入口"><button data-page="chat">新问答</button><button class="selected" data-page="kb" aria-current="page">知识库</button><button data-page="history">历史记录</button></nav></div></dialog>
+<script>
+  const stateInput = document.querySelector('#state');
+  const settings = document.querySelector('#settings');
+  const navDialog = document.querySelector('#nav-dialog');
+  const sampleName = '青禾技术服务（设计样例）';
+  const longName = '青禾技术服务与企业知识协作联合工作空间华南研究与交付中心（设计样例）';
+  const names = document.querySelectorAll('[data-workspace-name]');
+  function selectTab(tab) {
+    document.querySelector('#profile').hidden = tab !== 'profile';
+    document.querySelector('#general').hidden = tab !== 'general';
+    document.querySelectorAll('[data-tab]').forEach(button => {
+      const active = button.dataset.tab === tab;
+      button.classList.toggle('selected', active);
+      if (active) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current');
+    });
+  }
+  function openProfile() { if (navDialog.open) navDialog.close(); selectTab('profile'); settings.showModal(); }
+  function retry() { stateInput.value = 'ready'; renderState(); document.querySelector('#review-status').textContent = '已在本页模拟重试成功；没有发送网络请求。'; }
+  function renderState() {
+    const state = stateInput.value;
+    const name = state === 'long' ? longName : sampleName;
+    const unavailable = state === 'loading' || state === 'error';
+    names.forEach(node => {
+      node.replaceChildren();
+      if (state === 'loading') {
+        const skeleton = document.createElement('span'); skeleton.className = 'loading-shape'; skeleton.setAttribute('aria-hidden','true');
+        node.append(skeleton, document.createTextNode('正在读取工作空间'));
+      } else node.textContent = state === 'error' ? '工作空间资料暂不可用' : name;
+    });
+    document.querySelectorAll('[data-context-action]').forEach(button => {
+      button.textContent = state === 'error' ? '重试' : '查看归属';
+      button.disabled = state === 'loading';
+      button.setAttribute('aria-label', state === 'error' ? '重试读取工作空间' : '查看工作空间归属：' + (unavailable ? '正在读取' : name));
+    });
+    document.querySelector('#profile-workspace').textContent = state === 'loading' ? '正在读取工作空间' : state === 'error' ? '工作空间资料暂不可用' : name;
+    document.querySelector('#profile-retry').hidden = state !== 'error';
+    document.querySelector('#kb-list').hidden = state === 'empty';
+    document.querySelector('#empty-view').hidden = state !== 'empty';
+    const descriptions = { ready:'审阅重点：归属位于导航上方；“组织内公开”说明共享范围；个人资料展示完整名称。', loading:'模拟加载：不显示上次工作空间，不移动主要导航；资料区与工作空间共用读取状态。', error:'模拟失败：归属显示不可用，重试只恢复本地样例；资料列表不会被错误解释成其他组织的数据。', long:'模拟长名称：侧栏最多两行，可通过“查看归属”读取完整名称。', empty:'模拟空列表：没有可访问知识库，不代表账号没有工作空间。' };
+    document.querySelector('#review-status').textContent = descriptions[state];
+  }
+  document.querySelectorAll('[data-open-profile]').forEach(button => button.addEventListener('click',openProfile));
+  document.querySelector('#review-profile').addEventListener('click',openProfile);
+  document.querySelectorAll('[data-context-action]').forEach(button => button.addEventListener('click',() => stateInput.value === 'error' ? retry() : openProfile()));
+  document.querySelectorAll('[data-retry]').forEach(button => button.addEventListener('click',retry));
+  document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click',() => document.getElementById(button.dataset.close).close()));
+  document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click',() => selectTab(button.dataset.tab)));
+  document.querySelector('#mobile-nav').addEventListener('click',() => navDialog.showModal());
+  document.querySelector('#theme').addEventListener('click',event => { const dark = document.documentElement.classList.toggle('dark'); event.currentTarget.textContent = dark ? '切换浅色' : '切换深色'; });
+  document.querySelector('#width').addEventListener('change',event => { document.querySelector('#stage').className = 'stage ' + (event.target.value === 'wide' ? '' : event.target.value); settings.classList.toggle('compact',event.target.value === 'narrow'); });
+  document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click',() => {
+    const page = button.dataset.page;
+    for (const id of ['kb','chat','history']) document.getElementById(id + '-view').hidden = id !== page;
+    document.querySelectorAll('[data-page]').forEach(nav => { const active = nav.dataset.page === page; nav.classList.toggle('selected',active); if (active) nav.setAttribute('aria-current','page'); else nav.removeAttribute('aria-current'); });
+    if (navDialog.open) navDialog.close();
+  }));
+  stateInput.addEventListener('change',renderState);
+  renderState();
+</script>
+</body>
+</html>

@@ -125,9 +125,17 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     // ---------- 基础 setter ----------
     function setCurrent(kb: KnowledgeBaseDTO | null) { current.value = kb }
 
+    function clearAll() {
+        listSequence++
+        list.value = []
+        listLoading.value = false
+        listError.value = ''
+        clearDetail()
+    }
+
     return {
         list, current, statistics, loading, listLoading, detailLoading, listError, detailError, statisticsError,
         statisticsKbId, statisticsLoading, clearStatistics, clearDetail,
-        fetchList, fetchById, create, update, remove, fetchStatistics, setCurrent,
+        fetchList, fetchById, create, update, remove, fetchStatistics, setCurrent, clearAll,
     }
 })

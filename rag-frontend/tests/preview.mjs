@@ -67,6 +67,8 @@ const f4Sessions = new Map()
 const f1Sessions = new Map()
 const f1Scenarios = new Set(['f1-success', 'f1-failure'])
 const authMotionSessions = new Map()
+const workspaceSessions = new Map()
+const workspaceScenarios = new Set(['workspace-ready', 'workspace-error', 'workspace-loading', 'workspace-long'])
 const authMotionScenarios = new Set(['auth-motion-error', 'auth-motion-loading'])
 function newF4Session(scenario) {
   const bases = [kb, { ...kb, id: 902, name: '合成知识库 · 阅读资料', isPublic: true }, { ...kb, id: 903, name: '合成知识库 · 空资料', documentCount: 0 }].map(item => ({ ...item }))
@@ -223,6 +225,10 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
     server.middlewares.use((req, res, next) => {
       const url = req.url?.split('?')[0]
       const pageFixture = new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('fixture')
+      if (!url?.startsWith('/api/') && !url?.startsWith('/auth/') && workspaceScenarios.has(pageFixture)) {
+        const id = randomUUID(); workspaceSessions.set(id, { scenario: pageFixture, reads: 0 })
+        res.setHeader('Set-Cookie', `workspace-preview=${id}; Path=/; SameSite=Strict`)
+      }
       if (url === '/__particle-checks' && req.method === 'GET') {
         res.setHeader('Content-Type', 'text/html; charset=utf-8')
         readFile(new URL('./particle-checks.html', import.meta.url), 'utf8').then(html => res.end(html))
@@ -267,6 +273,20 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
         return
       }
       if (!url?.startsWith('/api/') && !url?.startsWith('/auth/')) return next()
+      if (url === '/api/session/context' && req.method === 'GET') {
+        if (req.headers.authorization !== 'Bearer fixture-access') return fixtureReply(res, 401, null)
+        const id = req.headers.cookie?.match(/(?:^|;\s*)workspace-preview=([\w-]+)/)?.[1]
+        const session = workspaceSessions.get(id)
+        if (session) session.reads++
+        const data = { userInfo: { id: 901, username: '合成验收', email: '' }, workspace: {
+          id: '1901', displayName: session?.scenario === 'workspace-long' ? '合成组织全称用于验证长名称在侧栏和资料中的可访问性'.repeat(4) : '工作空间A · 合成预览',
+        } }
+        res.setHeader('Cache-Control', 'no-store')
+        const reply = () => fixtureReply(res, session?.scenario === 'workspace-error' && session.reads === 1 ? 503 : 200, data)
+        if (session?.scenario === 'workspace-loading') setTimeout(reply, 2000)
+        else reply()
+        return
+      }
       const authMotionId = req.headers.cookie?.match(/(?:^|;\s*)auth-motion-preview=([\w-]+)/)?.[1]
       const authMotionSession = authMotionSessions.get(authMotionId)
       if (url === '/auth/login' && req.method === 'POST' && authMotionSession) {

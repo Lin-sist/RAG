@@ -1,11 +1,11 @@
 <template>
   <div class="app-shell">
-    <AppSidebar @open-settings="openSettings" />
+    <AppSidebar v-if="auth.isLoggedIn" :key="auth.sessionRevision" @open-settings="openSettings" />
 
     <section class="shell-content">
-      <router-view v-slot="{ Component }">
+      <router-view v-if="auth.isLoggedIn" v-slot="{ Component }">
         <transition name="fade-slide" mode="out-in">
-          <component :is="Component" class="route-page" />
+          <component :is="Component" :key="auth.sessionRevision" class="route-page" />
         </transition>
       </router-view>
     </section>
@@ -18,11 +18,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, provide, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
+import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
+import { useChatStore } from '@/stores/chat'
+import { getSessionContext } from '@/api/sessionContext'
+import { createSessionContextLoader, retrySessionContextKey } from '@/utils/sessionContext'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import SettingsModal from '@/components/settings/SettingsModal.vue'
 
 const settingsOpen = ref(false)
+const auth = useAuthStore(), knowledgeBases = useKnowledgeBaseStore(), chat = useChatStore(), router = useRouter()
+const context = createSessionContextLoader(auth, getSessionContext, () => {
+  auth.clearAuth()
+  ElMessage.warning('账号归属已变化，请重新登录')
+  void router.replace('/login')
+})
+provide(retrySessionContextKey, context.load)
+watch(() => [auth.sessionRevision, auth.tokenRevision, auth.isLoggedIn], () => {
+  if (auth.isLoggedIn) void context.load()
+}, { immediate: true })
+watch(() => auth.sessionRevision, () => {
+  settingsOpen.value = false
+  knowledgeBases.clearAll()
+  chat.clearMessages()
+  chat.setCurrentKb(null)
+  chat.setStreaming(false)
+}, { flush: 'sync', immediate: true })
+onUnmounted(context.dispose)
 const settingsInitialTab = ref<'general' | 'profile'>('general')
 
 function openSettings(tab: 'general' | 'profile') {

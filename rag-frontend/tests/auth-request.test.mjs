@@ -21,6 +21,16 @@ function fixture(handler) {
   return { ...createRequestClient(session, adapter), tokens: () => tokens, session, expired: () => expired }
 }
 try {
+  await test('a late successful response cannot be delivered after logout or a new login revision', async () => {
+    let finish
+    const f = fixture(() => new Promise(resolve => { finish = resolve }))
+    const pending = f.request.get('/previous-session-resource')
+    while (!finish) await Promise.resolve()
+    f.session.clear()
+    finish([200, { code: 200, data: { privateRecord: 'old synthetic record' } }])
+    await assert.rejects(pending, error => error instanceof ApiError && error.message === '登录状态已变更')
+    assert.equal(f.expired(), 0)
+  })
   await test('201/202/204 and success without data', async () => {
     for (const status of [201, 202, 204]) {
       const f = fixture(async () => [status, status === 204 ? '' : { code: status, message: 'ok' }])

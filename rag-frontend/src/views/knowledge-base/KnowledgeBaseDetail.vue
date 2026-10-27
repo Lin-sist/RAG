@@ -13,7 +13,7 @@
     <template v-else-if="current">
       <header class="detail-hero">
         <div class="hero-icon"><Database :size="25" /></div>
-        <div><div class="title-line"><h1>{{ current.name }}</h1><span class="visibility">{{ current.isPublic ? '公开' : '私有' }}</span></div><p>{{ current.description || '暂无描述' }}</p><small>更新于 {{ formatDate(current.updatedAt) }}</small></div>
+        <div><div class="title-line"><h1>{{ current.name }}</h1><span class="visibility">{{ current.isPublic ? '组织内公开' : '非公开' }}</span></div><p>{{ current.description || '暂无描述' }}</p><small>更新于 {{ formatDate(current.updatedAt) }}</small></div>
       </header>
       <div v-if="statsError" class="local-error" role="status"><el-alert :title="confirmedAction + '统计刷新失败：' + statsError" type="warning" :closable="false" /><el-button class="retry" :loading="kbStore.statisticsLoading" @click="loadStatistics">重试统计加载</el-button></div>
       <KBStatsPanel v-else :stats="statistics" :loading="kbStore.statisticsKbId === kbId && kbStore.statisticsLoading" />
@@ -28,7 +28,7 @@
         </section>
         <aside class="detail-card metadata">
           <h2>基本信息</h2>
-          <dl><dt>知识库 ID</dt><dd>{{ current.id }}</dd><dt>可见性</dt><dd>{{ current.isPublic ? '当前租户内公开' : '非公开' }}，访问以服务端授权为准</dd><dt>创建时间</dt><dd>{{ formatDate(current.createdAt) }}</dd><dt>更新时间</dt><dd>{{ formatDate(current.updatedAt) }}</dd></dl>
+          <dl><dt>知识库 ID</dt><dd>{{ current.id }}</dd><dt>可见范围</dt><dd>{{ current.isPublic ? '组织内公开：本工作空间内的用户可以读取，其他工作空间不可见。' : '非公开：创建者及已获授权的本工作空间用户可以访问。' }}</dd><dt>创建时间</dt><dd>{{ formatDate(current.createdAt) }}</dd><dt>更新时间</dt><dd>{{ formatDate(current.updatedAt) }}</dd></dl>
           <details class="vector-identity"><summary>向量索引信息</summary><dl><template v-for="(value, label) in vectorIdentity" :key="label"><dt>{{ label }}</dt><dd>{{ value ?? '未返回' }}</dd></template></dl></details>
           <p class="read-note">文档完成索引后可参与检索。“需要核对”的文档请先核查，不能视为已完成。</p>
         </aside>

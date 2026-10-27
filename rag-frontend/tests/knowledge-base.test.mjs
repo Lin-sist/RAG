@@ -22,6 +22,19 @@ const server = await createServer({ configFile: false, optimizeDeps: { noDiscove
 try {
   const { useKnowledgeBaseStore } = await server.ssrLoadModule('/src/stores/knowledgeBase.ts')
   const api = await server.ssrLoadModule('\0kb-fixture')
+  await test('session cleanup clears list/detail/statistics and invalidates pending reads', async () => {
+    setActivePinia(createPinia()); const store = useKnowledgeBaseStore(); const pending = []
+    store.list = [{ id: 1, name: 'old identity' }]; store.setCurrent({ id: 1 })
+    api.setHandler(() => new Promise(resolve => pending.push(resolve)))
+    const list = store.fetchList(), stats = store.fetchStatistics(1)
+    store.clearAll()
+    pending[0]({ data: { data: [{ id: 1, name: 'late old identity' }] } })
+    pending[1]({ data: { data: { kbId: 1, documentCount: 99 } } })
+    await Promise.all([list, stats])
+    assert.deepEqual(store.list, []); assert.equal(store.current, null)
+    assert.equal(store.statistics, null); assert.equal(store.loading, false)
+    assert.equal(store.statisticsLoading, false)
+  })
   await test('list failure is distinct from empty success and is recoverable', async () => {
     setActivePinia(createPinia()); const store = useKnowledgeBaseStore()
     api.setHandler(async () => { throw new Error('fixture') })

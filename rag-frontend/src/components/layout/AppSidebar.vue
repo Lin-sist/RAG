@@ -4,6 +4,7 @@
   <aside v-show="!mobile || drawerOpen" ref="sidebar" :class="['chat-sidebar', { collapsed: !mobile && collapsed, 'mobile-drawer': mobile }]"
     :role="mobile ? 'dialog' : undefined" :aria-modal="mobile ? true : undefined" aria-label="主导航" @keydown="handleKeys">
     <div class="sidebar-header"><BrandMark :compact="!mobile && collapsed" /><button class="icon-button" :aria-label="mobile ? '关闭侧栏' : collapsed ? '展开侧栏' : '收起侧栏'" @click="mobile ? closeDrawer() : collapsed = !collapsed"><PanelLeftOpen v-if="!mobile && collapsed" :size="18" /><PanelLeftClose v-else :size="18" /></button></div>
+    <WorkspaceContext :collapsed="!mobile && collapsed" @open-profile="openSettings('profile')" />
     <nav class="fixed-nav" aria-label="主要入口">
       <button class="nav-item" :class="{ active: route.path === '/chat' }" title="新问答" @click="navigate('/chat')"><SquarePen :size="19" /><span>新问答</span></button>
       <button class="nav-item" :class="{ active: route.path.startsWith('/kb') }" title="知识库" @click="navigate('/kb')"><FolderOpen :size="19" /><span>知识库</span></button>
@@ -32,6 +33,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SquarePen, FolderOpen, History, ChevronDown, PanelLeftOpen, PanelLeftClose, Settings, User, Sun, Moon, LogOut } from 'lucide-vue-next'
 import BrandMark from '@/components/common/BrandMark.vue'
+import WorkspaceContext from '@/components/common/WorkspaceContext.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { getHistoryPage } from '@/api/history'
@@ -112,9 +114,10 @@ function handleMenuKeys(event: KeyboardEvent) {
   buttons[(current + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus()
 }
 async function openSettings(tab: 'general' | 'profile') {
+  const fromMenu = userMenuOpen.value
   userMenuOpen.value = false
   if (mobile.value) { closeDrawer(); await nextTick() }
-  else menuTrigger.value?.focus()
+  else if (fromMenu) menuTrigger.value?.focus()
   emit('open-settings', tab)
 }
 function navigate(path: string) { userMenuOpen.value = false; closeDrawer(); void router.push(path) }
