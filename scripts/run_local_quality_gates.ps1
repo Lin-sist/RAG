@@ -136,7 +136,7 @@ function Invoke-DocAndScopeGate {
         }
 
         $mdSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-        foreach ($coreDoc in @('AGENTS.md', '.ai/ACTIVE_TASK.md', '.ai/AGENT_LOG.md', '.ai/GOTCHAS.md', 'docs/workflow/vibecoding-playbook.md', 'openspec/project.md')) {
+        foreach ($coreDoc in @('AGENTS.md', '.ai/ACTIVE_TASK.md', '.ai/AGENT_LOG.md', '.ai/GOTCHAS.md', 'docs/02-使用与维护/AI协作开发手册.md', 'openspec/project.md')) {
             $fullCore = Join-Path $RepoRoot $coreDoc
             if (Test-Path -LiteralPath $fullCore) {
                 [void]$mdSet.Add((Resolve-Path -LiteralPath $fullCore).Path)

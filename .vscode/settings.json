@@ -14,6 +14,10 @@
     "**/node_modules": true,
     "rag-frontend/dist": true,
     "**/__pycache__": true,
-    "**/*.log": true
+    "**/*.log": true,
+    "docs/roadmap": true,
+    "docs/workflow": true,
+    "docs/rag-learning-and-ownership-roadmap.md": true,
+    "docs/architecture": true
   }
 }

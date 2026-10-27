@@ -1,7 +1,7 @@
 # 高仿 ChatGPT 界面 Demo（RAG 智能问答皮肤）
 
 > 状态：静态原型（Type B 演示件），**未接入任何后端**，不改变现有 `rag-frontend` 的任何能力声明。
-> 参考：`docs/开发文档/前端文档/UI-Reference/` 下的 ChatGPT 网页端截图（2026-08 版深色界面）。
+> 参考：`docs/90-历史归档/2026-10_前端Demo接入/` 下的 ChatGPT 网页端截图（2026-08 版深色界面）。
 
 ## 打开方式
 
@@ -20,12 +20,12 @@ python -m http.server 8765 --directory prototype/chatgpt-ui-demo
 
 | 界面 | 对应参考截图 | 说明 |
 | --- | --- | --- |
-| 首页问候 | `chatgpt-empty.png` | 居中问候 + 胶囊输入框 + 轮换建议；顶部分段控件（聊天/工作） |
-| 会话视图 | `chatgpt-chat.png` | 用户气泡、流式输出、`已检索 × 个片段`折叠行（对应"思考了 25s"）、代码块复制、消息操作 |
-| 知识库视图 | `chatgpt-base.png` | 资料库式表格（名称/更新时间/文档/大小/状态）、搜索、筛选 chips、列表/网格切换 |
-| 搜索弹窗 | `chatgpt-search.png` | `Ctrl+K` 呼出，搜历史对话 + 知识库，知识库可一键设为提问范围 |
-| 设置弹窗 | `chatgpt-settings.png` | 常规页可用：外观（深/浅/系统）与强调色真实生效，其余为占位 |
-| 用户菜单 | `chatgpt-user.png` | 左下角头像菜单，入口齐全 |
+| 首页问候 | `参考-chatgpt-empty.png` | 居中问候 + 胶囊输入框 + 轮换建议；顶部分段控件（聊天/工作） |
+| 会话视图 | `参考-chatgpt-chat.png` | 用户气泡、流式输出、`已检索 × 个片段`折叠行（对应"思考了 25s"）、代码块复制、消息操作 |
+| 知识库视图 | `参考-chatgpt-base.png` | 资料库式表格（名称/更新时间/文档/大小/状态）、搜索、筛选 chips、列表/网格切换 |
+| 搜索弹窗 | `参考-chatgpt-search.png` | `Ctrl+K` 呼出，搜历史对话 + 知识库，知识库可一键设为提问范围 |
+| 设置弹窗 | `参考-chatgpt-settings.png` | 常规页可用：外观（深/浅/系统）与强调色真实生效，其余为占位 |
+| 用户菜单 | `参考-chatgpt-user.png` | 左下角头像菜单，入口齐全 |
 | 登录页设计演示（独立页 `login.html`） | Anthropic Institute 风格参考（2026-08 调研） | 米白点阵底、衬线大标题、陶土色像素方块无限循环动画（原生 canvas，星芒→文档→放大镜→对话→∞ 五态变形）；表单字段与 `rag-frontend` 现登录一致（用户名/密码），纯演示不接后端 |
 | 登录页黑白版（独立页 `login-dark.html`） | inspora.design/posts/1-50 配色参考（2026-08-30） | 与米白版完全同构布局（顶栏 + 左侧衬线标题/表单 + 右侧动画），仅配色替换为黑白体系：近黑底白点阵、白色衬线大标题、白/灰方块像素循环动画、白色主按钮；与米白版共用 `js/login.js`，经 `data-palette` 切换配色（`data-shape` 可扩展圆点形态） |
 
@@ -41,4 +41,4 @@ RAG 特色交互（区别于纯皮肤）：
 
 - 所有知识库名称、文档、对话、回答均为**演示样例数据**，界面常驻"演示数据"提示；
 - 不发起任何网络请求，无外部 CDN / 字体 / 依赖；
-- 不写入 `rag-frontend`，不作为生产实现依据；后续落地需按 `docs/roadmap/frontend-ux-iteration.md` 的条目定级（Type B/C）并立 OpenSpec change。
+- 不写入 `rag-frontend`，不作为生产实现依据；后续落地需按 `docs/90-历史归档/2026-10_前端Demo接入/早期UX建议池.md` 的条目定级（Type B/C）并立 OpenSpec change。

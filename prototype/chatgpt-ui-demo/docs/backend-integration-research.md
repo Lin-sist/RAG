@@ -1,6 +1,6 @@
 # chatgpt-ui-demo 对接真实后端调研报告
 
-> 2026-10-26 整理说明：本文为截至 2026-09-13 的历史调研，流式 citations、终态等判断已经过后续迭代。现行实现见[前端说明](../../../docs/开发文档/前端文档/frontend-current-state.md)，接受范围见[收口索引](../../../docs/roadmap/frontend-demo-closeout-2026-10-18.md)；下文仅解释当时决策，不作为新任务授权或现行契约。
+> 2026-10-26 整理说明：本文为截至 2026-09-13 的历史调研，流式 citations、终态等判断已经过后续迭代。现行实现见[前端说明](../../../docs/02-使用与维护/前端功能与边界.md)，接受范围见[收口索引](../../../docs/90-历史归档/2026-10_前端Demo接入/阶段收口.md)；下文仅解释当时决策，不作为新任务授权或现行契约。
 
 > 文档性质：只读调研报告（Type A 产物），不改变任何能力声明，不构成实现授权。
 > 状态日期：2026-09-13 · Git HEAD：`478d00d`（main，ahead 5）。
@@ -159,7 +159,7 @@
 - Spring SseEmitter 输出为 `data:chunk`（**冒号后无空格**）→ 解析时必须精确 `line.slice(5)`，多切一个字符会吞掉 token 的前导空格（`useSSE.ts:96-99` 注释明确记录过这个坑）。
 - 正常结束：`data:[DONE]`（`QAController.java:236-251`）。
 - **错误也是 200 流内文本**：先 `data:[ERROR] <中文错误>`，再 `data:[DONE]` 后 complete（`QAController.java:234-237`）——不能依赖 HTTP 错误码。
-- **流式路径没有 citations/引用事件**；正常完成时服务端落历史但 citations 存空列表。这是 `docs/architecture/overview.md` 明示的已确认边界，也呼应 `docs/roadmap/technical-debt.md` P1.4（SSE 结构化 terminal result 未做）。
+- **流式路径没有 citations/引用事件**；正常完成时服务端落历史但 citations 存空列表。这是 `docs/02-使用与维护/系统架构.md` 明示的已确认边界，也呼应 `docs/01-规划与调研/技术债与证据缺口.md` P1.4（SSE 结构化 terminal result 未做）。
 - SseEmitter 超时 120s；客户端主动断开用 `AbortController`（中断后是否落历史未验证，联调时实测）。
 - 无 WebSocket 实现（全仓 grep 确认）。
 
@@ -251,7 +251,7 @@ demo 的行内 `{{cite:N}}` 角标依赖预置答案里的手工标记；真实�
 
 ### 5.3 流式终态缺失
 
-demo 的五态终态条（含 NO_ANSWER 拒答解释、ERROR 分类）在流式路径没有结构化数据源，只有 `data:[ERROR] <msg>` 文本。短期方案是本地推断（收到 `[ERROR]` → ERROR 态、正常 `[DONE]` 但全文为空 → 按 no-answer 处理）；根本解决依赖 `docs/roadmap/technical-debt.md` P1.4（SSE 结构化 terminal result）。
+demo 的五态终态条（含 NO_ANSWER 拒答解释、ERROR 分类）在流式路径没有结构化数据源，只有 `data:[ERROR] <msg>` 文本。短期方案是本地推断（收到 `[ERROR]` → ERROR 态、正常 `[DONE]` 但全文为空 → 按 no-answer 处理）；根本解决依赖 `docs/01-规划与调研/技术债与证据缺口.md` P1.4（SSE 结构化 terminal result）。
 
 ---
 

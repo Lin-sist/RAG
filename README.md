@@ -94,7 +94,7 @@
 - `GET /api/tasks/{taskId}`
 - `GET /api/tasks/{taskId}/result`
 
-> 完整接口示例见 [API 调用教程](docs/开发文档/API-调用教程.md) 与 Swagger 页面。
+> 完整接口示例见 [API 调用教程](docs/02-使用与维护/API调用教程.md) 与 Swagger 页面。
 
 ## 6. 快速启动
 
@@ -132,7 +132,7 @@ chmod +x start_backend.sh
 
 Swagger：`http://localhost:8080/swagger-ui.html`
 
-C15 只读 MCP adapter 已验收归档，7 requirements / 26 scenarios 已接受进 `rag-system` baseline；clean-HEAD synthetic profile 证明固定 Resources/Tools、tenant 与只读副作用边界通过。它仍默认关闭，不能作为生产级 MCP/OAuth 服务使用；配置、能力边界与复现入口见 [`docs/architecture/mcp-readonly-service.md`](docs/architecture/mcp-readonly-service.md)，验收映射见 [`docs/eval/mcp/c15-mcp-readonly-traceability.md`](docs/eval/mcp/c15-mcp-readonly-traceability.md)。
+C15 只读 MCP adapter 已验收归档，7 requirements / 26 scenarios 已接受进 `rag-system` baseline；clean-HEAD synthetic profile 证明固定 Resources/Tools、tenant 与只读副作用边界通过。它仍默认关闭，不能作为生产级 MCP/OAuth 服务使用；配置、能力边界与复现入口见 [`docs/02-使用与维护/MCP使用说明.md`](docs/02-使用与维护/MCP使用说明.md)，验收映射见 [`docs/eval/mcp/c15-mcp-readonly-traceability.md`](docs/eval/mcp/c15-mcp-readonly-traceability.md)。
 
 ### 6.3 启动前端
 
@@ -247,20 +247,15 @@ $env:AUTH_BOOTSTRAP_PASSWORD="<your-strong-password>"
 
 ## 10. 常用文档
 
-先从[文档导航](docs/README.md)选择资料，它区分现行说明、历史证据和目录保留建议。Antigravity IDE 直接打开本项目时，会读取[目录隐藏设置](.vscode/settings.json)，在资源管理器中隐藏日常不看的生成目录；完整文件仍保留在磁盘上。
+日常回看直接展开以下目录，规划与调研、维护说明和历史资料分开放置。
 
-- `AGENTS.md`
-- `.ai/ACTIVE_TASK.md`
-- `.ai/AGENT_LOG.md`
-- `openspec/project.md`
-- `docs/architecture/overview.md`
-- `docs/开发文档/API-调用教程.md`
-- `docs/开发文档/前端文档/frontend-current-state.md`
-- `docs/eval/RAG_EVAL_GUIDE.md`
-- `docs/optimization/README.md`
-- `docs/roadmap/technical-debt.md`
-- [学习与协作路线讨论稿](docs/rag-learning-and-ownership-roadmap.md)
-- [早期 8 周学习计划](docs/learning/LEARNING_ROADMAP.md)（历史参考，不自动代表现行学习安排）
+- [规划与调研](docs/01-规划与调研/)：项目定位讨论、检索候选调研、技术债与证据缺口。
+- [使用与维护](docs/02-使用与维护/)：架构、前端、API、MCP、真实联调方法与协作手册。
+- [历史归档](docs/90-历史归档/)：按日期和主题保存旧规划、阶段验收、调试与优化过程。
+- [评测资料](docs/eval/)：保持原路径和可见性，方法见[现有评测指南](docs/eval/RAG_EVAL_GUIDE.md)。
+- [完整导航与维护约定](docs/README.md)。
+
+协作规则仍以 [AGENTS.md](AGENTS.md) 为准，活动任务见[活动指针](.ai/ACTIVE_TASK.md)，定位与能力边界见[项目上下文](openspec/project.md)。
 
 ---
 

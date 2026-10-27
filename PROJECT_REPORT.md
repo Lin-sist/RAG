@@ -4,7 +4,7 @@
 > 事实依据：基于代码仓库（Git HEAD `31ad3f8`）、配置文件、Flyway 数据库迁移脚本、OpenSpec 迭代归档与实测报告。  
 > 编写原则：只陈述代码、配置、测试与文档中客观存在的事实，标明具体文件路径与类/方法名；未完成或未验证内容明确标注，不推测、不美化。
 
-> 2026-10-26 定点修订：本轮仅纠正阶段状态、Judge 证据边界、流式历史说明与 C18 审计处理建议，没有重跑全文代码统计或真实评测。下文参数、行号、规模与指标仍按原报告快照理解；现行定位与能力边界见[项目上下文](openspec/project.md)，任务见[活动指针](.ai/ACTIVE_TASK.md)，未完成事项见[技术债](docs/roadmap/technical-debt.md)。本报告不再单独维护执行进度。
+> 2026-10-26 定点修订：本轮仅纠正阶段状态、Judge 证据边界、流式历史说明与 C18 审计处理建议，没有重跑全文代码统计或真实评测。下文参数、行号、规模与指标仍按原报告快照理解；现行定位与能力边界见[项目上下文](openspec/project.md)，任务见[活动指针](.ai/ACTIVE_TASK.md)，未完成事项见[技术债](docs/01-规划与调研/技术债与证据缺口.md)。本报告不再单独维护执行进度。
 
 ---
 
@@ -53,7 +53,7 @@
 
 ### 1.3 OpenSpec 完整演进历程、当前阶段与后续规划
 
-根据项目总规划书（`docs/roadmap/iteration-blueprint.md`）与 OpenSpec 变更归档（`openspec/changes/archive/`），系统严格遵循规范驱动开发（Spec-Driven Development）原则，完整迭代演进历程如下：
+根据项目总规划书（`docs/90-历史归档/2026-08_长期迭代蓝图v6.md`）与 OpenSpec 变更归档（`openspec/changes/archive/`），系统严格遵循规范驱动开发（Spec-Driven Development）原则，完整迭代演进历程如下：
 
 #### 1. 基础工程与可靠性治理阶段（C1 ~ C7，2026-07）
 - **C1** (`repository-governance-bootstrap`)：建立 OpenSpec 治理规范、Agent 协作边界与质量门禁契约。
@@ -82,7 +82,7 @@
 - **F3** (`frontend-chat-source-alignment`)：聊天正文、代码块操作与来源片段展开；不表示已实现原文精确定位。
 - **F4** (`frontend-kb-upload-alignment`，2026-10-02 验收归档)：对齐知识库管理面板、文档多格式上传与异步进度轮询展示。
 - **F5** (`frontend-history-feedback-alignment`，2026-10-14 归档)：完成客户端分页、本页查找、删除快照及记录绑定反馈；历史仍是一问一答，不是多轮会话。
-- **F6**：前端阶段已于 2026-10-18 按接受范围收口。正式入口见[收口索引](docs/roadmap/frontend-demo-closeout-2026-10-18.md)，真实权限、持久化、清理、拖放及长稳余项只在[技术债](docs/roadmap/technical-debt.md)维护。
+- **F6**：前端阶段已于 2026-10-18 按接受范围收口。正式入口见[收口索引](docs/90-历史归档/2026-10_前端Demo接入/阶段收口.md)，真实权限、持久化、清理、拖放及长稳余项只在[技术债](docs/01-规划与调研/技术债与证据缺口.md)维护。
 
 #### 5. 后续演进路线图（Wave 2 ~ Wave 6 规划）
 - **近期（2026 Q4 / W1 收尾与 W2）**：
@@ -418,7 +418,7 @@
 2. **客观词法 Claim 覆盖率极低（5.22%）**：
    - 5.22% 的数值反映出基于字面词法（Jaccard / Token overlap）校验自然语言长答案的局限性；模型回答常使用同义词替换或抽象概括，词法校验无法建立语义等价，亟需未来引入 NLI（自然语言推理）模型或校准后的 LLM Judge。
 3. **完整 Live Judge 校准未完成**：
-   - C9b 的历史 `SKIPPED`、C19 后续部分真实调用与完整 24×3 校准是不同证据。C19 仅接受离线工具链，原始未完成状态保持不变；完整独立 run 与 agreement 审阅见[技术债 W1-E1](docs/roadmap/technical-debt.md#w1-e1)，不可作为已校准的发布门禁。
+   - C9b 的历史 `SKIPPED`、C19 后续部分真实调用与完整 24×3 校准是不同证据。C19 仅接受离线工具链，原始未完成状态保持不变；完整独立 run 与 agreement 审阅见[技术债 W1-E1](docs/01-规划与调研/技术债与证据缺口.md#w1-e1)，不可作为已校准的发布门禁。
 4. **Qdrant 与 Elasticsearch 多租户未闭环**：
    - `rag-core/src/main/java/com/enterprise/rag/core/vectorstore/config/VectorStoreConfig.java`（L142）：当 `rag.tenant.enforcement.enabled=true` 时，若配置为非 Milvus 向量库，应用启动直接抛异常退出。
 5. **流式传输格式与历史引用必须分开判断**：
@@ -536,7 +536,7 @@
 - **答案要点**：
   1. 流式阶段如果直接抛异常断开连接，前端常表现为“光标一直闪烁或回答戛然而止”。
   2. 系统设计了终端事件规范（`structured-v1`）：流式过程中正常输出 `data: {...}` 文本 chunk；在结束、异常或拒答时，发送专有事件 `event: terminal`，携带明确的 `finalState`（`ANSWER`, `NO_ANSWER`, `ERROR`, `CANCELLED`）与错误原因，让前端确定性渲染错态或拒答态。
-- **代码位置**：`rag-admin/.../controller/QAController.java`（方法 `askStream`），`docs/roadmap/technical-debt.md`。
+- **代码位置**：`rag-admin/.../controller/QAController.java`（方法 `askStream`），`docs/01-规划与调研/技术债与证据缺口.md`。
 
 ### Q10: 你们的评测体系有哪些指标？为什么说检索评测通过不能代表回答质量好？
 - **答案要点**：
