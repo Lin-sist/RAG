@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+<title>RAG 轨迹界面静态设计稿，全部为模拟数据</title>
+<desc>非运行界面，不代表真实模型或阶段测量。</desc>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="0" y="0" width="390" height="32" rx="0" fill="#F9F9F9" stroke="none"/>
+<text x="18" y="21" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">03 / 窄屏设计 · 模拟数据</text>
+<line x1="24" y1="57" x2="40" y2="57" stroke="#0D0D0D"/>
+<line x1="24" y1="63" x2="40" y2="63" stroke="#0D0D0D"/>
+<line x1="24" y1="69" x2="40" y2="69" stroke="#0D0D0D"/>
+<text x="195" y="71" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="18" font-weight="650" text-anchor="middle">RAG</text>
+<text x="370" y="71" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="21" font-weight="400" text-anchor="end">＋</text>
+<text x="24" y="125" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="15" font-weight="400" text-anchor="start">对话</text>
+<text x="92" y="125" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="15" font-weight="600" text-anchor="start">轨迹</text>
+<rect x="92" y="136" width="29" height="2" rx="1" fill="#10A37F" stroke="none"/>
+<text x="366" y="125" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" text-anchor="end">本次问答  ⌄</text>
+<text x="24" y="184" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="16" font-weight="500" text-anchor="start">检索失败时，系统如何继续回答？</text>
+<circle cx="28" cy="238" r="4" fill="#10A37F"/>
+<text x="42" y="246" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="22" font-weight="550" text-anchor="start">已完成</text>
+<text x="366" y="229" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="end">服务端执行</text>
+<text x="366" y="257" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="26" font-weight="500" text-anchor="end">4.82 s</text>
+<line x1="24" y1="285" x2="366" y2="285" stroke="#E5E5E5"/>
+<text x="118.0" y="321" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="middle">0</text>
+<line x1="118.0" y1="339" x2="118.0" y2="532" stroke="#F0F0F0"/>
+<text x="190.19917012448133" y="321" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="middle">2 s</text>
+<line x1="190.19917012448133" y1="339" x2="190.19917012448133" y2="532" stroke="#F0F0F0"/>
+<text x="292.0" y="321" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="middle">4.82 s</text>
+<line x1="292.0" y1="339" x2="292.0" y2="532" stroke="#F0F0F0"/>
+<text x="24" y="376" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">准备</text>
+<text x="86" y="376" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">✓</text>
+<rect x="118.0" y="368" width="1.0829875518672198" height="6" rx="3" fill="#858D88" stroke="none"/>
+<text x="366" y="376" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="end">0.03 s</text>
+<text x="24" y="424" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">检索</text>
+<text x="86" y="424" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">✓</text>
+<rect x="119.08298755186722" y="416" width="28.51867219917012" height="6" rx="3" fill="#858D88" stroke="none"/>
+<text x="366" y="424" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="end">0.79 s</text>
+<text x="24" y="472" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">生成</text>
+<text x="86" y="472" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">✓</text>
+<rect x="147.60165975103735" y="464" width="133.92946058091286" height="6" rx="3" fill="#858D88" stroke="none"/>
+<text x="366" y="472" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="end">3.71 s</text>
+<text x="24" y="520" fill="#0D0D0D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">校验</text>
+<text x="86" y="520" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">✓</text>
+<rect x="281.5311203319502" y="512" width="10.468879668049794" height="6" rx="3" fill="#858D88" stroke="none"/>
+<text x="366" y="520" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="end">0.29 s</text>
+<line x1="24" y1="558" x2="366" y2="558" stroke="#E5E5E5"/>
+<text x="24" y="590" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" text-anchor="start">点选阶段，查看细节。</text>
+<rect x="16" y="716" width="358" height="66" rx="22" fill="#F9F9F9" stroke="#E5E5E5"/>
+<text x="38" y="744" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">继续输入问题…</text>
+<text x="38" y="766" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="18" font-weight="400" text-anchor="start">＋</text>
+<circle cx="344" cy="750" r="14" fill="#858D88"/>
+<text x="344" y="755" fill="#FFFFFF" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="17" font-weight="400" text-anchor="middle">↑</text>
+<text x="195" y="815" fill="#5D5D5D" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="middle">静态设计稿，不代表真实运行结果。</text>
+</svg>

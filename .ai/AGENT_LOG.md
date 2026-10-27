@@ -130,3 +130,10 @@
 - **验证与门禁**：聚焦 15/15、含 vue-tsc 正式构建、48 张浏览器截图及 12 组检查通过，DocAndScope PASS；539 个金色点均未越过双翼外轮廓，深浅接缝放大图另经查看，见[修正记录](../openspec/changes/login-particle-story/acceptance-v4.md)。
 - **范围与证据**：原有未提交改动保留，第三轮清单和截图未重写，第四版另存源码/截图哈希；活动指针仍等待视觉接受，没有创建新 change 或改 baseline。
 - **边界与提交**：真实业务调用 0；本次几何小修未重跑无关后端及全前端回归，实体设备/GPU 长稳仍未验证；未暂存、提交、push 或归档。
+
+## 2026-10-26 · rag-execution-trace-view（Type C：界面与协议规划）
+
+- **改动与大白话**：建立轨迹 OpenSpec 四类文件、三张原创静态稿及[规划检查](../openspec/changes/rag-execution-trace-view/planning-review.md)；原先只能看答案/来源，现在先确定“四组时间线、选中再看详情”的设计，并用显式 trace-v1 规划兼容现有流（D1–D5），本轮没有实现业务代码。
+- **验证与门禁**：8 requirements/18 scenarios、逐文件相对链接/尾空白、三份 SVG/PNG 格式/文字边界及对比度检查通过；静态稿已实际查看，DocAndScope PASS。CLI 不可用，文件级检查不是官方 validate；门禁未遍历的新目录另行检查。
+- **活动与边界**：用户确认登录页已验收/提交后切到本 change 的设计审阅；旧登录 baseline/归档留待单独治理。真实业务外调为 0，模拟图不证明接口、浏览器交互或质量；页面内保留、断连不等于取消等边界见设计。
+- **跳过与提交**：仅规划/设计工件，未跑无关 Maven/前端 build；实现等待设计确认，未暂存、提交、push 或归档。
