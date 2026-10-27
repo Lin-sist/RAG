@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="设置浮层静态设计示意"><title>设置浮层静态设计示意，非功能界面</title>
+<rect x="0" y="0" width="1440" height="900" rx="0" fill="#E8E8E8"/>
+<text x="30" y="48" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="18" font-weight="400" fill="#777777">RAG 智能问答</text>
+<text x="30" y="150" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#666666">新问答</text>
+<text x="30" y="198" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#666666">知识库</text>
+<text x="30" y="246" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#666666">历史记录</text>
+<text x="240" y="62" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#5D5D5D">设置浮层扩展 / 静态设计示意</text>
+<rect x="240" y="110" width="960" height="680" rx="18" fill="#FFFFFF" stroke="#E5E5E5"/>
+<text x="268" y="158" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="22" font-weight="600" fill="#0D0D0D">设置</text>
+<rect x="1140" y="126" width="40" height="40" rx="8" fill="#FFFFFF"/>
+<text x="1153" y="157" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="22" font-weight="400" fill="#5D5D5D">×</text>
+<rect x="240" y="186" width="960" height="1" rx="0" fill="#E5E5E5"/>
+<rect x="439" y="187" width="1" height="547" rx="0" fill="#E5E5E5"/>
+<circle cx="275" cy="232" r="5" fill="none" stroke="#5D5D5D"/>
+<polyline points="275,223 275.0,224.8" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="275,241 275.0,239.2" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="266,232 267.8,232.0" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="284,232 282.2,232.0" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="294" y="236" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#0D0D0D">外观</text>
+<rect x="252" y="266" width="176" height="44" rx="10" fill="#F4F4F4"/>
+<polyline points="268,282 282,282" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="268,288 282,288" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="268,294 282,294" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="294" y="292" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#0D0D0D">问答偏好</text>
+<circle cx="275" cy="339" r="4" fill="none" stroke="#5D5D5D"/>
+<polyline points="267,351 269,346 281,346 283,351" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="294" y="348" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#0D0D0D">账户与工作空间</text>
+<rect x="268" y="393" width="14" height="14" rx="2" fill="#FFFFFF" stroke="#5D5D5D"/>
+<polyline points="270,398 280,398" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="294" y="404" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#0D0D0D">数据管理</text>
+<text x="271" y="461" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15" font-weight="400" fill="#5D5D5D">?</text>
+<text x="294" y="460" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#0D0D0D">关于与帮助</text>
+<text x="268" y="690" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#5D5D5D">浏览器偏好</text>
+<text x="268" y="712" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#5D5D5D">仅保存在此设备</text>
+<rect x="240" y="734" width="960" height="1" rx="0" fill="#E5E5E5"/>
+<text x="472" y="765" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#5D5D5D">更改即时生效，仅保存在当前浏览器。</text>
+<text x="472" y="238" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="22" font-weight="600" fill="#0D0D0D">问答偏好</text>
+<text x="472" y="266" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#5D5D5D">选择发送方式，以及来源片段的初始展示。</text>
+<text x="472" y="319" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15" font-weight="400" fill="#0D0D0D">发送快捷键</text>
+<text x="472" y="347" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#5D5D5D">Shift + Enter 换行，发送按钮始终可用。</text>
+<rect x="1004" y="301" width="164" height="40" rx="8" fill="#FFFFFF" stroke="#E5E5E5"/>
+<text x="1016" y="325" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#0D0D0D">Enter 发送</text>
+<polyline points="1143,318 1148,323 1153,318" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="472" y="375" width="696" height="1" rx="0" fill="#E5E5E5"/>
+<text x="472" y="419" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15" font-weight="400" fill="#0D0D0D">来源片段</text>
+<text x="472" y="447" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#5D5D5D">只影响新显示的来源卡，手动展开状态会保留。</text>
+<rect x="1004" y="401" width="164" height="40" rx="8" fill="#FFFFFF" stroke="#E5E5E5"/>
+<text x="1016" y="425" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#0D0D0D">默认收起</text>
+<polyline points="1143,418 1148,423 1153,418" fill="none" stroke="#5D5D5D" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="472" y="475" width="696" height="1" rx="0" fill="#E5E5E5"/>
+<rect x="472" y="505" width="696" height="114" rx="10" fill="#F9F9F9" stroke="#E5E5E5"/>
+<text x="490" y="537" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#0D0D0D">回答方式</text>
+<text x="490" y="566" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#5D5D5D">同步／流式可在输入框高级选项中选择。</text>
+<text x="490" y="595" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#5D5D5D">来源是否可见，仍取决于本次回答的完整终态。</text>
+<text x="472" y="670" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#5D5D5D">输入法正在选词时，Enter 用于确认文字。</text>
+<text x="240" y="837" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#5D5D5D">设计草案 · 五类导航 / 单层浮层 / 当前浏览器保存 · 非功能界面</text>
+</svg>

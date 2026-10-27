@@ -22,6 +22,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useThemeStore } from '@/stores/theme'
+import { usePreferencesStore } from '@/stores/preferences'
 import { PARTICLE_SCENES } from '@/utils/loginParticleGeometry'
 import { mountParticles, type ParticleController, type ParticleState } from '@/utils/loginParticleMotion'
 import staticLogo from '@/assets/login-logo.svg'
@@ -29,6 +30,7 @@ const canvas = ref<HTMLCanvasElement>()
 const emit = defineEmits<{ change: [state: ParticleState] }>()
 const state = ref<ParticleState>({ renderer: 'static', scene: 0, progress: 0, paused: false, reduced: false })
 const theme = useThemeStore()
+const preferences = usePreferencesStore()
 let controller: ParticleController | undefined, mounted = false
 function nextScene() {
   controller?.select((state.value.scene + 1) % PARTICLE_SCENES.length)
@@ -45,7 +47,7 @@ onMounted(() => {
   mounted = true
   if (canvas.value) controller = mountParticles(canvas.value, value => {
     if (mounted) { state.value = value; emit('change', value) }
-  })
+  }, { reduced: () => preferences.reducedMotion, subscribe: listener => watch(() => preferences.reducedMotion, listener, { flush: 'sync' }) })
 })
 watch(() => theme.effectiveTheme, async () => { await nextTick(); if (mounted) controller?.refresh() })
 onUnmounted(() => { mounted = false; controller?.destroy(); controller = undefined })

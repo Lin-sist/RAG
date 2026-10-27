@@ -1,0 +1,20 @@
+.settings-select { min-width: 0; }
+.settings-select .el-select { width: 100%; --el-fill-color-blank: var(--rag-bg-overlay); --el-text-color-regular: var(--rag-text-primary); --el-text-color-placeholder: var(--rag-text-secondary); --el-border-color: var(--rag-border-control); }
+.settings-select .el-select__wrapper { min-height: 42px; padding: 9px 12px; border: 1px solid var(--rag-border-control); border-radius: 10px; background: var(--rag-bg-overlay); box-shadow: none; cursor: pointer; transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+.settings-select .el-select__wrapper.is-focused { box-shadow: none; border-color: var(--rag-text-secondary); }
+.settings-select.keyboard-focus .el-select__wrapper { outline: 2px solid var(--rag-text-secondary); outline-offset: 3px; }
+.settings-select .el-select__selected-item, .settings-select .el-select__placeholder { color: var(--rag-text-primary); font-size: 13px; line-height: 20px; }
+.settings-select .el-select__caret { width: 16px; height: 16px; color: var(--rag-text-secondary); }
+.settings-select .el-select__caret svg { stroke-width: 1.5; }
+.settings-select-popper.el-popper { border: 1px solid var(--rag-border-control); border-radius: 14px; background: var(--rag-bg-overlay); box-shadow: 0 10px 28px rgb(0 0 0 / .2), 0 2px 6px rgb(0 0 0 / .12); overflow: hidden; }
+.settings-select-popper .el-select-dropdown { background: transparent; border-radius: inherit; }
+.settings-select-popper .el-select-dropdown__wrap { max-height: var(--settings-menu-max-height, 260px) !important; }
+.settings-select-popper .el-select-dropdown__list { padding: 6px; }
+.settings-select-popper .el-select-dropdown__item { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: auto; min-height: 40px; padding: 9px 10px; border-radius: 8px; color: var(--rag-text-primary); font-size: 13px; font-weight: 400; line-height: 20px; }
+.settings-select-popper .el-select-dropdown__item.is-hovering { background: var(--rag-bg-hover); }
+.settings-select-popper .el-select-dropdown__item.is-selected { background: var(--rag-success-light); color: var(--rag-text-primary); font-weight: 500; }
+.settings-select-popper .settings-option-label { white-space: normal; overflow-wrap: anywhere; }
+.settings-select-popper .settings-option-check { flex: none; color: var(--rag-text-primary); }
+@media (hover: hover) { .settings-select .el-select__wrapper:hover { background: var(--rag-bg-hover); box-shadow: none; } }
+@media (max-width: 45rem) { .settings-select .el-select__wrapper, .settings-select-popper .el-select-dropdown__item { min-height: 44px; } }
+@media (forced-colors: active) { .settings-select .el-select__wrapper { border-color: ButtonText; } .settings-select .el-select__wrapper.is-focused { outline-color: Highlight; } .settings-select-popper.el-popper { border-color: ButtonText; } .settings-select-popper .el-select-dropdown__item.is-selected { outline: 1px solid Highlight; outline-offset: -2px; } }

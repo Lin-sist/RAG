@@ -1,0 +1,59 @@
+{
+  "records": [
+    {
+      "case": "contrast-text-reflow-rtl",
+      "theme": "dark",
+      "status": "PASS"
+    },
+    {
+      "case": "contrast-text-reflow-rtl",
+      "theme": "light",
+      "status": "PASS"
+    },
+    {
+      "case": "forced-colors-focus",
+      "status": "PASS"
+    },
+    {
+      "case": "workspace-error-account",
+      "status": "PASS"
+    },
+    {
+      "case": "workspace-long-account",
+      "status": "PASS"
+    },
+    {
+      "case": "storage-read-failure",
+      "status": "PASS"
+    },
+    {
+      "case": "history-navigation",
+      "status": "PASS"
+    },
+    {
+      "case": "logout-200",
+      "status": "PASS"
+    },
+    {
+      "case": "logout-503",
+      "status": "PASS"
+    }
+  ],
+  "colors": [
+    {
+      "theme": "dark",
+      "text": 14.425687769497943,
+      "secondary": 8.311286143858323,
+      "control": 5.13462224724883
+    },
+    {
+      "theme": "light",
+      "text": 19.435548355403956,
+      "secondary": 6.584652797685219,
+      "control": 3.4522201871078138
+    }
+  ],
+  "outbound": [],
+  "errors": [],
+  "desktopZoom": "Not verified; used text enlargement and CSS viewport reflow"
+}

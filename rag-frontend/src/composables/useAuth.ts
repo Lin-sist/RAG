@@ -4,12 +4,18 @@ import type { LoginRequest } from '@/types/auth'
 import router from '@/router'
 import { refreshSession } from '@/api/request'
 import { ApiError } from '@/api/errors'
+import { computed, ref, type Ref } from 'vue'
 
 type LogoutResult = 'confirmed' | 'unconfirmed' | 'superseded'
 const logoutFlights = new WeakMap<object, { revision: number; promise: Promise<LogoutResult> }>()
+const logoutRevisions = new WeakMap<object, Ref<number | null>>()
 
 export function useAuth() {
     const authStore = useAuthStore()
+    let logoutRevision = logoutRevisions.get(authStore)
+    if (!logoutRevision) { logoutRevision = ref(null); logoutRevisions.set(authStore, logoutRevision) }
+    const pendingRevision = logoutRevision
+    const logoutPending = computed(() => pendingRevision.value === authStore.sessionRevision)
 
     async function login(data: LoginRequest) {
         const res = await loginApi(data)
@@ -24,6 +30,7 @@ export function useAuth() {
         const revision = authStore.sessionRevision
         const existing = logoutFlights.get(authStore)
         if (existing?.revision === revision) return existing.promise
+        pendingRevision.value = revision
         const promise = (async (): Promise<LogoutResult> => {
             let result: LogoutResult = 'confirmed'
             try { await logoutApi() } catch { result = 'unconfirmed' }
@@ -35,7 +42,7 @@ export function useAuth() {
         })()
         logoutFlights.set(authStore, { revision, promise })
         const release = () => {
-            if (logoutFlights.get(authStore)?.promise === promise) logoutFlights.delete(authStore)
+            if (logoutFlights.get(authStore)?.promise === promise) { logoutFlights.delete(authStore); pendingRevision.value = null }
         }
         void promise.then(release, release)
         return promise
@@ -45,5 +52,5 @@ export function useAuth() {
         return refreshSession()
     }
 
-    return { login, logout, refresh }
+    return { login, logout, logoutPending, refresh }
 }

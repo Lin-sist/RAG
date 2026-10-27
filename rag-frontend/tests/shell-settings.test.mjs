@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 
 globalThis.localStorage = { getItem() { return null }, setItem() {}, removeItem() {} }
 globalThis.document = { activeElement: null, body: { style: { overflow: '' } }, addEventListener() {}, removeEventListener() {}, querySelector() { return null } }
-globalThis.window = { matchMedia() { return { matches: false, addEventListener() {}, removeEventListener() {} } }, addEventListener() {}, removeEventListener() {} }
+globalThis.window = { navigator: { userAgent: 'fixture' }, matchMedia() { return { matches: false, addEventListener() {}, removeEventListener() {} } }, addEventListener() {}, removeEventListener() {} }
 const server = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true, include: [] },
   server: { middlewareMode: true, hmr: { server: createHttpServer() } },
   resolve: { alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } },
@@ -19,7 +19,7 @@ const server = await createServer({ configFile: false, optimizeDeps: { noDiscove
     if (id.endsWith('/api/history')) return '\0history-fixture'
     if (id === 'shell-auth-fixture') return '\0shell-auth-fixture'
   }, transform(code, id) {
-    if (id.endsWith('AppSidebar.vue')) return code.replace("from '@/composables/useAuth'", "from 'shell-auth-fixture'")
+    if (id.endsWith('AppSidebar.vue') || id.endsWith('SettingsModal.vue')) return code.replace("from '@/composables/useAuth'", "from 'shell-auth-fixture'")
       .replace("import { ElMessage } from 'element-plus'", 'const ElMessage = { warning() {} }')
   }, load(id) {
     if (id === '\0shell-auth-fixture') return `export const useAuth = () => ({ logout: async () => 'confirmed' })`
@@ -74,7 +74,7 @@ try {
     pending[3](result([{ id: 4, question: 'after unmount' }])); await unmounted
     assert.equal(f.state.historyList.length, 0)
   })
-  await test('settings renders only general appearance and truthful read-only identity', async () => {
+  await test('five-category settings retain legacy entry mapping and truthful read-only identity', async () => {
     const pinia = createPinia()
     const { createSSRApp } = await import('vue')
     async function html(tab = 'profile') {
@@ -90,6 +90,7 @@ try {
     assert.match(known, /fixture user/); assert.match(known, /未提供/)
     const general = await html('security')
     assert.match(general, /跟随系统/); assert.match(general, /浅色/); assert.match(general, /深色/)
+    for (const label of ['问答偏好', '账户与工作空间', '数据管理', '关于与帮助']) assert.ok(general.includes(label))
   })
   await test('settings releases scroll and background locks on close or unmount', async () => {
     const background = { inert: false }

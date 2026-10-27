@@ -1,0 +1,241 @@
+{
+  "records": [
+    {
+      "theme": "dark",
+      "width": 1440,
+      "height": 900,
+      "field": "回答字号",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "height": 900,
+      "field": "减少动态效果",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "height": 900,
+      "field": "发送快捷键",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "height": 900,
+      "field": "来源片段",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "case": "resize-and-scroll-open-menu",
+      "status": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "height": 844,
+      "field": "回答字号",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "height": 844,
+      "field": "减少动态效果",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "height": 844,
+      "field": "发送快捷键",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "height": 844,
+      "field": "来源片段",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "height": 640,
+      "field": "回答字号",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "height": 640,
+      "field": "减少动态效果",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "height": 640,
+      "field": "发送快捷键",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "height": 640,
+      "field": "来源片段",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 844,
+      "height": 390,
+      "field": "回答字号",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 844,
+      "height": 390,
+      "field": "减少动态效果",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 844,
+      "height": 390,
+      "field": "发送快捷键",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "dark",
+      "width": 844,
+      "height": 390,
+      "field": "来源片段",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "height": 900,
+      "field": "回答字号",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "height": 900,
+      "field": "减少动态效果",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "height": 900,
+      "field": "发送快捷键",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "height": 900,
+      "field": "来源片段",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "case": "resize-and-scroll-open-menu",
+      "status": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "height": 844,
+      "field": "回答字号",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "height": 844,
+      "field": "减少动态效果",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "height": 844,
+      "field": "发送快捷键",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "height": 844,
+      "field": "来源片段",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "height": 640,
+      "field": "回答字号",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "height": 640,
+      "field": "减少动态效果",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "height": 640,
+      "field": "发送快捷键",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "height": 640,
+      "field": "来源片段",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 844,
+      "height": 390,
+      "field": "回答字号",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 844,
+      "height": 390,
+      "field": "减少动态效果",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 844,
+      "height": 390,
+      "field": "发送快捷键",
+      "pointerKeyboardEscapeTab": "PASS"
+    },
+    {
+      "theme": "light",
+      "width": 844,
+      "height": 390,
+      "field": "来源片段",
+      "pointerKeyboardEscapeTab": "PASS"
+    }
+  ],
+  "errors": [],
+  "outbound": [],
+  "business": []
+}

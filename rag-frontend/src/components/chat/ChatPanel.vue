@@ -134,7 +134,11 @@
           class="pill-input"
           :placeholder="isHistoryDetail ? '历史详情只展示单条问答，请前往新问答后提问' : selectedKb ? `在「${selectedKb.name}」中提问…` : '请选择知识库后输入问题'"
           :disabled="isHistoryDetail"
+          :title="sendKeyHint"
+          :aria-description="sendKeyHint"
           @keydown="handleKeydown"
+          @compositionstart="composing = true"
+          @compositionend="finishComposition"
         ></textarea>
 
         <div class="composer-actions">
@@ -184,6 +188,7 @@
         {{ isHistoryDetail ? '这里展示的是一条历史问答记录，不代表多轮会话。' : responseMode === 'stream' ? '仅完整回答终态展示来源；停止接收不代表服务端已取消。' : 'AI 可能产生不准确内容，请核对引用来源' }}
       </p>
 
+      <p v-if="!isHistoryDetail" class="send-key-hint">{{ sendKeyHint }}</p>
       <div v-if="messages.length === 0" class="example-questions" aria-label="示例问题">
         <button
           v-for="question in exampleQuestions"
@@ -234,6 +239,8 @@ import { normalizeError } from '@/api/errors'
 import { useChatStore } from '@/stores/chat'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
 import { useAuthStore } from '@/stores/auth'
+import { usePreferencesStore } from '@/stores/preferences'
+import { isSendKey } from '@/utils/sendKey'
 import type { KnowledgeBaseDTO } from '@/types/knowledgeBase'
 import {
   applySyncResponse,
@@ -567,8 +574,14 @@ function scrollToBottom(force = false) {
   })
 }
 
+const preferences = usePreferencesStore()
+const sendKeyHint = computed(() => preferences.values.sendKey === 'enter'
+  ? 'Enter 发送，Shift + Enter 换行' : 'Ctrl / ⌘ + Enter 发送，Enter 换行')
+const composing = ref(false)
+let compositionEndedAt = -Infinity
+function finishComposition() { composing.value = false; compositionEndedAt = performance.now() }
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (isSendKey(e, preferences.values.sendKey, composing.value || performance.now() - compositionEndedAt < 50)) {
     e.preventDefault()
     handleSend()
   }
@@ -966,6 +979,8 @@ onUnmounted(() => {
 @keyframes blink {
   50% { opacity: 0; }
 }
+
+.send-key-hint { margin: -2px 0 8px; color: var(--rag-text-secondary); font-size: 11px; text-align: center; }
 
 .message-actions {
   display: flex;

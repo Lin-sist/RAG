@@ -2,7 +2,7 @@
   <section class="answer-sources" aria-label="引用来源">
     <h3><FileText :size="14" aria-hidden="true" />引用来源</h3>
     <div v-if="citations?.length" class="source-list">
-      <details v-for="(citation, index) in citations" :key="`${resetKey}:${index}`" class="source-card">
+      <details v-for="(citation, index) in citations" :key="`${resetKey}:${index}`" class="source-card" :open="initiallyExpanded">
         <summary :aria-label="`来源片段：${citationLabel(citation)}`">
           <FileText :size="17" class="source-icon" aria-hidden="true" />
           <span class="source-heading">
@@ -24,7 +24,10 @@
 import { FileText, ChevronDown } from 'lucide-vue-next'
 import type { Citation } from '@/types/qa'
 import { citationLabel, formatRelevanceScore } from '@/utils/qaPresentation'
+import { usePreferencesStore } from '@/stores/preferences'
 defineProps<{ citations?: Citation[]; hint?: string; resetKey: string | number }>()
+// Snapshot once; a settings change must not override a reader's toggle.
+const initiallyExpanded = usePreferencesStore().values.sources === 'expanded'
 </script>
 
 <style scoped>

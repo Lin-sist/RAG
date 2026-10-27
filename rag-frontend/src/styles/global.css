@@ -65,3 +65,13 @@ body {
 }
 button, input, textarea, select { font-family: inherit; }
 button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--rag-text-secondary); outline-offset: 3px; }
+
+/* System and local preferences can each request a still interface. */
+html[data-motion="reduce"] *, html[data-motion="reduce"] *::before, html[data-motion="reduce"] *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

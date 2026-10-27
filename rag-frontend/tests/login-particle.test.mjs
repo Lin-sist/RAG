@@ -245,6 +245,20 @@ try {
     assert.ok(f.observers.every(item => item.disconnected)); assert.ok([...f.resources].every(item => f.removed.has(item)))
     assert.equal(f.canvas.width, 0); assert.equal(f.canvas.height, 0)
   })
+  await test('injected effective reduction stops and resumes one frame chain without another OS listener', () => {
+    const f = fixture(), listeners = new Set()
+    let reduced = false
+    const states = []
+    const controller = mountParticles(f.canvas, state => states.push(state), {
+      reduced: () => reduced, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn) },
+    })
+    assert.equal(f.media.listeners.size, 0); assert.equal(listeners.size, 1); assert.equal(f.callbacks.size, 1)
+    reduced = true; for (const fn of listeners) fn()
+    assert.equal(f.callbacks.size, 0); assert.equal(states.at(-1).reduced, true)
+    controller.select(2); assert.equal(f.canvas.dataset.progress, '2.0000'); assert.equal(f.callbacks.size, 0)
+    reduced = false; for (const fn of listeners) fn(); assert.equal(f.callbacks.size, 1)
+    controller.destroy(); assert.equal(listeners.size, 0); assert.equal(f.callbacks.size, 0)
+  })
   await test('Vue integration refreshes one controller, disposes once and ignores late state after unmount', async () => {
     const calls = []
     install('__particleComponent', (canvas, cb) => {

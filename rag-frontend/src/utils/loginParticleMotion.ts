@@ -28,8 +28,9 @@ const FRAGMENT = `
 `
 export interface ParticleState { renderer: 'static' | 'webgl'; scene: number; progress: number; paused: boolean; reduced: boolean }
 export interface ParticleController { select(index: number): void; pause(): void; refresh(): void; destroy(): void }
+export interface ParticleMotionSignal { reduced: () => boolean; subscribe: (listener: () => void) => () => void }
 
-export function mountParticles(canvas: HTMLCanvasElement, onState: (state: ParticleState) => void = () => {}): ParticleController {
+export function mountParticles(canvas: HTMLCanvasElement, onState: (state: ParticleState) => void = () => {}, signal?: ParticleMotionSignal): ParticleController {
   let gl: WebGLRenderingContext | null = null, program: WebGLProgram | null = null, buffer: WebGLBuffer | null = null
   let uniforms: Record<string, WebGLUniformLocation | null> = {}, count = 0, models: Float32Array[] = []
   let points = new Float32Array(), offsets = new Float32Array()
@@ -41,11 +42,12 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
   const safe = (fn: () => void) => { try { fn() } catch { /* decoration never blocks authentication */ } }
   const available = () => !!program && !lost && !disposed
   const drawable = () => available() && visible && !document.hidden
-  const moving = () => drawable() && !paused && !media?.matches
+  const reduced = () => signal ? signal.reduced() : media?.matches ?? false
+  const moving = () => drawable() && !paused && !reduced()
   function report() {
     if (disposed) return
     const progress = available() ? Number(position.toFixed(4)) : 0
-    const state: ParticleState = { renderer: available() ? 'webgl' : 'static', scene: Math.round(progress), progress, paused, reduced: media?.matches ?? false }
+    const state: ParticleState = { renderer: available() ? 'webgl' : 'static', scene: Math.round(progress), progress, paused, reduced: reduced() }
     const key = JSON.stringify(state)
     if (key !== reported) { reported = key; safe(() => onState(state)) }
   }
@@ -171,7 +173,7 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
   }
   function leave() { pointer.active = false }
   function still() { position = target = Math.round(position); velocity = 0; offsets.fill(0); leave() }
-  function modeChange() { if (disposed) return; if (media?.matches) still(); refresh() }
+  function modeChange() { if (disposed) return; if (reduced()) still(); refresh() }
   function move(event: PointerEvent) {
     if (!moving() || event.pointerType === 'touch') return
     const r = canvas.getBoundingClientRect()
@@ -192,14 +194,17 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
   try {
     if (typeof ResizeObserver === 'undefined' || typeof IntersectionObserver === 'undefined'
       || typeof requestAnimationFrame !== 'function' || typeof cancelAnimationFrame !== 'function') throw Error('Particle browser APIs unavailable')
-    media = window.matchMedia('(prefers-reduced-motion: reduce)'); initialize()
+    if (!signal) media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    initialize()
     if (program) {
       resizeObserver = new ResizeObserver(refresh); resizeObserver.observe(canvas)
       intersection = new IntersectionObserver(entries => { if (!disposed) { visible = entries[entries.length - 1]?.isIntersecting ?? false; visibilityChange() } }); intersection.observe(canvas)
       listen(canvas, 'wheel', wheel as EventListener, { passive: false })
       listen(canvas, 'pointermove', move as EventListener, { passive: true })
       for (const name of ['pointerleave', 'pointercancel', 'pointerup']) listen(canvas, name, leave)
-      listen(window, 'blur', leave); listen(document, 'visibilitychange', visibilityChange); listen(media, 'change', modeChange)
+      listen(window, 'blur', leave); listen(document, 'visibilitychange', visibilityChange)
+      if (signal) cleanups.push(signal.subscribe(modeChange))
+      else if (media) listen(media, 'change', modeChange)
       listen(canvas, 'webglcontextlost', contextLost); listen(canvas, 'webglcontextrestored', contextRestored); refresh()
     }
   } catch { cleanup(); fail() }
@@ -208,10 +213,10 @@ export function mountParticles(canvas: HTMLCanvasElement, onState: (state: Parti
     select(index) {
       if (!available() || !Number.isFinite(index)) return
       target = Math.round(clamp(index)); leave()
-      if (paused || media?.matches) { position = target; velocity = 0; offsets.fill(0) }
+      if (paused || reduced()) { position = target; velocity = 0; offsets.fill(0) }
       refresh()
     },
-    pause() { if (!available() || media?.matches) return; paused = !paused; if (paused) still(); refresh() },
+    pause() { if (!available() || reduced()) return; paused = !paused; if (paused) still(); refresh() },
     refresh,
     destroy() {
       if (disposed) return

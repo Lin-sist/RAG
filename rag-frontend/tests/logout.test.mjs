@@ -68,7 +68,9 @@ try {
   await test('concurrent composable callers share one logout flight', async () => {
     const d = deferred(), f = fixture(() => d.promise), other = useAuth()
     const first = f.logout(), second = other.logout(); assert.equal(first, second); await flush(); assert.equal(f.calls.length, 1)
+    assert.equal(f.logoutPending.value, true); assert.equal(other.logoutPending.value, true)
     d.resolve([200]); assert.deepEqual(await Promise.all([first, second]), ['confirmed', 'confirmed']); assert.equal(globalThis.__logoutFixture.routes.length, 1)
+    assert.equal(other.logoutPending.value, false)
   })
   await test('late success or failure cannot clear or navigate a new login', async () => {
     for (const status of [200, 503]) {

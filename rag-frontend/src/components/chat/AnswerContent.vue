@@ -32,15 +32,15 @@ async function copyCode(event: MouseEvent) {
 </script>
 
 <style scoped>
-.answer-content { min-width: 0; color: var(--rag-text-primary); font-size: 15px; line-height: 1.85; overflow-wrap: anywhere; }
+.answer-content { min-width: 0; color: var(--rag-text-primary); font-size: var(--rag-answer-font-size, .9375rem); line-height: 1.85; overflow-wrap: anywhere; }
 .is-error { color: var(--rag-danger); }
 .answer-markdown > :deep(:first-child) { margin-top: 0; }
 .answer-markdown > :deep(:last-child) { margin-bottom: 0; }
 .answer-markdown :deep(p) { margin: 0 0 14px; }
 .answer-markdown :deep(h1), .answer-markdown :deep(h2), .answer-markdown :deep(h3) { margin: 24px 0 12px; font-weight: 600; line-height: 1.5; }
-.answer-markdown :deep(h1) { font-size: 24px; }
-.answer-markdown :deep(h2) { font-size: 20px; }
-.answer-markdown :deep(h3) { font-size: 17px; }
+.answer-markdown :deep(h1) { font-size: 1.6em; }
+.answer-markdown :deep(h2) { font-size: 1.333333em; }
+.answer-markdown :deep(h3) { font-size: 1.133333em; }
 .answer-markdown :deep(ul), .answer-markdown :deep(ol) { margin: 12px 0; padding-left: 24px; }
 .answer-markdown :deep(li) { margin: 5px 0; }
 .answer-markdown :deep(blockquote) { margin: 16px 0; padding: 4px 16px; border-left: 3px solid var(--rag-border); color: var(--rag-text-secondary); }
@@ -57,7 +57,7 @@ async function copyCode(event: MouseEvent) {
 .answer-markdown :deep(pre) { overflow-x: auto; margin: 0; padding: 16px; line-height: 1.65; white-space: pre; overflow-wrap: normal; }
 .answer-markdown :deep(pre code) { padding: 0; background: transparent; border-radius: 0; }
 .answer-markdown :deep(.answer-table) { max-width: 100%; overflow-x: auto; margin: 16px 0; }
-.answer-markdown :deep(table) { border-collapse: collapse; min-width: 100%; font-size: 14px; }
+.answer-markdown :deep(table) { border-collapse: collapse; min-width: 100%; font-size: .933333em; }
 .answer-markdown :deep(th), .answer-markdown :deep(td) { padding: 10px 14px; border: 1px solid var(--rag-border); text-align: left; min-width: 120px; }
 .answer-markdown :deep(th) { background: var(--rag-bg-surface); font-weight: 600; }
 .answer-markdown :deep(button:focus-visible), .answer-markdown :deep([tabindex]:focus-visible), .answer-markdown :deep(a:focus-visible) { outline: 2px solid var(--rag-primary); outline-offset: -2px; }

@@ -23,7 +23,7 @@
         <button @click="openSettings('general')"><Settings :size="16" />设置</button>
         <button @click="openSettings('profile')"><User :size="16" />个人资料</button>
         <button @click="theme.setPreference(theme.effectiveTheme === 'dark' ? 'light' : 'dark')"><Sun v-if="theme.effectiveTheme === 'dark'" :size="16" /><Moon v-else :size="16" />{{ theme.effectiveTheme === 'dark' ? '切换浅色' : '切换深色' }}</button>
-        <div class="menu-divider"></div><button :disabled="loggingOut" :aria-busy="loggingOut" @click="handleLogout"><LogOut :size="16" />{{ loggingOut ? '正在退出…' : '退出登录' }}</button>
+        <div class="menu-divider"></div><button :disabled="loggingOut || logoutPending" :aria-busy="loggingOut || logoutPending" @click="handleLogout"><LogOut :size="16" />{{ loggingOut || logoutPending ? '正在退出…' : '退出登录' }}</button>
       </div>
     </div>
   </aside>
@@ -41,7 +41,7 @@ import { useAuth } from '@/composables/useAuth'
 import { ElMessage } from 'element-plus'
 const emit = defineEmits<{ (e: 'open-settings', tab: 'general' | 'profile'): void }>()
 const route = useRoute(), router = useRouter(), auth = useAuthStore(), theme = useThemeStore()
-const { logout } = useAuth()
+const { logout, logoutPending } = useAuth()
 const loggingOut = ref(false)
 const collapsed = ref(false), mobile = ref(false), drawerOpen = ref(false), userMenuOpen = ref(false)
 const sidebar = ref<HTMLElement>(), menuTrigger = ref<HTMLButtonElement>(), userMenu = ref<HTMLElement>()
@@ -122,7 +122,7 @@ async function openSettings(tab: 'general' | 'profile') {
 }
 function navigate(path: string) { userMenuOpen.value = false; closeDrawer(); void router.push(path) }
 async function handleLogout() {
-  if (loggingOut.value) return
+  if (loggingOut.value || logoutPending?.value) return
   loggingOut.value = true
   try {
     const result = await logout()

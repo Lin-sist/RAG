@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844" role="img" aria-label="设置浮层静态设计示意"><title>设置浮层静态设计示意，非功能界面</title>
+<rect x="0" y="0" width="390" height="844" rx="0" fill="#080808"/>
+<rect x="8" y="12" width="374" height="820" rx="16" fill="#1C1C1C" stroke="#393939"/>
+<text x="28" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="21" font-weight="600" fill="#ECECEC">设置</text>
+<rect x="326" y="24" width="40" height="40" rx="8" fill="#1C1C1C"/>
+<text x="339" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="22" font-weight="400" fill="#B5B5B5">×</text>
+<rect x="8" y="82" width="374" height="1" rx="0" fill="#393939"/>
+<text x="28" y="112" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#B5B5B5">设置分类</text>
+<rect x="28" y="123" width="334" height="40" rx="8" fill="#1C1C1C" stroke="#393939"/>
+<text x="40" y="147" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#ECECEC">外观</text>
+<polyline points="337,140 342,145 347,140" fill="none" stroke="#B5B5B5" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="28" y="211" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="20" font-weight="600" fill="#ECECEC">外观</text>
+<text x="28" y="237" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#ECECEC">颜色模式</text>
+<rect x="28" y="251" width="106" height="87" rx="10" fill="#1C1C1C" stroke="#393939"/>
+<rect x="40" y="261" width="82" height="45" rx="5" fill="#111111"/>
+<rect x="40" y="261" width="20" height="45" rx="4" fill="#252525"/>
+<rect x="40" y="261" width="41" height="45" rx="4" fill="#F7F7F7"/>
+<rect x="68" y="273" width="31" height="2" rx="1" fill="#757575"/>
+<rect x="68" y="283" width="37" height="2" rx="1" fill="#757575"/>
+<rect x="68" y="293" width="24" height="2" rx="1" fill="#757575"/>
+<text x="40" y="325" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#ECECEC">跟随系统</text>
+<rect x="142" y="251" width="106" height="87" rx="10" fill="#1C1C1C" stroke="#393939"/>
+<rect x="154" y="261" width="82" height="45" rx="5" fill="#F7F7F7"/>
+<rect x="154" y="261" width="20" height="45" rx="4" fill="#E5E5E5"/>
+<rect x="182" y="273" width="31" height="2" rx="1" fill="#929292"/>
+<rect x="182" y="283" width="37" height="2" rx="1" fill="#929292"/>
+<rect x="182" y="293" width="24" height="2" rx="1" fill="#929292"/>
+<text x="154" y="325" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#ECECEC">浅色</text>
+<rect x="256" y="251" width="106" height="87" rx="10" fill="#12362E" stroke="#10A37F"/>
+<rect x="268" y="261" width="82" height="45" rx="5" fill="#111111"/>
+<rect x="268" y="261" width="20" height="45" rx="4" fill="#252525"/>
+<rect x="296" y="273" width="31" height="2" rx="1" fill="#757575"/>
+<rect x="296" y="283" width="37" height="2" rx="1" fill="#757575"/>
+<rect x="296" y="293" width="24" height="2" rx="1" fill="#757575"/>
+<text x="268" y="325" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#ECECEC">深色</text>
+<polyline points="337,320 340,323 346,316" fill="none" stroke="#10A37F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="28" y="384" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#ECECEC">回答字号</text>
+<rect x="208" y="357" width="154" height="40" rx="8" fill="#1C1C1C" stroke="#393939"/>
+<text x="220" y="381" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#ECECEC">标准 · 15 px</text>
+<polyline points="337,374 342,379 347,374" fill="none" stroke="#B5B5B5" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="28" y="424" width="334" height="130" rx="10" fill="#161616" stroke="#393939"/>
+<text x="44" y="454" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#B5B5B5">预览示例</text>
+<text x="44" y="489" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15" font-weight="400" fill="#ECECEC">清晰的回答，</text>
+<text x="44" y="513" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15" font-weight="400" fill="#ECECEC">需要能核对的依据。</text>
+<text x="44" y="541" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#B5B5B5">引用来源  ·  示例资料</text>
+<text x="28" y="604" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" fill="#ECECEC">减少动态效果</text>
+<text x="28" y="632" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#B5B5B5">遵循系统偏好，或始终减少运动。</text>
+<rect x="28" y="651" width="334" height="40" rx="8" fill="#1C1C1C" stroke="#393939"/>
+<text x="40" y="675" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#ECECEC">跟随系统</text>
+<polyline points="337,668 342,673 347,668" fill="none" stroke="#B5B5B5" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="8" y="743" width="374" height="1" rx="0" fill="#393939"/>
+<text x="28" y="774" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#B5B5B5">更改即时生效，仅保存在当前浏览器。</text>
+<text x="28" y="808" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#B5B5B5">窄屏静态示意 · 非功能界面</text>
+</svg>

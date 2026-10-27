@@ -34,6 +34,7 @@
 
     /* Borders */
     --rag-border: #E5E5E5;
+    --rag-border-control: #8A8A8A;
     --rag-border-light: #F4F4F4;
 
     /* Radius */
@@ -119,6 +120,7 @@ html.dark {
 
     /* Borders */
     --rag-border: rgba(255, 255, 255, 0.075);
+    --rag-border-control: #8D8D8D;
     --rag-border-light: rgba(255, 255, 255, 0.05);
 
     /* Shadows — 暗色下阴影更重 */

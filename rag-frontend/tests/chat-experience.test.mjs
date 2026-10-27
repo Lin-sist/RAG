@@ -96,6 +96,7 @@ try {
       { source: '', snippet: '<script>alert(1)</script>' },
       { source: 'fallback.txt', documentTitle: '实际标题', score: 0, snippet: '实际片段' },
     ] })
+    app.use(createPinia())
     const html = await renderToString(app)
     assert.match(html, /未知来源/); assert.match(html, /实际标题/)
     assert.doesNotMatch(html, /<script|fallback\.txt/)
@@ -104,7 +105,8 @@ try {
     assert.match(html, /检索相关度 0%/)
     assert.equal((html.match(/<details/g) || []).length, 2)
     assert.match(html, /<summary\b/)
-    const empty = await renderToString(renderer.createApp(Sources, { resetKey: 0, citations: [] }))
+    const emptyApp = renderer.createApp(Sources, { resetKey: 0, citations: [] }); emptyApp.use(createPinia())
+    const empty = await renderToString(emptyApp)
     assert.match(empty, /未返回可展示来源/); assert.doesNotMatch(empty, /<details/)
   })
   await test('reader scrolling pauses follow, receives more content without a jump and resumes only near bottom or on request', async () => {
