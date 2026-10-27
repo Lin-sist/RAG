@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import { fileURLToPath } from 'node:url'
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
+import { traceFixture, traceEvents } from './trace-fixtures.mjs'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const kb = { id: 901, name: '合成知识库 · 项目文档', description: '仅用于前端验证，不连接真实后端', documentCount: 2, isPublic: false, vectorCollection: 'fixture_collection', vectorModel: 'fixture-model', vectorDimension: 1024, createdAt: '2026-09-20T10:00:00', updatedAt: '2026-09-20T10:00:00' }
 const longAnswer = [
@@ -27,7 +28,7 @@ function chatFixture(scenario) {
   const citations = scenario === 'chat-long-title' ? [{ ...sourceCitations[0], documentTitle: '较长来源标题用于核对自动换行与完整阅读。'.repeat(15) }]
     : ['chat-sources', 'chat-long', 'chat-scroll'].includes(scenario) ? sourceCitations
     : scenario === 'chat-missing' ? [sourceCitations[1]] : []
-  return { question: '合成问题', answer, citations, contexts: [], metadata: { status: 'ANSWER' } }
+  return { question: '合成问题', answer, citations, contexts: [], metadata: { status: 'ANSWER', ...(scenario?.startsWith('trace-') && scenario !== 'trace-missing' ? { executionTrace: traceFixture(scenario), routeFinalState: traceFixture(scenario).businessFinalState } : {}) } }
 }
 function streamFixture(req, res, scenario) {
   if (req.headers['x-rag-stream-contract'] !== 'structured-v1') { res.statusCode = 400; res.end('Fixture requires structured-v1'); return }
@@ -35,6 +36,9 @@ function streamFixture(req, res, scenario) {
   res.setHeader('Cache-Control', 'no-cache')
   const frame = (name, payload) => `event:${name}\n${(name === 'text' ? payload : JSON.stringify(payload)).split('\n').map(line => 'data:' + line).join('\n')}\n\n`
   const terminal = { schemaVersion: 'structured-v1', finalState: 'ANSWER', reason: 'NONE', citations: sourceCitations, metadata: {}, classifierVersion: 'legacy', effectiveStrategy: 'legacy', policyVersion: 'legacy', routeReason: 'LEGACY', budgetOutcome: null, usage: null }
+  const trace = scenario?.startsWith('trace-') && scenario !== 'trace-missing' && req.headers['x-rag-trace-contract'] === 'trace-v1' ? traceFixture(scenario) : null
+  const traces = trace ? traceEvents(trace) : []
+  if (trace) { terminal.finalState = trace.businessFinalState; if (terminal.finalState !== 'ANSWER') terminal.citations = [] }
   const finalState = { 'chat-no-answer': 'NO_ANSWER', 'chat-unsupported': 'UNSUPPORTED', 'chat-invalid': 'INVALID', 'chat-error': 'ERROR', 'chat-cancelled': 'CANCELLED' }[scenario]
   if (finalState) Object.assign(terminal, { finalState, reason: 'FIXTURE_REASON', citations: [] })
   const text = scenario === 'chat-scroll' || scenario === 'chat-stop' ? longAnswer : '这是一段已收到的合成文本。'
@@ -42,6 +46,7 @@ function streamFixture(req, res, scenario) {
   let index = 0
   const timer = setInterval(() => {
     if (res.destroyed) { clearInterval(timer); return }
+    if (traces.length) { const event = traces.shift(); res.write(frame('trace', scenario === 'trace-bad' && event.kind === 'stage.upsert' ? { invalid: true } : event)); if (scenario === 'trace-abort' && traces.length < 9) { clearInterval(timer); res.destroy() } return }
     if (index < chunks.length) { res.write(frame('text', chunks[index++])); return }
     clearInterval(timer)
     if (scenario === 'chat-read-failure') { res.destroy(); return }
@@ -52,10 +57,11 @@ function streamFixture(req, res, scenario) {
       if (scenario === 'chat-unknown-event') res.write(frame('unexpected', '未知事件'))
     }
     res.end()
-  }, scenario === 'chat-scroll' || scenario === 'chat-stop' ? 300 : 80)
+  }, scenario === 'chat-scroll' || scenario === 'chat-stop' || scenario === 'trace-running' ? 300 : 80)
   res.on('close', () => clearInterval(timer))
 }
 const streamScenarios = new Set(['chat-stream', 'chat-scroll', 'chat-stop', 'chat-incomplete', 'chat-read-failure', 'chat-no-answer', 'chat-unsupported', 'chat-invalid', 'chat-error', 'chat-cancelled', 'chat-invalid-terminal', 'chat-duplicate-terminal', 'chat-post-terminal', 'chat-unknown-event'])
+for (const scenario of ['trace-success', 'trace-cache', 'trace-none', 'trace-error', 'trace-unsupported', 'trace-fallback', 'trace-abort', 'trace-bad', 'trace-missing', 'trace-running']) streamScenarios.add(scenario)
 const f4Scenarios = new Set(['f4', 'f4-empty', 'f4-list-error', 'f4-stats-error', 'f4-docs-error', 'f4-403', 'f4-404', 'f4-upload-mixed', 'f4-upload-unconfirmed', 'f4-poll-error', 'f4-task-running', 'f4-task-failed', 'f4-task-cancelled', 'f4-task-matrix', 'f4-delete-error', 'f4-refresh-error', 'f4-long'])
 const f4Sessions = new Map()
 const f1Sessions = new Map()
@@ -206,6 +212,7 @@ const server = await createServer({ root, configFile: false, plugins: [vue(), {
   name: 'synthetic-api',
   transformIndexHtml(html, context) {
     const fixture = new URL(context.originalUrl || context.path, 'http://127.0.0.1').searchParams.get('fixture')
+    if (fixture?.startsWith('trace-')) return { html, tags: [{ tag: 'style', injectTo: 'head', children: 'body::before{content:"合成预览 · 不连接真实后端";position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;padding:3px 12px;background:#fff2c8;color:#6a4d00;font:11px sans-serif;pointer-events:none;border-radius:0 0 6px 6px}' }] }
     // Screenshot-only fixture: freeze the running icon/stripes, never fabricate progress or files.
     if (fixture === 'f4-task-matrix') return { html, tags: [{ tag: 'style', injectTo: 'head', children: '.doc-progress *,.doc-progress *::before,.doc-progress *::after{animation-play-state:paused!important}' }] }
     if (fixture !== 'clipboard-failure' && fixture !== 'clipboard-unavailable') return html

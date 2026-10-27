@@ -43,6 +43,26 @@ try {
   const { default: Sources } = await server.ssrLoadModule('/src/components/chat/AnswerSources.vue')
   const { default: Chat } = await server.ssrLoadModule('/src/components/chat/ChatPanel.vue')
   const { useKnowledgeBaseStore } = await server.ssrLoadModule('/src/stores/knowledgeBase.ts')
+  const { useAuthStore } = await server.ssrLoadModule('/src/stores/auth.ts')
+  await test('trace view is local and identity changes clear prior traces and selection', async () => {
+    const pinia = createPinia()
+    useKnowledgeBaseStore(pinia).list = [{ id: 901, name: 'fixture' }]
+    const app = renderer.createApp({ ...Chat, render: () => h('div') })
+    app.use(pinia); app.provide(ssrContextKey, {})
+    app.provide(routerKey, { push() {} }); app.provide(routeLocationKey, { fullPath: '/chat', name: 'Chat', params: {} })
+    app.mount({ children: [] }); await nextTick()
+    const state = app._instance.setupState
+    state.inputText = 'retained-draft'; state.view = 'trace'
+    state.messages = [{ id: 'u', role: 'user', content: 'question' }, { id: 'a', role: 'assistant', content: 'answer', executionTrace: { runId: 'old-run' } }]
+    state.selectedTraceId = 'a'; state.view = 'conversation'; await nextTick()
+    assert.equal(state.inputText, 'retained-draft')
+    assert.equal(state.traceMessage.executionTrace.runId, 'old-run')
+    useAuthStore(pinia).sessionRevision++
+    await nextTick()
+    assert.equal(state.messages.length, 0); assert.equal(state.selectedTraceId, '')
+    assert.equal(state.view, 'conversation')
+    app.unmount()
+  })
   await test('untrusted HTML, language labels and code stay text; unsafe link schemes are rejected', () => {
     const html = renderAnswerMarkdown('<img src=x onerror=alert(1)>\n\n[bad](javascript:alert(1))\n\n[file](file:///etc/passwd)\n\n```html"><img/onerror=alert(1)>\n<script>alert("fixture")</script>\n```')
     assert.doesNotMatch(html, /<img|<script|href="(?:javascript|file):|onclick=/i)

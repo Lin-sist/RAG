@@ -32,3 +32,7 @@
 
 - **陷阱**：排障或写评测脚本时顺手打印 `e.getMessage()`、上游 HTTP response body、用户 `question/query/snippet`、知识库名或本地绝对路径（如 `C:\...`），会触发回归门禁失败或隐私泄露。
 - **对策**：普通日志只允许记录 `traceId`、内部资源 ID、计数、耗时、状态码和固定错误枚举；提交前运行 `scripts/run_local_quality_gates.ps1 -Mode SensitiveLogs` 与 `-Mode DocAndScope`。
+
+## 7. 流式终态与阶段收尾顺序
+
+- **陷阱与对策**：Reactor 的下游完成回调可能先于上游 doFinally 执行，因此不能在那里才关闭供界面使用的阶段，否则 terminal 前的快照仍会显示 RUNNING。轨迹投影在实际 doOnComplete/doOnError 收尾，既有 OTel/metrics 保留 doFinally；异步 finalization 必须恢复订阅时捕获的 Context。

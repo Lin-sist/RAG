@@ -1,0 +1,9 @@
+/* Trace-only host layout. The existing composer template and scoped CSS are preserved. */
+.chat-panel > .trace-view-switch{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;min-height:48px;padding:0 28px;border-bottom:1px solid var(--rag-border);color:var(--rag-text-primary)}
+.trace-view-switch > div{display:flex;gap:24px;align-items:stretch;align-self:stretch}
+.trace-view-switch [role=tab]{border:0;border-bottom:2px solid transparent;background:none;font:14px var(--rag-font-family);color:var(--rag-text-secondary);padding:12px 0;cursor:pointer}
+.trace-view-switch [role=tab][aria-selected=true]{color:var(--rag-text-primary);border-bottom-color:var(--rag-primary)}
+.trace-view-switch [role=tab]:focus-visible,.trace-view-switch select:focus-visible{outline:2px solid var(--rag-primary);outline-offset:3px}
+.trace-view-switch select{font:12px var(--rag-font-family);max-width:min(48%,300px);color:var(--rag-text-secondary);background:var(--rag-bg-page);border:1px solid var(--rag-border);border-radius:5px;padding:4px 6px}
+.chat-panel > .trace-viewport{width:100%;flex:1;min-height:0;overflow:auto;scrollbar-gutter:stable}
+@media(max-width:650px){.chat-panel > .trace-view-switch{padding:0 18px}}

@@ -1,0 +1,32 @@
+{
+  "comparisonHead": "94391e1d0f762100684772ebed1580d575581a76",
+  "hashEncoding": "SHA-256 of raw file bytes",
+  "evidence": "local synthetic preview; zero real provider calls",
+  "files": {
+    "openspec/changes/rag-execution-trace-view/visuals/formal-trace-brush.jpg": "1e0cd0ff61e9e5f290c7214e10277e283ad21fdde58a29d416ef09abbab8272b",
+    "openspec/changes/rag-execution-trace-view/visuals/formal-trace-light.jpg": "673458d1c8ccba2d596d41441dd1803dc9d5e3a03fe45d985a43870c9e46babd",
+    "openspec/changes/rag-execution-trace-view/visuals/formal-trace-mobile.jpg": "12f2039526b2496da1c118260fbd9f17d128bf18ca897d0c213e9041ee3a8ea9",
+    "openspec/changes/rag-execution-trace-view/visuals/formal-trace-overview.jpg": "65359c5bc0460186f496bdee09a1f73d31ce1cd7511b9f46447adec19ab306f4",
+    "rag-admin/src/main/java/com/enterprise/rag/admin/controller/QAController.java": "6712267f7def0659d4ffbdd54ad22047dfd631e95f16f2fc6e43dcdf22f674a9",
+    "rag-admin/src/test/java/com/enterprise/rag/admin/controller/QAControllerTest.java": "a16c31ec9d510e9e2bf2b257c5ef3e02df0a77a1b1e9408f90de007058bd8683",
+    "rag-common/src/main/java/com/enterprise/rag/common/trace/ExecutionTraceCollector.java": "d68fd88123bc66c247052518256a13e516fe230d7d5e897dfd09157e096fccdf",
+    "rag-common/src/main/java/com/enterprise/rag/common/trace/GenAiTelemetry.java": "79e734e05b03de023dacb4f24426621468cf68031df060e8ad8db6b6e9b38fe5",
+    "rag-common/src/test/java/com/enterprise/rag/common/trace/ExecutionTraceCollectorTest.java": "884c045afda8669b35461ab271bd1e45874acd26de05a315e585a1af6d1baac4",
+    "rag-core/src/main/java/com/enterprise/rag/core/rag/generator/AnswerGeneratorImpl.java": "83d5c3bb09caed99a917e91bd45a5cf4d4ffb9202bb6334a82b187364c47278c",
+    "rag-core/src/main/java/com/enterprise/rag/core/rag/service/RAGServiceImpl.java": "b2df0497abfb5cbd2cbb0e9eb8893d82f54a5315dd996e8dcfcf8806f7cd4e66",
+    "rag-core/src/test/java/com/enterprise/rag/core/rag/RAGServiceTelemetryTest.java": "adaf614529ef4feea8be72658d95704fb8d1613d59226c76aef553bc2a8082ac",
+    "rag-frontend/src/api/qa.ts": "304d093cb079045bad2b14555cca1b9baedd863f40b8cd95a4c4da7a286a732e",
+    "rag-frontend/src/components/chat/ChatPanel.vue": "440a22050d4a22eb0496df73739e08c669472d24a40942a2f4c0500c144bf081",
+    "rag-frontend/src/components/chat/ExecutionTracePanel.vue": "61c72e0d2272d37468347f9b76fca9eb8dab1be9b91bb3e78c0541053184b51a",
+    "rag-frontend/src/components/chat/executionTrace.css": "adea84f7727237a0c694d615f83c54375b982601f1ab049dc0c61dbee940ba94",
+    "rag-frontend/src/composables/sseParser.ts": "6555fe04d13f37bc93a539f27a83a3d3df7bf2a2bce848bb34c812ee2f395066",
+    "rag-frontend/src/composables/useSSE.ts": "9765e8398b25fd31c3f722a137374082cf4d7a6078e5124a1efcdf5aea20c232",
+    "rag-frontend/src/styles/traceHost.css": "46d60eb033debfafd4111d65b5182bba0e05a9fc60277bffeceb964db4f700d3",
+    "rag-frontend/src/utils/executionTrace.ts": "523cdbd0897435f919fe3ac41bbd39f4e940c07d94ed96e4a8847c1893fc6852",
+    "rag-frontend/src/utils/qaPresentation.ts": "073632fc2e8da0a90f28058f940cfb06f3b168083cc02f8ccda921352481880a",
+    "rag-frontend/tests/chat-experience.test.mjs": "672b040711f225053a76d284314f61e5ec6540bd1f3f597436d5e755ae8e127b",
+    "rag-frontend/tests/execution-trace.test.mjs": "bab6015e43237ec355a74177deb3d4287611893b74f12e651e97809d5ac00f14",
+    "rag-frontend/tests/preview.mjs": "f330511b12031777d6e9f21c33b0c4f203d6112d79268b6c3560638fac42cd17",
+    "rag-frontend/tests/trace-fixtures.mjs": "baf558ec953bc1eb845fedab9cc7588136c44f77d66e6f05ad5ffb3d8331157c"
+  }
+}

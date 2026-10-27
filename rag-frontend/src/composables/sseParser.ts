@@ -148,13 +148,16 @@ export interface StructuredSSEParser {
   readonly receivedChunks: boolean
 }
 
-export function createStructuredSSEParser(onChunk: (chunk: string) => void): StructuredSSEParser {
+export function createStructuredSSEParser(onChunk: (chunk: string) => void, onTrace?: (payload: string) => void): StructuredSSEParser {
   let terminal: StructuredTerminal | null = null
   let protocolError: string | null = null
   let receivedChunks = false
   const frames = createFrameParser(({ name, data }) => {
     if (protocolError) return
-    if (name === 'text') {
+    if (name === 'trace' && onTrace) {
+      if (terminal) protocolError = '终态后仍收到轨迹事件'
+      else { try { onTrace(data) } catch { /* Auxiliary trace cannot change a valid business terminal. */ } }
+    } else if (name === 'text') {
       if (terminal) {
         protocolError = '终态后仍收到文本事件'
       } else {

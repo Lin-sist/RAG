@@ -1,6 +1,7 @@
 <template>
   <main :class="['chat-panel', { 'is-empty': messages.length === 0 }]">
-    <div ref="messageViewport" class="messages-container" @scroll="updateScrollPosition" @wheel="pauseUpwardScroll" @touchstart="pauseTouchScroll">
+    <div v-if="messages.length" class="trace-view-switch"><div role="tablist" aria-label="问答视图"><button id="qa-conversation-tab" role="tab" aria-controls="qa-conversation" :aria-selected="view === 'conversation'" @click="view = 'conversation'" @keydown="viewTabKey($event, 'conversation')">对话</button><button id="qa-trace-tab" role="tab" aria-controls="qa-execution-trace" :aria-selected="view === 'trace'" @click="view = 'trace'" @keydown="viewTabKey($event, 'trace')">轨迹</button></div><select v-if="view === 'trace' && assistantMessages.length > 1" v-model="selectedTraceId" aria-label="选择本页问答轨迹"><option value="">最新问答</option><option v-for="msg in assistantMessages" :key="msg.id" :value="msg.id">{{ questionFor(msg).slice(0, 45) || '本次问答' }}</option></select></div>
+    <div id="qa-conversation" v-show="view === 'conversation'" ref="messageViewport" class="messages-container" role="tabpanel" aria-labelledby="qa-conversation-tab" @scroll="updateScrollPosition" @wheel="pauseUpwardScroll" @touchstart="pauseTouchScroll">
       <p v-if="isHistoryDetail && historyLoadError" class="kb-navigation-status" role="alert">{{ historyLoadError }} <button v-if="parseRouteHistoryId()" @click="retryHistorySession">重试读取历史</button><RouterLink to="/history">返回历史记录</RouterLink></p>
       <div v-if="messages.length === 0" class="welcome-screen">
         <h1 class="welcome-title">你好{{ authStore.userInfo?.username ? '，' + authStore.userInfo.username : '' }}。准备好开始了吗？</h1>
@@ -62,6 +63,8 @@
       </template>
 
     </div>
+
+    <ExecutionTracePanel v-if="messages.length" id="qa-execution-trace" v-show="view === 'trace'" class="trace-viewport" role="tabpanel" aria-labelledby="qa-trace-tab" :trace="traceMessage?.executionTrace" :question="traceMessage ? questionFor(traceMessage) : ''" :answer="traceMessage?.content" :citations="traceMessage?.citations" :pending="traceMessage?.loading" :invalid="traceMessage?.traceInvalid" :released="traceMessage?.traceReleased" :historical="isHistoryDetail" :business-state="traceMessage?.businessState" :transport="traceMessage?.streamStatus" :answer-available="traceAnswerAvailable" :active="view === 'trace'" />
 
     <div class="input-wrapper">
       <button v-if="showScrollBottom && messages.length" class="scroll-bottom" aria-label="回到底部" @click="scrollToBottom(true)"><ArrowDown :size="18" /></button>
@@ -197,6 +200,9 @@ import {
 import BrandMark from '@/components/common/BrandMark.vue'
 import AnswerContent from './AnswerContent.vue'
 import AnswerSources from './AnswerSources.vue'
+import ExecutionTracePanel from './ExecutionTracePanel.vue'
+import '@/styles/traceHost.css'
+import { TraceAccumulator, releaseOldTraces } from '@/utils/executionTrace'
 import { copyText, clipboardMessage } from '@/utils/clipboard'
 import { parseKbId } from '@/utils/kbPresentation'
 import { getHistoryById } from '@/api/history'
@@ -217,6 +223,22 @@ import {
 } from '@/utils/qaPresentation'
 
 const messages = ref<Message[]>([])
+const view = ref<'conversation' | 'trace'>('conversation')
+const selectedTraceId = ref('')
+let qaRequestSequence = 0
+const assistantMessages = computed(() => messages.value.filter(m => m.role === 'assistant'))
+const traceMessage = computed(() => assistantMessages.value.find(m => m.id === selectedTraceId.value) ?? assistantMessages.value[assistantMessages.value.length - 1])
+const traceAnswerAvailable = computed(() => {
+  const msg = traceMessage.value
+  return !!msg && !msg.loading && !msg.error && (msg.businessState === 'ANSWER' || !msg.businessState && msg.responseMode !== 'stream')
+})
+function questionFor(msg: Message) { const i = messages.value.findIndex(m => m.id === msg.id); return i > 0 && messages.value[i - 1]?.role === 'user' ? messages.value[i - 1]!.content : '' }
+function viewTabKey(event: KeyboardEvent, current: 'conversation' | 'trace') {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  view.value = event.key === 'Home' ? 'conversation' : event.key === 'End' ? 'trace' : current === 'trace' ? 'conversation' : 'trace'
+  document.getElementById(view.value === 'trace' ? 'qa-trace-tab' : 'qa-conversation-tab')?.focus()
+}
 const inputText = ref('')
 const composerInput = ref<HTMLTextAreaElement | null>(null)
 const isSubmitting = ref(false)
@@ -369,6 +391,9 @@ async function loadHistorySession(id: number) {
 function retryHistorySession() { const id = parseRouteHistoryId(); if (id) void loadHistorySession(id) }
 
 function resetNewChat() {
+  qaRequestSequence++
+  view.value = 'conversation'; selectedTraceId.value = ''
+  isSubmitting.value = false; streaming.value = false
   kbNavigationSequence++
   kbNavigationError.value = ''; kbNavigationRetry.value = false
   sse.disconnect()
@@ -508,6 +533,10 @@ async function sendMessage(text: string) {
     ...(responseMode.value === 'stream' ? { streamStatus: 'CONNECTING' as const } : {}),
   })
   messages.value.push(aiMsg)
+  const requestSequence = ++qaRequestSequence
+  const revision = authStore.sessionRevision
+  const current = () => historyAlive && requestSequence === qaRequestSequence && revision === authStore.sessionRevision && messages.value.some(m => m.id === aiMsg.id)
+  const trace = new TraceAccumulator()
 
   scrollToBottom(true)
   isSubmitting.value = true
@@ -520,10 +549,17 @@ async function sendMessage(text: string) {
         question: text,
         topK: chatStore.topK,
       }, (chunk) => {
+        if (!current()) return
         aiMsg.content += chunk
         aiMsg.streamStatus = 'STREAMING_TEXT'
         scrollToBottom()
+      }, payload => {
+        if (!current()) return
+        trace.ingest(payload)
+        aiMsg.executionTrace = trace.value
+        aiMsg.traceInvalid = trace.invalid
       })
+      if (!current()) return
       if (applyStructuredResponse(aiMsg, result, sse.error.value)) {
         window.dispatchEvent(new Event('rag-history-updated'))
       }
@@ -533,21 +569,30 @@ async function sendMessage(text: string) {
       kbId: effectiveKbId,
       question: text,
       topK: chatStore.topK,
-    })
+    }, true)
+    if (!current()) return
     applySyncResponse(aiMsg, response.data.data)
     window.dispatchEvent(new Event('rag-history-updated'))
   } catch (error) {
+    if (!current()) return
     const apiError = normalizeError(error)
     aiMsg.content = apiError.message
     aiMsg.loading = false
     aiMsg.error = true
+    aiMsg.businessState = 'ERROR'
     if (aiMsg.responseMode === 'stream') aiMsg.streamStatus = 'INCOMPLETE'
     aiMsg.citations = []
     aiMsg.sourceHint = undefined
   } finally {
-    isSubmitting.value = false
-    streaming.value = false
-    scrollToBottom()
+    if (current()) {
+      if (aiMsg.executionTrace && (aiMsg.streamStatus === 'CLIENT_ABORTED' || aiMsg.streamStatus === 'INCOMPLETE')) {
+        aiMsg.executionTrace = { ...aiMsg.executionTrace, captureStatus: 'PARTIAL', reasonCode: 'INCOMPLETE' }
+      }
+      releaseOldTraces(assistantMessages.value)
+      isSubmitting.value = false
+      streaming.value = false
+      scrollToBottom()
+    }
   }
 }
 
@@ -586,8 +631,9 @@ watch(
 )
 
 watch(() => authStore.sessionRevision, () => {
-  if (!isHistoryDetail.value) return
+  const historical = isHistoryDetail.value
   resetNewChat()
+  if (!historical) return
   const revision = authStore.sessionRevision
   queueMicrotask(() => { if (historyAlive && revision === authStore.sessionRevision && authStore.isLoggedIn) retryHistorySession() })
 }, { flush: 'sync' })

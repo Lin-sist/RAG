@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+<title>RAG 轨迹界面静态设计稿，全部为模拟数据</title>
+<desc>非运行界面，不代表真实模型或阶段测量。</desc>
+<rect width="100%" height="100%" fill="#000000"/>
+<text x="18" y="24" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="start">第二版 · 窄屏设计 · 模拟数据</text>
+<text x="20" y="70" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">对话</text>
+<text x="82" y="70" fill="#ECECEC" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">轨迹</text>
+<rect x="82" y="81" width="28" height="2" rx="0" fill="#10A37F" stroke="none"/>
+<text x="20" y="123" fill="#ECECEC" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="17" font-weight="500" text-anchor="start">系统如何检索资料并生成回答？</text>
+<text x="20" y="160" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">已完成 · 9 项操作</text>
+<text x="370" y="160" fill="#ECECEC" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="24" font-weight="400" text-anchor="end">4.82 s</text>
+<rect x="16" y="186" width="358" height="146" rx="10" fill="#161616" stroke="#303030"/>
+<text x="34" y="210" fill="#ECECEC" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">执行分布</text>
+<text x="104.0" y="228" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="start">0</text>
+<line x1="104.0" y1="234" x2="104.0" y2="303" stroke="#303030"/>
+<text x="164.746887966805" y="228" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="start">1.2 s</text>
+<line x1="164.746887966805" y1="234" x2="164.746887966805" y2="303" stroke="#303030"/>
+<text x="225.49377593360995" y="228" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="start">2.4 s</text>
+<line x1="225.49377593360995" y1="234" x2="225.49377593360995" y2="303" stroke="#303030"/>
+<text x="286.2406639004149" y="228" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="start">3.6 s</text>
+<line x1="286.2406639004149" y1="234" x2="286.2406639004149" y2="303" stroke="#303030"/>
+<text x="348.0" y="228" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="end">4.82 s</text>
+<line x1="348.0" y1="234" x2="348.0" y2="303" stroke="#303030"/>
+<text x="34" y="251" fill="#B19AE7" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">助手</text>
+<text x="34" y="276" fill="#E2A653" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">工具</text>
+<text x="34" y="301" fill="#59BCA9" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">上下文</text>
+<rect x="134.3734439834025" y="233" width="30.37344398340249" height="72" rx="0" fill="#24453F" stroke="#10A37F"/>
+<rect x="104.0" y="266" width="1.5186721991701242" height="10" rx="2" fill="#E2A653" stroke="none"/>
+<rect x="105.51867219917013" y="266" width="6.074688796680497" height="10" rx="2" fill="#E2A653" stroke="none"/>
+<rect x="111.59336099585062" y="266" width="14.680497925311203" height="10" rx="2" fill="#E2A653" stroke="none"/>
+<rect x="126.27385892116183" y="266" width="8.099585062240662" height="10" rx="2" fill="#E2A653" stroke="none"/>
+<rect x="134.3734439834025" y="266" width="2.5311203319502096" height="10" rx="2" fill="#E2A653" stroke="none"/>
+<rect x="136.9045643153527" y="266" width="10.124481327800828" height="10" rx="2" fill="#E2A653" stroke="none"/>
+<rect x="147.02904564315352" y="291" width="5.062240663900414" height="10" rx="2" fill="#59BCA9" stroke="none"/>
+<rect x="152.09128630705393" y="241" width="181.22821576763485" height="10" rx="2" fill="#B19AE7" stroke="none"/>
+<rect x="333.3195020746888" y="266" width="14.680497925311203" height="10" rx="2" fill="#E2A653" stroke="none"/>
+<text x="34" y="320" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="start">0.60 — 1.20 s · 已筛选上下文</text>
+<text x="20" y="369" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">全部</text>
+<text x="78" y="369" fill="#E2A653" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">工具</text>
+<text x="132" y="369" fill="#B19AE7" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">助手</text>
+<text x="185" y="369" fill="#59BCA9" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">上下文</text>
+<line x1="20" y1="385" x2="370" y2="385" stroke="#303030"/>
+<rect x="20" y="404" width="46" height="22" rx="4" fill="#19362F" stroke="none"/>
+<text x="43" y="420" fill="#59BCA9" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="middle">上下文</text>
+<text x="80" y="415" fill="#ECECEC" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">组织回答依据</text>
+<text x="80" y="436" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">整理本次已授权的资料片段</text>
+<text x="370" y="415" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="end">100 ms</text>
+<rect x="0" y="483" width="390" height="361" rx="16" fill="#161616" stroke="#303030"/>
+<text x="22" y="523" fill="#ECECEC" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="19" font-weight="550" text-anchor="start">组织回答依据</text>
+<text x="366" y="524" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="22" font-weight="400" text-anchor="end">×</text>
+<text x="22" y="560" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" text-anchor="start">概览</text>
+<text x="88" y="560" fill="#59BCA9" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="13" font-weight="400" text-anchor="start">来源</text>
+<line x1="22" y1="577" x2="368" y2="577" stroke="#303030"/>
+<text x="22" y="615" fill="#ECECEC" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">资料 A · 检索流程</text>
+<text x="22" y="640" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">本次已授权的选中来源（模拟）</text>
+<line x1="22" y1="661" x2="368" y2="661" stroke="#303030"/>
+<text x="22" y="697" fill="#ECECEC" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="14" font-weight="400" text-anchor="start">资料 B · 引用规则</text>
+<text x="22" y="722" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="400" text-anchor="start">本次已授权的选中来源（模拟）</text>
+<text x="22" y="784" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="start">来源正文复用本次授权数据，不从轨迹泄露。</text>
+<text x="22" y="817" fill="#B5B5B5" font-family="Microsoft YaHei UI,Microsoft YaHei,Segoe UI,sans-serif" font-size="11" font-weight="400" text-anchor="start">静态设计稿，交互另看 trace-v2.html。</text>
+</svg>

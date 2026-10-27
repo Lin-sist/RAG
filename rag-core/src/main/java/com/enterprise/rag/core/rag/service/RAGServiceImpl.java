@@ -463,9 +463,14 @@ public class RAGServiceImpl implements RAGService {
             return Flux.error(new IllegalArgumentException("知识库名称不能为空"));
         }
 
-        return Flux.deferContextual(contextView -> askStreamSubscription(
-                request,
-                contextView.getOrDefault(RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY, null)));
+        return Flux.deferContextual(contextView -> {
+            com.enterprise.rag.common.trace.ExecutionTraceCollector collector = contextView.getOrDefault(
+                    com.enterprise.rag.common.trace.ExecutionTraceCollector.REACTOR_CONTEXT_KEY, null);
+            try (io.opentelemetry.context.Scope ignored = collector == null ? () -> { } : collector.activate()) {
+                return askStreamSubscription(request,
+                        contextView.getOrDefault(RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY, null));
+            }
+        });
     }
 
     private Flux<String> askStreamSubscription(QARequest request,
@@ -566,6 +571,7 @@ public class RAGServiceImpl implements RAGService {
                 generation.safeError(failure, "ask", "GENERATION_FAILED").finish("ERROR");
                 throw failure;
             }
+            io.opentelemetry.context.Context finalizationContext = telemetry.captureContext();
             generation.detach();
             askSpan.detach();
             if (routePlan.isPresent()) {
@@ -576,12 +582,13 @@ public class RAGServiceImpl implements RAGService {
                         routePlan.get(),
                         budgetLedger.orElseThrow(),
                         terminalSignal,
-                        askSpan);
+                        askSpan, finalizationContext);
             } else if (terminalSignal != null) {
                 StringBuilder streamedText = new StringBuilder();
                 stream = stream
                         .doOnNext(streamedText::append)
                         .doOnComplete(() -> {
+                            try (io.opentelemetry.context.Scope ignored = finalizationContext.makeCurrent()) {
                             GeneratedAnswer finalized = answerGenerator.finalizeStream(
                                     question, streamedText.toString(), contexts);
                             String state = "no_result".equals(finalized.metadata().get("status"))
@@ -589,6 +596,7 @@ public class RAGServiceImpl implements RAGService {
                             String reason = "NO_ANSWER".equals(state) ? "MODEL_REFUSAL" : "NONE";
                             recordStreamResult(terminalSignal, state, reason,
                                     finalized.answer(), finalized.citations(), finalized.metadata());
+                            }
                         });
             }
             return finishStream(stream, askSpan, generation, "SUCCESS", terminalSignal);
@@ -609,6 +617,10 @@ public class RAGServiceImpl implements RAGService {
         java.util.concurrent.atomic.AtomicReference<String> errorOutcome =
                 new java.util.concurrent.atomic.AtomicReference<>("ERROR");
         return source
+                .doOnComplete(() -> {
+                    if (generationSpan != null) generationSpan.finishProjection(completedOutcome);
+                    askSpan.finishProjection(completedOutcome);
+                })
                 .doOnError(failure -> {
                     if (isTimeoutFailure(failure)) {
                         errorOutcome.set("TIMEOUT");
@@ -616,7 +628,9 @@ public class RAGServiceImpl implements RAGService {
                     askSpan.safeError(failure, "ask", "ASK_STREAM_FAILED");
                     if (generationSpan != null) {
                         generationSpan.safeError(failure, "ask", "GENERATION_FAILED");
+                        generationSpan.finishProjection(errorOutcome.get());
                     }
+                    askSpan.finishProjection(errorOutcome.get());
                 })
                 .doFinally(signal -> {
                     String outcome = switch (signal) {
@@ -666,8 +680,9 @@ public class RAGServiceImpl implements RAGService {
             QueryRoutePlan plan,
             QueryBudgetLedger ledger,
             RAGService.StreamTerminalSignal terminalSignal,
-            GenAiTelemetry.SpanScope askSpan) {
+            GenAiTelemetry.SpanScope askSpan, io.opentelemetry.context.Context finalizationContext) {
         return source.collectList().flatMapMany(chunks -> {
+            try (io.opentelemetry.context.Scope ignored = finalizationContext.makeCurrent()) {
             String answerText = String.join("", chunks);
             GeneratedAnswer finalized = factQueryStrategyExecutor.finalizeStream(
                     question, answerText, contexts, plan);
@@ -695,6 +710,7 @@ public class RAGServiceImpl implements RAGService {
                 return Flux.fromIterable(chunks);
             }
             return Flux.just(QAResponse.noResult(question).answer());
+            }
         }).doOnError(failure -> {
             recordStreamRoute(terminalSignal, plan, "ERROR");
             recordStreamBudget(terminalSignal, ledger);

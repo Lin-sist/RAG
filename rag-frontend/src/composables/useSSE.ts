@@ -33,6 +33,7 @@ export function useSSE() {
     body: Record<string, unknown>,
     parser: { push(chunk: string): void; finish(): void },
     structured: boolean,
+    trace = false,
   ): Promise<'OK' | 'FAILED' | 'ABORTED'> {
     if (isConnected.value) throw new Error('已有流式请求正在进行')
     const controller = new AbortController()
@@ -49,6 +50,7 @@ export function useSSE() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(structured ? { 'X-RAG-Stream-Contract': 'structured-v1' } : {}),
+          ...(trace ? { 'X-RAG-Trace-Contract': 'trace-v1' } : {}),
         },
         body: JSON.stringify(body),
         signal: controller.signal,
@@ -105,12 +107,13 @@ export function useSSE() {
     url: string,
     body: Record<string, unknown>,
     onChunk: (chunk: string) => void,
+    onTrace?: (payload: string) => void,
   ): Promise<StructuredStreamResult> {
     const parser = createStructuredSSEParser((chunk) => {
       data.value += chunk
       onChunk(chunk)
-    })
-    const outcome = await consume(url, body, parser, true)
+    }, onTrace)
+    const outcome = await consume(url, body, parser, true, !!onTrace)
     if (outcome === 'ABORTED') {
       return { status: 'CLIENT_ABORTED', terminal: null, receivedChunks: parser.receivedChunks }
     }

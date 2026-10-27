@@ -57,14 +57,15 @@ public final class GenAiTelemetry {
         if (!SpanNames.ALLOWED.contains(spanName)) {
             return SpanScope.noop();
         }
+        ExecutionTraceCollector.Handle projection = ExecutionTraceCollector.startCurrent(spanName);
         try {
             SpanBuilder builder = tracer.spanBuilder(spanName).setNoParent();
             if (linkedContext != null && Span.fromContext(linkedContext).getSpanContext().isValid()) {
                 builder.addLink(Span.fromContext(linkedContext).getSpanContext());
             }
-            return start(builder, attributes, spanName);
+            return start(builder, attributes, spanName, projection);
         } catch (RuntimeException telemetryFailure) {
-            return SpanScope.noop();
+            return projectionOnly(projection, attributes, spanName);
         }
     }
 
@@ -72,10 +73,11 @@ public final class GenAiTelemetry {
         if (!SpanNames.ALLOWED.contains(spanName)) {
             return SpanScope.noop();
         }
+        ExecutionTraceCollector.Handle projection = ExecutionTraceCollector.startCurrent(spanName);
         try {
-            return start(tracer.spanBuilder(spanName), attributes, spanName);
+            return start(tracer.spanBuilder(spanName), attributes, spanName, projection);
         } catch (RuntimeException telemetryFailure) {
-            return SpanScope.noop();
+            return projectionOnly(projection, attributes, spanName);
         }
     }
 
@@ -93,6 +95,10 @@ public final class GenAiTelemetry {
             String protocol,
             long attemptCount,
             long retryCount) {
+        ExecutionTraceCollector.currentFact(Attributes.PROVIDER_REQUESTED.getKey(), requestedProvider);
+        ExecutionTraceCollector.currentFact(Attributes.PROVIDER_EFFECTIVE.getKey(), effectiveProvider);
+        ExecutionTraceCollector.currentFact(Attributes.ATTEMPT_COUNT.getKey(), attemptCount);
+        ExecutionTraceCollector.currentFact(Attributes.RETRY_COUNT.getKey(), retryCount);
         try {
             Span current = Span.current();
             setSafeString(current, Attributes.PROVIDER_REQUESTED, requestedProvider);
@@ -113,6 +119,8 @@ public final class GenAiTelemetry {
     }
 
     public void currentTokenUsage(Long inputTokens, Long outputTokens) {
+        ExecutionTraceCollector.currentFact(Attributes.TOKEN_INPUT.getKey(), inputTokens);
+        ExecutionTraceCollector.currentFact(Attributes.TOKEN_OUTPUT.getKey(), outputTokens);
         try {
             Span current = Span.current();
             if (inputTokens != null && inputTokens >= 0L) {
@@ -135,14 +143,17 @@ public final class GenAiTelemetry {
 
     private SpanScope start(SpanBuilder builder,
             Map<? extends AttributeKey<?>, ?> attributes,
-            String spanName) {
+            String spanName, ExecutionTraceCollector.Handle projection) {
         Span span = null;
         Scope scope = null;
         try {
             span = builder.startSpan();
             applyAttributes(span, attributes);
-            scope = span.makeCurrent();
-            return new SpanScope(span, scope, metrics, spanName);
+            Scope otelScope = span.makeCurrent();
+            Scope uiScope = projection == null ? () -> { } : projection.makeCurrent();
+            scope = () -> { uiScope.close(); otelScope.close(); };
+            projectAttributes(projection, attributes);
+            return new SpanScope(span, scope, metrics, spanName, projection);
         } catch (RuntimeException telemetryFailure) {
             if (scope != null) {
                 try {
@@ -158,8 +169,22 @@ public final class GenAiTelemetry {
                     // best effort cleanup
                 }
             }
-            return SpanScope.noop();
+            return projectionOnly(projection, attributes, spanName);
         }
+    }
+
+    private SpanScope projectionOnly(ExecutionTraceCollector.Handle projection,
+            Map<? extends AttributeKey<?>, ?> attributes, String spanName) {
+        projectAttributes(projection, attributes);
+        return new SpanScope(Span.getInvalid(), projection == null ? () -> { } : projection.makeCurrent(),
+                MetricInstruments.noop(), spanName, projection);
+    }
+
+    private static void projectAttributes(ExecutionTraceCollector.Handle projection,
+            Map<? extends AttributeKey<?>, ?> attributes) {
+        if (projection != null && attributes != null) attributes.forEach((key, value) -> {
+            if (key != null) projection.fact(key.getKey(), value);
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -194,22 +219,24 @@ public final class GenAiTelemetry {
         private final Scope scope;
         private final MetricInstruments metrics;
         private final String spanName;
+        private final ExecutionTraceCollector.Handle projection;
         private final long startedNanos;
         private final AtomicBoolean scopeClosed = new AtomicBoolean();
         private final AtomicBoolean ended = new AtomicBoolean();
         private volatile String finalOutcome;
 
-        private SpanScope(Span span, Scope scope, MetricInstruments metrics, String spanName) {
+        private SpanScope(Span span, Scope scope, MetricInstruments metrics, String spanName, ExecutionTraceCollector.Handle projection) {
             this.span = Objects.requireNonNull(span, "span");
             this.scope = Objects.requireNonNull(scope, "scope");
             this.metrics = Objects.requireNonNull(metrics, "metrics");
             this.spanName = spanName;
+            this.projection = projection;
             this.startedNanos = System.nanoTime();
             this.metrics.started(spanName);
         }
 
         private static SpanScope noop() {
-            return new SpanScope(Span.getInvalid(), () -> { }, MetricInstruments.noop(), null);
+            return new SpanScope(Span.getInvalid(), () -> { }, MetricInstruments.noop(), null, null);
         }
 
         public Span span() {
@@ -217,6 +244,7 @@ public final class GenAiTelemetry {
         }
 
         public SpanScope safeError(Throwable error, String category, String code) {
+            if (projection != null) projection.fact(Attributes.ERROR_CATEGORY.getKey(), category);
             try {
                 setSafeString(Attributes.ERROR_TYPE, error == null ? null : error.getClass().getSimpleName());
                 setSafeString(Attributes.ERROR_CATEGORY, category);
@@ -349,6 +377,7 @@ public final class GenAiTelemetry {
         }
 
         public SpanScope stringFact(AttributeKey<String> key, String value) {
+            if (projection != null && key != null) projection.fact(key.getKey(), value);
             try {
                 if (Attributes.ALLOWED.contains(key)) {
                     setSafeString(key, value);
@@ -360,6 +389,7 @@ public final class GenAiTelemetry {
         }
 
         public SpanScope longFact(AttributeKey<Long> key, long value) {
+            if (projection != null && key != null) projection.fact(key.getKey(), value);
             try {
                 if (Attributes.ALLOWED.contains(key)) {
                     span.setAttribute(key, Math.max(0L, value));
@@ -371,6 +401,7 @@ public final class GenAiTelemetry {
         }
 
         public SpanScope booleanFact(AttributeKey<Boolean> key, boolean value) {
+            if (projection != null && key != null) projection.fact(key.getKey(), value);
             try {
                 if (Attributes.ALLOWED.contains(key)) {
                     span.setAttribute(key, value);
@@ -403,6 +434,7 @@ public final class GenAiTelemetry {
                 outcome(finalOutcome);
             }
             detach();
+            finishProjection(this.finalOutcome);
             if (ended.compareAndSet(false, true)) {
                 try {
                     span.end();
@@ -412,6 +444,11 @@ public final class GenAiTelemetry {
                 metrics.finished(spanName, this.finalOutcome,
                         Math.max(0L, System.nanoTime() - startedNanos));
             }
+        }
+
+        /** Close the UI lifecycle before downstream terminal delivery, preserving OTel doFinally timing. */
+        public void finishProjection(String outcome) {
+            if (projection != null) projection.finish(outcome);
         }
 
         @Override

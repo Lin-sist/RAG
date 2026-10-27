@@ -104,6 +104,9 @@ proxy:
 
 # RAG Configuration
 rag:
+  # The local PowerShell launcher enables this; other launch paths remain opt-in.
+  execution-trace:
+    enabled: ${RAG_EXECUTION_TRACE_ENABLED:false}
   # C17 new embedding-space rebuild. Non-REST and default-off; live use needs a separate gate.
   vector-model-rebuild:
     enabled: ${RAG_VECTOR_MODEL_REBUILD_ENABLED:false}

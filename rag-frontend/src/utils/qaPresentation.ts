@@ -2,6 +2,7 @@ import type { QAHistoryDTO } from '@/types/history'
 import type { Citation, QAResponse, RetrievedContext } from '@/types/qa'
 import type { StreamFinalState } from '@/composables/sseParser'
 import type { StructuredStreamResult } from '@/composables/useSSE'
+import { parseExecutionTrace, type ExecutionTrace } from './executionTrace'
 
 export interface ChatPresentationMessage {
     id: string
@@ -15,6 +16,10 @@ export interface ChatPresentationMessage {
     responseMode?: 'sync' | 'stream'
     streamStatus?: 'CONNECTING' | 'STREAMING_TEXT' | 'INCOMPLETE' | 'CLIENT_ABORTED' | StreamFinalState
     streamReason?: string
+    executionTrace?: ExecutionTrace
+    traceInvalid?: boolean
+    traceReleased?: boolean
+    businessState?: StreamFinalState
 }
 
 export function normalizeCitations(citations: Citation[] | null | undefined): Citation[] {
@@ -38,9 +43,19 @@ export function formatRelevanceScore(score: number | null | undefined): string |
 }
 
 export function applySyncResponse(message: ChatPresentationMessage, response: QAResponse): void {
+    const trace = response.metadata?.executionTrace
+    if (trace !== undefined) {
+        const parsed = parseExecutionTrace(trace)
+        message.executionTrace = parsed ?? undefined
+        message.traceInvalid = !parsed
+    }
     const responseStatus = typeof response.metadata?.status === 'string'
         ? response.metadata.status
         : undefined
+    const final = response.metadata?.routeFinalState
+    message.businessState = typeof final === 'string' && ['ANSWER', 'NO_ANSWER', 'UNSUPPORTED', 'INVALID', 'ERROR', 'CANCELLED'].includes(final)
+        ? final as StreamFinalState : responseStatus === 'error' ? 'ERROR' : responseStatus === 'no_result' ? 'NO_ANSWER'
+            : responseStatus === 'unsupported' ? 'UNSUPPORTED' : 'ANSWER'
 
     if (responseStatus === 'error') {
         message.content = response.answer || '问答生成失败，请稍后重试'
@@ -71,6 +86,7 @@ export function applyStructuredResponse(
         ? result.terminal!.finalState
         : result.status
     message.streamReason = result.terminal?.reason
+    message.businessState = result.terminal?.finalState
     message.loading = false
     message.error = false
     const answered = result.terminal?.finalState === 'ANSWER'

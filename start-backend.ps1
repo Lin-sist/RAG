@@ -38,6 +38,9 @@ function Import-DotEnv {
 
 Import-DotEnv -Path '.env.local'
 
+# Enable request-local QA traces for the normal desktop workflow; keep explicit overrides.
+if (-not $env:RAG_EXECUTION_TRACE_ENABLED) { $env:RAG_EXECUTION_TRACE_ENABLED = 'true' }
+
 if (-not $env:MYSQL_HOST_PORT) { $env:MYSQL_HOST_PORT = '3306' }
 if (-not $env:REDIS_HOST_PORT) { $env:REDIS_HOST_PORT = '6379' }
 
@@ -83,4 +86,5 @@ Write-Host '[start-backend] Installing internal module dependencies for a fresh 
 mvn -f pom.xml -pl rag-common,rag-auth,rag-document,rag-core -DskipTests install
 
 Write-Host '[start-backend] Starting rag-admin with local env mapping on port 8080...'
+Write-Host "[start-backend] QA execution trace enabled: $env:RAG_EXECUTION_TRACE_ENABLED"
 mvn -f rag-admin/pom.xml spring-boot:run -DskipTests

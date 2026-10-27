@@ -535,6 +535,10 @@ class QAControllerTest {
         }
 
         private String streamWire(String contract) throws Exception {
+                return streamWire(contract, null);
+        }
+
+        private String streamWire(String contract, String traceContract) throws Exception {
                 MockMvc mvc = MockMvcBuilders.standaloneSetup(qaController)
                                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                                 .build();
@@ -547,6 +551,7 @@ class QAControllerTest {
                         if (contract != null) {
                                 builder.header("X-RAG-Stream-Contract", contract);
                         }
+                        if (traceContract != null) builder.header("X-RAG-Trace-Contract", traceContract);
                         MvcResult started = mvc.perform(builder)
                                         .andExpect(request().asyncStarted()).andReturn();
                         return mvc.perform(asyncDispatch(started)).andReturn()
@@ -554,6 +559,52 @@ class QAControllerTest {
                 } finally {
                         SecurityContextHolder.clearContext();
                 }
+        }
+
+        @Test
+        void traceRequiresBothServerFlagAndExplicitContract() throws Exception {
+                when(ragService.askStream(any(QARequest.class))).thenReturn(completedAnswerStream());
+                assertFalse(streamWire("structured-v1", "trace-v1").contains("event:trace"));
+                org.springframework.test.util.ReflectionTestUtils.setField(qaController, "executionTraceEnabled", true);
+                assertFalse(streamWire("structured-v1").contains("event:trace"));
+                assertFalse(streamWire(null, "trace-v1").contains("event:trace"));
+                assertFalse(streamWire("structured-v1", "trace-v9").contains("event:trace"));
+        }
+
+        @Test
+        void negotiatedTraceEndsBeforeOneBusinessTerminal() throws Exception {
+                org.springframework.test.util.ReflectionTestUtils.setField(qaController, "executionTraceEnabled", true);
+                when(ragService.askStream(any(QARequest.class))).thenReturn(Flux.deferContextual(context -> {
+                        var collector = context.<com.enterprise.rag.common.trace.ExecutionTraceCollector>get(
+                                com.enterprise.rag.common.trace.ExecutionTraceCollector.REACTOR_CONTEXT_KEY);
+                        try (var scope = collector.activate(); var span = com.enterprise.rag.common.trace.GenAiTelemetry.noop()
+                                        .startRoot("rag.ask", Map.of(), null)) { span.outcome("SUCCESS"); }
+                        context.<RAGService.StreamTerminalSignal>get(RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY)
+                                .recordExecutionResult("ANSWER", "NONE", "answer", List.of(), Map.of());
+                        return Flux.just("answer");
+                }));
+                String wire = streamWire("structured-v1", "trace-v1");
+                assertTrue(wire.contains("execution.snapshot"));
+                assertTrue(wire.contains("SUCCEEDED"));
+                assertTrue(wire.indexOf("execution.snapshot") < wire.indexOf("event:terminal"));
+                assertEquals(1, wire.split("event:terminal", -1).length - 1);
+                assertTrue(wire.lastIndexOf("event:trace") < wire.indexOf("event:terminal"));
+                verify(qaHistoryService, times(1)).save(any(RequestIdentity.class), any());
+        }
+
+        @Test
+        void syncTraceIsNegotiatedAndDoesNotChangeAnswer() {
+                org.springframework.test.util.ReflectionTestUtils.setField(qaController, "executionTraceEnabled", true);
+                when(ragService.ask(any(QARequest.class))).thenAnswer(invocation -> {
+                        try (var span = com.enterprise.rag.common.trace.GenAiTelemetry.noop().startRoot("rag.ask", Map.of(), null)) {
+                                span.outcome("SUCCESS");
+                                return QAResponse.success("问题", "答案", List.of(), List.of(), Map.of());
+                        }
+                });
+                assertFalse(qaController.ask(streamRequest(), userDetails).getBody().getData().metadata().containsKey("executionTrace"));
+                var response = qaController.ask(streamRequest(), "trace-v1", userDetails).getBody().getData();
+                assertEquals("答案", response.answer());
+                assertEquals("COMPLETE", ((Map<?, ?>) response.metadata().get("executionTrace")).get("captureStatus"));
         }
 
         @Test

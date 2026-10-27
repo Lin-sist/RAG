@@ -42,6 +42,34 @@ class RAGServiceTelemetryTest {
         return new TenantVectorScope(1L, 1L, collectionName);
     }
 
+    @Test
+    void uiProjectionIsCompleteBeforeStreamTerminalCallbackWithOtelDisabled() {
+        QueryEngine queryEngine = mock(QueryEngine.class);
+        AnswerGenerator generator = mock(AnswerGenerator.class);
+        var collector = new com.enterprise.rag.common.trace.ExecutionTraceCollector(null);
+        when(queryEngine.retrieveWithDiagnostics(any(), any(RetrieveOptions.class))).thenReturn(
+                RetrievalResult.complete(List.of(new RetrievedContext("private-context", "private-source", .8f, Map.of()))));
+        when(generator.generateStream(any(), any())).thenReturn(reactor.core.publisher.Flux.just("private-answer")
+                .publishOn(reactor.core.scheduler.Schedulers.boundedElastic()));
+        when(generator.finalizeStream(any(), any(), any())).thenAnswer(invocation -> {
+            try (var prompt = GenAiTelemetry.noop().startSpan("rag.prompt.build", Map.of())) { prompt.outcome("SUCCESS"); }
+            try (var citation = GenAiTelemetry.noop().startSpan("rag.citation.validate", Map.of())) { citation.outcome("SUCCESS"); }
+            return GeneratedAnswer.of("private-answer", List.of(), Map.of());
+        });
+        RAGServiceImpl service = new RAGServiceImpl(queryEngine, generator, mock(RedisUtil.class), new ObjectMapper(), GenAiTelemetry.noop());
+        var signal = new com.enterprise.rag.core.rag.service.RAGService.StreamTerminalSignal();
+        var captured = new java.util.concurrent.atomic.AtomicReference<Map<String, Object>>();
+        service.askStream(QARequest.stream("private-question", scope("private-collection")))
+                .doOnComplete(() -> captured.set(collector.snapshot("ANSWER")))
+                .contextWrite(context -> context.put(com.enterprise.rag.common.trace.ExecutionTraceCollector.REACTOR_CONTEXT_KEY, collector)
+                        .put(com.enterprise.rag.core.rag.service.RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY, signal))
+                .blockLast(java.time.Duration.ofSeconds(5));
+        assertEquals("COMPLETE", captured.get().get("captureStatus"));
+        assertTrue(captured.get().toString().contains("rag.citation.validate"));
+        assertFalse(captured.get().toString().contains("RUNNING"));
+        assertFalse(captured.get().toString().contains("private-"));
+    }
+
     private final InMemorySpanExporter exporter = InMemorySpanExporter.create();
     private final SdkTracerProvider provider = SdkTracerProvider.builder()
             .addSpanProcessor(SimpleSpanProcessor.create(exporter))

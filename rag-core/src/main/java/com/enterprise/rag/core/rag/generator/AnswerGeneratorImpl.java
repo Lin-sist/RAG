@@ -165,7 +165,11 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
         }
         llmSpan.detach();
         return stream
-                .doOnError(failure -> llmSpan.safeError(failure, "llm", "LLM_FAILED"))
+                .doOnComplete(() -> llmSpan.finishProjection("SUCCESS"))
+                .doOnError(failure -> {
+                    llmSpan.safeError(failure, "llm", "LLM_FAILED");
+                    llmSpan.finishProjection("ERROR");
+                })
                 .doFinally(signal -> llmSpan.finish(switch (signal) {
                     case CANCEL -> "CANCELLED";
                     case ON_ERROR -> "ERROR";
@@ -189,7 +193,8 @@ public class AnswerGeneratorImpl implements AnswerGenerator {
             GenerationBudget budget) {
         String answer = sanitizeAnswerText(streamedAnswer);
         PromptBuilder.PromptBuildResult buildResult = buildPrompt(query, contexts, budget.maxContextTokens());
-        CitationResolution citationResolution = resolveCitations(query, answer, buildResult.contexts());
+        CitationResolution citationResolution = traceStage(GenAiTelemetry.SpanNames.CITATION_VALIDATE,
+                () -> resolveCitations(query, answer, buildResult.contexts()));
         CitationValidationResult citationValidation = citationResolution.validation();
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("model", getModelName());

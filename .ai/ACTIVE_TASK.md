@@ -2,13 +2,13 @@
 
 ## Status
 
-`ACTIVE · DESIGN_REVIEW`
+`ACTIVE · REVIEW_READY`
 
-用户已确认登录页验收并提交；当前仅规划单次问答轨迹界面（WIP = 1/1），业务实现等待设计确认。
+正式轨迹组件及同步/流式数据接线已实现，输入区模板/CSS 指纹一致；本地验收见[接入记录](../openspec/changes/rag-execution-trace-view/implementation-review.md)。真实业务联调与接受/归档仍待授权（WIP = 1/1）。
 
 ## Active (WIP Limit = 1)
 
-- **rag-execution-trace-view**：[设计](../openspec/changes/rag-execution-trace-view/design.md) / [任务](../openspec/changes/rag-execution-trace-view/tasks.md)。2026-10-26 用户授权 OpenSpec 规划；本轮仅设计与静态稿，真实业务调用预算 0，未授权业务实现或 Agent 提交。
+- **rag-execution-trace-view**：[设计](../openspec/changes/rag-execution-trace-view/design.md) / [任务](../openspec/changes/rag-execution-trace-view/tasks.md)。2026-10-27 用户认可第二版并授权正式接入，明确输入框不变；真实业务调用预算 0，Agent 提交及接受/归档未授权。
 
 ## Parked & Remaining Evidence Debt
 

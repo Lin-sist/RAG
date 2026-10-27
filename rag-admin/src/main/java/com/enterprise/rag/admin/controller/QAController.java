@@ -14,6 +14,7 @@ import com.enterprise.rag.common.model.ApiResponse;
 import com.enterprise.rag.common.ratelimit.RateLimit;
 import com.enterprise.rag.common.ratelimit.RateLimitDimension;
 import com.enterprise.rag.common.trace.TraceContext;
+import com.enterprise.rag.common.trace.ExecutionTraceCollector;
 import com.enterprise.rag.core.rag.model.Citation;
 import com.enterprise.rag.core.rag.model.QARequest;
 import com.enterprise.rag.core.vectorstore.TenantVectorScope;
@@ -66,6 +67,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequiredArgsConstructor
 @Tag(name = "问答服务", description = "RAG 问答接口：同步问答、流式问答")
 public class QAController {
+    @org.springframework.beans.factory.annotation.Value("${rag.execution-trace.enabled:false}")
+    private boolean executionTraceEnabled;
     private static final long STREAM_GAP_WARN_THRESHOLD_MS = 1500L;
     private static final int DEBUG_CONTENT_PREVIEW_LENGTH = 300;
     private static final ObjectMapper DEBUG_OBJECT_MAPPER = new ObjectMapper();
@@ -110,6 +113,7 @@ public class QAController {
     })
     public ResponseEntity<ApiResponse<QAResponse>> ask(
             @Valid @RequestBody AskRequest request,
+            @RequestHeader(value = "X-RAG-Trace-Contract", required = false) String traceContract,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
         RequestIdentity identity = currentUserService.requireIdentity(userDetails);
@@ -133,8 +137,21 @@ public class QAController {
                 false);
 
         // 执行问答
-        QAResponse response = ragService.ask(qaRequest);
+        ExecutionTraceCollector collector = executionTraceEnabled && "trace-v1".equals(traceContract)
+                ? new ExecutionTraceCollector(traceId) : null;
+        QAResponse response;
+        try (io.opentelemetry.context.Scope ignored = collector == null ? () -> { } : collector.activate()) {
+            response = ragService.ask(qaRequest);
+        }
         response = enrichResponseSources(identity.tenantId(), request.kbId(), response);
+        if (collector != null) {
+            Map<String, Object> metadata = new LinkedHashMap<>(response.metadata());
+            String state = String.valueOf(metadata.getOrDefault("routeFinalState",
+                    response.isSuccess() ? response.hasResult() ? "ANSWER" : "NO_ANSWER" : "ERROR"));
+            metadata.put("executionTrace", collector.snapshot(state));
+            collector.release();
+            response = new QAResponse(response.question(), response.answer(), response.citations(), response.contexts(), metadata);
+        }
 
         // RAG-04: 问答入口计入知识库查询次数
         knowledgeBaseService.incrementQueryCount(identity.tenantId(), request.kbId());
@@ -180,6 +197,7 @@ public class QAController {
     public SseEmitter askStream(
             @Valid @RequestBody AskRequest request,
             @RequestHeader(value = "X-RAG-Stream-Contract", required = false) String streamContract,
+            @RequestHeader(value = "X-RAG-Trace-Contract", required = false) String traceContract,
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
         if (streamContract != null && !streamContract.isBlank()
@@ -218,10 +236,19 @@ public class QAController {
         StreamDeliveryDiagnostics diagnostics = new StreamDeliveryDiagnostics(startTime, STREAM_GAP_WARN_THRESHOLD_MS);
         RAGService.StreamTerminalSignal terminalSignal = new RAGService.StreamTerminalSignal();
         AtomicBoolean deliveryClosed = new AtomicBoolean();
+        Object deliveryLock = new Object();
+        ExecutionTraceCollector collector = executionTraceEnabled && structured && "trace-v1".equals(traceContract)
+                ? new ExecutionTraceCollector(traceId) : null;
 
         Disposable.Swap subscription = Disposables.swap();
+        Disposable.Swap tracePump = Disposables.swap();
+        Runnable releaseTrace = () -> {
+            tracePump.dispose();
+            if (collector != null) collector.release();
+        };
         emitter.onCompletion(() -> {
             deliveryClosed.set(true);
+            releaseTrace.run();
             if (!subscription.isDisposed()) {
                 subscription.dispose();
             }
@@ -229,6 +256,7 @@ public class QAController {
         emitter.onTimeout(() -> {
             terminalSignal.markTimeout();
             deliveryClosed.set(true);
+            releaseTrace.run();
             if (!subscription.isDisposed()) {
                 subscription.dispose();
             }
@@ -236,17 +264,30 @@ public class QAController {
         });
         emitter.onError(error -> {
             deliveryClosed.set(true);
+            releaseTrace.run();
             if (!subscription.isDisposed()) {
                 subscription.dispose();
             }
         });
 
-        subscription.update(ragService.askStream(qaRequest)
+        if (collector != null) tracePump.update(reactor.core.scheduler.Schedulers.boundedElastic().schedulePeriodically(() -> {
+            synchronized (deliveryLock) {
+                if (deliveryClosed.get()) return;
+                try { sendTraceBatch(emitter, collector); }
+                catch (IOException | IllegalStateException transportFailure) {
+                    deliveryClosed.set(true); subscription.dispose(); releaseTrace.run(); emitter.complete();
+                }
+            }
+        }, 0, 25, java.util.concurrent.TimeUnit.MILLISECONDS));
+
+        subscription.update(Flux.defer(() -> ragService.askStream(qaRequest))
                 .doOnSubscribe(s -> log.debug("流式问答开始: kbId={}", request.kbId()))
                 .contextWrite(context -> context.put(
                         RAGService.STREAM_TERMINAL_SIGNAL_CONTEXT_KEY, terminalSignal))
+                .contextWrite(context -> collector == null ? context : context.put(ExecutionTraceCollector.REACTOR_CONTEXT_KEY, collector))
                 .subscribe(
                         chunk -> {
+                            synchronized (deliveryLock) {
                             if (deliveryClosed.get()) {
                                 return;
                             }
@@ -266,14 +307,17 @@ public class QAController {
                                 }
                             } catch (IOException | IllegalStateException e) {
                                 deliveryClosed.set(true);
+                                releaseTrace.run();
                                 log.warn("SSE发送失败: errorType={}", e.getClass().getSimpleName());
                                 logStreamDiagnostics("stream_delivery_send_failed", traceId, request.kbId(), userId,
                                         diagnostics, answerBuffer.length(), System.currentTimeMillis() - startTime);
                                 subscription.dispose();
                                 emitter.complete();
                             }
+                            }
                         },
                         error -> {
+                            synchronized (deliveryLock) {
                             long latencyMs = System.currentTimeMillis() - startTime;
                             log.error("流式问答错误: traceId={}, kbId={}, userId={}, latencyMs={}, errorType={}",
                                     traceId, request.kbId(), userId, latencyMs,
@@ -285,6 +329,8 @@ public class QAController {
                             }
                             try {
                                 if (structured) {
+                                    tracePump.dispose();
+                                    sendFinalTrace(emitter, collector, "ERROR");
                                     emitter.send(SseEmitter.event().name("terminal")
                                             .data(StreamTerminalEvent.error(terminalSignal,
                                                     streamErrorReason(error)), MediaType.APPLICATION_JSON));
@@ -293,15 +339,20 @@ public class QAController {
                                     emitter.send("[ERROR] " + clientError, MediaType.TEXT_PLAIN);
                                     emitter.send("[DONE]", MediaType.TEXT_PLAIN);
                                 }
+                                deliveryClosed.set(true);
+                                releaseTrace.run();
                                 emitter.complete();
                             } catch (IOException | IllegalStateException ioException) {
                                 deliveryClosed.set(true);
+                                releaseTrace.run();
                                 log.warn("SSE错误消息发送失败: errorType={}",
                                         ioException.getClass().getSimpleName());
                                 emitter.complete();
                             }
+                            }
                         },
                         () -> {
+                            synchronized (deliveryLock) {
                             long latencyMs = System.currentTimeMillis() - startTime;
                             logStreamDiagnostics("stream_delivery_complete", traceId, request.kbId(), userId,
                                     diagnostics, answerBuffer.length(), latencyMs);
@@ -312,6 +363,8 @@ public class QAController {
                                 RAGService.StreamTerminalSignal.ExecutionResult result =
                                         terminalSignal.executionResult();
                                 if (structured) {
+                                    tracePump.dispose();
+                                    sendFinalTrace(emitter, collector, StreamTerminalEvent.completed(terminalSignal).finalState());
                                     emitter.send(SseEmitter.event().name("terminal")
                                             .data(StreamTerminalEvent.completed(terminalSignal),
                                                     MediaType.APPLICATION_JSON));
@@ -323,12 +376,16 @@ public class QAController {
                                     saveStreamHistory(identity, request.kbId(), request.question(),
                                             result.answer(), result.citations(), startTime);
                                 }
+                                deliveryClosed.set(true);
+                                releaseTrace.run();
                                 emitter.complete();
                                 log.info("流式问答完成: traceId={}, kbId={}, userId={}, latencyMs={}, answerLength={}",
                                         traceId, request.kbId(), userId, latencyMs, answerBuffer.length());
                             } catch (IOException | IllegalStateException e) {
                                 deliveryClosed.set(true);
+                                releaseTrace.run();
                                 emitter.complete();
+                            }
                             }
                         }));
 
@@ -337,6 +394,25 @@ public class QAController {
 
     SseEmitter createStreamEmitter() {
         return new SseEmitter(120_000L);
+    }
+
+    private void sendTraceBatch(SseEmitter emitter, ExecutionTraceCollector collector) throws IOException {
+        for (Map<String, Object> event : collector.drain())
+            emitter.send(SseEmitter.event().name("trace").data(event, MediaType.APPLICATION_JSON));
+    }
+
+    private void sendFinalTrace(SseEmitter emitter, ExecutionTraceCollector collector, String state) throws IOException {
+        if (collector == null) return;
+        sendTraceBatch(emitter, collector);
+        emitter.send(SseEmitter.event().name("trace").data(collector.finalEvent(state), MediaType.APPLICATION_JSON));
+    }
+
+    public ResponseEntity<ApiResponse<QAResponse>> ask(AskRequest request, UserDetails userDetails) {
+        return ask(request, null, userDetails);
+    }
+
+    public SseEmitter askStream(AskRequest request, String streamContract, UserDetails userDetails) {
+        return askStream(request, streamContract, null, userDetails);
     }
 
     /** Direct callers keep the legacy format; Spring MVC uses the annotated overload. */
