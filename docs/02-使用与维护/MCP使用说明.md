@@ -8,6 +8,16 @@
 
 ## 当前入口与默认值
 
+已登录网页的侧栏提供「MCP 接入」，路径 `/integrations/mcp`。点击「接入 AI 助手」后选择 Codex、Claude Code 或 Cursor；按专属步骤确认地址，在客户端本地设置 `RAG_MCP_ACCESS_TOKEN`，再复制命令/配置或打开 Cursor 添加确认页。Codex 提供命令/TOML，Claude Code 使用 `.mcp.json`，Cursor 可用官方安装链接或 JSON。合并配置时保留已有项；页面不会修改本机文件或导出真实登录 Token。具体实现与未验证项见[客户端接入记录](../../openspec/changes/mcp-access-console/client-onboarding-review.md)。
+
+默认地址只是本机开发示例。弹层允许修改用于生成客户端配置的地址，但不会探测它，也不会改变本页诊断的固定同源 `/mcp` 目标。安装链接只包含地址与环境变量引用，点击后需在客户端确认；复制/打开只表示准备步骤，不能证明客户端已连接。先在客户端确认 `enterprise-rag` 工具可见，再按权限与外调工具开关使用知识库；JWT 过期需在客户端本地更新，尚未实现 MCP 独立凭据或 OAuth。
+
+原配置、工具模板和浏览器协议检查放在默认折叠的「服务状态与高级诊断」。读取配置需后端运行包含 `GET /api/integrations/mcp` 的版本；旧后端缺少接口时如实显示不可用，仍可查看接入模板。后端与协议证据见[首版实施记录](../../openspec/changes/mcp-access-console/implementation-review.md)。
+
+页面「检查连接」仅在配置启用且用户明确点击后，向当前站点同源 `/mcp` 依次发送 initialize、initialized 通知、ping、tools/list、resources/templates/list；最多五个请求、最长 15 秒，不执行工具、不读取资源实例、不调用模型。请求带当前登录身份，但复制模板永远只有 `<access-token>`，不导出登录 Token。检查通过不代表工具执行、知识库权限、生成质量或外部客户端互操作已验证。
+
+本地 Vite 已增加固定 `/mcp` 代理，但浏览器 Origin 仍受下文精确 allowlist 约束；默认空列表会拒绝浏览器请求。部署时还需自行配置同源 `/mcp` 的正确路由与明确允许的页面 Origin。页面不会放宽 local-only/Origin，也不会替你启用服务；`http://127.0.0.1:8080/mcp` 始终只是本机开发地址示例，不是自动推断的对外地址。
+
 - endpoint：`http://127.0.0.1:8080/mcp`
 - transport：官方 MCP Java SDK `2.0.0` 的 sessionless Streamable HTTP，目标协议版本 `2025-11-25`
 - POST 返回 JSON；GET 在不提供 server stream 时返回 `405`

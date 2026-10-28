@@ -1,6 +1,6 @@
 # 头像与个人资料编辑
 
-> 状态：`APPROVED · REVIEW_READY`。2026-10-27 用户选择“头像、显示昵称和邮箱”并回复“确认方案”，授权按本方案实现与本地验证。实现与验证边界见[实施记录](implementation-review.md)。登录用户名与工作空间只读；原设置任务保留待验收。实际数据库/账号写入、业务出站预算 0，无提交、部署、接受或归档授权。
+> 状态：`USER_ACCEPTED · ARCHIVE_PENDING`。2026-10-27 用户确认方案，2026-10-28 明确接受个人资料栏目并要求转入 MCP 规划，见[接受记录](acceptance.md)。实现与验证边界见[实施记录](implementation-review.md)和[保存修复记录](save-fix-review.md)。登录用户名与工作空间只读；原设置任务保留待验收。无 Agent 提交、push、部署或正式归档授权。
 
 ## 为什么改
 
@@ -24,4 +24,4 @@
 
 接口、迁移、编辑状态与失败处理见 [design](design.md)，实施与验收见 [tasks](tasks.md) 和 [规格](specs/rag-system/spec.md)。用户已确认并完成本地实现验证；原设置任务保留待验收，不自动接受旧任务。上文 planned 是事前现状，当前实现及仍未知的真实 MySQL/设备效果以实施记录为准。
 
-真实 ask/embedding/rerank/judge/provider 与数据出站预算均为 0；不重启真实后端、不对真实数据库迁移或写入资料。实现时可运行聚焦/相称 Maven、前端测试/build 与本地合成浏览器；真实数据库和实际账号联调另按已批准环境范围执行。无 Agent 提交、push、部署或接受/归档授权。
+真实 ask/embedding/rerank/judge/provider 与数据出站预算均为 0；不重启真实后端、不对真实数据库迁移或写入资料。实现时可运行聚焦/相称 Maven、前端测试/build 与本地合成浏览器；真实数据库和实际账号联调另按已批准环境范围执行。用户接受范围见接受记录，不扩展为 Agent 提交、push、部署或正式归档授权。

@@ -70,3 +70,24 @@
 - **复现与验证**：先在真实 Tomcat/生产配置/隔离 H2 复现 500，再验证修复；新增 HTTP 3 项通过，全仓 134 suites / 706 tests，0 失败/错误、22 跳过；前端 146/146、23 组 Chrome、含 vue-tsc build、SensitiveLogs/DocAndScope PASS。详见[保存修复记录](../openspec/changes/account-profile-editing/save-fix-review.md)。
 - **陷阱与边界**：此前普通 MyBatis 与合成接口绕过生产参数处理器，不能证明真实保存；已补正确测试入口并记入 GOTCHAS。MySQL 容器仍不可用，未重启实际后端或修改实际账号；无业务出站。
 - **提交状态**：保留原未提交改动，未暂存、提交或部署；建议 `fix(账户): 修复头像保存异常并让资料保存后立即生效`。
+
+## 2026-10-28 · mcp-access-console（Type C：用户接受衔接与事前规划）
+
+- **改动与大白话**：新增 MCP 四份 OpenSpec 文档与个人资料接受记录，同步旧状态、文档入口和唯一活动指针；原来 MCP 只能翻文档接入，现在先把独立页面、真实配置和分步协议检查写成可审阅方案，业务实现尚未开始（D1–D5）。
+- **范围与授权**：按用户原话登记个人资料 USER_ACCEPTED，保留 MySQL/真实账号/设备缺口及待归档状态；新方案待确认，不执行工具或读取真实资源，不改默认关闭、Origin、本机限制、JWT 或 provider 契约。
+- **验证与门禁**：8 requirements / 21 scenarios 的结构与场景覆盖、5 份新增 Markdown 的 16 个相对链接检查通过，DocAndScope PASS；活动指针 24 行、热日志 79 行。OpenSpec CLI 未在 PATH 发现，官方 CLI 校验 SKIPPED。纯文档，未跑无关 Maven/Python 业务测试或正式前端 build。
+- **风险与提交**：协议检查拟限制为五请求/15 秒，默认 Origin 可能拒绝浏览器，真实链路与外部客户端尚未验证；本轮业务请求/数据库写入/provider/业务出站均为 0。未暂存、提交或发布，建议 `docs(MCP): 规划独立接入页与有界连接检查`。
+
+## 2026-10-28 · mcp-access-console（Type C：接入页与协议检查实现）
+
+- **改动与大白话**：用户确认后完成后端白名单配置接口、共用能力目录、独立接入页与协议适配器（D1–D5）；原来只能翻文档接入，现在可以看真实配置、复制占位模板并主动检查连接，配置开放和当次连接结果分开，失败不自动重试。
+- **验证与门禁**：全仓 Maven 136 suites / 712 tests，0 失败/错误、22 跳过；前端 155/155、补强后 MCP 9/9、最终含 vue-tsc build、两主题十二尺寸及十一组浏览器交互通过，SensitiveLogs（448 Java）/DocAndScope PASS。证据与环境见[实施记录](../openspec/changes/mcp-access-console/implementation-review.md)。
+- **修正与边界**：修正 ES2020 hasOwn 兼容、路由初稿布局和共享 fixture；真实 Tomcat/SDK/生产访问过滤器验证五步序列，业务依赖零调用。Ego 嵌套滚动/等待和额外截图问题如实记录；原生 200% 缩放、实体设备/读屏/跨浏览器未验。未改默认开关、Origin/local-only、JWT、provider 或依赖。
+- **状态与提交**：REVIEW_READY，用户尚未接受；本轮实际服务检查、真实数据库写入/provider/业务出站均为 0，未跑无关 Python 业务测试或完整 C15 conformance，CLI 不可用。保留原文档改动，未暂存/提交/发布，建议 `feat(MCP): 增加接入页面与有界协议检查`。
+
+## 2026-10-28 · mcp-access-console（Type C：客户端选择与专属接入 D6）
+
+- **改动与大白话**：按用户新授权调整 3 份前端生产文件并加入 3 个本地 Logo 与许可；原来进页面先看技术诊断，现在先点接入、选择客户端，再复制专属配置或打开 Cursor 添加确认，原诊断收在高级区域，凭据仍只用本地环境变量。
+- **验证与门禁**：前端完整 163/163、聚焦 17/17、最后一次含 vue-tsc 正式构建与 18 组浏览器通过，60 图已审阅代表图；DocAndScope PASS。截图/指纹、测试脚本和未验项见[客户端接入记录](../openspec/changes/mcp-access-console/client-onboarding-review.md)。后端未变，复用首版 Maven/协议证据，不跑无关 Maven/Python。
+- **修正与边界**：暗色 Logo 的 scoped :global 初稿误让整页反色，审图后收窄完整选择器，并以 html filter=none/Logo 局部 filter 回归；移动夹具改等挂载而非隐藏侧栏可见。Ego 最小化无法截图后用现有隔离 Chrome；原生缩放/设备/读屏与实际客户端接入未验。
+- **状态与提交**：REVIEW_READY，复制/打开只记待客户端验证，Cursor 安装意图在测试中被拦截；实际客户端安装、真实服务/model/provider/数据库写入/业务出站为 0，无新依赖或后端改动。保留先前改动，未暂存/提交/发布，建议 `feat(MCP): 增加客户端选择与专属接入引导`。

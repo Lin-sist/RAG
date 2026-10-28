@@ -9,6 +9,7 @@
       <button class="nav-item" :class="{ active: route.path === '/chat' }" title="新问答" @click="navigate('/chat')"><SquarePen :size="19" /><span>新问答</span></button>
       <button class="nav-item" :class="{ active: route.path.startsWith('/kb') }" title="知识库" @click="navigate('/kb')"><FolderOpen :size="19" /><span>知识库</span></button>
       <button class="nav-item" :class="{ active: route.path === '/history' }" title="历史记录" @click="navigate('/history')"><History :size="19" /><span>历史记录</span></button>
+      <button class="nav-item" :class="{ active: route.path === '/integrations/mcp' }" title="MCP 接入" @click="navigate('/integrations/mcp')"><Plug :size="19" /><span>MCP 接入</span></button>
     </nav>
     <div v-if="mobile || !collapsed" class="sidebar-content">
       <h2>最近问答</h2>
@@ -32,7 +33,7 @@
 import AccountAvatar from '@/components/common/AccountAvatar.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { SquarePen, FolderOpen, History, ChevronDown, PanelLeftOpen, PanelLeftClose, Settings, User, Sun, Moon, LogOut } from 'lucide-vue-next'
+import { SquarePen, FolderOpen, History, Plug, ChevronDown, PanelLeftOpen, PanelLeftClose, Settings, User, Sun, Moon, LogOut } from 'lucide-vue-next'
 import BrandMark from '@/components/common/BrandMark.vue'
 import WorkspaceContext from '@/components/common/WorkspaceContext.vue'
 import { useAuthStore } from '@/stores/auth'

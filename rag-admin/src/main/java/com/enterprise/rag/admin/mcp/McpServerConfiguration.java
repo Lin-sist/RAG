@@ -33,9 +33,9 @@ import java.util.Map;
 @ConditionalOnProperty(prefix = "rag.mcp", name = "enabled", havingValue = "true")
 public class McpServerConfiguration {
 
-    static final String ENDPOINT = "/mcp";
-    static final String SERVER_NAME = "enterprise-rag-readonly";
-    static final String SERVER_VERSION = "c15-v1";
+    static final String ENDPOINT = McpCatalog.ENDPOINT;
+    static final String SERVER_NAME = McpCatalog.SERVER_NAME;
+    static final String SERVER_VERSION = McpCatalog.SERVER_VERSION;
 
     @Bean
     McpJsonMapper mcpJsonMapper(ObjectMapper objectMapper) {

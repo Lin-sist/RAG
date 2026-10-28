@@ -21,6 +21,12 @@ const routes: RouteRecordRaw[] = [
         redirect: '/chat',
         children: [
             {
+                path: 'integrations/mcp',
+                name: 'McpAccess',
+                component: () => import('@/views/integrations/McpAccessView.vue'),
+                meta: { title: 'MCP 接入' },
+            },
+            {
                 path: 'chat',
                 name: 'Chat',
                 component: () => import('@/components/chat/ChatPanel.vue'),

@@ -48,3 +48,7 @@
 ## 10. MyBatis-Plus 顶层基本类型数组参数
 
 - **陷阱与对策**：将 byte[] 直接放入 mapper 的 @Param 参数映射，普通 MyBatis 测试可能通过，但 MyBatis-Plus 的 MybatisParameterHandler 会把它误当批量数组转成 Object[]，导致保存返回 500。使用标量值对象包装 bytes 并绑定其属性；回归须使用生产 MybatisConfiguration/MybatisSqlSessionFactoryBuilder 与插件，不能只用普通 SqlSessionFactoryBuilder。
+
+## 11. Vue scoped 样式中的 :global 选择器范围
+
+- **陷阱与对策**：当前编译器会将 `:global(html.dark) .icon` 替换为整个 `html.dark` 选择器，局部 filter 会误作用整页。将完整限定选择器放进 `:global(html.dark .component .icon)`；浏览器回归还需检查祖先 filter，单测子元素背景色无法发现整页反色。

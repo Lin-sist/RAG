@@ -2,18 +2,17 @@
 
 ## Status
 
-`ACTIVE · REVIEW_READY`
-
-已修复用户反馈的头像保存 500 与复杂核对界面，本地验证通过待审阅；MySQL/真实账号仍缺证据（WIP = 1/1）。
+`ACTIVE · REVIEW_READY`。MCP 接入按钮、三客户端 Logo 选择及专属接入引导已完成本地验证；原协议诊断保留，实际客户端接入待验（WIP = 1/1）。
 
 ## Active (WIP Limit = 1)
 
-- **account-profile-editing**：[设计](../openspec/changes/account-profile-editing/design.md) / [任务](../openspec/changes/account-profile-editing/tasks.md)。2026-10-27 用户“确认方案”，授权实现及本地验证；实际账号/数据库写入与业务出站预算 0，无提交/部署/接受/归档授权。
+- **mcp-access-console**：[客户端接入记录](../openspec/changes/mcp-access-console/client-onboarding-review.md) / [设计](../openspec/changes/mcp-access-console/design.md) / [任务](../openspec/changes/mcp-access-console/tasks.md)。2026-10-28 用户授权客户端选择方案设计并实现；不实际安装客户端配置或探测真实服务，无提交、部署、接受或归档授权。
 
 ## Parked & Remaining Evidence Debt
 
 | ID / 债务项 | 当前状态 | 停放原因 / 唤醒条件 | 详情入口 |
 | :--- | :--- | :--- | :--- |
+| **account-profile-editing** | `USER_ACCEPTED · ARCHIVE_PENDING` | 用户已明确接受并转向 MCP 规划；正式归档/baseline 待处理，原 MySQL/真实账号/设备证据缺口保留 | [接受记录](../openspec/changes/account-profile-editing/acceptance.md) |
 | **settings-modal-preferences** | `REVIEW_READY · ACCEPTANCE_PENDING` | 用户转向个人资料编辑；原设置未接受/归档 | [任务与证据](../openspec/changes/settings-modal-preferences/tasks.md) |
 | **workspace-context-visibility** | `REVIEW_READY · ACCEPTANCE_PENDING` | 用户转向设置实现；前项未接受/归档 | [实施记录](../openspec/changes/workspace-context-visibility/implementation-review.md) |
 | **rag-execution-trace-view** | `USER_ACCEPTED · ARCHIVE_PENDING` | 用户已确认验收；真实 provider/实体设备未验，baseline/归档待处理 | [接受说明](../openspec/changes/rag-execution-trace-view/implementation-review.md) |

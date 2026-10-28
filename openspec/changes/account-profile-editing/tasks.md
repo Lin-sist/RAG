@@ -1,6 +1,6 @@
 # 资料编辑任务
 
-状态：`REVIEW_READY`。用户已确认方案，实现及本地验证完成，见[实施记录](implementation-review.md)。隔离 MySQL 因 Docker 不可用跳过，真实账号、数据库与实体设备未验证。真实业务调用/出站/实际数据库写入预算 0，无提交、部署、接受/归档授权。
+状态：`USER_ACCEPTED · ARCHIVE_PENDING`。2026-10-28 用户明确接受个人资料栏目并要求转入 MCP 规划，见[接受记录](acceptance.md)；实现及本地验证见[实施记录](implementation-review.md)和[保存修复记录](save-fix-review.md)。既有 MySQL、真实账号与设备证据缺口保留。未正式归档或合并 baseline，无 Agent 提交、push 或部署授权。
 
 ## 1. 事前闸门
 - [x] 1.1 核对当前代码、持久化、身份、只读上下文及旧演示页。
@@ -23,7 +23,7 @@
 - [x] 4.1 聚焦/相称 Maven 通过；隔离 MySQL/Testcontainers 已尝试，Docker 不可用，迁移/事务/Blob MySQL 读回明确未验。
 - [x] 4.2 前端回归、含 vue-tsc 正式 build、真实文件输入与深浅宽窄/键盘浏览器。
 - [x] 4.3 DocAndScope/SensitiveLogs、范围、证据与日志。
-- [ ] 4.4 用户审阅接受；未经授权不提交、部署或归档，不写实际账号。
+- [x] 4.4 用户于 2026-10-28 明确接受；记录接受范围与剩余证据边界，正式归档/baseline 合并另行处理，不写实际账号。
 
 ## 5. 用户保存失败反馈修复（2026-10-28）
 - [x] 5.1 在真实 Tomcat HTTP 与生产 MyBatis-Plus 配置下复现头像保存 500，并定位数组参数转换错误。

@@ -3,7 +3,6 @@ package com.enterprise.rag.admin.mcp;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,46 +54,13 @@ final class McpToolSpecifications {
             McpReadOnlyToolService toolService,
             McpRequestIdentityResolver identityResolver,
             McpProperties properties) {
-        List<McpStatelessServerFeatures.SyncToolSpecification> specifications =
-                new ArrayList<>();
-        if (properties.isExternalToolsEnabled()) {
-            specifications.add(specification(
-                    SEARCH,
-                    "Search authorized knowledge-base evidence",
-                    searchInputSchema("query", properties.getMaxQueryChars()),
-                    searchOutputSchema(),
-                    toolService,
-                    identityResolver));
-            specifications.add(specification(
-                    ASK,
-                    "Ask an authorized knowledge base without history/count side effects",
-                    searchInputSchema("question", properties.getMaxQueryChars()),
-                    askOutputSchema(),
-                    toolService,
-                    identityResolver));
-        }
-        specifications.add(specification(
-                GET_CITATION,
-                "Read one exact authorized citation",
-                citationInputSchema(),
-                citationOutputSchema(),
-                toolService,
-                identityResolver));
-        specifications.add(specification(
-                COMPARE_SOURCES,
-                "Compare two exact authorized sources without semantic inference",
-                compareInputSchema(),
-                compareOutputSchema(),
-                toolService,
-                identityResolver));
-        return List.copyOf(specifications);
+        return McpCatalog.tools(properties.getMaxQueryChars()).stream()
+                .filter(tool -> !tool.externalCallPossible() || properties.isExternalToolsEnabled())
+                .map(tool -> specification(tool, toolService, identityResolver)).toList();
     }
 
     private static McpStatelessServerFeatures.SyncToolSpecification specification(
-            String name,
-            String description,
-            Map<String, Object> inputSchema,
-            Map<String, Object> outputSchema,
+            McpCatalog.Tool definition,
             McpReadOnlyToolService toolService,
             McpRequestIdentityResolver identityResolver) {
         McpSchema.ToolAnnotations annotations = McpSchema.ToolAnnotations.builder()
@@ -103,10 +69,10 @@ final class McpToolSpecifications {
                 .idempotentHint(true)
                 .openWorldHint(false)
                 .build();
-        McpSchema.Tool tool = McpSchema.Tool.builder(name)
-                .description(description)
-                .inputSchema(inputSchema)
-                .outputSchema(outputSchema)
+        McpSchema.Tool tool = McpSchema.Tool.builder(definition.name())
+                .description(definition.description())
+                .inputSchema(definition.inputSchema())
+                .outputSchema(definition.outputSchema())
                 .annotations(annotations)
                 .build();
         return McpStatelessServerFeatures.SyncToolSpecification.builder()

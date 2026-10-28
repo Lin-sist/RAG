@@ -17,6 +17,10 @@ export default defineConfig({
     server: {
         port: 5173,
         proxy: {
+            '/mcp': {
+                target: 'http://127.0.0.1:8080',
+                changeOrigin: true,
+            },
             '/auth': {
                 target: 'http://localhost:8080',
                 changeOrigin: true,
