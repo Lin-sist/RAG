@@ -21,6 +21,12 @@ function fixture(handler) {
   return { ...createRequestClient(session, adapter), tokens: () => tokens, session, expired: () => expired }
 }
 try {
+  await test('explicit profile writes are never replayed automatically after a 401', async () => {
+    const calls=[]
+    const f=fixture(async config=>{calls.push(config.url);return [401,{errorCode:'AUTH_001',message:'synthetic expired'}]})
+    await assert.rejects(f.request.put('/api/account/profile', {}, {noAuthReplay:true}),error=>error.status===401)
+    assert.deepEqual(calls,['/api/account/profile']);assert.equal(f.expired(),0)
+  })
   await test('a late successful response cannot be delivered after logout or a new login revision', async () => {
     let finish
     const f = fixture(() => new Promise(resolve => { finish = resolve }))

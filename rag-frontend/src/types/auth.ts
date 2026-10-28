@@ -11,6 +11,9 @@ export interface UserInfo {
     id: number
     username: string
     email: string
+    displayName?: string | null
+    hasAvatar?: boolean
+    profileRevision?: number
 }
 
 export interface AuthResponse {

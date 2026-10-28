@@ -18,7 +18,7 @@
       <template v-else><button v-for="item in historyList" :key="item.id" class="history-item" :class="{ active: route.path === '/chat/' + item.id }" :title="item.title" @click="navigate('/chat/' + item.id)">{{ item.title }}</button></template>
     </div>
     <div class="user-bar">
-      <button ref="menuTrigger" class="user-trigger" :aria-expanded="userMenuOpen" aria-controls="user-menu" :aria-label="username + '，打开用户菜单'" @click="toggleUserMenu"><span class="user-avatar">{{ userInitial }}</span><span class="user-name">{{ username }}</span><ChevronDown :size="16" /></button>
+      <button ref="menuTrigger" class="user-trigger" :aria-expanded="userMenuOpen" aria-controls="user-menu" :aria-label="username + '，打开用户菜单'" @click="toggleUserMenu"><AccountAvatar class="user-avatar" /><span class="user-name">{{ username }}</span><ChevronDown :size="16" /></button>
       <div v-if="userMenuOpen" id="user-menu" ref="userMenu" class="user-menu" @keydown="handleMenuKeys">
         <button @click="openSettings('general')"><Settings :size="16" />设置</button>
         <button @click="openSettings('profile')"><User :size="16" />个人资料</button>
@@ -29,6 +29,7 @@
   </aside>
 </template>
 <script setup lang="ts">
+import AccountAvatar from '@/components/common/AccountAvatar.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SquarePen, FolderOpen, History, ChevronDown, PanelLeftOpen, PanelLeftClose, Settings, User, Sun, Moon, LogOut } from 'lucide-vue-next'
@@ -47,8 +48,7 @@ const collapsed = ref(false), mobile = ref(false), drawerOpen = ref(false), user
 const sidebar = ref<HTMLElement>(), menuTrigger = ref<HTMLButtonElement>(), userMenu = ref<HTMLElement>()
 const historyList = ref<{ id: string; title: string }[]>([])
 const historyState = ref<'loading' | 'error' | 'empty' | 'ready'>('loading')
-const username = computed(() => auth.userInfo?.username || '已登录用户')
-const userInitial = computed(() => username.value.charAt(0).toUpperCase())
+const username = computed(() => auth.userInfo?.displayName || auth.userInfo?.username || '已登录用户')
 let sequence = 0, mounted = false
 let media: MediaQueryList
 let returnFocus: HTMLElement | null = null

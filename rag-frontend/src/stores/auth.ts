@@ -2,11 +2,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getToken, setToken, removeToken } from '@/utils/storage'
 import type { ContextStatus, SessionContext } from '@/types/sessionContext'
+import type { UserInfo } from '@/types/auth'
 
 export const useAuthStore = defineStore('auth', () => {
     const accessToken = ref<string>(getToken('accessToken') || '')
     const refreshToken = ref<string>(getToken('refreshToken') || '')
-    const userInfo = ref<{ id: number; username: string; email: string } | null>(null)
+    const userInfo = ref<UserInfo | null>(null)
 
     const sessionRevision = ref(0)
     const tokenRevision = ref(0)
@@ -25,8 +26,13 @@ export const useAuthStore = defineStore('auth', () => {
         tokenRevision.value++
     }
 
-    function setUserInfo(info: { id: number; username: string; email: string }) {
-        userInfo.value = info
+    function setUserInfo(info: UserInfo) {
+        const old = userInfo.value
+        if (old?.id === info.id && old.profileRevision !== undefined
+            && (info.profileRevision === undefined || info.profileRevision < old.profileRevision)) {
+            userInfo.value = { ...info, email: old.email, displayName: old.displayName,
+                hasAvatar: old.hasAvatar, profileRevision: old.profileRevision }
+        } else userInfo.value = info
     }
 
     function clearAuth() {
@@ -42,7 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     function beginContextLoad() { workspace.value = null; contextStatus.value = 'loading' }
     function acceptContext(context: SessionContext) {
-        userInfo.value = { ...context.userInfo, email: context.userInfo.email ?? '' }
+        setUserInfo({ ...context.userInfo, email: context.userInfo.email ?? '' })
         workspace.value = context.workspace
         contextStatus.value = 'ready'
     }

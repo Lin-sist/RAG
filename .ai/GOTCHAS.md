@@ -44,3 +44,7 @@
 ## 9. 菜单 max-height 不等于视口内可见
 
 - **陷阱与对策**：固定向上展开的菜单即使设了 max-height，仍可能在矮窗口越过顶部。应按锚点与实际视口的上下空间选方向、限高，并在窗口/visualViewport/输入尺寸变化后更新；回归同时覆盖长列表和打开后的缩窗。
+
+## 10. MyBatis-Plus 顶层基本类型数组参数
+
+- **陷阱与对策**：将 byte[] 直接放入 mapper 的 @Param 参数映射，普通 MyBatis 测试可能通过，但 MyBatis-Plus 的 MybatisParameterHandler 会把它误当批量数组转成 Object[]，导致保存返回 500。使用标量值对象包装 bytes 并绑定其属性；回归须使用生产 MybatisConfiguration/MybatisSqlSessionFactoryBuilder 与插件，不能只用普通 SqlSessionFactoryBuilder。

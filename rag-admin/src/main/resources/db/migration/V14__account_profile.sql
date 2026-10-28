@@ -1,0 +1,3 @@
+ALTER TABLE `user`
+    ADD COLUMN display_name VARCHAR(50) NULL,
+    ADD COLUMN avatar_data MEDIUMBLOB NULL;

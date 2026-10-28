@@ -10,6 +10,7 @@ interface Session {
     clear(): void
     expired(): void
 }
+declare module 'axios' { interface AxiosRequestConfig { noAuthReplay?: boolean } }
 type RetryConfig = InternalAxiosRequestConfig & { authRetried?: boolean; authRevision?: number }
 
 // 唯一 HTTP client；Session 注入仅用于隔离 Pinia/router 和离线适配器测试。
@@ -73,6 +74,7 @@ export function createRequestClient(session: Session, adapter?: AxiosAdapter) {
         // 认证端点失败直接返回调用方；不刷新登录或退出请求。
         if (normalized.status !== 401 || !config || config.url?.startsWith('/auth/')) throw normalized
         if (config.authRevision !== session.revision()) throw normalized
+        if (config.noAuthReplay) throw normalized
         const sentToken = config.headers.Authorization
         const currentToken = session.access()
         if (config.authRetried) {

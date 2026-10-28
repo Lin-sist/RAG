@@ -43,3 +43,30 @@
 - **验证与门禁**：前端 143/143、含 vue-tsc 正式构建、34 项菜单专项和原 26 组设置回归通过，DocAndScope PASS；新增 36 张菜单截图，结果、边界与指纹见[精修记录](../openspec/changes/settings-modal-preferences/dropdown-review.md)。
 - **修正与风险**：明确菜单挂在 dialog 内、按浮层空间换向限高，验证 Escape/Tab/缩窗/滚动；测试改点真实面板，不强点内部微小输入，区分同名 combobox/listbox。旧日志原文块无损归档；实体触屏/读屏/真实页面缩放仍未验证，既有包体警告保留。
 - **边界与提交**：无新依赖/API/后端，真实业务/出站 0，跳过无关 Maven/Python；保留首版证据和所有既有改动，未暂存/提交/接受/归档，建议 `style(设置): 统一下拉菜单主题与选中交互`。
+
+## 2026-10-27 · account-profile-editing（Type C：资料编辑事前提案）
+
+- **改动与大白话**：新增 proposal/design/tasks/spec delta 四份提案并补导航；当前资料只读、旧页面仅演示，现按用户选择把头像、昵称和邮箱设计为有草稿/取消/真实保存的账号能力，登录名与组织保持只读（D1–D5）。
+- **契约与范围**：规划自助身份接口、单事务/版本保存、受限图片与认证读取，头像存数据库且不进入认证查询；新接口和迁移尚未实现，现设置活动指针保留待审，未建立第二活动实现。
+- **验证与门禁**：源码事实、四份提案结构/字段范围/相对链接及旧场景保留检查，DocAndScope PASS；仅文档，没有运行无关 Maven/Python/前端 build，真实业务/出站/实际数据库写入均为 0。
+- **剩余与提交**：具体方案待用户确认，真实 MySQL 迁移/图片方向/设备与保存回读均未验证；邮箱不是已验证恢复凭据，未暂存、提交或接受/归档，建议 `docs(账户): 规划头像昵称邮箱编辑与保存契约`。
+
+## 2026-10-27 · account-profile-editing（Type C：确认后实现）
+
+- **改动与大白话**：用户“确认方案”后推进资料接口、身份上下文及设置浮层三个模块（D1–D5）；原来只能查看资料，现在头像、昵称、邮箱先预览，保存时用版本检查和事务一起写入，断线时保留草稿读回核对。原设置任务保留待验收。
+- **验证与门禁**：完整 Maven 133 suites / 703 tests，0 失败、0 错误、22 跳过；最终聚焦 12 通过、1 MySQL 跳过；前端 146/146、含 vue-tsc build、资料浏览器 21 组、原设置 17 组和菜单 34 检查通过；DocAndScope 与 SensitiveLogs PASS（440 Java）。详见[实施记录](../openspec/changes/account-profile-editing/implementation-review.md)。
+- **修正与边界**：裸 byte[] 的 MyBatis 返回值会误当集合，已使用 Blob 行对象并验证读回；修复保存/继续编辑后的焦点恢复，验证 JPEG 方向、SSE 持续及迟到头像清理。Docker 不可用，真实 MySQL 迁移与 Blob/事务未验；无实际账号/数据库写入、业务出站或 provider 调用，实体设备/跨浏览器未验。
+- **状态与提交**：REVIEW_READY，未接受/归档；未暂存、提交或发布，建议 `feat(账户): 支持头像昵称邮箱编辑与事务保存`。本地证据位于忽略目录 `.tmp/account-profile-editing/`，不以合成刷新冒充真实跨设备持久化。
+
+## 2026-10-28 · account-profile-editing（Type C：冲突草稿续编与收尾复验）
+
+- **改动与大白话**：在既有结果核对区补齐“保留草稿，按最新版本继续编辑”；用户不必丢掉冲突草稿，也不会在核对后被自动重复提交。
+- **验证与门禁**：资料浏览器 21 组、含 vue-tsc build、前端完整串行 146/146 通过；确认冲突前只有一次 PUT，用户手动保存后才出现第二次；DocAndScope/SensitiveLogs PASS。证据与一次既有轮询定时测试失败说明见[实施记录](../openspec/changes/account-profile-editing/implementation-review.md)。
+- **边界与提交**：并行构建时的固定 100 ms 测试未等到终态，保留失败记录，未改轮询代码或放宽断言；MySQL/真实账号/设备缺口保持原记录。仍为 REVIEW_READY，未暂存、提交或发布。
+
+## 2026-10-28 · account-profile-editing（Type B：头像保存失败与即时生效）
+
+- **改动与大白话**：修复头像 mapper 参数、共享头像与账户浮层；原来生产 MyBatis-Plus 把 byte[] 当对象数组转换，导致整次保存 500，现用值对象绑定 BLOB。200 确认后头像与昵称立即更新，失败保留输入并简短提示重试，移除用户手动“草稿核对”流程（D6）。
+- **复现与验证**：先在真实 Tomcat/生产配置/隔离 H2 复现 500，再验证修复；新增 HTTP 3 项通过，全仓 134 suites / 706 tests，0 失败/错误、22 跳过；前端 146/146、23 组 Chrome、含 vue-tsc build、SensitiveLogs/DocAndScope PASS。详见[保存修复记录](../openspec/changes/account-profile-editing/save-fix-review.md)。
+- **陷阱与边界**：此前普通 MyBatis 与合成接口绕过生产参数处理器，不能证明真实保存；已补正确测试入口并记入 GOTCHAS。MySQL 容器仍不可用，未重启实际后端或修改实际账号；无业务出站。
+- **提交状态**：保留原未提交改动，未暂存、提交或部署；建议 `fix(账户): 修复头像保存异常并让资料保存后立即生效`。

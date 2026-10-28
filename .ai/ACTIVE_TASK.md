@@ -4,16 +4,17 @@
 
 `ACTIVE · REVIEW_READY`
 
-设置浮层首版已接入，等待审阅；前项工作空间保留待验收（WIP = 1/1）。
+已修复用户反馈的头像保存 500 与复杂核对界面，本地验证通过待审阅；MySQL/真实账号仍缺证据（WIP = 1/1）。
 
 ## Active (WIP Limit = 1)
 
-- **settings-modal-preferences**：[设计](../openspec/changes/settings-modal-preferences/design.md) / [任务](../openspec/changes/settings-modal-preferences/tasks.md)。2026-10-27 用户授权按规划实现首版，真实业务预算 0；无提交/接受/归档授权。
+- **account-profile-editing**：[设计](../openspec/changes/account-profile-editing/design.md) / [任务](../openspec/changes/account-profile-editing/tasks.md)。2026-10-27 用户“确认方案”，授权实现及本地验证；实际账号/数据库写入与业务出站预算 0，无提交/部署/接受/归档授权。
 
 ## Parked & Remaining Evidence Debt
 
 | ID / 债务项 | 当前状态 | 停放原因 / 唤醒条件 | 详情入口 |
 | :--- | :--- | :--- | :--- |
+| **settings-modal-preferences** | `REVIEW_READY · ACCEPTANCE_PENDING` | 用户转向个人资料编辑；原设置未接受/归档 | [任务与证据](../openspec/changes/settings-modal-preferences/tasks.md) |
 | **workspace-context-visibility** | `REVIEW_READY · ACCEPTANCE_PENDING` | 用户转向设置实现；前项未接受/归档 | [实施记录](../openspec/changes/workspace-context-visibility/implementation-review.md) |
 | **rag-execution-trace-view** | `USER_ACCEPTED · ARCHIVE_PENDING` | 用户已确认验收；真实 provider/实体设备未验，baseline/归档待处理 | [接受说明](../openspec/changes/rag-execution-trace-view/implementation-review.md) |
 | **login-particle-story** | `USER_ACCEPTED · ARCHIVE_PENDING` | 用户已确认验收并提交；本轮切换至轨迹规划，baseline 同步/正式归档另行处理 | [原任务与证据](../openspec/changes/login-particle-story/tasks.md) |

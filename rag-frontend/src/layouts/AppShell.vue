@@ -22,6 +22,7 @@ import { ref, watch, provide, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { useProfileAvatarStore } from '@/stores/profileAvatar'
 import { useKnowledgeBaseStore } from '@/stores/knowledgeBase'
 import { useChatStore } from '@/stores/chat'
 import { getSessionContext } from '@/api/sessionContext'
@@ -31,6 +32,7 @@ import SettingsModal from '@/components/settings/SettingsModal.vue'
 
 const settingsOpen = ref(false)
 const auth = useAuthStore(), knowledgeBases = useKnowledgeBaseStore(), chat = useChatStore(), router = useRouter()
+const profileAvatar = useProfileAvatarStore()
 const context = createSessionContextLoader(auth, getSessionContext, () => {
   auth.clearAuth()
   ElMessage.warning('账号归属已变化，请重新登录')
@@ -48,6 +50,7 @@ watch(() => auth.sessionRevision, () => {
   chat.setStreaming(false)
 }, { flush: 'sync', immediate: true })
 onUnmounted(context.dispose)
+onUnmounted(profileAvatar.clear)
 const settingsInitialTab = ref<'general' | 'profile'>('general')
 
 function openSettings(tab: 'general' | 'profile') {

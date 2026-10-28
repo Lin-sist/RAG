@@ -30,12 +30,7 @@
               <p class="settings-hint">输入法正在选词时，Enter 用于确认文字。</p>
             </template>
             <template v-else-if="activeTab === 'account'">
-              <h2>账户与工作空间</h2><p class="section-description">查看当前登录身份和资料归属。</p>
-              <div class="profile-summary"><span class="profile-avatar">{{ username.charAt(0).toUpperCase() }}</span><div><strong>{{ username }}</strong><p>当前登录资料</p></div></div>
-              <p v-if="!auth.userInfo" class="settings-hint" role="status">资料暂不可用</p>
-              <dl v-else class="profile-details"><div><dt>用户名</dt><dd>{{ auth.userInfo.username || '未提供' }}</dd></div><div><dt>邮箱</dt><dd>{{ auth.userInfo.email || '未提供' }}</dd></div></dl>
-              <dl class="profile-details"><div><dt>所属工作空间</dt><dd><WorkspaceContext mode="profile" /></dd></div></dl>
-              <p class="settings-hint">资料可见范围以当前工作空间及知识库授权为准。</p>
+              <AccountProfilePanel ref="profilePanel" />
               <div class="setting-row logout-row"><span>当前登录</span><button type="button" class="outlined-button" :disabled="loggingOut || logoutPending" :aria-busy="loggingOut || logoutPending" @click="handleLogout"><LogOut :size="16" aria-hidden="true" />{{ loggingOut || logoutPending ? '正在退出…' : '退出登录' }}</button></div>
             </template>
             <template v-else-if="activeTab === 'data'">
@@ -58,7 +53,8 @@
             </template>
           </div>
         </div>
-        <footer class="settings-footer"><p>更改即时生效，仅保存在当前浏览器。</p><p class="persistence-status" role="status">{{ persistenceMessage }}</p></footer>
+        <section v-if="leaveIntent" class="profile-leave-confirm reset-confirm" aria-labelledby="profile-leave-title"><h3 id="profile-leave-title">要放弃尚未保存的修改？</h3><p>离开后，未保存的修改将丢失。</p><div class="confirm-actions"><button ref="continueEditing" type="button" class="outlined-button" @click="resumeEditing">继续编辑</button><button type="button" class="solid-button" @click="discardAndLeave">放弃修改</button></div></section>
+        <footer class="settings-footer"><p>{{ activeTab === 'account' ? '个人资料保存成功后立即生效。' : '更改即时生效，仅保存在当前浏览器。' }}</p><p class="persistence-status" role="status">{{ profileGuardMessage || persistenceMessage }}</p></footer>
       </section>
     </div>
   </Teleport>
@@ -68,12 +64,11 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { X, Sun, SlidersHorizontal, UserRound, Database, CircleHelp, Check, FileText, LogOut, ArrowUpRight } from 'lucide-vue-next'
-import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'
 import { useThemeStore } from '@/stores/theme'
 import { usePreferencesStore, type Preferences } from '@/stores/preferences'
 import { FRONTEND_VERSION } from '@/utils/buildInfo'
-import WorkspaceContext from '@/components/common/WorkspaceContext.vue'
+import AccountProfilePanel from './AccountProfilePanel.vue'
 import SettingsSelect from './SettingsSelect.vue'
 
 type Tab = 'appearance' | 'conversation' | 'account' | 'data' | 'about'
@@ -90,10 +85,30 @@ const textSizeOptions = [{ value: 'small', label: '小 · 14 px' }, { value: 'st
 const motionOptions = [{ value: 'system', label: '跟随系统' }, { value: 'reduce', label: '始终减少' }]
 const sendKeyOptions = [{ value: 'enter', label: 'Enter 发送' }, { value: 'modifier-enter', label: 'Ctrl / ⌘ + Enter 发送' }]
 const sourceOptions = [{ value: 'collapsed', label: '默认收起' }, { value: 'expanded', label: '默认展开' }]
-const auth = useAuthStore(), theme = useThemeStore(), preferences = usePreferencesStore()
+const theme = useThemeStore(), preferences = usePreferencesStore()
 const { logout, logoutPending } = useAuth()
 const loggingOut = ref(false)
-const username = computed(() => auth.userInfo?.username || '已登录用户')
+const profilePanel = ref<InstanceType<typeof AccountProfilePanel>>()
+const leaveIntent = ref<Tab | 'close' | 'logout'>(), continueEditing = ref<HTMLButtonElement>()
+const profileGuardMessage = ref('')
+function guard(intent: Tab | 'close' | 'logout') {
+  profileGuardMessage.value = ''
+  if (profilePanel.value?.blocking) { profileGuardMessage.value = '正在处理个人资料，请稍候。'; return true }
+  if (profilePanel.value?.dirty) {
+    leaveIntent.value = intent; void nextTick(() => continueEditing.value?.focus()); return true
+  }
+  return false
+}
+function discardAndLeave() {
+  const intent = leaveIntent.value; leaveIntent.value = undefined; profilePanel.value?.discard()
+  if (intent === 'close') emit('update:modelValue', false)
+  else if (intent === 'logout') void performLogout()
+  else if (intent) applyTab(intent)
+}
+function resumeEditing() {
+  leaveIntent.value = undefined
+  void nextTick(() => document.getElementById('profile-display-name')?.focus())
+}
 function mapTab(tab: typeof props.initialTab): Tab {
   if (tab === 'profile') return 'account'
   return categories.some(category => category.id === tab) ? tab as Tab : 'appearance'
@@ -118,7 +133,7 @@ function release() {
 async function syncOpen(open: boolean) {
   const current = ++generation
   if (!open) { release(); return }
-  activeTab.value = mapTab(props.initialTab); resetConfirm.value = false; resetResult.value = ''
+  activeTab.value = mapTab(props.initialTab); resetConfirm.value = false; resetResult.value = ''; leaveIntent.value = undefined; profileGuardMessage.value = ''
   previousFocus = document.activeElement as HTMLElement
   previousOverflow = document.body.style.overflow
   document.body.style.overflow = 'hidden'; lockHeld = true
@@ -132,12 +147,16 @@ watch(() => props.modelValue, syncOpen)
 onMounted(() => { if (props.modelValue) void syncOpen(true) })
 watch(() => props.initialTab, tab => chooseTab(mapTab(tab)))
 function chooseTab(tab: Tab) {
+  if (tab === activeTab.value || guard(tab)) return
+  applyTab(tab)
+}
+function applyTab(tab: Tab) {
   activeTab.value = tab; resetConfirm.value = false; resetResult.value = ''
   if (content.value) content.value.scrollTop = 0
 }
-function close() { emit('update:modelValue', false) }
+function close() { if (!guard('close')) emit('update:modelValue', false) }
 function changePreference<K extends keyof Preferences>(key: K, value: string) { preferences.setPreference(key, value as Preferences[K]) }
-function dismissLayer() { if (resetConfirm.value) void cancelReset(); else close() }
+function dismissLayer() { if (leaveIntent.value) resumeEditing(); else if (resetConfirm.value) void cancelReset(); else close() }
 async function beginReset() { resetResult.value = ''; resetConfirm.value = true; await nextTick(); cancelResetButton.value?.focus() }
 async function cancelReset() { resetConfirm.value = false; await nextTick(); resetTrigger.value?.focus() }
 async function confirmReset() {
@@ -147,6 +166,9 @@ async function confirmReset() {
 }
 function openHistory(event: MouseEvent) { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) close() }
 async function handleLogout() {
+  if (!guard('logout')) await performLogout()
+}
+async function performLogout() {
   if (loggingOut.value || logoutPending?.value) return
   loggingOut.value = true
   try { const result = await logout(); if (result === 'unconfirmed') ElMessage.warning('本地登录信息已清除，服务端退出未确认。') }

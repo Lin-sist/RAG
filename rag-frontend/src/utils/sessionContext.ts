@@ -18,6 +18,9 @@ function validContext(value: SessionContext): boolean {
     return !!value?.userInfo && Number.isSafeInteger(value.userInfo.id) && value.userInfo.id > 0
         && typeof value.userInfo.username === 'string' && !!value.userInfo.username.trim()
         && (value.userInfo.email === null || typeof value.userInfo.email === 'string')
+        && (value.userInfo.displayName == null || typeof value.userInfo.displayName === 'string')
+        && (value.userInfo.hasAvatar === undefined || typeof value.userInfo.hasAvatar === 'boolean')
+        && (value.userInfo.profileRevision === undefined || (Number.isSafeInteger(value.userInfo.profileRevision) && value.userInfo.profileRevision >= 0))
         && typeof value.workspace?.id === 'string' && /^[1-9]\d*$/.test(value.workspace.id)
         && typeof value.workspace.displayName === 'string' && !!value.workspace.displayName.trim()
 }

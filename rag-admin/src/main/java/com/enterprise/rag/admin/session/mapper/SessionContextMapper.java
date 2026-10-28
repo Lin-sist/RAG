@@ -8,7 +8,8 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface SessionContextMapper {
     @Select("""
-            SELECT u.id AS user_id, u.username, u.email,
+            SELECT u.id AS user_id, u.username, u.email, u.display_name AS profile_display_name,
+                   (u.avatar_data IS NOT NULL) AS has_avatar, u.version AS profile_revision,
                    t.id AS workspace_id, t.name AS display_name
             FROM `user` u
             INNER JOIN tenant t ON t.id = u.tenant_id
@@ -24,6 +25,9 @@ public interface SessionContextMapper {
         private Long userId;
         private String username;
         private String email;
+        private String profileDisplayName;
+        private boolean hasAvatar;
+        private Integer profileRevision;
         private Long workspaceId;
         private String displayName;
     }

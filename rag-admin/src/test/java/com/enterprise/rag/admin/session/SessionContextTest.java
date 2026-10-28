@@ -42,10 +42,10 @@ class SessionContextTest {
         try (Connection connection = dataSource.getConnection(); Statement sql = connection.createStatement()) {
             sql.execute("CREATE TABLE tenant(id BIGINT PRIMARY KEY,name VARCHAR(100),enabled INT,deleted INT)");
             sql.execute("CREATE TABLE `user`(id BIGINT PRIMARY KEY,tenant_id BIGINT,username VARCHAR(50),"
-                    + "email VARCHAR(100),enabled INT,deleted INT)");
+                    + "email VARCHAR(100),enabled INT,deleted INT,display_name VARCHAR(50),avatar_data BLOB,version INT DEFAULT 0)");
             sql.execute("INSERT INTO tenant VALUES(901,'组织A · 合成',1,0),(902,'组织B · 合成',1,0),"
                     + "(9007199254740993,'长ID组织 · 合成',1,0)");
-            sql.execute("INSERT INTO `user` VALUES(41,901,'same-name','a@example.test',1,0),"
+            sql.execute("INSERT INTO `user`(id,tenant_id,username,email,enabled,deleted) VALUES(41,901,'same-name','a@example.test',1,0),"
                     + "(42,902,'same-name','b@example.test',1,0),(43,9007199254740993,'large-id',NULL,1,0)");
         }
         org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration(

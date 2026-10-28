@@ -29,7 +29,8 @@ public class SessionContextService {
                     HttpStatus.SERVICE_UNAVAILABLE);
         }
         return new SessionContextDTO(
-                new SessionContextDTO.UserInfo(row.getUserId(), row.getUsername(), row.getEmail()),
+                new SessionContextDTO.UserInfo(row.getUserId(), row.getUsername(), row.getEmail(),
+                        row.getProfileDisplayName(), row.isHasAvatar(), row.getProfileRevision()),
                 new SessionContextDTO.Workspace(row.getWorkspaceId().toString(), row.getDisplayName()));
     }
 }

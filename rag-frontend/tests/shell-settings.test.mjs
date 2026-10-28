@@ -11,17 +11,19 @@ import { fileURLToPath } from 'node:url'
 
 globalThis.localStorage = { getItem() { return null }, setItem() {}, removeItem() {} }
 globalThis.document = { activeElement: null, body: { style: { overflow: '' } }, addEventListener() {}, removeEventListener() {}, querySelector() { return null } }
-globalThis.window = { navigator: { userAgent: 'fixture' }, matchMedia() { return { matches: false, addEventListener() {}, removeEventListener() {} } }, addEventListener() {}, removeEventListener() {} }
+globalThis.window = { location: { href: 'http://localhost/' }, navigator: { userAgent: 'fixture' }, matchMedia() { return { matches: false, addEventListener() {}, removeEventListener() {} } }, addEventListener() {}, removeEventListener() {} }
 const server = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true, include: [] },
   server: { middlewareMode: true, hmr: { server: createHttpServer() } },
   resolve: { alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } },
   plugins: [vue(), { name: 'shell-request-fixtures', enforce: 'pre', resolveId(id) {
     if (id.endsWith('/api/history')) return '\0history-fixture'
+    if (id.endsWith('/api/profile')) return '\0profile-fixture'
     if (id === 'shell-auth-fixture') return '\0shell-auth-fixture'
   }, transform(code, id) {
     if (id.endsWith('AppSidebar.vue') || id.endsWith('SettingsModal.vue')) return code.replace("from '@/composables/useAuth'", "from 'shell-auth-fixture'")
       .replace("import { ElMessage } from 'element-plus'", 'const ElMessage = { warning() {} }')
   }, load(id) {
+    if (id === '\0profile-fixture') return `let avatar = async () => { throw Error('fixture unavailable') }; export const setAvatarHandler = fn => avatar = fn; export const getProfile = async () => { throw Error('fixture unavailable') }; export const putProfile = async () => { throw Error('fixture unavailable') }; export const getAvatar = () => avatar()`
     if (id === '\0shell-auth-fixture') return `export const useAuth = () => ({ logout: async () => 'confirmed' })`
     if (id === '\0history-fixture') return `export let handler; export function setHandler(fn) { handler = fn }
       export const getHistoryPage = (page, size) => handler(page, size)`
@@ -46,6 +48,34 @@ try {
     return { state: app._instance.setupState, auth: useAuthStore(pinia), unmount: () => app.unmount() }
   }
   const result = records => ({ data: { data: { records } } })
+  await test('late private avatar decode cannot restore a logged-out session and releases its Blob URL', async () => {
+    const pinia=createPinia(),auth=useAuthStore(pinia)
+    const {useProfileAvatarStore}=await server.ssrLoadModule('/src/stores/profileAvatar.ts')
+    const profileApi=await server.ssrLoadModule('\0profile-fixture')
+    let finish,decoded
+    const revoked=[],createURL=URL.createObjectURL,revokeURL=URL.revokeObjectURL,oldImage=globalThis.Image
+    URL.createObjectURL=()=> 'blob:synthetic-private-avatar';URL.revokeObjectURL=value=>revoked.push(value)
+    globalThis.Image=class {decode(){return new Promise(resolve=>decoded=resolve)}}
+    try {
+      profileApi.setAvatarHandler(()=>new Promise(resolve=>finish=resolve))
+      auth.setAuthTokens('fixture-access','fixture-refresh');auth.setUserInfo({id:901,username:'fixture',email:'',hasAvatar:true,profileRevision:1})
+      const avatar=useProfileAvatarStore(pinia),pending=avatar.load()
+      finish(new Blob(['fixture'],{type:'image/png'}));await Promise.resolve();await Promise.resolve()
+      auth.clearAuth();decoded();await pending;assert.equal(avatar.url,'');assert.deepEqual(revoked,['blob:synthetic-private-avatar'])
+    } finally {URL.createObjectURL=createURL;URL.revokeObjectURL=revokeURL;globalThis.Image=oldImage;profileApi.setAvatarHandler(async()=>{throw Error('fixture unavailable')})}
+  })
+  await test('confirmed profile survives stale context and token rotation without changing login revision', () => {
+    const store = useAuthStore(createPinia())
+    store.setUserInfo({ id: 901, username: 'login', email: 'new@example.test', displayName: '新昵称', hasAvatar: true, profileRevision: 4 })
+    const revision = store.sessionRevision
+    for (const profileRevision of [undefined, 3]) store.acceptContext({userInfo:{id:901,username:'login',email:'old@example.test',displayName:'旧昵称',hasAvatar:false,profileRevision},workspace:{id:'1901',displayName:'合成组织'}})
+    assert.equal(store.userInfo.displayName,'新昵称');assert.equal(store.userInfo.email,'new@example.test');assert.equal(store.userInfo.hasAvatar,true)
+    store.setAuthTokens('fixture-access','fixture-refresh',true);store.setUserInfo({id:901,username:'login',email:'legacy@example.test'})
+    assert.equal(store.sessionRevision,revision);assert.equal(store.userInfo.profileRevision,4)
+    store.acceptContext({userInfo:{id:901,username:'login',email:null,profileRevision:5,hasAvatar:false,displayName:null},workspace:{id:'1901',displayName:'合成组织'}})
+    assert.equal(store.userInfo.displayName,null);assert.equal(store.userInfo.email,'');assert.equal(store.userInfo.profileRevision,5)
+    store.clearAuth();assert.equal(store.userInfo,null)
+  })
   await test('sidebar distinguishes error, manual retry, empty and at most 20 recent records', async () => {
     const calls = []
     api.setHandler(async (page, size) => { calls.push([page, size]); throw Error('fixture') })
